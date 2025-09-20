@@ -132,15 +132,23 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
 ### BATCH PROCESSING SUBSTEPS
 
 <GetBatchAssignments>
-    **Retrieve batch assignments (assignment indices only) for current batch:**
+    **Retrieve subagent assignments for current batch:**
 
     ```bash
-    python3 ./.claude/scripts/mutation_test_get_batch_assignments.py [BATCH_NUMBER]
+    python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py [BATCH_NUMBER] [MAX_SUBAGENTS] [TYPES_PER_SUBAGENT]
     ```
 
     Returns JSON with:
-    - batch_number
-    - assignments: Array with subagent, port, assignment_index, and type_name (type_name for window titles only)
+    - batch_number, max_subagents, types_per_subagent, total_types
+    - assignments: Array with subagent, port, and types (complete type data including spawn_format and mutation_paths)
+
+    **CRITICAL VALIDATION**:
+    1. **STOP IF** assignments array length != MAX_SUBAGENTS
+       - ERROR: "Expected exactly {MAX_SUBAGENTS} assignments, got {actual_count}"
+    2. **STOP IF** any port is outside range BASE_PORT through (BASE_PORT + MAX_SUBAGENTS - 1)
+       - ERROR: "Invalid port {port} - must be in range {BASE_PORT}-{BASE_PORT + MAX_SUBAGENTS - 1}"
+    3. **STOP IF** any assignment doesn't have exactly TYPES_PER_SUBAGENT types
+       - ERROR: "Assignment {subagent} has {actual_count} types, expected {TYPES_PER_SUBAGENT}"
 
     **Store this output in a variable for systematic processing.**
 </GetBatchAssignments>
@@ -149,10 +157,17 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
     **Set window titles for visual tracking:**
 
     **EXACT PROCEDURE**:
-    1. Get the assignments from GetBatchAssignments (returns exactly 10 assignments - one per subagent)
-    2. For each of the 10 subagent assignments:
+    1. Get the assignments from GetBatchAssignments (returns exactly MAX_SUBAGENTS assignments - one per subagent)
+    2. For each of the MAX_SUBAGENTS subagent assignments:
        - Port = assignment.port
-       - Title = Use assignment guide script to get all type names for this subagent's assignment_index, then create comma-separated list of last segments after `::`
+       - Types = assignment.types (already contains complete type data)
+       - **VALIDATE** types array length == TYPES_PER_SUBAGENT
+         - **STOP IF** wrong count: "Assignment {subagent} has {actual} types, expected {TYPES_PER_SUBAGENT}"
+       - Title = Create comma-separated list of last segments after `::` from all type names
+
+    **DEFENSIVE VALIDATION**:
+    - Each assignment MUST contain exactly TYPES_PER_SUBAGENT types
+    - FAIL FAST if any assignment has wrong number of types
 
     Send all window title updates in parallel.
 </SetWindowTitles>
@@ -161,36 +176,56 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
     **Launch parallel subagents for batch testing:**
 
     **EXACT PROCEDURE**:
-    1. Use the assignments from GetBatchAssignments stored earlier (10 subagent assignments)
-    2. Create exactly 10 Task invocations - one per subagent
-    3. Each subagent uses their assignment_index to fetch their assigned types (TYPES_PER_SUBAGENT types each)
+    1. Use the assignments from GetBatchAssignments stored earlier (MAX_SUBAGENTS subagent assignments)
+    2. Create exactly MAX_SUBAGENTS Task invocations - one per subagent
+    3. Each subagent already has their complete type data (TYPES_PER_SUBAGENT types each)
     4. For each subagent assignment:
        - Subagent number = assignment.subagent
        - Port = assignment.port
-       - Batch number = batch_number (from assignments JSON)
-       - Assignment index = assignment.assignment_index
-       - Task description = "Test [TYPE_NAMES]" where TYPE_NAMES is:
-         * Use assignment guide script to get all type names for this subagent's assignment_index, then create comma-separated list of last segments after "::"
+       - Types = assignment.types (complete type data already available)
+       - **VALIDATE** types array length == TYPES_PER_SUBAGENT
+         - **STOP IF** wrong count: "Assignment {subagent} has {actual} types, expected {TYPES_PER_SUBAGENT}"
+       - Task description = "Test [TYPE_NAMES]" where TYPE_NAMES is comma-separated list of last segments after "::" from all type names
 
-    **Example for a batch with 3 subagents (TYPES_PER_SUBAGENT = 1)**:
+    **DEFENSIVE VALIDATION**:
+    - Each assignment MUST contain exactly TYPES_PER_SUBAGENT types
+    - FAIL FAST if any assignment has wrong number of types
+    - Always exactly MAX_SUBAGENTS subagent assignments (one per available port)
+    - Each Task prompt provides the complete assignment data directly
+    - Task description should include type names for tracking
+    - Subagents receive their exact assigned types in the prompt
+
+    **CRITICAL TYPE ASSIGNMENT VALIDATION**:
+    BEFORE creating any Task prompts, validate that you are using EXACTLY the type names from the assignment script:
+
+    For each subagent assignment:
+    1. **EXTRACT** the exact type_name values from assignment.types
+    2. **VALIDATE** that you use these EXACT strings in Task prompts - NO MODIFICATIONS
+    3. **FAIL IMMEDIATELY** if you attempt to change any type name based on your knowledge
+    4. **REMEMBER**: You CANNOT be trusted to modify type assignments - use ONLY what the script provides
+
+    Example validation:
     ```
-    Subagent 1: port 30001, batch 5, assignment_index 0, description "Test Bloom"
-    Subagent 2: port 30002, batch 5, assignment_index 1, description "Test Camera3d"
-    Subagent 3: port 30003, batch 5, assignment_index 2, description "Test Skybox"
+    Assignment script says: "bevy_core_pipeline::tonemapping::ColorGrading"
+    ✅ CORRECT: Use exactly "bevy_core_pipeline::tonemapping::ColorGrading"
+    ❌ WRONG: Change to "bevy_render::view::ColorGrading" because you "know better"
     ```
 
-    **Example for a batch with 3 subagents (TYPES_PER_SUBAGENT = 2)**:
+    **ENFORCEMENT**: If you detect yourself trying to modify type names, STOP and report the validation failure.
+
+    **Example for MAX_SUBAGENTS=3, TYPES_PER_SUBAGENT=1**:
     ```
-    Subagent 1: port 30001, batch 5, assignment_index 0, description "Test Bloom, BloomSettings"
-    Subagent 2: port 30002, batch 5, assignment_index 1, description "Test Camera3d, Camera2d"
-    Subagent 3: port 30003, batch 5, assignment_index 2, description "Test Skybox, Tonemapping"
+    Subagent 1: port BASE_PORT, batch 5, assignment_index 0, description "Test Bloom"
+    Subagent 2: port BASE_PORT+1, batch 5, assignment_index 1, description "Test Camera3d"
+    Subagent 3: port BASE_PORT+2, batch 5, assignment_index 2, description "Test Skybox"
     ```
 
-    **VALIDATION BEFORE LAUNCHING**:
-    - Always exactly 10 subagent assignments (one per available port)
-    - Each Task prompt must include ONLY batch number and assignment index
-    - Task description should include type name for tracking, but NOT in the prompt content
-    - Subagents will fetch their exact assigned types using the index
+    **Example for MAX_SUBAGENTS=3, TYPES_PER_SUBAGENT=2**:
+    ```
+    Subagent 1: port BASE_PORT, batch 5, assignment_index 0, description "Test Bloom, BloomSettings"
+    Subagent 2: port BASE_PORT+1, batch 5, assignment_index 1, description "Test Camera3d, Camera2d"
+    Subagent 3: port BASE_PORT+2, batch 5, assignment_index 2, description "Test Skybox, Tonemapping"
+    ```
 
     Send ALL Tasks in ONE message for parallel execution.
 </LaunchSubagents>
@@ -200,7 +235,15 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
 
     1. **Collect all subagent results** into single JSON array
 
-    2. **Write results to temp file** using Write tool:
+    2. **CRITICAL VALIDATION** of collected results:
+       - **STOP IF** number of subagent results != MAX_SUBAGENTS
+         - ERROR: "Expected {MAX_SUBAGENTS} subagent results, got {actual_count}"
+       - **STOP IF** total number of type results != BATCH_SIZE
+         - ERROR: "Expected {BATCH_SIZE} total type results, got {actual_count}"
+       - Each subagent result should contain exactly TYPES_PER_SUBAGENT type results
+         - **STOP IF** any subagent has wrong count: "Subagent {N} returned {actual} type results, expected {TYPES_PER_SUBAGENT}"
+
+    3. **Write results to temp file** using Write tool:
     ```python
     Write(
         file_path="[TEMP_DIR]/batch_results_[BATCH_NUMBER].json",
@@ -208,14 +251,14 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
     )
     ```
 
-    3. **Execute merge script**:
+    4. **Execute merge script**:
     ```bash
     ./.claude/scripts/mutation_test_merge_batch_results.sh \
         [TEMP_DIR]/batch_results_[BATCH_NUMBER].json \
         [TEMP_DIR]/all_types.json
     ```
 
-    4. **Cleanup temp file**:
+    5. **Cleanup temp file**:
     ```bash
     rm -f [TEMP_DIR]/batch_results_[BATCH_NUMBER].json
     ```
@@ -380,22 +423,26 @@ You are subagent [Y] assigned to port [30000+Y].
 - Launch any apps (use EXISTING app on your port)
 - Update JSON files
 - Provide explanations or commentary
-- Test any type other than those returned by the index script
+- Test any type other than those provided in your assignment data
 - Make up or substitute different types
 - Use your Bevy knowledge to "fix" or "improve" type names
 - Test related types (like bundles when given components)
+- MODIFY TYPE NAMES IN ANY WAY - use the exact strings provided
 
-**CRITICAL CONSTRAINT**: You MUST test ONLY the exact types returned by the index script. NEVER substitute type names even if you think they are wrong. The test system controls type names completely.
+**CRITICAL CONSTRAINT**: You MUST test ONLY the exact types provided in your assignment data. NEVER substitute type names even if you think they are wrong. The test system controls type names completely.
 
-**Get Your Complete Assignment Data**:
-```bash
-python3 ./.claude/scripts/mutation_test_get_assignment_guide.py [BATCH_NUMBER] [ASSIGNMENT_INDEX]
-```
-This returns the exact type names AND complete mutation paths you must test. Use these EXACTLY as returned.
+**TYPE NAME VALIDATION**: Before testing each type, validate that you are using the EXACT type_name string from your assignment data:
+- ✅ CORRECT: Use exactly the type_name provided in assignment data
+- ❌ WRONG: Change type names based on your Bevy knowledge
+- ❌ WRONG: "Fix" type paths that you think are incorrect
+- **FAIL IMMEDIATELY** if you detect yourself modifying any type name
+
+**Your Complete Assignment Data**:
+Your assignment data will be provided directly in the prompt, containing the exact type names AND complete mutation paths you must test. Use these EXACTLY as provided.
 
 **Testing Protocol**:
-1. Call the assignment guide script to get your complete type data
-2. For each type in the returned guides:
+1. Use the assignment data provided directly in your prompt
+2. For each type in your assignment:
    a. **SPAWN/INSERT TESTING**: Skip spawn/insert if spawn_format is null, otherwise test spawn/insert operations
    b. **ENTITY QUERY**: Query for entities with component using EXACT syntax:
    ```json
@@ -408,7 +455,7 @@ This returns the exact type names AND complete mutation paths you must test. Use
    c. **MUTATION TESTING**: Test ALL mutable mutation paths from the mutation_paths object
 3. **CAPTURE ALL ERROR DETAILS**: When ANY operation fails, record the COMPLETE request and response
 4. Return ONLY JSON result array for ALL tested types
-5. NEVER test types not returned by the assignment guide script
+5. NEVER test types not provided in your assignment data
 
 **JSON Number Rules**:
 - ALL primitives (u8, u16, u32, f32, etc.) MUST be JSON numbers

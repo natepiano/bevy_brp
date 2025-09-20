@@ -1,12 +1,12 @@
 [
   {
-    "type": "bevy_input::gamepad::Gamepad",
-    "path": ".product_id",
-    "issue": "Option values incorrectly serialized as objects instead of direct values"
+    "type": "bevy_mesh::morph::MorphWeights",
+    "path": ".first_mesh.0.0.uuid",
+    "issue": "PathRequirement bug: mutation path requires Handle::Weak variant but spawned component has Handle::Strong variant"
   },
   {
-    "type": "bevy_input::gamepad::Gamepad",
-    "path": ".vendor_id",
-    "issue": "Option values incorrectly serialized as objects instead of direct values"
+    "type": "bevy_mesh::skinning::SkinnedMesh",
+    "path": ".inverse_bindposes.0.index",
+    "issue": "PathRequirement bug: mutation path requires specific enum variant that doesn't match spawned component's actual variant"
   }
 ]
