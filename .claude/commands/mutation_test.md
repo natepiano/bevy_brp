@@ -460,7 +460,10 @@ This returns your specific assignment with complete type data.
 1. FIRST: Fetch your assignment using the script with --subagent-index parameter
 2. VALIDATE: Ensure you received exactly [TYPES_PER_SUBAGENT] types
 3. For each type in your fetched assignment:
-   a. **SPAWN/INSERT TESTING**: Skip spawn/insert if spawn_format is null, otherwise test spawn/insert operations
+   a. **SPAWN/INSERT TESTING**:
+      - **CHECK FIRST**: If `spawn_format` is `null` OR `supported_operations` does NOT include "spawn" or "insert", SKIP spawn/insert testing entirely
+      - **ONLY IF** spawn_format exists AND supported_operations includes "spawn"/"insert": attempt spawn/insert operations
+      - **NEVER** attempt spawn/insert on types that don't support it - this will cause massive error responses
    b. **ENTITY QUERY**: Query for entities with component using EXACT syntax:
    ```json
    {
