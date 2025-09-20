@@ -231,6 +231,40 @@ enum WrapperEnum {
     WithOptionalEnum(Option<SimpleNestedEnum>),
 }
 
+/// Test enum for verifying variant chain propagation through non-enum intermediate levels
+/// This tests: Enum -> Struct (no variant requirement) -> Enum (needs variant)
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+enum TestVariantChainEnum {
+    #[default]
+    Empty,
+    /// Variant containing a struct that itself contains an enum
+    WithMiddleStruct { middle_struct: MiddleStruct },
+}
+
+/// Intermediate struct that contains an enum but doesn't require any variant itself
+#[derive(Default, Reflect, Serialize, Deserialize)]
+struct MiddleStruct {
+    /// Regular field with no special requirements
+    some_field:  String,
+    /// Another regular field
+    some_value:  f32,
+    /// Nested enum that will require variant selection
+    nested_enum: BottomEnum,
+}
+
+/// Bottom-level enum that requires variant selection for its fields
+#[derive(Default, Reflect, Serialize, Deserialize)]
+enum BottomEnum {
+    VariantA(u32),
+    VariantB {
+        value: f32,
+        name:  String,
+    },
+    #[default]
+    VariantC,
+}
+
 /// Test component enum WITHOUT Serialize/Deserialize (only Reflect)
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
@@ -486,6 +520,9 @@ fn main() {
         .register_type::<SimpleNestedEnum>()
         .register_type::<OptionTestEnum>()
         .register_type::<WrapperEnum>()
+        .register_type::<TestVariantChainEnum>()
+        .register_type::<MiddleStruct>()
+        .register_type::<BottomEnum>()
         .register_type::<TestEnumNoSerDe>()
         .register_type::<TestArrayField>()
         .register_type::<TestArrayTransforms>()
@@ -853,6 +890,18 @@ fn spawn_test_component_entities(commands: &mut Commands) {
 
     // Entity with TestEnumWithSerDe standalone for easy testing
     commands.spawn((TestEnumWithSerDe::Active, Name::new("TestEnumEntity")));
+
+    // Entity with TestVariantChainEnum to test variant chain propagation through non-enum levels
+    commands.spawn((
+        TestVariantChainEnum::WithMiddleStruct {
+            middle_struct: MiddleStruct {
+                some_field:  "test_field".to_string(),
+                some_value:  42.5,
+                nested_enum: BottomEnum::VariantA(999),
+            },
+        },
+        Name::new("TestVariantChainEntity"),
+    ));
 
     // Entity with SimpleNestedEnum for testing enum recursion
     commands.spawn((
