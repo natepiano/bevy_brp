@@ -218,7 +218,14 @@ impl EnumMutationBuilder {
                     let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
                     tuple_values.push(value);
                 }
-                json!({ variant_name: tuple_values })
+                // Fix: Single-element tuples should not be wrapped in arrays
+                // Vec<Value> always serializes as JSON array, but BRP expects single-element
+                // tuples to use direct value format for mutations, not array format
+                if tuple_values.len() == 1 {
+                    json!({ variant_name: tuple_values[0] })
+                } else {
+                    json!({ variant_name: tuple_values })
+                }
             }
             VariantSignature::Struct(field_types) => {
                 let mut field_values = serde_json::Map::new();
