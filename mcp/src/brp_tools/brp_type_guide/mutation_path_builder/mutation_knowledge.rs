@@ -11,14 +11,14 @@ use serde_json::{Value, json};
 
 use crate::brp_tools::BrpTypeName;
 use crate::brp_tools::brp_type_guide::constants::{
-    TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2, TYPE_BEVY_MAT3,
-    TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2, TYPE_BEVY_VEC3,
-    TYPE_BEVY_VEC3A, TYPE_BEVY_VEC4, TYPE_BOOL, TYPE_CHAR, TYPE_F32, TYPE_F64, TYPE_GLAM_IVEC2,
-    TYPE_GLAM_IVEC3, TYPE_GLAM_IVEC4, TYPE_GLAM_MAT2, TYPE_GLAM_MAT3, TYPE_GLAM_MAT4,
-    TYPE_GLAM_QUAT, TYPE_GLAM_UVEC2, TYPE_GLAM_UVEC3, TYPE_GLAM_UVEC4, TYPE_GLAM_VEC2,
-    TYPE_GLAM_VEC3, TYPE_GLAM_VEC3A, TYPE_GLAM_VEC4, TYPE_I8, TYPE_I16, TYPE_I32, TYPE_I64,
-    TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8, TYPE_U16,
-    TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
+    TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_ENTITY, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2,
+    TYPE_BEVY_MAT3, TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2,
+    TYPE_BEVY_VEC3, TYPE_BEVY_VEC3A, TYPE_BEVY_VEC4, TYPE_BOOL, TYPE_CHAR, TYPE_F32, TYPE_F64,
+    TYPE_GLAM_IVEC2, TYPE_GLAM_IVEC3, TYPE_GLAM_IVEC4, TYPE_GLAM_MAT2, TYPE_GLAM_MAT3,
+    TYPE_GLAM_MAT4, TYPE_GLAM_QUAT, TYPE_GLAM_UVEC2, TYPE_GLAM_UVEC3, TYPE_GLAM_UVEC4,
+    TYPE_GLAM_VEC2, TYPE_GLAM_VEC3, TYPE_GLAM_VEC3A, TYPE_GLAM_VEC4, TYPE_I8, TYPE_I16, TYPE_I32,
+    TYPE_I64, TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8,
+    TYPE_U16, TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
 };
 
 /// Format knowledge key for matching types
@@ -29,18 +29,18 @@ pub enum KnowledgeKey {
     /// Newtype tuple variant that unwraps to inner type for mutations
     NewtypeVariant {
         /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
-        enum_type:    String,
+        enum_type: String,
         /// e.g., "Clear"
         variant_name: String,
         /// e.g., "f32"
-        inner_type:   String,
+        inner_type: String,
     },
     /// Struct field-specific match for providing appropriate field values
     StructField {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: String,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
 }
 
@@ -57,9 +57,9 @@ impl KnowledgeKey {
         inner_type: impl Into<String>,
     ) -> Self {
         Self::NewtypeVariant {
-            enum_type:    enum_type.into(),
+            enum_type: enum_type.into(),
             variant_name: variant_name.into(),
-            inner_type:   inner_type.into(),
+            inner_type: inner_type.into(),
         }
     }
 
@@ -67,7 +67,7 @@ impl KnowledgeKey {
     pub fn struct_field(struct_type: impl Into<String>, field_name: impl Into<String>) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
     }
 }
@@ -79,7 +79,7 @@ pub enum MutationKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }
@@ -366,7 +366,7 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // WARNING: This is just an example! For actual BRP operations, use VALID entity IDs
         // obtained from spawn operations or queries. Using invalid entity IDs will cause errors.
         map.insert(
-            KnowledgeKey::exact("bevy_ecs::entity::Entity"),
+            KnowledgeKey::exact(TYPE_BEVY_ENTITY),
             MutationKnowledge::as_root_value(json!(8_589_934_670_u64), "Entity".to_string()),
         );
 
