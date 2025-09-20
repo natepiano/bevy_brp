@@ -131,9 +131,9 @@ The problem: PathRequirements are built bottom-up during recursion, but they nee
 - But it doesn't know the parent field `.nested_config` is inside the `Nested` variant
 - So it can't build the complete example showing both enum contexts
 
-## Solution: Recursive Wrapping During Pop-Back
+## Solution: Parent Example Replacement During Recursive Pop-Back
 
-Build PathRequirement examples recursively as we pop back up the stack. Each parent wraps its children's PathRequirement examples with its own context.
+During recursive pop-back, each parent takes its ALREADY-COMPLETE example and creates PathRequirement examples for its children by REPLACING the specific child's field with that child's PathRequirement example. This happens as we pop back up the recursion stack.
 
 ## Implementation
 
@@ -277,29 +277,40 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     }
 }
 
-// Example walkthrough for .nested_config.0:
-// 1. .nested_config.0 level:
-//    - PathRequirement initially has example: 1000000
-//    - When .nested_config (parent) processes this child, it sees:
-//        - Child example: 1000000
-//        - Child is index 0 of a tuple variant NestedConfigEnum::Conditional
-//        - Calls wrap_path_requirement_with_parent_info(1000000, "Conditional", Tuple(u32), IndexedElement{index: 0})
-//        - Result: {"Conditional": 1000000} (tuple with child's value at index 0)
-// 2. .nested_config level:
-//    - PathRequirement now has example: {"Conditional": 1000000}
-//    - When root processes this child, it sees:
-//        - Child example: {"Conditional": 1000000}
-//        - Child is struct field nested_config of variant TestEnumWithSerDe::Nested
-//        - Calls wrap_path_requirement_with_parent_info({"Conditional": 1000000}, "Nested", Struct{nested_config, other_field}, StructField{nested_config})
-//        - Result: {"Nested": {"nested_config": {"Conditional": 1000000}, "other_field": "Hello, World!"}} (struct with child's value in nested_config field, default for other_field)
+// KEY INSIGHT: The parent ALREADY HAS a complete example built from all its children.
+// This function takes that complete parent example and REPLACES just the specific
+// field/index with the child's PathRequirement example.
 //
-// Each level wraps its child's PathRequirement example with its own variant context as we pop up the recursion stack.
+// Example walkthrough for .nested_config.0:
+//
+// 1. At .nested_config.0 level:
+//    - PathRequirement initially has example: 1000000
+//
+// 2. When .nested_config (parent) wraps this child:
+//    - Parent already has complete example for NestedConfigEnum built from children
+//    - Child PathRequirement example: 1000000
+//    - Child is at index 0 of tuple variant NestedConfigEnum::Conditional
+//    - Parent creates new example by placing child's value at index 0: {"Conditional": 1000000}
+//    - This becomes the new PathRequirement example for .nested_config.0
+//
+// 3. When root wraps .nested_config:
+//    - Root already has complete example: {"Nested": {"nested_config": "Always", "other_field": "Hello, World!"}}
+//    - Child PathRequirement example: {"Conditional": 1000000} (from step 2)
+//    - Child is the nested_config field of struct variant TestEnumWithSerDe::Nested
+//    - Root REPLACES its nested_config field value with child's PathRequirement example
+//    - Result: {"Nested": {"nested_config": {"Conditional": 1000000}, "other_field": "Hello, World!"}}
+//    - This becomes the final PathRequirement example for .nested_config.0
+//
+// CRITICAL: No defaults are generated. The parent's complete example already has
+// all fields populated. We only REPLACE the specific field that corresponds to
+// the child being processed.
 fn wrap_path_requirement_with_parent_info(
     &self,
-    child_example: &Value,
+    parent_complete_example: &Value,  // Parent's COMPLETE example with all fields
+    child_path_requirement_example: &Value,  // Child's PathRequirement example to insert
     variant_name: &str,
-    variant_signature: &VariantSignature,  // Now passed in directly from enum builder
-    path_kind: &PathKind  // Use PathKind which has typed information
+    variant_signature: &VariantSignature,
+    path_kind: &PathKind  // Identifies which field/index to replace
 ) -> Result<Value> {
     match variant_signature {
         VariantSignature::Unit => {
@@ -307,48 +318,44 @@ fn wrap_path_requirement_with_parent_info(
             Ok(json!(variant_name))
         }
         VariantSignature::Tuple(tuple_fields) => {
-            // Get index directly from PathKind - no parsing needed
+            // Get index directly from PathKind
             let index = match path_kind {
                 PathKind::IndexedElement { index, .. } => *index,
                 _ => return Err(Error::InvalidState("Expected indexed element for tuple variant".to_string()).into())
             };
 
-            // Build the tuple values
-            let mut tuple_values = Vec::new();
-            for (i, field_type) in tuple_fields.iter().enumerate() {
-                if i == index {
-                    // This is the child's position - use its example
-                    tuple_values.push(child_example.clone());
-                } else {
-                    // Use default value for this field type
-                    tuple_values.push(Self::default_value_for_type(field_type));
-                }
-            }
+            // Extract the tuple values from parent's complete example
+            // Parent example is like: {"VariantName": [val0, val1, val2]}
+            let parent_tuple_values = parent_complete_example
+                .get(variant_name)
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| Error::InvalidState("Parent example missing tuple values".to_string()))?;
 
-            Ok(json!({ variant_name: tuple_values }))
+            // Clone parent's values and replace the specific index
+            let mut new_tuple_values = parent_tuple_values.clone();
+            new_tuple_values[index] = child_path_requirement_example.clone();
+
+            Ok(json!({ variant_name: new_tuple_values }))
         }
         VariantSignature::Struct(struct_fields) => {
-            // Build struct with example at the right field
-            let mut field_values = serde_json::Map::new();
-
-            // Get field name directly from PathKind - no parsing needed
+            // Get field name directly from PathKind
             let field_name = match path_kind {
                 PathKind::StructField { field_name, .. } => field_name.clone(),
                 _ => return Err(Error::InvalidState("Expected struct field for struct variant".to_string()).into())
             };
 
-            // struct_fields is Vec<(String, BrpTypeName)>
-            for (field, field_type) in &struct_fields {
-                if field == &field_name {
-                    // Add the current field with its example
-                    field_values.insert(field_name.clone(), child_example.clone());
-                } else {
-                    // Add other fields with default values
-                    field_values.insert(field.clone(), Self::default_value_for_type(field_type));
-                }
-            }
+            // Extract the struct fields from parent's complete example
+            // Parent example is like: {"VariantName": {"field1": val1, "field2": val2}}
+            let parent_struct_fields = parent_complete_example
+                .get(variant_name)
+                .and_then(|v| v.as_object())
+                .ok_or_else(|| Error::InvalidState("Parent example missing struct fields".to_string()))?;
 
-            Ok(json!({ variant_name: field_values }))
+            // Clone parent's fields and replace the specific field
+            let mut new_field_values = parent_struct_fields.clone();
+            new_field_values.insert(field_name, child_path_requirement_example.clone());
+
+            Ok(json!({ variant_name: new_field_values }))
         }
     }
 }
@@ -360,71 +367,66 @@ fn wrap_path_requirement_with_parent_info(
 
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
 
-In the `process_all_children` method, after line 355 where we get `(child_paths, child_example)`:
+The PathRequirement wrapping needs to happen AFTER `assemble_from_children` when the parent has its complete example. In the `build_paths` method, after the assembled_example is created:
 
 ```rust
 // In mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs
-// In process_all_children, we need to iterate through items and track their PathKind
-// Note: This is simplified - actual implementation needs to handle the loop properly
+// In build_paths method, AFTER assemble_from_children has created assembled_example
 
-for item in child_items {
-    // Extract variant information and PathKind from the item
-    let variant_names = item.applicable_variants().map(<[String]>::to_vec);
-    let variant_signature = item.variant_signature().cloned();
+// First, process all children and collect their paths
+let ChildProcessingResult {
+    all_paths: mut child_paths,
+    child_examples,
+    // ... other fields
+} = self.process_all_children(ctx, depth)?;
 
-    // Extract the PathKind before consuming the item
-    if let Some(path_kind) = item.into_path_kind() {
-        // Create child_key from the path_kind for process_child
-        let child_key = MutationPathDescriptor::from_path_kind(&path_kind);
-        let mut child_ctx = ctx.create_recursion_context(path_kind.clone(), PathAction::Create);
+// Assemble THIS level from children (creates the complete example)
+let assembled_example = match self.inner.assemble_from_children(ctx, child_examples) {
+    Ok(example) => example,
+    Err(e) => {
+        return Self::handle_assemble_error(ctx, e);
+    }
+};
 
-        let (mut child_paths, child_example) =
-            Self::process_child(&child_key, &mut child_ctx, depth)?;
+// NEW: PathRequirement wrapping logic
+// Now that we have the parent's complete example, wrap child PathRequirements
+// This only happens if this parent is an enum variant
+if let Some(enum_ctx) = &ctx.enum_context {
+    if let Some(EnumContext::Child { variant_chain }) = enum_ctx {
+        // Get the variant info for this parent from the chain
+        if let Some(parent_variant) = variant_chain.last() {
+            // For each child path with a PathRequirement, wrap it with parent context
+            for child_path in &mut child_paths {
+                if let Some(ref mut path_req) = child_path.path_requirement {
+                    // The key insight: assembled_example already has ALL fields populated
+                    // We create a new example for the PathRequirement by REPLACING
+                    // the specific field with the child's PathRequirement example
 
-        // Store the child example for later sibling field population
-        child_examples.insert(child_key.clone(), child_example);
-
-        // NEW: PathRequirement wrapping logic insertion point
-        // If this parent is part of an enum that requires specific variants,
-        // update all child PathRequirements with parent's context
-        if let (Some(variants), Some(signature)) = (variant_names, variant_signature) {
-            let variant_name = variants.first()
-                .ok_or_else(|| Error::InvalidState("No variants available".to_string()))?
-                .clone();
-
-            // Create parent's variant entry
-            let parent_variant_entry = VariantPathEntry {
-                path: ctx.mutation_path.clone(),  // Parent's path
-                variant: variant_name.clone(),
-            };
-
-            for path in &mut child_paths {
-                if let Some(ref mut path_req) = path.path_requirement {
                     // Prepend parent's variant requirement to the chain
-                    path_req.variant_path.insert(0, parent_variant_entry.clone());
+                    path_req.variant_path.insert(0, parent_variant.clone());
 
                     // Update the description to include parent requirement
                     path_req.description = self.update_variant_description(
                         &path_req.description,
-                        &parent_variant_entry
+                        parent_variant
                     );
 
-                    // Wrap PathRequirement with parent variant context
-                    // Pass the PathKind directly - no string parsing needed!
+                    // CRITICAL: Use parent's complete example and replace the field
                     path_req.example = self.wrap_path_requirement_with_parent_info(
-                        &path_req.example,
-                        &variant_name,
-                        &signature,
-                        &path_kind  // Pass PathKind instead of MutationPathDescriptor
+                        &assembled_example,        // Parent's COMPLETE assembled example
+                        &path_req.example,         // Child's PathRequirement example to insert
+                        &parent_variant.variant,   // Parent's variant name
+                        // Need variant signature and path_kind from somewhere...
+                        // This requires storing them during child processing
                     )?;
                 }
             }
         }
-
-        all_paths.extend(child_paths);
     }
 }
 ```
+
+Note: The exact implementation requires tracking variant signatures and PathKinds during child processing so they're available when wrapping PathRequirements.
 
 ## Migration Strategy
 
@@ -445,11 +447,11 @@ This collaborative plan uses phased implementation by design. The Collaborative 
 - **Status**: APPROVED - Implemented
 - **Location**: Section: Key Insight
 - **Issue**: Plan mentions using 'sibling_examples' and 'child_examples' but doesn't explain how these are populated and passed through the recursive call stack
-- **Reasoning**: The finding was initially correct - the plan described a flawed approach using sibling_examples. After investigation, we clarified that the correct approach is parent wrapping during recursion pop-back, not sibling collection. Updated the plan to remove sibling_examples parameter and use default values for non-target fields.
-- **Resolution**: Renamed function to wrap_path_requirement_with_parent_info, removed sibling_examples parameter, added detailed walkthrough comment showing the step-by-step example transformation from 1000000 → {"Conditional": 1000000} → complete nested structure
-- **Decision**: Plan updated with correct approach
+- **Reasoning**: The finding was initially correct - the plan had an incorrect understanding. After investigation, we clarified that the correct approach is parent example replacement during recursion pop-back. The parent already has a complete example and replaces specific fields with child PathRequirement examples.
+- **Resolution**: Renamed function to wrap_path_requirement_with_parent_info, added parent_complete_example parameter, removed any concept of generating defaults, added detailed walkthrough showing the replacement process: parent example with "Always" → replaced with {"Conditional": 1000000}
+- **Decision**: Plan updated with correct replacement approach
 
-## How It Works
+## How It Works: Parent Example Replacement Process
 
 Starting with `.nested_config.0`:
 
@@ -459,18 +461,22 @@ Starting with `.nested_config.0`:
    - `variant_path = [{"path": ".nested_config", "variant": "NestedConfigEnum::Conditional"}]`
 
 2. **Pop to `.nested_config`** (NestedConfigEnum):
-   - `.nested_config` is itself an enum field, but not inside another enum variant at this level
-   - Sees child `.nested_config.0` has PathRequirement
-   - No parent variant to prepend (`.nested_config` itself is the enum)
-   - Wraps example with Conditional variant: `{"Conditional": 1000000}` (no array brackets - it's a tuple with one element)
+   - Parent (`.nested_config`) has already built its complete example from all children
+   - For child `.nested_config.0` with PathRequirement example `1000000`:
+     - Takes Conditional variant structure
+     - Places child's value at index 0: `{"Conditional": 1000000}`
+     - This becomes the new PathRequirement example for `.nested_config.0`
 
 3. **Pop to root** (TestEnumWithSerDe):
-   - Root is an enum with Nested variant containing `.nested_config`
-   - Sees `.nested_config` and `.nested_config.0` paths have PathRequirements
-   - Prepends its variant requirement: `{"path": "", "variant": "TestEnumWithSerDe::Nested"}`
-   - Updates description: `"To use this mutation path, the root must be set to TestEnumWithSerDe::Nested and .nested_config must be set to NestedConfigEnum::Conditional"`
-   - Now variant_path = `[{"path": "", "variant": "TestEnumWithSerDe::Nested"}, {"path": ".nested_config", "variant": "NestedConfigEnum::Conditional"}]`
-   - Wraps example with struct fields: `{"Nested": {"nested_config": {"Conditional": 1000000}, "other_field": "Hello, World!"}}`
+   - Root has already built its complete example: `{"Nested": {"nested_config": "Always", "other_field": "Hello, World!"}}`
+   - For child `.nested_config.0` with PathRequirement example `{"Conditional": 1000000}`:
+     - Takes its complete Nested variant example
+     - **REPLACES** the `nested_config` field with child's PathRequirement example
+     - Result: `{"Nested": {"nested_config": {"Conditional": 1000000}, "other_field": "Hello, World!"}}`
+   - Also updates metadata:
+     - Prepends variant entry: `{"path": "", "variant": "TestEnumWithSerDe::Nested"}`
+     - Updates description to include root requirement
+     - Final variant_path: `[{"path": "", "variant": "TestEnumWithSerDe::Nested"}, {"path": ".nested_config", "variant": "NestedConfigEnum::Conditional"}]`
 
 ## Result
 
