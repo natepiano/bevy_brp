@@ -1149,12 +1149,12 @@ fn spawn_cameras(commands: &mut Commands) {
         IsDefaultUiCamera, // This camera renders UI
     ));
 
-    // 3D Camera for 3D test entities (inactive to avoid conflicts)
+    // 3D Camera for 3D test entities (active for ColorGrading testing)
     commands.spawn((
         Camera3d::default(),
         Camera {
-            order: 1,         // Different order to avoid ambiguity
-            is_active: false, // Disable this camera - we're primarily testing 2D/UI components
+            order: 1,        // Different order to avoid ambiguity
+            is_active: true, // Active to ensure ColorGrading component is available for BRP
             ..default()
         },
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
