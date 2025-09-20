@@ -149,11 +149,10 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
     **Set window titles for visual tracking:**
 
     **EXACT PROCEDURE**:
-    1. Get the assignments from GetBatchAssignments
-    2. For each assignment:
+    1. Get the assignments from GetBatchAssignments (returns exactly 10 assignments - one per subagent)
+    2. For each of the 10 subagent assignments:
        - Port = assignment.port
-       - Title = For single type: last segment of assignment.type_name after `::`
-                 For multiple types: comma-separated list of last segments after `::`
+       - Title = Use assignment guide script to get all type names for this subagent's assignment_index, then create comma-separated list of last segments after `::`
 
     Send all window title updates in parallel.
 </SetWindowTitles>
@@ -162,33 +161,33 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
     **Launch parallel subagents for batch testing:**
 
     **EXACT PROCEDURE**:
-    1. Use the assignments from GetBatchAssignments stored earlier
-    2. Create exactly assignments.length Task invocations
-    3. For each assignment:
+    1. Use the assignments from GetBatchAssignments stored earlier (10 subagent assignments)
+    2. Create exactly 10 Task invocations - one per subagent
+    3. Each subagent uses their assignment_index to fetch their assigned types (TYPES_PER_SUBAGENT types each)
+    4. For each subagent assignment:
        - Subagent number = assignment.subagent
        - Port = assignment.port
        - Batch number = batch_number (from assignments JSON)
        - Assignment index = assignment.assignment_index
        - Task description = "Test [TYPE_NAMES]" where TYPE_NAMES is:
-         * For single type: last segment after "::" from assignment.type_name
-         * For multiple types: comma-separated list of last segments after "::" from all assignment.type_names
+         * Use assignment guide script to get all type names for this subagent's assignment_index, then create comma-separated list of last segments after "::"
 
-    **Example for a batch with 3 assignments (single type per subagent)**:
+    **Example for a batch with 3 subagents (TYPES_PER_SUBAGENT = 1)**:
     ```
-    Assignment 1: subagent 1, port 30001, batch 5, assignment_index 0, description "Test Bloom"
-    Assignment 2: subagent 2, port 30002, batch 5, assignment_index 1, description "Test Camera3d"
-    Assignment 3: subagent 3, port 30003, batch 5, assignment_index 2, description "Test Skybox"
+    Subagent 1: port 30001, batch 5, assignment_index 0, description "Test Bloom"
+    Subagent 2: port 30002, batch 5, assignment_index 1, description "Test Camera3d"
+    Subagent 3: port 30003, batch 5, assignment_index 2, description "Test Skybox"
     ```
 
-    **Example for a batch with 3 assignments (2 types per subagent)**:
+    **Example for a batch with 3 subagents (TYPES_PER_SUBAGENT = 2)**:
     ```
-    Assignment 1: subagent 1, port 30001, batch 5, assignment_index 0, description "Test Bloom, BloomSettings"
-    Assignment 2: subagent 2, port 30002, batch 5, assignment_index 1, description "Test Camera3d, Camera2d"
-    Assignment 3: subagent 3, port 30003, batch 5, assignment_index 2, description "Test Skybox, Tonemapping"
+    Subagent 1: port 30001, batch 5, assignment_index 0, description "Test Bloom, BloomSettings"
+    Subagent 2: port 30002, batch 5, assignment_index 1, description "Test Camera3d, Camera2d"
+    Subagent 3: port 30003, batch 5, assignment_index 2, description "Test Skybox, Tonemapping"
     ```
 
     **VALIDATION BEFORE LAUNCHING**:
-    - Verify assignments.length <= 10 (max subagents available)
+    - Always exactly 10 subagent assignments (one per available port)
     - Each Task prompt must include ONLY batch number and assignment index
     - Task description should include type name for tracking, but NOT in the prompt content
     - Subagents will fetch their exact assigned types using the index
