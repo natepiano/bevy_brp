@@ -201,7 +201,7 @@ impl TypeGuide {
                 tracing::debug!(
                     "Converting root path for {} with {} enum examples",
                     path.type_name,
-                    path.enum_root_examples.as_ref().map(Vec::len).unwrap_or(0)
+                    path.enum_root_examples.as_ref().map_or(0, Vec::len)
                 );
             }
 
