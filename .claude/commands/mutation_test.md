@@ -19,11 +19,41 @@ BASE_PORT = 30001                                       # Starting port for suba
 PORT_RANGE = 30001-30010                                # Each subagent gets dedicated port
 </TestConfiguration>
 
+<NoOptimizationAllowed>
+**CRITICAL - NO OPTIMIZATIONS OR SHORTCUTS ALLOWED**:
+
+**FORBIDDEN ACTIONS**:
+- ❌ Creating custom scripts to "speed up" the process
+- ❌ Combining multiple batches into a single operation
+- ❌ Skipping steps that "seem successful" from previous batches
+- ❌ Using bash loops or automation to replace the explicit step-by-step process
+- ❌ "Batching" the batches themselves
+- ❌ Assuming success means you can deviate from the process
+
+**REQUIRED MINDSET**:
+- ✅ Each batch is independent and requires FULL execution of ALL steps
+- ✅ Even if batch 1 succeeds perfectly, batch 2 must follow IDENTICAL procedures
+- ✅ The repetition is INTENTIONAL for reliability and debugging
+- ✅ Following the exact pattern enables proper failure isolation
+
+**ENFORCEMENT RULE**:
+If you find yourself thinking any of these phrases, STOP:
+- "This would be faster if..."
+- "Since batch 1 passed, I can..."
+- "Let me streamline this..."
+- "I'll just combine these..."
+- "We can skip..."
+- "Let me make this more efficient..."
+
+**REMINDER**: The instructions are optimized for RELIABILITY, not speed. The parallel subagents within each batch ARE the optimization.
+</NoOptimizationAllowed>
+
 ## MAIN WORKFLOW
 
 <ExecutionFlow>
     **EXECUTE THESE STEPS IN ORDER:**
 
+    **STEP 0:** Execute the <NoOptimizationAllowed/> - Read and internalize
     **STEP 1:** Execute the <InitialSetup/>
     **STEP 2:** Execute the <BatchRenumbering/>
     **STEP 3:** Execute the <CleanupPreviousRuns/>
@@ -120,9 +150,12 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
 
     For each batch N (starting from 1):
 
+    0. Re-read <NoOptimizationAllowed/> before processing this batch
     1. Execute <GetBatchAssignments/> for batch N
     2. Execute <SetWindowTitles/> based on assignments
     3. Execute <LaunchSubagents/> with parallel Task invocations
+       - MUST be exactly [MAX_SUBAGENTS] Task invocations
+       - NEVER combine or skip Task invocations
     4. Execute <ProcessBatchResults/> after all subagents complete
     5. Execute <CheckForFailures/> and stop if any failures detected
 
