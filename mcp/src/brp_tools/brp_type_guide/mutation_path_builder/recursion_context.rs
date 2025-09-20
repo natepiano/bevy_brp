@@ -43,7 +43,7 @@ pub struct RecursionContext {
     /// Track enum context - None for non-enum types
     pub enum_context:  Option<EnumContext>,
     /// Chain of variant constraints from root to current position
-    /// Independent of enum_context - tracks ancestry for PathRequirement construction
+    /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
     pub variant_chain: Vec<VariantPathEntry>,
 }
 
