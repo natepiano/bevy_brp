@@ -183,16 +183,36 @@ This approach leverages already-assembled parent examples instead of trying to c
 
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
 
-**Step 1**: Add parent wrapping logic in the `build_paths` method after line 77 where `assembled_example` is available:
+**Step 1**: Add parent wrapping logic in the `build_paths` method. The insertion point is after `assembled_example` is created but BEFORE it gets processed for enum contexts.
 
+**Insertion Location**: After the assembled_example is created (currently around line 77) and before the enum context processing starts (line 79-87).
+
+Look for this code pattern:
 ```rust
-// AFTER line 77: let assembled_example = match self.inner.assemble_from_children(ctx, child_examples) {
+// Assemble THIS level from children (post-order)
+let assembled_example = match self.inner.assemble_from_children(ctx, child_examples) {
+    Ok(example) => example,
+    Err(e) => {
+        // Use helper method to handle NotMutatable errors cleanly
+        return Self::handle_assemble_error(ctx, e);
+    }
+};
 
+// INSERT PARENT WRAPPING LOGIC HERE - BEFORE ENUM CONTEXT PROCESSING
+
+// Process the assembled example based on EnumContext
+// Extract enum_root_examples if this is an enum root
+tracing::debug!(
+    "Processing assembled example for {} with path '{}' and enum_context: {:?}",
+    ...
+);
+```
+
+The new code to insert:
+```rust
 // NEW: PathRequirement parent wrapping logic
 // Wrap children's PathRequirement examples with parent context
 Self::wrap_children_path_requirements(&mut all_paths, &assembled_example, ctx, &child_examples)?;
-
-// THEN continue with existing enum context processing at line 79...
 ```
 
 **Step 2**: Add the helper method to perform parent wrapping:
@@ -226,7 +246,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 tracing::debug!(
                     "Processing PathRequirement for descendant at '{}', PathKind={:?}, current example type: {}",
                     path.path,
-                    path.path_info.path_kind,
+                    path.path_kind,
                     match &path_req.example {
                         Value::Object(_) => "Object",
                         Value::Array(_) => "Array",
@@ -256,7 +276,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                     assembled_example,
                     &path.path,
                     &ctx.mutation_path,
-                    &path.path_info.path_kind,
+                    &path.path_kind,
                     &ctx.path_kind,
                 ) {
                     Ok(wrapped_example) => {
@@ -276,12 +296,12 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         path_req.example = wrapped_example;
                     }
                     Err(e) => {
-                        tracing::warn!(
-                            "Failed to wrap example for path '{}': {}",
-                            path.path,
-                            e
-                        );
-                        // Continue processing other paths
+                        return Err(Error::SchemaProcessing {
+                            message: "Failed to wrap PathRequirement example".to_string(),
+                            type_name: Some(ctx.type_name().display_name()),
+                            operation: Some("parent wrapping".to_string()),
+                            details: Some(format!("Failed at path '{}': {}", path.path, e)),
+                        }.into());
                     }
                 }
             } else {
@@ -396,7 +416,12 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 match current {
                     Value::Array(ref mut arr) => {
                         if index >= arr.len() {
-                            return Err(anyhow!("Index {} out of bounds", index));
+                            return Err(Error::SchemaProcessing {
+                                message: "Index out of bounds".to_string(),
+                                type_name: None,
+                                operation: Some("path substitution".to_string()),
+                                details: Some(format!("Index {index} exceeds array length")),
+                            }.into());
                         }
                         if is_last {
                             arr[index] = substitute_value.clone();
@@ -417,7 +442,12 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                             current = variant_value;
                         } else if let Value::Array(ref mut arr) = variant_value {
                             if index >= arr.len() {
-                                return Err(anyhow!("Index {} out of bounds in tuple", index));
+                                return Err(Error::SchemaProcessing {
+                                    message: "Index out of bounds".to_string(),
+                                    type_name: None,
+                                    operation: Some("path substitution".to_string()),
+                                    details: Some(format!("Index {index} exceeds tuple length")),
+                                }.into());
                             }
                             if is_last {
                                 arr[index] = substitute_value.clone();
@@ -425,10 +455,20 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                             }
                             current = &mut arr[index];
                         } else {
-                            return Err(anyhow!("Cannot index into non-array variant value"));
+                            return Err(Error::SchemaProcessing {
+                                message: "Type mismatch for path operation".to_string(),
+                                type_name: None,
+                                operation: Some("path substitution".to_string()),
+                                details: Some("Cannot index into non-array variant value".to_string()),
+                            }.into());
                         }
                     }
-                    _ => return Err(anyhow!("Cannot index into {:?}", current))
+                    _ => return Err(Error::SchemaProcessing {
+                        message: "Type mismatch for path operation".to_string(),
+                        type_name: None,
+                        operation: Some("path substitution".to_string()),
+                        details: Some(format!("Cannot index into value of type {current:?}")),
+                    }.into())
                 }
             } else {
                 // String segment - field name
@@ -449,12 +489,27 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                                         return Ok(());
                                     }
                                     current = inner_obj.get_mut(segment)
-                                        .ok_or_else(|| anyhow!("Field '{}' not found", segment))?;
+                                        .ok_or_else(|| Error::SchemaProcessing {
+                                            message: "Field not found in object".to_string(),
+                                            type_name: None,
+                                            operation: Some("path navigation".to_string()),
+                                            details: Some(format!("Field '{segment}' does not exist")),
+                                        }.into())?;
                                 } else {
-                                    return Err(anyhow!("Expected object inside variant"));
+                                    return Err(Error::SchemaProcessing {
+                                        message: "Unexpected variant structure".to_string(),
+                                        type_name: None,
+                                        operation: Some("path navigation".to_string()),
+                                        details: Some("Expected object inside variant".to_string()),
+                                    }.into());
                                 }
                             } else {
-                                return Err(anyhow!("Cannot navigate field '{}' in non-object variant", segment));
+                                return Err(Error::SchemaProcessing {
+                                    message: "Type mismatch for field navigation".to_string(),
+                                    type_name: None,
+                                    operation: Some("path navigation".to_string()),
+                                    details: Some(format!("Cannot navigate field '{segment}' in non-object variant")),
+                                }.into());
                             }
                         } else {
                             // Regular object field navigation
@@ -466,7 +521,12 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                                 .ok_or_else(|| anyhow!("Field '{}' not found", segment))?;
                         }
                     }
-                    _ => return Err(anyhow!("Cannot access field '{}' in non-object", segment))
+                    _ => return Err(Error::SchemaProcessing {
+                        message: "Type mismatch for field access".to_string(),
+                        type_name: None,
+                        operation: Some("path navigation".to_string()),
+                        details: Some(format!("Cannot access field '{segment}' in non-object")),
+                    }.into())
                 }
             }
         }
