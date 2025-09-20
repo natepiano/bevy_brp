@@ -472,7 +472,20 @@ This returns your specific assignment with complete type data.
    }
    ```
    CRITICAL: Use the exact `type_name` field from the guide - NEVER modify or abbreviate it
-   c. **MUTATION TESTING**: Test ALL mutable mutation paths from the mutation_paths object
+   c. **ENTITY ID SUBSTITUTION FOR MUTATIONS**:
+      - **CRITICAL**: If any mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
+      - **YOU MUST**: Replace ALL instances of `8589934670` with REAL entity IDs from the running app
+      - **HOW TO GET REAL ENTITY IDs**:
+        1. First query for existing entities: `bevy_query` with appropriate filter
+        2. Use the entity IDs from query results
+        3. If testing EntityHashMap types, use the queried entity ID as the map key
+      - **EXAMPLE**: If mutation example shows `{"8589934670": [...]}` for an EntityHashMap:
+        - Query for an entity with the component first
+        - Replace `8589934670` with the actual entity ID from the query
+        - Then perform the mutation with the real entity ID
+   d. **MUTATION TESTING**: Test ALL mutable mutation paths from the mutation_paths object
+      - Apply Entity ID substitution BEFORE sending any mutation request
+      - If a mutation uses Entity IDs and you don't have real ones, query for them first
 3. **CAPTURE ALL ERROR DETAILS**: When ANY operation fails, record the COMPLETE request and response
 4. Return ONLY JSON result array for ALL tested types
 5. NEVER test types not provided in your assignment data
