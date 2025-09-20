@@ -2,23 +2,36 @@
 """
 Get subagent assignments for mutation testing.
 Distributes batch types evenly across subagents with complete type data.
-Usage: python3 mutation_test_get_subagent_assignments.py <batch_number> <max_subagents> <types_per_subagent>
+
+Usage:
+  # Get all assignments for a batch (main agent)
+  python3 mutation_test_get_subagent_assignments.py --batch 1 --max-subagents 10 --types-per-subagent 2
+
+  # Get single assignment (subagent)
+  python3 mutation_test_get_subagent_assignments.py --batch 1 --max-subagents 10 --types-per-subagent 2 --subagent-index 4
 """
 import json
 import sys
 import os
+import argparse
 
-if len(sys.argv) != 4:
-    print("Usage: python3 mutation_test_get_subagent_assignments.py <batch_number> <max_subagents> <types_per_subagent>", file=sys.stderr)
-    sys.exit(1)
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='Get subagent assignments for mutation testing')
+parser.add_argument('--batch', type=int, required=True,
+                    help='Batch number to get assignments for')
+parser.add_argument('--max-subagents', type=int, required=True,
+                    help='Maximum number of subagents')
+parser.add_argument('--types-per-subagent', type=int, required=True,
+                    help='Number of types each subagent should test')
+parser.add_argument('--subagent-index', type=int, required=False,
+                    help='Optional: Get assignment for specific subagent (0-based index)')
 
-try:
-    batch_num = int(sys.argv[1])
-    max_subagents = int(sys.argv[2])
-    types_per_subagent = int(sys.argv[3])
-except ValueError as e:
-    print(f"Error: All arguments must be integers: {e}", file=sys.stderr)
-    sys.exit(1)
+args = parser.parse_args()
+
+batch_num = args.batch
+max_subagents = args.max_subagents
+types_per_subagent = args.types_per_subagent
+subagent_index = args.subagent_index
 
 if max_subagents <= 0:
     print(f"Error: max_subagents must be positive, got: {max_subagents}", file=sys.stderr)
@@ -27,6 +40,11 @@ if max_subagents <= 0:
 if types_per_subagent <= 0:
     print(f"Error: types_per_subagent must be positive, got: {types_per_subagent}", file=sys.stderr)
     sys.exit(1)
+
+if subagent_index is not None:
+    if subagent_index < 0 or subagent_index >= max_subagents:
+        print(f"Error: subagent_index must be in range [0, {max_subagents}), got: {subagent_index}", file=sys.stderr)
+        sys.exit(1)
 
 # Get the JSON file path from TMPDIR
 tmpdir = os.environ.get('TMPDIR', '/tmp')
@@ -101,13 +119,36 @@ for subagent_num in range(1, max_subagents + 1):
     }
     assignments.append(assignment)
 
-# Output the assignments as JSON
-output = {
-    'batch_number': batch_num,
-    'max_subagents': max_subagents,
-    'types_per_subagent': types_per_subagent,
-    'total_types': len(batch_types),
-    'assignments': assignments
-}
+# Check if we're returning a single subagent assignment or all assignments
+if subagent_index is not None:
+    # Return single assignment for the specified subagent
+    # subagent_index is 0-based, but subagent numbers are 1-based
+    subagent_num = subagent_index + 1
 
-print(json.dumps(output, indent=2))
+    # Find the assignment for this subagent
+    for assignment in assignments:
+        if assignment['subagent'] == subagent_num:
+            # Output format for single subagent
+            output = {
+                'batch_number': batch_num,
+                'subagent_index': subagent_index,
+                'subagent_number': subagent_num,
+                'port': assignment['port'],
+                'types': assignment['types']
+            }
+            print(json.dumps(output, indent=2))
+            sys.exit(0)
+
+    # Should not reach here if validation was correct
+    print(f"Error: Could not find assignment for subagent index {subagent_index}", file=sys.stderr)
+    sys.exit(1)
+else:
+    # Return all assignments (original behavior for main agent)
+    output = {
+        'batch_number': batch_num,
+        'max_subagents': max_subagents,
+        'types_per_subagent': types_per_subagent,
+        'total_types': len(batch_types),
+        'assignments': assignments
+    }
+    print(json.dumps(output, indent=2))

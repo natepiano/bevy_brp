@@ -135,7 +135,10 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
     **Retrieve subagent assignments for current batch:**
 
     ```bash
-    python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py [BATCH_NUMBER] [MAX_SUBAGENTS] [TYPES_PER_SUBAGENT]
+    python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
+        --batch [BATCH_NUMBER] \
+        --max-subagents [MAX_SUBAGENTS] \
+        --types-per-subagent [TYPES_PER_SUBAGENT]
     ```
 
     Returns JSON with:
@@ -176,33 +179,35 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
     **Launch parallel subagents for batch testing:**
 
     **EXACT PROCEDURE**:
-    1. Use the assignments from GetBatchAssignments stored earlier (MAX_SUBAGENTS subagent assignments)
+    1. Use the assignments from GetBatchAssignments to determine type names and counts
     2. Create exactly MAX_SUBAGENTS Task invocations - one per subagent
-    3. Each subagent already has their complete type data (TYPES_PER_SUBAGENT types each)
-    4. For each subagent assignment:
-       - Subagent number = assignment.subagent
-       - Port = assignment.port
-       - Types = assignment.types (complete type data already available)
-       - **VALIDATE** types array length == TYPES_PER_SUBAGENT
-         - **STOP IF** wrong count: "Assignment {subagent} has {actual} types, expected {TYPES_PER_SUBAGENT}"
-       - Task description = "Test [TYPE_NAMES]" where TYPE_NAMES is comma-separated list of last segments after "::" from all type names
+    3. Each subagent will fetch their own complete type data
+    4. For each subagent (index 0 through MAX_SUBAGENTS-1):
+       - Subagent index = loop index (0-based)
+       - Port = BASE_PORT + index (where BASE_PORT = 30001)
+       - Task description = "Test [TYPE_NAMES]" where TYPE_NAMES is comma-separated list of last segments after "::" from assignment data
+       - Provide minimal information in prompt:
+         * Batch number
+         * Subagent index (0-based)
+         * Port number
+         * Max subagents
+         * Types per subagent
 
     **DEFENSIVE VALIDATION**:
-    - Each assignment MUST contain exactly TYPES_PER_SUBAGENT types
-    - FAIL FAST if any assignment has wrong number of types
+    - Main agent verifies assignment count before launching subagents
+    - Subagents fetch their own data to prevent prompt corruption
     - Always exactly MAX_SUBAGENTS subagent assignments (one per available port)
-    - Each Task prompt provides the complete assignment data directly
+    - Task prompts contain ONLY identification info, not type data
     - Task description should include type names for tracking
-    - Subagents receive their exact assigned types in the prompt
+    - Subagents retrieve their exact assigned types directly from the script
 
     **CRITICAL TYPE ASSIGNMENT VALIDATION**:
-    BEFORE creating any Task prompts, validate that you are using EXACTLY the type names from the assignment script:
-
-    For each subagent assignment:
-    1. **EXTRACT** the exact type_name values from assignment.types
-    2. **VALIDATE** that you use these EXACT strings in Task prompts - NO MODIFICATIONS
-    3. **FAIL IMMEDIATELY** if you attempt to change any type name based on your knowledge
-    4. **REMEMBER**: You CANNOT be trusted to modify type assignments - use ONLY what the script provides
+    The main agent provides ONLY identification information to subagents.
+    Subagents are responsible for:
+    1. **FETCHING** their assignments directly from the script
+    2. **VALIDATING** the fetched data contains expected number of types
+    3. **USING** the exact type data as fetched - NO MODIFICATIONS
+    4. **REMEMBER**: This prevents corruption during prompt construction
 
     Example validation:
     ```
@@ -215,16 +220,16 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
 
     **Example for MAX_SUBAGENTS=3, TYPES_PER_SUBAGENT=1**:
     ```
-    Subagent 1: port BASE_PORT, batch 5, assignment_index 0, description "Test Bloom"
-    Subagent 2: port BASE_PORT+1, batch 5, assignment_index 1, description "Test Camera3d"
-    Subagent 3: port BASE_PORT+2, batch 5, assignment_index 2, description "Test Skybox"
+    Subagent index 0: port BASE_PORT, batch 5, description "Test Bloom"
+    Subagent index 1: port BASE_PORT+1, batch 5, description "Test Camera3d"
+    Subagent index 2: port BASE_PORT+2, batch 5, description "Test Skybox"
     ```
 
     **Example for MAX_SUBAGENTS=3, TYPES_PER_SUBAGENT=2**:
     ```
-    Subagent 1: port BASE_PORT, batch 5, assignment_index 0, description "Test Bloom, BloomSettings"
-    Subagent 2: port BASE_PORT+1, batch 5, assignment_index 1, description "Test Camera3d, Camera2d"
-    Subagent 3: port BASE_PORT+2, batch 5, assignment_index 2, description "Test Skybox, Tonemapping"
+    Subagent index 0: port BASE_PORT, batch 5, description "Test Bloom, BloomSettings"
+    Subagent index 1: port BASE_PORT+1, batch 5, description "Test Camera3d, Camera2d"
+    Subagent index 2: port BASE_PORT+2, batch 5, description "Test Skybox, Tonemapping"
     ```
 
     Send ALL Tasks in ONE message for parallel execution.
@@ -413,11 +418,13 @@ When user selects **Known Issue**, add to `.claude/mutation_test_known_issues.js
 <SubagentPrompt>
 **CRITICAL RESPONSE LIMIT**: Return ONLY the JSON array result. NO explanations, NO commentary, NO test steps, NO summaries.
 
-You are subagent [Y] assigned to port [30000+Y].
+You are subagent with index [INDEX] (0-based) assigned to port [PORT].
 
-**YOUR ASSIGNED PORT**: [30000+Y]
+**YOUR ASSIGNED PORT**: [PORT]
 **YOUR BATCH**: [BATCH_NUMBER]
-**YOUR ASSIGNMENT INDEX**: [ASSIGNMENT_INDEX]
+**YOUR SUBAGENT INDEX**: [INDEX] (0-based)
+**MAX SUBAGENTS**: [MAX_SUBAGENTS]
+**TYPES PER SUBAGENT**: [TYPES_PER_SUBAGENT]
 
 **DO NOT**:
 - Launch any apps (use EXISTING app on your port)
@@ -437,12 +444,22 @@ You are subagent [Y] assigned to port [30000+Y].
 - ❌ WRONG: "Fix" type paths that you think are incorrect
 - **FAIL IMMEDIATELY** if you detect yourself modifying any type name
 
-**Your Complete Assignment Data**:
-Your assignment data will be provided directly in the prompt, containing the exact type names AND complete mutation paths you must test. Use these EXACTLY as provided.
+**Fetching Your Assignment Data**:
+You MUST fetch your own assignment data as your FIRST action:
+```bash
+python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
+    --batch [BATCH_NUMBER] \
+    --max-subagents [MAX_SUBAGENTS] \
+    --types-per-subagent [TYPES_PER_SUBAGENT] \
+    --subagent-index [YOUR_INDEX]
+```
+
+This returns your specific assignment with complete type data.
 
 **Testing Protocol**:
-1. Use the assignment data provided directly in your prompt
-2. For each type in your assignment:
+1. FIRST: Fetch your assignment using the script with --subagent-index parameter
+2. VALIDATE: Ensure you received exactly [TYPES_PER_SUBAGENT] types
+3. For each type in your fetched assignment:
    a. **SPAWN/INSERT TESTING**: Skip spawn/insert if spawn_format is null, otherwise test spawn/insert operations
    b. **ENTITY QUERY**: Query for entities with component using EXACT syntax:
    ```json
