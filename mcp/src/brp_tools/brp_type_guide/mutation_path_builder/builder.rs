@@ -162,6 +162,13 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
         // Convert NotMutableReason to Value if present
         let mutation_status_reason = reason_enum.as_ref().and_then(Option::<Value>::from);
 
+        // Fix: PartiallyMutable paths should not provide misleading examples
+        let example_to_use = match parent_status {
+            MutationStatus::PartiallyMutable => json!(null),
+            MutationStatus::NotMutable => json!(null),
+            MutationStatus::Mutable => final_example,
+        };
+
         // Decide what to return based on PathAction
         match ctx.path_action {
             PathAction::Create => {
@@ -170,7 +177,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
                     0,
                     Self::build_mutation_path_internal_with_enum_examples(
                         ctx,
-                        final_example,
+                        example_to_use,
                         enum_root_examples,
                         enum_root_example_for_parent,
                         parent_status,
@@ -185,7 +192,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
                 // but child paths aren't exposed in the final result
                 Ok(vec![Self::build_mutation_path_internal_with_enum_examples(
                     ctx,
-                    final_example,
+                    example_to_use,
                     enum_root_examples,
                     enum_root_example_for_parent,
                     parent_status,

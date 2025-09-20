@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::types::VariantSignature;
 use super::{
     MutationPathDescriptor, MutationPathInternal, NotMutableReason, PathAction, PathKind,
     RecursionContext,

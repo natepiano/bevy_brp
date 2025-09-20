@@ -185,21 +185,35 @@ impl MutationPath {
         let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
         let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
 
-        // Generate description using the context
-        let description = path.path_kind.description(&type_kind);
+        // Generate description - override for partially_mutable paths
+        let description = match path.mutation_status {
+            MutationStatus::PartiallyMutable => {
+                "This path is not mutable due to some of its descendants not being mutable"
+                    .to_string()
+            }
+            _ => path.path_kind.description(&type_kind),
+        };
 
-        let (examples, example) = path.enum_root_examples.as_ref().map_or_else(
-            || {
-                // Everything else: use the example value
-                // This includes enum children (with embedded `applicable_variants`) and regular
-                // values
-                (vec![], Some(path.example.clone()))
-            },
-            |enum_examples| {
-                // Enum root: use the examples array
-                (enum_examples.clone(), None)
-            },
-        );
+        let (examples, example) = match path.mutation_status {
+            MutationStatus::PartiallyMutable => {
+                // PartiallyMutable: no example at all (not even null)
+                (vec![], None)
+            }
+            _ => {
+                path.enum_root_examples.as_ref().map_or_else(
+                    || {
+                        // Everything else: use the example value
+                        // This includes enum children (with embedded `applicable_variants`) and
+                        // regular values
+                        (vec![], Some(path.example.clone()))
+                    },
+                    |enum_examples| {
+                        // Enum root: use the examples array
+                        (enum_examples.clone(), None)
+                    },
+                )
+            }
+        };
 
         Self {
             description,
