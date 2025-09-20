@@ -206,11 +206,11 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 /// Single dispatch point for creating builders - used for both entry and recursion
@@ -295,7 +295,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         child_ctx
                             .variant_chain
                             .push(super::types::VariantPathEntry {
-                                path: ctx.mutation_path.clone(),
+                                path:    ctx.mutation_path.clone(),
                                 variant: representative_variant.clone(),
                             });
                     }
@@ -496,9 +496,9 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         // Build complete path_requirement if variant chain exists
         let path_requirement = if !ctx.variant_chain.is_empty() {
             Some(super::types::PathRequirement {
-                description: Self::generate_variant_description(&ctx.variant_chain),
-                example: example.clone(), // Use the example we already built!
-                variant_path: ctx.variant_chain.clone(), // Already Vec<VariantPathEntry> from Step 2
+                description:  Self::generate_variant_description(&ctx.variant_chain),
+                example:      example.clone(),
+                variant_path: ctx.variant_chain.clone(),
             })
         } else {
             None
