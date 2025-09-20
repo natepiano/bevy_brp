@@ -9,7 +9,7 @@ mod type_kind;
 mod types;
 
 pub use builder::recurse_mutation_paths;
-pub use mutation_knowledge::MutationKnowledge;
+pub use mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
 pub use not_mutable_reason::NotMutableReason;
 pub use path_kind::{MutationPathDescriptor, PathKind};
 pub use recursion_context::{EnumContext, RecursionContext};
