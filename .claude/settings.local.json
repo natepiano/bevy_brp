@@ -114,7 +114,8 @@
       "Bash(./.claude/commands/mutation_test.sh:*)",
       "Bash(./.claude/scripts/mutation_test_single_type.sh:*)",
       "Bash(else echo \"No previous version found\")",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(awk:*)"
     ],
     "deny": [
       "Bash(sed:*)"
