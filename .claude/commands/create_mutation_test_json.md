@@ -13,7 +13,7 @@ fi
 <ExecutionSteps/>
 
 <CreateContext>
-[TARGET_FILE]: `$TMPDIR/all_types.json`
+[TARGET_FILE]: `.claude/types/all_types.json`
 [PURPOSE]: Creates the mutation test tracking file by discovering all registered component types via BRP and systematically determining spawn support and mutation paths for ALL types.
 [APP_PORT]: 22222
 [APP_NAME]: extras_plugin
@@ -167,13 +167,13 @@ fi
     1. **Save previous version** (if it exists):
     ```bash
     if [ -f "[TARGET_FILE]" ]; then
-        cp [TARGET_FILE] $TMPDIR/all_types_previous.json
+        cp [TARGET_FILE] .claude/types/all_types_previous.json
     fi
     ```
 
     2. **Run structured comparison**:
     ```bash
-    .claude/scripts/create_mutation_test_json_structured_comparison.sh $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
+    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/types/all_types_baseline.json .claude/types/all_types.json
     ```
 
     This comprehensive comparison provides:

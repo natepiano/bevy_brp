@@ -11,14 +11,12 @@ from pathlib import Path
 
 def check_type(type_name):
     """Check a specific type's mutation paths across all versions."""
-    # Find all all_types*.json files in $TMPDIR
-    import os
-    tmpdir = os.environ.get('TMPDIR', '/var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T')
-    pattern = f"{tmpdir}/all_types*.json"
+    # Find all all_types*.json files in .claude/types
+    pattern = ".claude/types/all_types*.json"
     files = sorted(glob.glob(pattern))
     
     if not files:
-        print("No all_types*.json files found in $TMPDIR")
+        print("No all_types*.json files found in .claude/types")
         return
     
     print(f"Checking type: {type_name}")

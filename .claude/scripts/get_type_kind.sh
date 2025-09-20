@@ -5,7 +5,7 @@
 #   ./get_type_kind.sh          - Show summary count of all type_kinds
 #   ./get_type_kind.sh List      - Show all types containing List type_kind
 
-BASELINE_FILE="$TMPDIR/all_types_baseline.json"
+BASELINE_FILE=".claude/types/all_types_baseline.json"
 
 # Check if baseline file exists
 if [ ! -f "$BASELINE_FILE" ]; then

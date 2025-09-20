@@ -6,9 +6,9 @@
 set -e
 
 # Mark current version as the good baseline
-cp $TMPDIR/all_types.json $TMPDIR/all_types_baseline.json
+cp .claude/types/all_types.json .claude/types/all_types_baseline.json
 
 # Create timestamped backup
-cp $TMPDIR/all_types.json $TMPDIR/all_types_good_$(date +%Y%m%d_%H%M%S).json
+cp .claude/types/all_types.json .claude/types/all_types_good_$(date +%Y%m%d_%H%M%S).json
 
 echo "✅ Version marked as good baseline"

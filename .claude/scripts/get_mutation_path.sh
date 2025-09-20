@@ -6,7 +6,7 @@
 #   ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow"                 # List all paths from baseline
 #   ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow" ""              # Get root path from baseline
 #   ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow" ".0[0].color"   # Get specific path from baseline
-#   ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow" ".0[0].color" "$TMPDIR/all_types.json"  # From specific file
+#   ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow" ".0[0].color" ".claude/types/all_types.json"  # From specific file
 
 if [ $# -eq 0 ]; then
     echo "Usage: $0 TYPE_NAME [MUTATION_PATH] [FILE]"
@@ -15,7 +15,7 @@ if [ $# -eq 0 ]; then
     echo "  $0 \"bevy_ui::ui_node::BoxShadow\"                  # List all mutation paths from baseline"
     echo "  $0 \"bevy_ui::ui_node::BoxShadow\" \"\"               # Get root path from baseline"
     echo "  $0 \"bevy_ui::ui_node::BoxShadow\" \".0[0].color\"    # Get specific path from baseline"
-    echo "  $0 \"bevy_ui::ui_node::BoxShadow\" \"\" \"\$TMPDIR/all_types.json\"  # Get root from specific file"
+    echo "  $0 \"bevy_ui::ui_node::BoxShadow\" \"\" \".claude/types/all_types.json\"  # Get root from specific file"
     exit 1
 fi
 
@@ -34,7 +34,7 @@ fi
 if [ $# -eq 3 ]; then
     FILE_PATH="$3"
 else
-    FILE_PATH="${TMPDIR}/all_types_baseline.json"
+    FILE_PATH=".claude/types/all_types_baseline.json"
 fi
 
 if [ ! -f "$FILE_PATH" ]; then

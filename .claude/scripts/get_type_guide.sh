@@ -7,7 +7,7 @@
 #   ./get_type_guide.sh 2              - Select option 2 from multiple matches
 #   ./get_type_guide.sh bevy_transform::components::transform::Transform - Full path
 
-BASELINE_FILE="$TMPDIR/all_types_baseline.json"
+BASELINE_FILE=".claude/types/all_types_baseline.json"
 
 # Check if baseline file exists
 if [ ! -f "$BASELINE_FILE" ]; then

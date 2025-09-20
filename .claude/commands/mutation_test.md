@@ -7,7 +7,7 @@
 <TestContext>
 [COMMAND]: `/mutation_test`
 [PURPOSE]: Systematically validate ALL BRP component types by testing spawn/insert and mutation operations
-[PROGRESS_FILE]: `$TMPDIR/all_types.json` - Complete type guides with test status tracking
+[PROGRESS_FILE]: `.claude/types/all_types.json` - Complete type guides with test status tracking
 [ARCHITECTURE]: Main agent orchestrates, subagents test in parallel
 </TestContext>
 
@@ -67,15 +67,16 @@ If you find yourself thinking any of these phrases, STOP:
 ## STEP 1: INITIAL SETUP
 
 <InitialSetup>
-    **Get actual temp directory path for all file operations:**
+    **Ensure types directory exists for all file operations:**
 
     ```bash
-    echo $TMPDIR
+    mkdir -p .claude/types
+    echo "Using .claude/types/ for persistent storage"
     ```
 
-    Store this expanded path (e.g., `/var/folders/rf/.../T/`) for use in all Write tool operations.
+    All mutation test files will be stored in `.claude/types/` for persistence across reboots.
 
-    **CRITICAL**: The Write tool does NOT expand environment variables. Always use the actual path.
+    **CRITICAL**: Use `.claude/types/` prefix for all file paths in Write tool operations.
 </InitialSetup>
 
 ## STEP 2: BATCH RENUMBERING
@@ -101,10 +102,10 @@ If you find yourself thinking any of these phrases, STOP:
     **Remove leftover batch result files to prevent interference:**
 
     ```bash
-    rm -f [TEMP_DIR]/batch_results_*.json
+    rm -f .claude/types/batch_results_*.json
     ```
 
-    Use the actual expanded temp directory path from <InitialSetup/>.
+    Clean up any batch result files from previous runs.
 </CleanupPreviousRuns>
 
 ## STEP 4: APPLICATION LAUNCH
@@ -284,7 +285,7 @@ If you find yourself thinking any of these phrases, STOP:
     3. **Write results to temp file** using Write tool:
     ```python
     Write(
-        file_path="[TEMP_DIR]/batch_results_[BATCH_NUMBER].json",
+        file_path=".claude/types/batch_results_[BATCH_NUMBER].json",
         content=[collected_results_json]
     )
     ```
@@ -292,13 +293,13 @@ If you find yourself thinking any of these phrases, STOP:
     4. **Execute merge script**:
     ```bash
     ./.claude/scripts/mutation_test_merge_batch_results.sh \
-        [TEMP_DIR]/batch_results_[BATCH_NUMBER].json \
-        [TEMP_DIR]/all_types.json
+        .claude/types/batch_results_[BATCH_NUMBER].json \
+        .claude/types/all_types.json
     ```
 
     5. **Cleanup temp file**:
     ```bash
-    rm -f [TEMP_DIR]/batch_results_[BATCH_NUMBER].json
+    rm -f .claude/types/batch_results_[BATCH_NUMBER].json
     ```
 </ProcessBatchResults>
 
@@ -601,9 +602,9 @@ This returns your specific assignment with complete type data.
 
 <PathHandling>
 **File Path Requirements**:
-- NEVER use $TMPDIR in Write tool paths
-- ALWAYS use expanded path from InitialSetup
-- Example: `/var/folders/rf/.../T/` not `$TMPDIR`
+- ALWAYS use `.claude/types/` for persistent file storage
+- NEVER use $TMPDIR for mutation test files
+- Example: `.claude/types/all_types.json` not `$TMPDIR/all_types.json`
 </PathHandling>
 
 <ParallelExecution>
@@ -664,7 +665,7 @@ This returns your specific assignment with complete type data.
 <ErrorDiagnostics>
 **Detailed Failure Logging**:
 When failures occur, the system automatically:
-1. Saves complete failure details to `$TMPDIR/all_types_failures_[timestamp].json`
+1. Saves complete failure details to `.claude/types/all_types_failures_[timestamp].json`
 2. Preserves the exact request/response that caused each failure
 3. Records which operations succeeded before failure
 
