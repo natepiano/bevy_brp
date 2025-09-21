@@ -32,7 +32,7 @@ enum MutationExample {
 #[derive(Debug, Clone)]
 pub struct PathKindWithVariants {
     /// The path kind (None for unit variants)
-    pub path: Option<PathKind>,
+    pub path:                Option<PathKind>,
     /// Variants this path applies to
     pub applicable_variants: Vec<String>,
 }
@@ -73,7 +73,7 @@ pub struct EnumFieldInfo {
     pub field_name: String,
     /// Field type
     #[serde(rename = "type")]
-    pub type_name: BrpTypeName,
+    pub type_name:  BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -340,7 +340,7 @@ impl PathBuilder for EnumMutationBuilder {
                     // Create PathKindWithVariants for each tuple element
                     for (index, type_name) in types.iter().enumerate() {
                         children.push(PathKindWithVariants {
-                            path: Some(PathKind::IndexedElement {
+                            path:                Some(PathKind::IndexedElement {
                                 index,
                                 type_name: type_name.clone(),
                                 parent_type: ctx.type_name().clone(),
@@ -353,9 +353,9 @@ impl PathBuilder for EnumMutationBuilder {
                     // Create PathKindWithVariants for each struct field
                     for (field_name, type_name) in fields {
                         children.push(PathKindWithVariants {
-                            path: Some(PathKind::StructField {
-                                field_name: field_name.clone(),
-                                type_name: type_name.clone(),
+                            path:                Some(PathKind::StructField {
+                                field_name:  field_name.clone(),
+                                type_name:   type_name.clone(),
                                 parent_type: ctx.type_name().clone(),
                             }),
                             applicable_variants: applicable_variants.clone(),

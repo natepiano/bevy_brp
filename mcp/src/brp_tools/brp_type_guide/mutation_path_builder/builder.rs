@@ -12,7 +12,7 @@ use super::builders::{
 use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::{MaybeVariants, PathBuilder};
 use super::type_kind::TypeKind;
-use super::types::{ExampleGroup, PathRequirement, PathSummary, VariantPath};
+use super::types::{ExampleGroup, PathSummary, VariantPath};
 use super::{
     MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathAction,
     PathKind, RecursionContext,
@@ -221,7 +221,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                             path: ctx.mutation_path.clone(),
                             variant: representative_variant.clone(),
                             instructions: String::new(), // Will be filled during ascent
-                            example: json!(null),        // Will be filled during ascent
+                            variant_example: json!(null), // Will be filled during ascent
                         });
                     }
 
@@ -405,9 +405,9 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         status: MutationStatus,
         mutation_status_reason: Option<Value>,
     ) -> MutationPathInternal {
-        // Build complete path_requirement if variant chain exists
-        let path_requirement = if ctx.variant_chain.is_empty() {
-            None
+        // Build enum fields if variant chain exists
+        let (enum_instructions, enum_variant_path) = if ctx.variant_chain.is_empty() {
+            (None, vec![])
         } else {
             let description = if ctx.variant_chain.len() > 1 {
                 format!(
@@ -417,14 +417,11 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 )
             } else {
                 format!(
-                    "'{}' mutation path requires a variant selection. See variant_path for instructions.",
+                    "'{}' mutation path requires a variant selection as shown in 'enum_variant_path'.",
                     ctx.mutation_path
                 )
             };
-            Some(PathRequirement {
-                enum_instructions: description,
-                enum_variant_path: ctx.variant_chain.clone(),
-            })
+            (Some(description), ctx.variant_chain.clone())
         };
 
         let result = MutationPathInternal {
@@ -436,7 +433,8 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             path_kind: ctx.path_kind.clone(),
             mutation_status: status,
             mutation_status_reason,
-            path_requirement, // Now populated based on enum context
+            enum_instructions,
+            enum_variant_path,
         };
 
         tracing::debug!(
@@ -573,17 +571,17 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         current_example: &Value,
         enum_examples: Option<&Vec<ExampleGroup>>,
     ) {
-        // For each child path that has a path_requirement
+        // For each child path that has enum variant requirements
         for child in paths.iter_mut() {
-            if let Some(ref mut path_req) = child.path_requirement {
+            if !child.enum_variant_path.is_empty() {
                 // Find matching entry in child's variant_path that corresponds to our level
-                for entry in &mut path_req.enum_variant_path {
+                for entry in &mut child.enum_variant_path {
                     if entry.path == current_path {
                         // This entry represents our current level - update it
                         entry.instructions = format!(
-                            "Mutate '{}' path to '{}'",
+                            "Mutate '{}' mutation path to '{}' var using 'variant_example'",
                             if entry.path.is_empty() {
-                                "root (\"\")"
+                                "root"
                             } else {
                                 &entry.path
                             },
@@ -593,13 +591,13 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         // If this is an enum and we have enum_examples, find the matching variant
                         // example
                         if let Some(examples) = enum_examples {
-                            entry.example = examples
+                            entry.variant_example = examples
                                 .iter()
                                 .find(|ex| ex.applicable_variants.contains(&entry.variant))
                                 .map_or_else(|| current_example.clone(), |ex| ex.example.clone());
                         } else {
                             // Non-enum case: use the assembled example
-                            entry.example = current_example.clone();
+                            entry.variant_example = current_example.clone();
                         }
                     }
                 }
