@@ -205,18 +205,17 @@ fi
 
     **Automatically categorize changes using the expected changes JSON**:
 
-    Save the comparison output to a temporary file, then execute:
+    The comparison script now handles categorization internally:
     ```bash
-    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/types/all_types_baseline.json .claude/types/all_types.json > /tmp/comparison_output.txt
-
-    python3 .claude/scripts/create_mutation_test_json_categorize_changes.py \
-        --comparison-output /tmp/comparison_output.txt \
-        --expected-changes .claude/types/create_mutation_test_json_expected_changes.json
+    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/types/all_types_baseline.json .claude/types/all_types.json
     ```
 
-    This will output a JSON structure with:
-    - `expected_matches`: Changes that match expected patterns with their IDs and counts
-    - `unexpected_patterns`: Changes that don't match any expected pattern or are below thresholds
+    This will automatically:
+    - Run the structured comparison
+    - Display the comparison results
+    - If expected changes file exists, run categorization and output:
+      - `expected_matches`: Changes that match expected patterns with their IDs and counts
+      - `unexpected_patterns`: Changes that don't match any expected pattern or are below thresholds
 
     **STEP 6B: PRESENT SUMMARY**
 
