@@ -23,11 +23,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -116,7 +116,6 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
         Self::update_child_variant_paths(
             &mut paths_to_expose_mut,
             &ctx.mutation_path,
-            &ctx.variant_chain,
             &example_to_use,
             enum_root_examples.as_ref(),
         );
@@ -218,10 +217,10 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                     if let Some(representative_variant) = variants.first() {
                         // Extend the inherited variant chain with this enum's variant
                         child_ctx.variant_chain.push(VariantPath {
-                            path: ctx.mutation_path.clone(),
-                            variant: representative_variant.clone(),
-                            instructions: String::new(), // Will be filled during ascent
-                            variant_example: json!(null), // Will be filled during ascent
+                            path:            ctx.mutation_path.clone(),
+                            variant:         representative_variant.clone(),
+                            instructions:    String::new(), // Will be filled during ascent
+                            variant_example: json!(null),   // Will be filled during ascent
                         });
                     }
 
@@ -567,7 +566,6 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     fn update_child_variant_paths(
         paths: &mut [MutationPathInternal],
         current_path: &str,
-        _current_variant_chain: &[VariantPath],
         current_example: &Value,
         enum_examples: Option<&Vec<ExampleGroup>>,
     ) {
@@ -579,7 +577,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                     if entry.path == current_path {
                         // This entry represents our current level - update it
                         entry.instructions = format!(
-                            "Mutate '{}' mutation path to '{}' var using 'variant_example'",
+                            "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",
                             if entry.path.is_empty() {
                                 "root"
                             } else {

@@ -151,6 +151,7 @@ pub struct VariantPath {
     /// The mutation path where this variant is required (e.g., `""`, `".nested_config"`)
     pub path:            String,
     /// The variant name including enum type (e.g., `"TestEnumWithSerDe::Nested"`)
+    #[serde(skip)]
     pub variant:         String,
     /// Clear instruction for this step (e.g., `"Set root to TestEnumWithSerDe::Nested"`)
     #[serde(skip_serializing_if = "String::is_empty", default)]
