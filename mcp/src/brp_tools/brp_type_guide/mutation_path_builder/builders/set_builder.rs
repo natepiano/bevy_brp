@@ -1,4 +1,4 @@
-//! Builder for Set types (`HashSet`, `BTreeSet`, etc.)
+//! `PathBuilder` for Set types (`HashSet`, `BTreeSet`, etc.)
 //!
 //! Unlike Lists, Sets can only be mutated at the top level (replacing/merging the entire set).
 //! Sets don't support indexed access or element-level mutations through BRP.
@@ -44,8 +44,8 @@ impl PathBuilder for SetMutationBuilder {
 
         // Create PathKind for items (MutationPathBuilder will create context)
         Ok(vec![PathKind::StructField {
-            field_name:  SchemaField::Items.to_string(),
-            type_name:   item_t,
+            field_name: SchemaField::Items.to_string(),
+            type_name: item_t,
             parent_type: ctx.type_name().clone(),
         }]
         .into_iter())

@@ -11,7 +11,8 @@ use super::super::brp_type_name::BrpTypeName;
 use super::super::response_types::ReflectTrait;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
-use super::types::{PathAction, VariantPathEntry};
+use super::types::{PathAction, VariantPath};
+use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
@@ -32,19 +33,19 @@ pub enum EnumContext {
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind:     PathKind,
+    pub path_kind: PathKind,
     /// Reference to the type registry
-    pub registry:      Arc<HashMap<BrpTypeName, Value>>,
+    pub registry: Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
     pub mutation_path: String,
     /// Action to take regarding path creation (set by `MutationPathBuilder`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action:   PathAction,
+    pub path_action: PathAction,
     /// Track enum context - None for non-enum types
-    pub enum_context:  Option<EnumContext>,
+    pub enum_context: Option<EnumContext>,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
-    pub variant_chain: Vec<VariantPathEntry>,
+    pub variant_chain: Vec<VariantPath>,
 }
 
 impl RecursionContext {
@@ -76,14 +77,13 @@ impl RecursionContext {
     }
 
     /// Require the schema to be present, returning an error if missing
-    /// This is the preferred method for migrated builders
     pub fn require_registry_schema(&self) -> crate::error::Result<&Value> {
         self.registry.get(self.type_name()).ok_or_else(|| {
-            crate::error::Error::SchemaProcessing {
-                message:   format!("No schema found for type: {}", self.type_name()),
+            Error::SchemaProcessing {
+                message: format!("No schema found for type: {}", self.type_name()),
                 type_name: Some(self.type_name().to_string()),
                 operation: Some("require_registry_schema".to_string()),
-                details:   None,
+                details: None,
             }
             .into()
         })
@@ -94,13 +94,7 @@ impl RecursionContext {
         self.registry.get(type_name)
     }
 
-    /// Create a new context for protocol-driven recursion
-    ///
-    /// Key differences from `create_field_context` (which unmigrated builders use):
-    /// - Takes a `PathAction` parameter to control child path creation
-    /// - Ensures `Skip` mode propagates to all descendants (once `Skip`, always `Skip`)
-    /// - Self-contained implementation (doesn't call `create_field_context`)
-    /// - Propagates parent's `enum_context` to children by default
+    /// Create a new context for recursion
     pub fn create_recursion_context(
         &self,
         path_kind: PathKind,

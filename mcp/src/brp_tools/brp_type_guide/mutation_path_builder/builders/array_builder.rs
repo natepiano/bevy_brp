@@ -1,4 +1,4 @@
-//! Builder for Array types
+//! `PathBuilder` for Array types
 //!
 //! Handles both fixed-size arrays like `[Vec3; 3]` and dynamic arrays.
 //! Creates mutation paths for both the entire array and individual elements.
@@ -35,13 +35,13 @@ impl PathBuilder for ArrayMutationBuilder {
         // Extract element type from schema
         let Some(element_type) = schema.get_type(SchemaField::Items) else {
             return Err(Error::SchemaProcessing {
-                message:   format!(
+                message: format!(
                     "Failed to extract element type from schema for array: {}",
                     ctx.type_name()
                 ),
                 type_name: Some(ctx.type_name().to_string()),
                 operation: Some("extract_items_type".to_string()),
-                details:   None,
+                details: None,
             }
             .into());
         };
@@ -49,8 +49,8 @@ impl PathBuilder for ArrayMutationBuilder {
         // Arrays use indexed PathKind for the element at [0]
         // We only recurse into one element for efficiency
         Ok(vec![PathKind::ArrayElement {
-            index:       0,
-            type_name:   element_type,
+            index: 0,
+            type_name: element_type,
             parent_type: ctx.type_name().clone(),
         }]
         .into_iter())

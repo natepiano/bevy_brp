@@ -2,7 +2,6 @@
 //! recursively uses the `PathBuilder` trait to build mutation paths for a given type.
 use std::collections::HashMap;
 
-use error_stack::Report;
 use serde_json::{Value, json};
 
 use super::super::mutation_path_builder::EnumContext;
@@ -13,13 +12,23 @@ use super::builders::{
 use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::{MaybeVariants, PathBuilder};
 use super::type_kind::TypeKind;
-use super::types::PathSummary;
+use super::types::{ExampleGroup, PathRequirement, PathSummary, VariantPath};
 use super::{
     MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathAction,
     PathKind, RecursionContext,
 };
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::{Error, Result};
+
+/// Result of processing all children during mutation path building
+struct ChildProcessingResult {
+    /// All child paths (used for mutation status determination)
+    all_paths: Vec<MutationPathInternal>,
+    /// Only paths that should be exposed (filtered by `PathAction`)
+    paths_to_expose: Vec<MutationPathInternal>,
+    /// Examples for each child path
+    child_examples: HashMap<MutationPathDescriptor, Value>,
+}
 
 pub struct MutationPathBuilder<B: PathBuilder> {
     inner: B,
@@ -64,7 +73,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
         // Process all children and collect paths
         let ChildProcessingResult {
             all_paths,
-            mut paths_to_expose,
+            paths_to_expose,
             child_examples,
         } = self.process_all_children(ctx, depth)?;
 
@@ -102,18 +111,20 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
             MutationStatus::Mutable => final_example,
         };
 
-        // Wrap children's PathRequirements with this parent's context
-        Self::wrap_path_requirements_with_parent_context(
-            &mut paths_to_expose,
+        // Update variant_path entries in child paths with level-appropriate examples
+        let mut paths_to_expose_mut = paths_to_expose;
+        Self::update_child_variant_paths(
+            &mut paths_to_expose_mut,
+            &ctx.mutation_path,
+            &ctx.variant_chain,
             &example_to_use,
             enum_root_examples.as_ref(),
-            ctx,
         );
 
         // Decide what to return based on PathAction
         Ok(Self::build_final_result(
             ctx,
-            paths_to_expose,
+            paths_to_expose_mut,
             example_to_use,
             enum_root_examples,
             enum_root_example_for_parent,
@@ -121,16 +132,6 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
             mutation_status_reason,
         ))
     }
-}
-
-/// Result of processing all children during mutation path building
-struct ChildProcessingResult {
-    /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
-    /// Only paths that should be exposed (filtered by `PathAction`)
-    paths_to_expose: Vec<MutationPathInternal>,
-    /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 /// Single dispatch point for creating builders - used for both entry and recursion
@@ -185,6 +186,10 @@ pub fn recurse_mutation_paths(
 }
 
 impl<B: PathBuilder> MutationPathBuilder<B> {
+    pub const fn new(inner: B) -> Self {
+        Self { inner }
+    }
+
     /// Process all children and collect their paths and examples
     fn process_all_children(
         &self,
@@ -212,15 +217,15 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                     // Special handling for enum items: Set up variant chain
                     if let Some(representative_variant) = variants.first() {
                         // Extend the inherited variant chain with this enum's variant
-                        child_ctx
-                            .variant_chain
-                            .push(super::types::VariantPathEntry {
-                                path:    ctx.mutation_path.clone(),
-                                variant: representative_variant.clone(),
-                            });
+                        child_ctx.variant_chain.push(VariantPath {
+                            path: ctx.mutation_path.clone(),
+                            variant: representative_variant.clone(),
+                            instructions: String::new(), // Will be filled during ascent
+                            example: json!(null),        // Will be filled during ascent
+                        });
                     }
 
-                    child_ctx.enum_context = Some(super::recursion_context::EnumContext::Child);
+                    child_ctx.enum_context = Some(EnumContext::Child);
                 } else {
                     // Check if this child is an enum and set EnumContext appropriately
                     if let Some(child_schema) = child_ctx.get_registry_schema(child_ctx.type_name())
@@ -230,13 +235,12 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         if matches!(child_type_kind, TypeKind::Enum) {
                             // This child is an enum
                             match &ctx.enum_context {
-                                Some(super::recursion_context::EnumContext::Child) => {
+                                Some(EnumContext::Child) => {
                                     // We're in a variant and found a nested enum
                                     // The nested enum gets Root context (to generate examples)
                                     // The chain will be extended when this enum's variants are
                                     // expanded
-                                    child_ctx.enum_context =
-                                        Some(super::recursion_context::EnumContext::Root);
+                                    child_ctx.enum_context = Some(EnumContext::Root);
                                 }
                                 _ => {
                                     // Check if parent has enum context
@@ -247,8 +251,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                                         }
                                         None => {
                                             // Not inside an enum - this enum gets Root treatment
-                                            child_ctx.enum_context =
-                                                Some(super::recursion_context::EnumContext::Root);
+                                            child_ctx.enum_context = Some(EnumContext::Root);
                                         }
                                     }
                                 }
@@ -321,10 +324,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         // enum)
         let should_set_enum_root = matches!(child_kind, TypeKind::Enum)
             && (child_ctx.enum_context.is_none()
-                || matches!(
-                    &child_ctx.enum_context,
-                    Some(super::recursion_context::EnumContext::Child)
-                ));
+                || matches!(&child_ctx.enum_context, Some(EnumContext::Child)));
 
         if should_set_enum_root {
             tracing::debug!(
@@ -342,7 +342,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         &**descriptor,
                         child_ctx.path_kind
                     );
-                    child_ctx.enum_context = Some(super::recursion_context::EnumContext::Root);
+                    child_ctx.enum_context = Some(EnumContext::Root);
                 }
                 PathKind::RootValue { .. } => {
                     // RootValue paths don't need EnumContext::Root
@@ -379,10 +379,6 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         Ok((child_paths, child_example))
     }
 
-    pub const fn new(inner: B) -> Self {
-        Self { inner }
-    }
-
     /// Build a `MutationPathInternal` with the provided status and example
     fn build_mutation_path_internal(
         ctx: &RecursionContext,
@@ -404,7 +400,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     fn build_mutation_path_internal_with_enum_examples(
         ctx: &RecursionContext,
         example: Value,
-        enum_root_examples: Option<Vec<super::types::ExampleGroup>>,
+        enum_root_examples: Option<Vec<ExampleGroup>>,
         enum_root_example_for_parent: Option<Value>,
         status: MutationStatus,
         mutation_status_reason: Option<Value>,
@@ -413,10 +409,21 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         let path_requirement = if ctx.variant_chain.is_empty() {
             None
         } else {
-            Some(super::types::PathRequirement {
-                description:  Self::generate_variant_description(&ctx.variant_chain),
-                example:      example.clone(),
-                variant_path: ctx.variant_chain.clone(),
+            let description = if ctx.variant_chain.len() > 1 {
+                format!(
+                    "`{}` mutation path requires {} variant selections. Follow the instructions in variant_path array to set each variant in order.",
+                    ctx.mutation_path,
+                    ctx.variant_chain.len()
+                )
+            } else {
+                format!(
+                    "'{}' mutation path requires a variant selection. See variant_path for instructions.",
+                    ctx.mutation_path
+                )
+            };
+            Some(PathRequirement {
+                enum_instructions: description,
+                enum_variant_path: ctx.variant_chain.clone(),
             })
         };
 
@@ -449,7 +456,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         ctx: &RecursionContext,
         mut paths_to_expose: Vec<MutationPathInternal>,
         example_to_use: Value,
-        enum_root_examples: Option<Vec<super::types::ExampleGroup>>,
+        enum_root_examples: Option<Vec<ExampleGroup>>,
         enum_root_example_for_parent: Option<Value>,
         parent_status: MutationStatus,
         mutation_status_reason: Option<Value>,
@@ -490,11 +497,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     fn process_enum_context(
         ctx: &RecursionContext,
         assembled_example: Value,
-    ) -> (
-        Value,
-        Option<Vec<super::types::ExampleGroup>>,
-        Option<Value>,
-    ) {
+    ) -> (Value, Option<Vec<ExampleGroup>>, Option<Value>) {
         tracing::debug!(
             "Processing assembled example for {} with path '{}' and enum_context: {:?}",
             ctx.type_name(),
@@ -534,7 +537,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                                 .cloned()
                                 .unwrap_or(json!([]));
                             // Deserialize the examples array into Vec<ExampleGroup>
-                            let examples: Vec<super::types::ExampleGroup> =
+                            let examples: Vec<ExampleGroup> =
                                 serde_json::from_value(examples_json).unwrap_or_default();
 
                             tracing::debug!(
@@ -562,33 +565,45 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         }
     }
 
-    /// Generate a human-readable description of variant requirements
-    fn generate_variant_description(variant_chain: &[super::types::VariantPathEntry]) -> String {
-        if variant_chain.len() == 1 {
-            let entry = &variant_chain[0];
-            if entry.path.is_empty() {
-                format!(
-                    "To use this mutation path, the root must be set to {}",
-                    entry.variant
-                )
-            } else {
-                format!(
-                    "To use this mutation path, {} must be set to {}",
-                    entry.path, entry.variant
-                )
-            }
-        } else {
-            let requirements: Vec<String> = variant_chain
-                .iter()
-                .map(|entry| {
-                    if entry.path.is_empty() {
-                        format!("root must be set to {}", entry.variant)
-                    } else {
-                        format!("{} must be set to {}", entry.path, entry.variant)
+    /// Updates `variant_path` entries in child paths with level-appropriate examples
+    fn update_child_variant_paths(
+        paths: &mut [MutationPathInternal],
+        current_path: &str,
+        _current_variant_chain: &[VariantPath],
+        current_example: &Value,
+        enum_examples: Option<&Vec<ExampleGroup>>,
+    ) {
+        // For each child path that has a path_requirement
+        for child in paths.iter_mut() {
+            if let Some(ref mut path_req) = child.path_requirement {
+                // Find matching entry in child's variant_path that corresponds to our level
+                for entry in &mut path_req.enum_variant_path {
+                    if entry.path == current_path {
+                        // This entry represents our current level - update it
+                        entry.instructions = format!(
+                            "Mutate '{}' path to '{}'",
+                            if entry.path.is_empty() {
+                                "root (\"\")"
+                            } else {
+                                &entry.path
+                            },
+                            &entry.variant
+                        );
+
+                        // If this is an enum and we have enum_examples, find the matching variant
+                        // example
+                        if let Some(examples) = enum_examples {
+                            entry.example = examples
+                                .iter()
+                                .find(|ex| ex.applicable_variants.contains(&entry.variant))
+                                .map_or_else(|| current_example.clone(), |ex| ex.example.clone());
+                        } else {
+                            // Non-enum case: use the assembled example
+                            entry.example = current_example.clone();
+                        }
                     }
-                })
-                .collect();
-            format!("To use this mutation path, {}", requirements.join(" and "))
+                }
+            }
         }
     }
 
@@ -636,31 +651,15 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     }
 
     /// Check knowledge base and handle based on guidance type
-    /// Returns `(should_stop_recursion, Option<knowledge_example>)`
     fn check_knowledge(
         ctx: &RecursionContext,
     ) -> (Option<Result<Vec<MutationPathInternal>>>, Option<Value>) {
-        tracing::debug!(
-            "MutationPathBuilder checking knowledge for type: {}",
-            ctx.type_name()
-        );
-
         // Use unified knowledge lookup that handles all cases
         if let Some(knowledge) = ctx.find_knowledge() {
             let example = knowledge.example().clone();
-            tracing::debug!(
-                "MutationPathBuilder found knowledge for {}: {:?} with knowledge {:?}",
-                ctx.type_name(),
-                example,
-                knowledge
-            );
 
             // Only return early for TreatAsValue types - they should not recurse
             if matches!(knowledge, MutationKnowledge::TreatAsRootValue { .. }) {
-                tracing::debug!(
-                    "MutationPathBuilder stopping recursion for TreatAsValue type: {}",
-                    ctx.type_name()
-                );
                 return (
                     Some(Ok(vec![Self::build_mutation_path_internal(
                         ctx,
@@ -672,25 +671,17 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 );
             }
 
-            // For Teach guidance, we continue with normal recursion but save the knowledge example
-            tracing::debug!(
-                "MutationPathBuilder continuing recursion for Teach type: {}, will use knowledge example",
-                ctx.type_name()
-            );
             return (None, Some(example));
         }
-        tracing::debug!(
-            "MutationPathBuilder NO knowledge found for: {}",
-            ctx.type_name()
-        );
 
-        (None, None) // Continue with normal processing, no knowledge
+        // Continue with normal processing, no hard coded mutation knowledge found
+        (None, None)
     }
 
     /// Handle errors from `assemble_from_children`, creating `NotMutatable` paths when appropriate
     fn handle_assemble_error(
         ctx: &RecursionContext,
-        error: error_stack::Report<crate::error::Error>,
+        error: error_stack::Report<Error>,
     ) -> Result<Vec<MutationPathInternal>> {
         // Check if it's a NotMutatable condition
         // Need to check the root cause of the error stack
@@ -748,335 +739,5 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         };
 
         (status, reason)
-    }
-
-    /// Find enum example that matches child's variant requirements
-    fn find_matching_enum_example(
-        examples: &[super::types::ExampleGroup],
-        child_variant_path: &[super::types::VariantPathEntry],
-        current_path: &str,
-    ) -> Option<Value> {
-        // Find the variant requirement for the current level
-        let variant_for_current_level = child_variant_path
-            .iter()
-            .find(|entry| entry.path == current_path)?
-            .variant
-            .clone();
-
-        tracing::debug!(
-            "Looking for enum example with variant '{}' at path '{}'",
-            variant_for_current_level,
-            current_path
-        );
-
-        // Find example that contains this variant
-        examples
-            .iter()
-            .find(|ex| {
-                let matches = ex.applicable_variants.contains(&variant_for_current_level);
-                tracing::debug!(
-                    "Checking example with variants {:?}: matches={}",
-                    ex.applicable_variants,
-                    matches
-                );
-                matches
-            })
-            .map(|ex| {
-                tracing::debug!("Found matching example: {}", ex.example);
-                ex.example.clone()
-            })
-    }
-
-    /// Navigate to a numeric index in the JSON structure
-    fn navigate_index<'a>(
-        current: &'a mut Value,
-        index: usize,
-        is_last: bool,
-        substitute_value: &Value,
-    ) -> Result<Option<&'a mut Value>> {
-        match current {
-            Value::Array(arr) => {
-                if index >= arr.len() {
-                    return Err(Report::new(Error::SchemaProcessing {
-                        message:   "Index out of bounds".to_string(),
-                        type_name: None,
-                        operation: Some("path substitution".to_string()),
-                        details:   Some(format!("Index {index} exceeds array length")),
-                    }));
-                }
-                if is_last {
-                    arr[index] = substitute_value.clone();
-                    return Ok(None);
-                }
-                Ok(Some(&mut arr[index]))
-            }
-            Value::Object(obj) if obj.len() == 1 => {
-                // Enum variant with tuple - navigate into it
-                let variant_value = obj.values_mut().next().ok_or_else(|| {
-                    Report::new(Error::SchemaProcessing {
-                        message:   "Invalid enum variant structure".to_string(),
-                        type_name: None,
-                        operation: Some("path substitution".to_string()),
-                        details:   Some("Enum variant object has no values".to_string()),
-                    })
-                })?;
-
-                // Handle single-element tuple (value stored directly)
-                if index == 0 && !variant_value.is_array() {
-                    if is_last {
-                        *variant_value = substitute_value.clone();
-                        return Ok(None);
-                    }
-                    return Ok(Some(variant_value));
-                }
-                if let Value::Array(arr) = variant_value {
-                    if index >= arr.len() {
-                        return Err(Report::new(Error::SchemaProcessing {
-                            message:   "Index out of bounds".to_string(),
-                            type_name: None,
-                            operation: Some("path substitution".to_string()),
-                            details:   Some(format!("Tuple index {index} exceeds length")),
-                        }));
-                    }
-                    if is_last {
-                        arr[index] = substitute_value.clone();
-                        return Ok(None);
-                    }
-                    Ok(Some(&mut arr[index]))
-                } else {
-                    Err(Report::new(Error::SchemaProcessing {
-                        message:   "Type mismatch for path operation".to_string(),
-                        type_name: None,
-                        operation: Some("path substitution".to_string()),
-                        details:   Some("Cannot index into non-array variant value".to_string()),
-                    }))
-                }
-            }
-            _ => Err(Report::new(Error::SchemaProcessing {
-                message:   "Type mismatch for path operation".to_string(),
-                type_name: None,
-                operation: Some("path substitution".to_string()),
-                details:   Some("Cannot index into non-array value".to_string()),
-            })),
-        }
-    }
-
-    /// Navigate to a field in the JSON structure
-    fn navigate_field<'a>(
-        current: &'a mut Value,
-        segment: &str,
-        is_last: bool,
-        substitute_value: &Value,
-    ) -> Result<Option<&'a mut Value>> {
-        match current {
-            Value::Object(obj) => {
-                // Check if this is an enum variant
-                if obj.len() == 1 && !obj.contains_key(segment) {
-                    // Navigate into the enum variant first
-                    let variant_value = obj.values_mut().next().ok_or_else(|| {
-                        Report::new(Error::SchemaProcessing {
-                            message:   "Invalid enum variant structure".to_string(),
-                            type_name: None,
-                            operation: Some("path navigation".to_string()),
-                            details:   Some("Enum variant object has no values".to_string()),
-                        })
-                    })?;
-                    if variant_value.is_object() {
-                        // Recurse into the variant's object
-                        Self::navigate_field(variant_value, segment, is_last, substitute_value)
-                    } else {
-                        Err(Report::new(Error::SchemaProcessing {
-                            message:   "Type mismatch for field navigation".to_string(),
-                            type_name: None,
-                            operation: Some("path navigation".to_string()),
-                            details:   Some(format!(
-                                "Cannot navigate field '{segment}' in non-object variant"
-                            )),
-                        }))
-                    }
-                } else {
-                    // Regular object field navigation
-                    if is_last {
-                        obj.insert(segment.to_string(), substitute_value.clone());
-                        return Ok(None);
-                    }
-                    obj.get_mut(segment).map(Some).ok_or_else(|| {
-                        Report::new(Error::SchemaProcessing {
-                            message:   "Field not found in object".to_string(),
-                            type_name: None,
-                            operation: Some("path navigation".to_string()),
-                            details:   Some(format!("Field '{segment}' does not exist")),
-                        })
-                    })
-                }
-            }
-            _ => Err(Report::new(Error::SchemaProcessing {
-                message:   "Type mismatch for field access".to_string(),
-                type_name: None,
-                operation: Some("path navigation".to_string()),
-                details:   Some(format!("Cannot access field '{segment}' in non-object")),
-            })),
-        }
-    }
-
-    /// Substitute a value at a relative path within a JSON structure
-    fn substitute_at_path(
-        target: &mut Value,
-        relative_path: &str,
-        substitute_value: &Value,
-    ) -> Result<()> {
-        // Parse path segments (handling both . and [] notation)
-        let segments: Vec<&str> = relative_path
-            .split(['.', '[', ']'])
-            .filter(|s| !s.is_empty())
-            .collect();
-
-        if segments.is_empty() {
-            *target = substitute_value.clone();
-            return Ok(());
-        }
-
-        // Navigate through the structure
-        let mut current = target;
-        let mut segments_iter = segments.iter().peekable();
-
-        while let Some(segment) = segments_iter.next() {
-            let is_last = segments_iter.peek().is_none();
-
-            if let Ok(index) = segment.parse::<usize>() {
-                // Numeric segment - index into array or tuple
-                if let Some(next) = Self::navigate_index(current, index, is_last, substitute_value)?
-                {
-                    current = next;
-                } else {
-                    return Ok(()); // Value was substituted
-                }
-            } else {
-                // String segment - field name
-                if let Some(next) =
-                    Self::navigate_field(current, segment, is_last, substitute_value)?
-                {
-                    current = next;
-                } else {
-                    return Ok(()); // Value was substituted
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Wrap children's `PathRequirements` with parent's context using variant-aware selection
-    fn wrap_path_requirements_with_parent_context(
-        paths_to_expose: &mut [MutationPathInternal],
-        example_to_use: &Value,
-        enum_root_examples: Option<&Vec<super::types::ExampleGroup>>,
-        ctx: &RecursionContext,
-    ) {
-        // Handle both non-enum and enum root cases with variant-aware selection
-        tracing::debug!(
-            "Parent wrapping check: example_to_use.is_null()={}, enum_root_examples.is_some()={}, mutation_path='{}', paths_to_expose.len()={}",
-            example_to_use.is_null(),
-            enum_root_examples.is_some(),
-            ctx.mutation_path,
-            paths_to_expose.len()
-        );
-        if !example_to_use.is_null() || enum_root_examples.is_some() {
-            tracing::debug!(
-                "Starting variant-aware parent wrapping loop for {} paths",
-                paths_to_expose.len()
-            );
-            for path in paths_to_expose {
-                tracing::debug!(
-                    "Checking path: '{}' with path_requirement: {}",
-                    path.path,
-                    path.path_requirement.is_some()
-                );
-                if let Some(ref mut path_req) = path.path_requirement {
-                    // Check if this path is a descendant (not same level)
-                    tracing::debug!(
-                        "Path '{}' has requirement, checking if descendant: path.is_empty()={}, path != ctx.mutation_path={}",
-                        path.path,
-                        path.path.is_empty(),
-                        path.path != ctx.mutation_path
-                    );
-                    if !path.path.is_empty() && path.path != ctx.mutation_path {
-                        Self::wrap_single_path_requirement(
-                            path_req,
-                            &path.path,
-                            example_to_use,
-                            enum_root_examples,
-                            ctx,
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    /// Wrap a single `PathRequirement` with parent context
-    fn wrap_single_path_requirement(
-        path_req: &mut super::types::PathRequirement,
-        path: &str,
-        example_to_use: &Value,
-        enum_root_examples: Option<&Vec<super::types::ExampleGroup>>,
-        ctx: &RecursionContext,
-    ) {
-        // Determine wrapping example based on parent type
-        let wrapping_example = if !example_to_use.is_null() {
-            // Non-enum case: use the computed example
-            tracing::debug!("Using non-enum example for path '{}'", path);
-            example_to_use.clone()
-        } else if let Some(examples) = enum_root_examples {
-            // Enum root case: find example that matches child's variant requirements
-            tracing::debug!(
-                "Finding matching enum example for path '{}' with variant_path: {:?}",
-                path,
-                path_req.variant_path
-            );
-            Self::find_matching_enum_example(examples, &path_req.variant_path, &ctx.mutation_path)
-                .unwrap_or_else(|| {
-                    tracing::warn!(
-                        "No matching enum example found for path '{}', using first available",
-                        path
-                    );
-                    examples
-                        .first()
-                        .map(|ex| ex.example.clone())
-                        .unwrap_or(json!(null))
-                })
-        } else {
-            tracing::debug!("No wrapping example available for path '{}'", path);
-            return; // No example available
-        };
-
-        if wrapping_example.is_null() {
-            tracing::debug!(
-                "Skipping wrapping for path '{}' - null wrapping example",
-                path
-            );
-        } else {
-            // Calculate relative path from parent to child
-            let relative_path = if ctx.mutation_path.is_empty() {
-                path.trim_start_matches('.')
-            } else {
-                path[ctx.mutation_path.len()..].trim_start_matches('.')
-            };
-
-            // Build wrapped example by substituting child's example into parent's structure
-            let mut wrapped = wrapping_example;
-            if Self::substitute_at_path(&mut wrapped, relative_path, &path_req.example).is_ok() {
-                tracing::debug!(
-                    "Successfully wrapped path '{}' with variant-aware example",
-                    path
-                );
-                path_req.example = wrapped;
-            } else {
-                tracing::warn!(
-                    "Failed to substitute at path '{}' for variant-aware wrapping",
-                    relative_path
-                );
-            }
-        }
     }
 }

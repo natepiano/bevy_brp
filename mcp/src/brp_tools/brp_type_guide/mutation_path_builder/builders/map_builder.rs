@@ -1,4 +1,4 @@
-//! Builder for Map types (`HashMap`, `BTreeMap`, etc.)
+//! `PathBuilder` for Map types (`HashMap`, `BTreeMap`, etc.)
 //!
 //! Like Sets, Maps can only be mutated at the top level (replacing the entire map).
 //! Maps don't support individual key mutations through BRP's reflection path system.
@@ -70,13 +70,13 @@ impl PathBuilder for MapMutationBuilder {
         // Create PathKinds for key and value (MutationPathBuilder will create contexts)
         Ok(vec![
             PathKind::StructField {
-                field_name:  SchemaField::Key.to_string(),
-                type_name:   key_t,
+                field_name: SchemaField::Key.to_string(),
+                type_name: key_t,
                 parent_type: ctx.type_name().clone(),
             },
             PathKind::StructField {
-                field_name:  SchemaField::Value.to_string(),
-                type_name:   val_t,
+                field_name: SchemaField::Value.to_string(),
+                type_name: val_t,
                 parent_type: ctx.type_name().clone(),
             },
         ]

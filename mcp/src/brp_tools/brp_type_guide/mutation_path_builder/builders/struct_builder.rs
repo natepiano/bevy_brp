@@ -1,4 +1,4 @@
-//! Builder for Struct types
+//! `PathBuilder` for Struct types
 //!
 //! Handles the most complex case - struct mutations with one-level recursion.
 //! For field contexts, adds both the struct field itself and nested field paths.
@@ -51,22 +51,22 @@ impl PathBuilder for StructMutationBuilder {
             // Note: SchemaField::extract_field_type handles complex schemas with $ref
             let Some(field_type) = SchemaField::extract_field_type(field_schema) else {
                 return Err(Error::SchemaProcessing {
-                    message:   format!(
+                    message: format!(
                         "Failed to extract type for field '{}' in struct '{}'",
                         field_name,
                         ctx.type_name()
                     ),
                     type_name: Some(ctx.type_name().to_string()),
                     operation: Some("extract_field_type".to_string()),
-                    details:   Some(format!("Field: {field_name}")),
+                    details: Some(format!("Field: {field_name}")),
                 }
                 .into());
             };
 
             // Create PathKind for this field
             let path_kind = PathKind::StructField {
-                field_name:  field_name.clone(),
-                type_name:   field_type,
+                field_name: field_name.clone(),
+                type_name: field_type,
                 parent_type: ctx.type_name().clone(),
             };
 
@@ -90,7 +90,6 @@ impl PathBuilder for StructMutationBuilder {
         let mut struct_obj = serde_json::Map::new();
 
         // MutationPathDescriptor for StructField is just the field name as a string
-        // This follows the same pattern as other migrated builders (array, list, map, set)
         for (descriptor, example) in children {
             // descriptor derefs to the field name string
             // e.g., MutationPathDescriptor("position") -> "position"

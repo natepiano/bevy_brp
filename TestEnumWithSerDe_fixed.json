@@ -1,0 +1,298 @@
+"status": "success",
+      "message": "Discovered 1 type(s)",
+      "call_info": { "mcp_tool": "brp_type_guide" },
+      "metadata": { "type_count": 1 },
+      "parameters": { "port": 15702, "types": [ "extras_plugin::TestEnumWithSerDe" ] },
+      "result": {
+        "discovered_count": 1,
+        "requested_types": [ "extras_plugin::TestEnumWithSerDe" ],
+        "summary": { "failed_discoveries": 0, "successful_discoveries": 1,
+    "total_requested": 1 },
+        "type_guide": {
+          "extras_plugin::TestEnumWithSerDe": {
+            "agent_guidance": "The mutation_paths field provides valid 'path' arguments for
+    mcp__brp__bevy_mutate_component and mcp__brp__bevy_mutate_resource tools, with example
+    values suitable for testing.",
+            "has_deserialize": true,
+            "has_serialize": true,
+            "in_registry": true,
+            "mutation_paths": {
+              "": {
+                "description": "Replace the entire TestEnumWithSerDe enum",
+                "examples": [
+                  {
+                    "applicable_variants": [ "TestEnumWithSerDe::Special",
+    "TestEnumWithSerDe::AlsoSpecial" ],
+                    "example": { "Special": [ "Hello, World!", 1000000 ] },
+                    "signature": "tuple(String, u32)"
+                  },
+                  {
+                    "applicable_variants": [ "TestEnumWithSerDe::Custom" ],
+                    "example": { "Custom": { "enabled": true, "name": "Hello, World!",
+    "value": 3.1415927410125732 } },
+                    "signature": "struct{enabled: bool, name: String, value: f32}"
+                  },
+                  {
+                    "applicable_variants": [ "TestEnumWithSerDe::Active",
+    "TestEnumWithSerDe::Inactive" ],
+                    "example": "Active",
+                    "signature": "unit"
+                  },
+                  {
+                    "applicable_variants": [ "TestEnumWithSerDe::Nested" ],
+                    "example": {
+                      "Nested": {
+                        "nested_config": { "Conditional": 1000000 },
+                        "other_field": "Hello, World!"
+                      }
+                    },
+                    "signature": "struct{nested_config: extras_plugin::NestedConfigEnum,
+    other_field: String}"
+                  }
+                ],
+                "path_info": {
+                  "mutation_status": "mutable",
+                  "path_kind": "RootValue",
+                  "type": "extras_plugin::TestEnumWithSerDe",
+                  "type_kind": "Enum"
+                }
+              },
+              ".0": {
+                "description": "Mutate element 0 of TestEnumWithSerDe",
+                "example": "Hello, World!",
+                "path_info": {
+                  "mutation_status": "mutable",
+                  "path_kind": "IndexedElement",
+                  "path_requirement": {
+                    "description": "`.0` mutation path requires a variant selection. See
+    variant_path for instructions.",
+                    "variant_path": [
+                      {
+                        "example": { "Special": [ "Hello, World!", 1000000 ] },
+                        "instructions": "Set root to TestEnumWithSerDe::Special",
+                        "path": "",
+                        "variant": "TestEnumWithSerDe::Special"
+                      }
+                    ]
+                  },
+                  "type": "String",
+                  "type_kind": "Value"
+                }
+              },
+              ".1": {
+                "description": "Mutate element 1 of TestEnumWithSerDe",
+                "example": 1000000,
+                "path_info": {
+                  "mutation_status": "mutable",
+                  "path_kind": "IndexedElement",
+                  "path_requirement": {
+                    "description": "`.1` mutation path requires a variant selection. See
+    variant_path for instructions.",
+                    "variant_path": [
+                      {
+                        "example": { "Special": [ "Hello, World!", 1000000 ] },
+                        "instructions": "Set root to TestEnumWithSerDe::Special",
+                        "path": "",
+                        "variant": "TestEnumWithSerDe::Special"
+                      }
+                    ]
+                  },
+                  "type": "u32",
+                  "type_kind": "Value"
+                }
+              },
+              ".enabled": {
+                "description": "Mutate the enabled field of TestEnumWithSerDe",
+                "example": true,
+                "path_info": {
+                  "mutation_status": "mutable",
+                  "path_kind": "StructField",
+                  "path_requirement": {
+                    "description": "`.enabled` mutation path requires a variant selection.
+    See variant_path for instructions.",
+                    "variant_path": [
+                      {
+                        "example": {
+                          "Custom": {
+                            "enabled": true,
+                            "name": "Hello, World!",
+                            "value": 3.1415927410125732
+                          }
+                        },
+                        "instructions": "Set root to TestEnumWithSerDe::Custom",
+                        "path": "",
+                        "variant": "TestEnumWithSerDe::Custom"
+                      }
+                    ]
+                  },
+                  "type": "bool",
+                  "type_kind": "Value"
+                }
+              },
+              ".name": {
+                "description": "Mutate the name field of TestEnumWithSerDe",
+                "example": "Hello, World!",
+                "path_info": {
+                  "mutation_status": "mutable",
+                  "path_kind": "StructField",
+                  "path_requirement": {
+                    "description": "`.name` mutation path requires a variant selection. See
+    variant_path for instructions.",
+                    "variant_path": [
+                      {
+                        "example": {
+                          "Custom": {
+                            "enabled": true,
+                            "name": "Hello, World!",
+                            "value": 3.1415927410125732
+                          }
+                        },
+                        "instructions": "Set root to TestEnumWithSerDe::Custom",
+                        "path": "",
+                        "variant": "TestEnumWithSerDe::Custom"
+                      }
+                    ]
+                  },
+                  "type": "String",
+                  "type_kind": "Value"
+                }
+              },
+              ".nested_config": {
+                "description": "Mutate the nested_config field of TestEnumWithSerDe enum",
+                "examples": [
+                  {
+                    "applicable_variants": [ "NestedConfigEnum::Conditional" ],
+                    "example": { "Conditional": 1000000 },
+                    "signature": "tuple(u32)"
+                  },
+                  {
+                    "applicable_variants": [ "NestedConfigEnum::Always",
+    "NestedConfigEnum::Never" ],
+                    "example": "Always",
+                    "signature": "unit"
+                  }
+                ],
+                "path_info": {
+                  "mutation_status": "mutable",
+                  "path_kind": "StructField",
+                  "path_requirement": {
+                    "description": "`.nested_config` mutation path requires a variant
+    selection. See variant_path for instructions.",
+                    "variant_path": [
+                      {
+                        "example": {
+                          "Nested": {
+                            "nested_config": { "Conditional": 1000000 },
+                            "other_field": "Hello, World!"
+                          }
+                        },
+                        "instructions": "Set root to TestEnumWithSerDe::Nested",
+                        "path": "",
+                        "variant": "TestEnumWithSerDe::Nested"
+                      }
+                    ]
+                  },
+                  "type": "extras_plugin::NestedConfigEnum",
+                  "type_kind": "Enum"
+                }
+              },
+              ".nested_config.0": {
+                "description": "Mutate element 0 of NestedConfigEnum",
+                "example": 1000000,
+                "path_info": {
+                  "mutation_status": "mutable",
+                  "path_kind": "IndexedElement",
+                  "path_requirement": {
+                    "description": "`.nested_config.0` mutation path requires 2 variant
+    selections. Follow the instructions in variant_path array to set each variant in
+    order.",
+                    "variant_path": [
+                      {
+                        "example": {
+                          "Nested": {
+                            "nested_config": { "Conditional": 1000000 },
+                            "other_field": "Hello, World!"
+                          }
+                        },
+                        "instructions": "Set root to TestEnumWithSerDe::Nested",
+                        "path": "",
+                        "variant": "TestEnumWithSerDe::Nested"
+                      },
+                      {
+                        "example": { "Conditional": 1000000 },
+                        "instructions": "Set .nested_config to
+    NestedConfigEnum::Conditional",
+                        "path": ".nested_config",
+                        "variant": "NestedConfigEnum::Conditional"
+                      }
+                    ]
+                  },
+                  "type": "u32",
+                  "type_kind": "Value"
+                }
+              },
+              ".other_field": {
+                "description": "Mutate the other_field field of TestEnumWithSerDe",
+                "example": "Hello, World!",
+                "path_info": {
+                  "mutation_status": "mutable",
+                  "path_kind": "StructField",
+                  "path_requirement": {
+                    "description": "`.other_field` mutation path requires a variant
+    selection. See variant_path for instructions.",
+                    "variant_path": [
+                      {
+                        "example": {
+                          "Nested": {
+                            "nested_config": { "Conditional": 1000000 },
+                            "other_field": "Hello, World!"
+                          }
+                        },
+                        "instructions": "Set root to TestEnumWithSerDe::Nested",
+                        "path": "",
+                        "variant": "TestEnumWithSerDe::Nested"
+                      }
+                    ]
+                  },
+                  "type": "String",
+                  "type_kind": "Value"
+                }
+              },
+              ".value": {
+                "description": "Mutate the value field of TestEnumWithSerDe",
+                "example": 3.1415927410125732,
+                "path_info": {
+                  "mutation_status": "mutable",
+                  "path_kind": "StructField",
+                  "path_requirement": {
+                    "description": "`.value` mutation path requires a variant selection. See
+     variant_path for instructions.",
+                    "variant_path": [
+                      {
+                        "example": {
+                          "Custom": {
+                            "enabled": true,
+                            "name": "Hello, World!",
+                            "value": 3.1415927410125732
+                          }
+                        },
+                        "instructions": "Set root to TestEnumWithSerDe::Custom",
+                        "path": "",
+                        "variant": "TestEnumWithSerDe::Custom"
+                      }
+                    ]
+                  },
+                  "type": "f32",
+                  "type_kind": "Value"
+                }
+              }
+            },
+            "schema_info": { "crate_name": "extras_plugin", "module_path": "extras_plugin",
+    "type_kind": "Enum" },
+            "spawn_format": { "Special": [ "Hello, World!", 1000000 ] },
+            "supported_operations": [ "query", "get", "spawn", "insert", "mutate" ],
+            "type_name": "extras_plugin::TestEnumWithSerDe"
+          }
+        }
+      }
+    }

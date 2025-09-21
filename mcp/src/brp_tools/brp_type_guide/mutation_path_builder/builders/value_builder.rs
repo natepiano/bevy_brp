@@ -1,4 +1,4 @@
-//! Default builder for simple types
+//! Default `PathBuilder` for simple types
 //!
 //! Handles simple types that don't need complex logic - just creates a standard mutation path
 //!
@@ -33,8 +33,6 @@ impl PathBuilder for ValueMutationBuilder {
         _children: HashMap<MutationPathDescriptor, Value>,
     ) -> Result<Value> {
         // Check if this Value type has serialization support
-        // This is critical for the new protocol pattern - unmigrated code checks this
-        // in TypeKind::build_paths but that path is never reached for migrated builders
         if !ctx.value_type_has_serialization(ctx.type_name()) {
             // Return NotMutable error for types without serialization
             // MutationPathBuilder will catch this and create the appropriate NotMutable path

@@ -1,4 +1,4 @@
-//! Builder for List types (Vec, etc.)
+//! `PathBuilder` for List types (Vec, etc.)
 //!
 //! Similar to `ArrayMutationBuilder` but for dynamic containers like Vec<T>.
 //! Lists support indexed access and element-level mutations through BRP.
@@ -32,13 +32,13 @@ impl PathBuilder for ListMutationBuilder {
         // Extract element type from schema
         let Some(element_type) = schema.get_type(SchemaField::Items) else {
             return Err(Error::SchemaProcessing {
-                message:   format!(
+                message: format!(
                     "Failed to extract element type from schema for list: {}",
                     ctx.type_name()
                 ),
                 type_name: Some(ctx.type_name().to_string()),
                 operation: Some("extract_items_type".to_string()),
-                details:   None,
+                details: None,
             }
             .into());
         };
@@ -46,8 +46,8 @@ impl PathBuilder for ListMutationBuilder {
         // Lists use indexed PathKind for the element at [0]
         // We only recurse into one element for efficiency
         Ok(vec![PathKind::ArrayElement {
-            index:       0,
-            type_name:   element_type,
+            index: 0,
+            type_name: element_type,
             parent_type: ctx.type_name().clone(),
         }]
         .into_iter())

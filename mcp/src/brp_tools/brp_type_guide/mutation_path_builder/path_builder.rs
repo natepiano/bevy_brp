@@ -84,10 +84,9 @@ pub trait PathBuilder {
         PathAction::Create
     }
 
-    /// Collect `PathKinds` for child elements
+    /// Collect `PathKind`sfor child elements
     ///
-    /// Migrated builders should return `PathKind` without creating contexts.
-    /// `PathKind` contain the necessary information (field names, indices) for child
+    /// contain the necessary information (field names, indices) for child
     /// identification.
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>>;
 
@@ -109,7 +108,7 @@ pub trait PathBuilder {
         _ctx: &RecursionContext,
         _children: HashMap<MutationPathDescriptor, Value>,
     ) -> Result<Value> {
-        // Default: return null for unmigrated builders
+        // Default - not implemented for MutationPathBuilder
         Ok(json!(null))
     }
 

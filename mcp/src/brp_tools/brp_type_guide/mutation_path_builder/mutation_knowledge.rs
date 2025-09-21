@@ -26,21 +26,12 @@ use crate::brp_tools::brp_type_guide::constants::{
 pub enum KnowledgeKey {
     /// Exact type name match (current behavior)
     Exact(String),
-    /// Newtype tuple variant that unwraps to inner type for mutations
-    NewtypeVariant {
-        /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
-        enum_type:    String,
-        /// e.g., "Clear"
-        variant_name: String,
-        /// e.g., "f32"
-        inner_type:   String,
-    },
     /// Struct field-specific match for providing appropriate field values
     StructField {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: String,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
 }
 
@@ -50,24 +41,11 @@ impl KnowledgeKey {
         Self::Exact(s.into())
     }
 
-    /// Create a newtype variant match key
-    pub fn newtype_variant(
-        enum_type: impl Into<String>,
-        variant_name: impl Into<String>,
-        inner_type: impl Into<String>,
-    ) -> Self {
-        Self::NewtypeVariant {
-            enum_type:    enum_type.into(),
-            variant_name: variant_name.into(),
-            inner_type:   inner_type.into(),
-        }
-    }
-
     /// Create a struct field match key
     pub fn struct_field(struct_type: impl Into<String>, field_name: impl Into<String>) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
     }
 }
@@ -79,7 +57,7 @@ pub enum MutationKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }
@@ -410,17 +388,6 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             MutationKnowledge::new(
                 json!({"Weak": {"Uuid": {"uuid": "12345678-1234-1234-1234-123456789012"}}}),
             ),
-        );
-
-        // ===== Camera3d depth load operation =====
-        // Camera3d depth clear value - must be in range [0.0, 1.0] for valid GPU operations
-        map.insert(
-            KnowledgeKey::newtype_variant(
-                "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp",
-                "Clear",
-                "f32",
-            ),
-            MutationKnowledge::new(json!(0.5)), // Safe middle value in [0.0, 1.0] range
         );
 
         // ===== WindowResolution field-specific values =====
