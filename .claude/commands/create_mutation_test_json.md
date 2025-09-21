@@ -24,7 +24,7 @@ fi
     - **promote**: Mark this version as the new good baseline
     - **skip**: Keep existing baseline, don't promote this version
     - **investigate**: Launch deeper investigation of the differences
-    - **comparison_review** - Review unexpected changes with detailed grouping and analysis
+    - **comparison_review** - Show actual JSON examples for each unexpected change pattern, one type at a time, for user examination and testing decisions
     - **check_type**: Check mutation paths for a specific type across all versions
     - **summarize**: Summarize test results from a JSON file
 </CreateKeywords>
@@ -38,7 +38,13 @@ fi
     ```
     **skip**: Keep existing baseline, document decision, continue
     **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus
-    **comparison_review**: Create detailed todos for unexpected changes and analyze them one by one with user interaction
+    **comparison_review**:
+    1. Create todos for each unexpected change pattern identified
+    2. For each pattern, select one representative type/mutation path
+    3. Extract and format the actual JSON from baseline vs current using <FormatComparison/>
+    4. Present to user with pattern context for examination and testing decision
+    5. Wait for user response before proceeding to next pattern
+    6. Stop when user says to stop or all patterns reviewed
     **check_type**: Ask user "Which type would you like me to check?", then execute:
     ```bash
     python3 .claude/scripts/compare_mutations_check_type.py "[TYPE_NAME]"
@@ -285,7 +291,7 @@ Based on the comparison results above, should I mark this version as the new goo
 - **promote** - Mark this version as the new good baseline
 - **skip** - Keep existing baseline, don't promote this version
 - **investigate** - Launch deeper investigation of the differences
-- **comparison_review** - Review unexpected changes with detailed grouping and analysis
+- **comparison_review** - Show actual JSON examples for each unexpected change pattern, one type at a time, for user examination and testing decisions
 
     **CRITICAL**: STOP and wait for user's keyword response before proceeding.
 
