@@ -41,8 +41,14 @@ fi
     **comparison_review**:
     1. Create todos for each unexpected change pattern identified
     2. For each pattern, select one representative type/mutation path
-    3. Extract and format the actual JSON from baseline vs current using <FormatComparison/>
-    4. Present to user with pattern context for examination and testing decision
+    3. Extract the actual JSON from baseline vs current using the comparison script:
+       ```bash
+       # Get from baseline
+       .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types_baseline.json
+       # Get from current
+       .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types.json
+       ```
+    4. Format the comparison using <FormatComparison/> and present to user with pattern context
     5. Wait for user response before proceeding to next pattern
     6. Stop when user says to stop or all patterns reviewed
     **check_type**: Ask user "Which type would you like me to check?", then execute:
