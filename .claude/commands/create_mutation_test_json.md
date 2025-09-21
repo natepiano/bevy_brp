@@ -170,14 +170,15 @@ fi
 
     After successful file creation, automatically compare with baseline:
 
-    1. **Save previous version** (if it exists):
-    ```bash
-    if [ -f "[TARGET_FILE]" ]; then
-        cp [TARGET_FILE] .claude/types/all_types_previous.json
-    fi
-    ```
+    **CRITICAL FILE MANAGEMENT**:
+    - DO NOT create backup copies or intermediate files
+    - DO NOT use `cp` to create `all_types_previous.json` or any other files
+    - ONLY read existing files for comparison
+    - The comparison is ALWAYS between:
+      - BASELINE: `.claude/types/all_types_baseline.json` (the known good baseline)
+      - CURRENT: `.claude/types/all_types.json` (the newly created file from Step 3)
 
-    2. **Run structured comparison**:
+    **Run structured comparison directly**:
     ```bash
     .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/types/all_types_baseline.json .claude/types/all_types.json
     ```
@@ -202,47 +203,22 @@ fi
 <UserValidation>
     **STEP 6A: CATEGORIZE CHANGES**
 
-    **IMPORTANT**: Before presenting results, systematically categorize ALL changes:
+    **Automatically categorize changes using the expected changes JSON**:
 
-    1. **Read Expected Changes**: Read the .claude/EXPECTED_CHANGES.md file to understand all expected patterns
+    Save the comparison output to a temporary file, then execute:
+    ```bash
+    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/types/all_types_baseline.json .claude/types/all_types.json > /tmp/comparison_output.txt
 
-    2. **Map Comparison Output to Expected Changes**: For each pattern in the comparison output, determine if it matches an expected change:
-       - **FIELD REMOVED with 'variants' field**: Maps to Expected Change #1 (variants removal)
-       - **FIELD REMOVED with 'enum_info' field**: Maps to Expected Change #2 (enum_info removal)
-       - **VALUE CHANGE with path_requirement additions**: Maps to Expected Change #3 (path_requirement addition)
-       - **New Types with extras_plugin::NestedConfigEnum**: Maps to Expected Change #4 (test type addition)
-       - **VALUE CHANGE with enum example simplification**: Maps to Expected Change #5 (enum example format)
-
-    3. **Identify Unexpected Patterns**: ANY pattern or change not covered by the above mapping is UNEXPECTED:
-       - **TYPE CHANGE patterns** (unless covered by expected changes)
-       - **FIELD ADDED patterns** (unless covered by expected changes)
-       - **VALUE CHANGE patterns** that don't match expected change descriptions
-       - **New/Removed types** not listed in expected changes
-
-    4. **Count and Summarize**:
-       - Count total changes for each expected change category
-       - Count total changes for unexpected patterns
-       - Prepare summaries for both categories
-
-    **STEP 6B: ANALYZE COMPARISON OUTPUT**
-
-    **MANDATORY**: Before using the template, explicitly analyze each pattern from the comparison output:
-
-    1. **List ALL patterns detected**: Write out every "IDENTIFIED PATTERN" from the comparison output
-    2. **Map each pattern**: For each pattern, state which expected change it maps to OR mark as "UNEXPECTED"
-    3. **Calculate totals**: Sum up changes for expected vs unexpected categories
-    4. **Verify completeness**: Ensure every single pattern has been categorized
-
-    **Example Analysis Structure**:
-    ```
-    PATTERN: FIELD REMOVED (variants field, 872 removals) → Expected Change #1 ✓
-    PATTERN: FIELD REMOVED (enum_info field, 18 removals) → Expected Change #2 ✓
-    PATTERN: VALUE CHANGE (1149 changes) → Expected Change #3 & #5 ✓
-    PATTERN: TYPE CHANGE (18 types, 22 changes) → UNEXPECTED ❌
-    PATTERN: FIELD ADDED (39 types, 122 changes) → UNEXPECTED ❌
+    python3 .claude/scripts/create_mutation_test_json_categorize_changes.py \
+        --comparison-output /tmp/comparison_output.txt \
+        --expected-changes .claude/types/create_mutation_test_json_expected_changes.json
     ```
 
-    **STEP 6C: PRESENT SUMMARY**
+    This will output a JSON structure with:
+    - `expected_matches`: Changes that match expected patterns with their IDs and counts
+    - `unexpected_patterns`: Changes that don't match any expected pattern or are below thresholds
+
+    **STEP 6B: PRESENT SUMMARY**
 
     Present the final summary using the exact template below:
 
@@ -262,25 +238,20 @@ fi
  - If metadata only differs: Count differences
  - If structural changes exist: Full deep analysis output with two sections:]
 
-   #### Expected Changes (from .claude/EXPECTED_CHANGES.md):
-   [For each matched expected change pattern, list:
-    - Expected Change #N: [Name from EXPECTED_CHANGES.md]
-    - Summary of what matched this pattern
-    - Count of changes matching this pattern]
+   #### Expected Changes:
+   [Use the categorization JSON output to list each matched expected change:
+    - Expected Change #N: [Name from expected_matches]
+    - Occurrences: [count from expected_matches]
+    - Types Affected: [if available from expected_matches]]
 
    #### Unexpected Changes (need review):
-   **CRITICAL**: MUST analyze ALL patterns not mapped to expected changes above:
+   [Use the categorization JSON output to list unexpected patterns:
+    - Pattern: [from unexpected_patterns]
+    - Occurrences: [count]
+    - Types Affected: [count if available]
+    - Reason: [why it's unexpected from the JSON output]]
 
-   [FOR EACH UNEXPECTED PATTERN found in Step 6A:
-    - Pattern Name: [e.g., "TYPE CHANGE", "FIELD ADDED", etc.]
-    - Types Affected: [count]
-    - Total Changes: [count]
-    - Brief Summary: [what kind of changes these are]
-    - Example: [show 1-2 specific examples of the change]]
-
-   [IF TRULY NO UNEXPECTED CHANGES: State "None - all detected patterns map to expected changes"]
-
-   **WARNING**: If TYPE CHANGE or FIELD ADDED patterns exist and are not explicitly covered by expected changes, they MUST be listed here as unexpected.
+   [IF NO unexpected_patterns in JSON: State "None - all detected patterns map to expected changes"]
 
     **STEP 6C: PRESENT DECISION PROMPT**
 
