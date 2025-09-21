@@ -213,52 +213,42 @@ To identify this change pattern in the comparison output:
 This is an EXPECTED change from the variant path structure implementation that provides better tracking of enum variant dependencies for mutation paths.
 </HowToIdentify>
 
-## Expected Change #4: Addition of extras_plugin::NestedConfigEnum Test Type
+## Expected Change #4: Addition of Test Types in extras_plugin
 
 ### Description
-A new test enum type `extras_plugin::NestedConfigEnum` was added to the extras_plugin test app to validate nested enum handling in the variant path structure implementation.
+New test enum types are added to the extras_plugin test app to validate enum handling and variant path structure implementations. These include `extras_plugin::TestVariantChainEnum` and other testing types.
 
 ### Structural Change
-**Added**: New type `extras_plugin::NestedConfigEnum` in the type registry
+**Added**: New test types in the type registry (extras_plugin::TestVariantChainEnum, extras_plugin::NestedConfigEnum, etc.)
 
 ### When Comparison Output Says:
 ```
 🔍 TYPE-LEVEL CHANGES
    ├─ New Types: 1
-   │  ├─ extras_plugin::NestedConfigEnum
+   │  ├─ extras_plugin::TestVariantChainEnum
 ```
 
-**This is talking about**: The addition of the NestedConfigEnum test type, which is EXPECTED.
-
-### Type Characteristics
-```json
-{
-  "spawn_format": {
-    "Conditional": [1000000]
-  },
-  "supported_operations": ["query", "get", "spawn", "insert", "mutate"],
-  "mutation_path_count": 2
-}
-```
+**This is talking about**: The addition of test types for enum validation, which is EXPECTED.
 
 <HowToIdentify>
 To identify this change pattern in the comparison output:
 
 1. Look for TYPE-LEVEL CHANGES with:
-   - New Types: 1
-   - Specifically mentions `extras_plugin::NestedConfigEnum`
+   - New Types: 1 or more
+   - Specifically mentions types starting with `extras_plugin::`
 
-2. This is the EXACT line to match:
+2. Example lines to match:
    ```
+   ├─ extras_plugin::TestVariantChainEnum
    ├─ extras_plugin::NestedConfigEnum
    ```
 
 3. Key characteristics:
-   - It's a test type in the extras_plugin
-   - Used for validating nested enum configurations
-   - Has a tuple variant "Conditional" with a u32 parameter
+   - They are test types in the extras_plugin
+   - Used for validating enum configurations and variant handling
+   - Typically have enum variants with various field configurations
 
-This is an EXPECTED addition for testing the variant path structure implementation and nested enum handling.
+This is an EXPECTED addition for testing the variant path structure implementation and enum handling.
 </HowToIdentify>
 
 ## Expected Change #5: Simplification of Enum Example Format in Mutation Paths
@@ -323,6 +313,49 @@ To identify this change pattern in the comparison output:
 3. Validation: The new format can be successfully used in BRP mutations and matches actual entity data
 
 This is an EXPECTED change that fixes the example format to match the actual data structure used in Bevy, making the type guides more accurate and usable.
+</HowToIdentify>
+
+## Expected Change #6: Addition of "agent_guidance" Field to All Types
+
+### Description
+A new "agent_guidance" field has been added to all type guides to provide educational information for coding agents about how to use the mutation_paths data effectively. This field contains standardized text explaining how mutation paths can be used with BRP tools.
+
+### Structural Change
+**Added**: "agent_guidance" field at the root level of all type guides
+
+### When Comparison Output Says:
+```
+📌 IDENTIFIED PATTERN: FIELD ADDED
+Fields added breakdown:
+  • 'agent_guidance' field: 144 addition(s) across 144 type(s)
+```
+
+**This is talking about**: The addition of agent guidance text to all types, which is EXPECTED.
+
+### Example Content
+```json
+{
+  "agent_guidance": "The mutation_paths field provides valid 'path' arguments for mcp__brp__bevy_mutate_component and mcp__brp__bevy_mutate_resource tools, with example values suitable for testing."
+}
+```
+
+<HowToIdentify>
+To identify this change pattern in the comparison output:
+
+1. Look for FIELD ADDED pattern with:
+   - 'agent_guidance' field: 144+ additions across 144+ types
+
+2. This is the EXACT line to match:
+   ```
+   • 'agent_guidance' field: [NUMBER] addition(s) across [NUMBER] type(s)
+   ```
+
+3. Key characteristics:
+   - Added to virtually all registered types
+   - Contains standardized educational text about mutation_paths usage
+   - Provides guidance for coding agents on BRP tool usage
+
+This is an EXPECTED addition to improve the educational value of type guides for agentic coding workflows.
 </HowToIdentify>
 
 ---
