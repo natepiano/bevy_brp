@@ -19,9 +19,9 @@ pub enum PathKind {
         index: usize,
         /// The type of this indexed element
         type_name: BrpTypeName,
-        /// The parent container type (tuple, array, or enum)
+        /// The parent container type (tuple or enum)
         parent_type: BrpTypeName,
-        /// NEW: Which enum variants this path applies to (None for tuples/arrays)
+        /// NEW: Which enum variants this path applies to (None for tuples)
         applicable_variants: Option<Vec<String>>,
     },
 
@@ -79,21 +79,7 @@ children.push(PathKind::IndexedElement {
 });
 ```
 
-### 4. Update All Builders
-
-Update other builders that create `IndexedElement` to pass `None` for variants:
-
-```rust
-// In tuple_builder.rs, array_builder.rs, etc.
-PathKind::IndexedElement {
-    index,
-    type_name: element_type.clone(),
-    parent_type: ctx.type_name().clone(),
-    applicable_variants: None,  // Not an enum
-}
-```
-
-### 5. Simplify Builder Interface
+### 4. Simplify Builder Interface
 
 All builders can now return `PathKind` directly:
 
@@ -122,14 +108,14 @@ impl PathBuilder for TupleMutationBuilder {
 
 1. **Phase 1**: Add `applicable_variants: Option<Vec<String>>` to `PathKind::IndexedElement`
 2. **Phase 2**: Update `enum_builder.rs` to populate the new field
-3. **Phase 3**: Update other builders to pass `None` for the new field
-5. **Phase 4**: Remove `MaybeVariants` trait and `PathKindWithVariants` struct
-6. **Phase 6**: Update consumer code to extract variants directly from PathKind
+3. **Phase 3**: Update tuple_builder to pass `None` for the new field
+4. **Phase 4**: Remove `MaybeVariants` trait and `PathKindWithVariants` struct
+5. **Phase 5**: Update consumer code to extract variants directly from PathKind
 
 
 ## Files to Modify
 
-### 1. `recursion_context.rs` - Add `applicable_variants` field
+### 1. `path_kind.rs` - Add `applicable_variants` field
 
 Update the `PathKind::IndexedElement` variant:
 ```rust
@@ -138,16 +124,30 @@ IndexedElement {
     index: usize,
     /// The type of this indexed element
     type_name: BrpTypeName,
-    /// The parent container type (tuple, array, or enum)
+    /// The parent container type (tuple or enum)
     parent_type: BrpTypeName,
-    /// NEW: Which enum variants this path applies to (None for tuples/arrays)
+    /// NEW: Which enum variants this path applies to (None for tuples)
     applicable_variants: Option<Vec<String>>,
 }
 ```
 
-Also update the constructor if one exists:
+Also update the constructor:
 ```rust
-pub fn new_indexed_element(
+// Current constructor (3 parameters):
+pub const fn new_indexed_element(
+    index: usize,
+    type_name: BrpTypeName,
+    parent_type: BrpTypeName,
+) -> Self {
+    Self::IndexedElement {
+        index,
+        type_name,
+        parent_type,
+    }
+}
+
+// Updated constructor (4 parameters):
+pub const fn new_indexed_element(
     index: usize,
     type_name: BrpTypeName,
     parent_type: BrpTypeName,
@@ -219,26 +219,6 @@ PathKind::IndexedElement {
     type_name: element_type.clone(),
     parent_type: ctx.type_name().clone(),
     applicable_variants: None,  // Tuples don't have variants
-}
-```
-
-### 4. `array_builder.rs` - Add None for applicable_variants
-
-Update where `IndexedElement` is created (around line 59):
-```rust
-// OLD
-PathKind::IndexedElement {
-    index: 0,
-    type_name: element_type.clone(),
-    parent_type: ctx.type_name().clone(),
-}
-
-// NEW
-PathKind::IndexedElement {
-    index: 0,
-    type_name: element_type.clone(),
-    parent_type: ctx.type_name().clone(),
-    applicable_variants: None,  // Arrays don't have variants
 }
 ```
 
