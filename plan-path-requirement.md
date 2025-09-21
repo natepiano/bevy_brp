@@ -82,9 +82,11 @@ pub struct VariantPathEntry {
 
 ### Step 1: Remove Complex Parent Wrapping Logic
 
+⚠️ **REQUIRES USER ACTION**: This step involves removing existing broken code. The implementation must STOP here and ask the USER to manually remove these functions before proceeding to Step 2.
+
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
 
-**Remove these method calls and helper functions:**
+**USER MUST REMOVE these method calls and helper functions:**
 
 ```rust
 // REMOVE this call from build_paths method (lines 105-111):
@@ -104,7 +106,7 @@ fn navigate_field(...)
 fn substitute_at_path(...)
 ```
 
-**Revert paths_to_expose to immutable:**
+**USER MUST ALSO revert paths_to_expose to immutable:**
 ```rust
 // Change line 66 from:
 let ChildProcessingResult {
@@ -120,6 +122,8 @@ let ChildProcessingResult {
     child_examples,
 } = self.process_all_children(ctx, depth)?;
 ```
+
+**IMPLEMENTATION NOTE**: After showing the user what needs to be removed, WAIT for user confirmation that the removal is complete before proceeding to Step 2. This ensures the codebase is in the correct state for adding the new functionality.
 
 ### Step 2: Update VariantPathEntry Type
 
