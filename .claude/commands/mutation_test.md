@@ -520,6 +520,12 @@ This returns your specific assignment with complete type data.
    d. **MUTATION TESTING**: Test ALL mutable mutation paths from the mutation_paths object
       - Apply Entity ID substitution BEFORE sending any mutation request
       - If a mutation uses Entity IDs and you don't have real ones, query for them first
+      - **ENUM TESTING REQUIREMENT**: When a mutation path contains an "examples" array (indicating enum variants), you MUST test each example individually:
+        * For each entry in the "examples" array, perform a separate mutation using that specific "example" value
+        * Example: If `.depth_load_op` has examples `[{"example": {"Clear": 3.14}}, {"example": "Load"}]`, test BOTH:
+          1. Mutate `.depth_load_op` with `{"Clear": 3.14}`
+          2. Mutate `.depth_load_op` with `"Load"`
+        * Count each example test as a separate mutation attempt in your totals
 3. **CAPTURE ALL ERROR DETAILS**: When ANY operation fails, record the COMPLETE request and response
 4. Return ONLY JSON result array for ALL tested types
 5. NEVER test types not provided in your assignment data
