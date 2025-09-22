@@ -44,40 +44,59 @@ fi
     **skip**: Keep existing baseline, document decision, continue
     **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus
     **comparison_review**:
-    1. Generate detailed comparison data:
+    **DATA SOURCE HIERARCHY (STRICT ORDER)**:
+    1. Current comparison run output (ALWAYS most reliable)
+    2. Never use cached detail files
+    3. Never use examples from previous comparison runs
+
+    1. **ALWAYS re-run fresh comparison to get current examples**:
        ```bash
-       .claude/scripts/create_mutation_test_json_structured_comparison.sh --detailed .claude/transient/all_types_baseline.json .claude/transient/all_types.json
+       .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/transient/all_types_baseline.json .claude/transient/all_types.json
        ```
-    2. **CRITICAL - READ THE DETAILED OUTPUT FIRST**:
-       ```bash
-       Read tool: $TMPDIR/mutation_comparison_details.json
-       ```
-       **IMPORTANT**: This file contains the EXACT type names and mutation paths you MUST use for comparison.
-       Each pattern's "examples" array contains objects like: {"type": "...", "mutation_path": "..."}
+       **CRITICAL**: Use examples from THIS current run output, never cached files.
+
+    2. **EXTRACT EXAMPLES FROM CURRENT COMPARISON OUTPUT**:
+       - For each FIELD_REMOVED/FIELD_ADDED pattern in the current comparison output
+       - Use the first example listed in that pattern's "Example 1:" section
+       - **NEVER** rely on separate detail files or previous comparison runs
 
     3. Create todos for each unexpected change pattern identified
 
-    4. **INTERACTIVE REVIEW**: For each unexpected pattern in the details file:
+    4. **INTERACTIVE REVIEW**: For each unexpected pattern from the CURRENT comparison:
        a. Present pattern overview:
-          - Pattern name and occurrence count
-          - Types affected count
+          - Pattern name and occurrence count from current run
+          - Types affected count from current run
           - Brief explanation of what this pattern means
 
-       b. **CRITICAL - USE EXACT TYPE/PATH FROM DETAILS FILE**:
-          - Take the FIRST example from the "examples" array for this pattern
-          - The example specifies: {"type": "...", "mutation_path": "..."}
-          - **YOU MUST USE THESE EXACT VALUES** - do not choose different types or paths
-          - Extract the COMPLETE mutation path data using EXACTLY these values:
-            ```bash
-            # Use the EXACT type and mutation_path from the details file example
-            # WRONG: Choosing a similar but different type or path
-            # RIGHT: Using the exact values from {"type": "X", "mutation_path": "Y"}
-            .claude/scripts/get_mutation_path.sh "[EXACT_TYPE_FROM_DETAILS]" "[EXACT_PATH_FROM_DETAILS]" .claude/transient/all_types_baseline.json
-            .claude/scripts/get_mutation_path.sh "[EXACT_TYPE_FROM_DETAILS]" "[EXACT_PATH_FROM_DETAILS]" .claude/transient/all_types.json
-            ```
-          - **CRITICAL**: Present using <FormatComparison/> showing the COMPLETE JSON returned by get_mutation_path.sh, not excerpts or selective fields
+       b. **EXTRACT EXAMPLE FROM CURRENT COMPARISON OUTPUT**:
+          - Take the first "Example 1:" entry from the current comparison output for this pattern
+          - Extract the Type and Path from "Example 1:" (format: "Type: X, Path: Y")
+          - **NEVER use examples from detail files or previous runs**
 
-       c. **CRITICAL - STOP AND WAIT**: After presenting each pattern example:
+       c. **RETRIEVE AND VERIFY MUTATION PATH DATA**:
+          ```bash
+          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[PATH_FROM_CURRENT_OUTPUT]" .claude/transient/all_types_baseline.json
+          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[PATH_FROM_CURRENT_OUTPUT]" .claude/transient/all_types.json
+          ```
+
+       d. **MANDATORY VERIFICATION BEFORE PROCEEDING**:
+          - Compare the retrieved baseline vs current JSON data
+          - **VERIFICATION REQUIREMENT**: The claimed change pattern MUST be visible in the data
+          - If FIELD_REMOVED claimed: baseline must have the field, current must lack it
+          - If FIELD_ADDED claimed: baseline must lack the field, current must have it
+          - If data appears identical: IMMEDIATELY flag as "VERIFICATION FAILED"
+
+       e. **VERIFICATION FAILURE HANDLING**:
+          - If verification fails, state: "Verification failed - retrieved data shows no difference for this example"
+          - Try the next example from the same pattern in current comparison output
+          - If 3 consecutive examples fail verification, mark pattern as "False positive - unable to verify"
+          - Skip to next pattern without user interaction
+
+       f. **ONLY PROCEED WITH USER INTERACTION IF VERIFICATION SUCCEEDS**:
+          - Present using <FormatComparison/> showing the COMPLETE JSON
+          - Only show examples where differences are actually visible
+
+       g. **CRITICAL - STOP AND WAIT**: After presenting VERIFIED pattern example:
           - Present the following options:
 
 - **continue** - Move to next pattern without any changes
@@ -89,7 +108,13 @@ fi
           - If "add_expected": Add pattern to expected changes JSON, then continue to next pattern
           - If "stop": End review and return to main decision prompt
 
-    5. After all patterns reviewed OR user stops:
+    5. **COMMON FAILURE MODES TO AVOID**:
+       - Using examples from detail files instead of current comparison output
+       - Assuming examples will show differences without verification
+       - Proceeding with user interaction when verification fails
+       - Using type/path combinations from previous runs
+
+    6. After all patterns reviewed OR user stops:
        - Return to main decision prompt from Step 6C
     **add_expected**: Add pattern to expected changes JSON:
     1. Extract pattern type, field name, occurrences, and types affected from current pattern
@@ -352,6 +377,8 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
 - DO NOT abbreviate or use [...] placeholders in comparison_review mode
 - The full JSON structure must be visible for proper review
 - Only use abbreviations in the initial summary, not in detailed review
+- **VERIFICATION MANDATORY**: Before presenting comparison, verify that the claimed change (FIELD_ADDED/FIELD_REMOVED) is actually visible in the JSON difference
+- **NEVER present comparisons where both sides appear identical**
 
 **General formatting**:
 - Use separate ```json code blocks for BASELINE and CURRENT
