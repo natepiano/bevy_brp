@@ -121,7 +121,8 @@
       "Bash(git fetch:*)",
       "Bash(git -C /Users/natemccoy/rust/brp-variant-knowledge rev-list origin/main..HEAD --count)",
       "Bash(.claude/scripts/create_mutation_test_json_promote_baseline_test.sh:*)",
-      "Bash(.claude/scripts/create_mutation_test_json_promote_baseline.sh:*)"
+      "Bash(.claude/scripts/create_mutation_test_json_promote_baseline.sh:*)",
+      "Bash(.claude/scripts/get_type_guide.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"

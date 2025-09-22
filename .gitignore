@@ -1,4 +1,4 @@
 **/target/
 /test-app/tests/all_types.json
 /.ropeproject/
-/.claude/types/
+/.claude/transient/

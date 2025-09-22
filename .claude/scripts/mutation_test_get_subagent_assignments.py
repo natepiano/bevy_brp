@@ -46,8 +46,8 @@ if subagent_index is not None:
         print(f"Error: subagent_index must be in range [0, {max_subagents}), got: {subagent_index}", file=sys.stderr)
         sys.exit(1)
 
-# Get the JSON file path from .claude/types
-json_file = '.claude/types/all_types.json'
+# Get the JSON file path from .claude/transient
+json_file = '.claude/transient/all_types.json'
 
 if not os.path.exists(json_file):
     print(f"Error: {json_file} not found!", file=sys.stderr)

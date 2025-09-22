@@ -7,7 +7,7 @@
 <TestContext>
 [COMMAND]: `/mutation_test`
 [PURPOSE]: Systematically validate ALL BRP component types by testing spawn/insert and mutation operations
-[PROGRESS_FILE]: `.claude/types/all_types.json` - Complete type guides with test status tracking
+[PROGRESS_FILE]: `.claude/transient/all_types.json` - Complete type guides with test status tracking
 [ARCHITECTURE]: Main agent orchestrates, subagents test in parallel
 </TestContext>
 
@@ -70,13 +70,13 @@ If you find yourself thinking any of these phrases, STOP:
     **Ensure types directory exists for all file operations:**
 
     ```bash
-    mkdir -p .claude/types
-    echo "Using .claude/types/ for persistent storage"
+    mkdir -p .claude/transient
+    echo "Using .claude/transient/ for persistent storage"
     ```
 
-    All mutation test files will be stored in `.claude/types/` for persistence across reboots.
+    All mutation test files will be stored in `.claude/transient/` for persistence across reboots.
 
-    **CRITICAL**: Use `.claude/types/` prefix for all file paths in Write tool operations.
+    **CRITICAL**: Use `.claude/transient/` prefix for all file paths in Write tool operations.
 </InitialSetup>
 
 ## STEP 2: BATCH RENUMBERING
@@ -102,7 +102,7 @@ If you find yourself thinking any of these phrases, STOP:
     **Remove leftover batch result files to prevent interference:**
 
     ```bash
-    rm -f .claude/types/batch_results_*.json
+    rm -f .claude/transient/batch_results_*.json
     ```
 
     Clean up any batch result files from previous runs.
@@ -285,7 +285,7 @@ If you find yourself thinking any of these phrases, STOP:
     3. **Write results to temp file** using Write tool:
     ```python
     Write(
-        file_path=".claude/types/batch_results_[BATCH_NUMBER].json",
+        file_path=".claude/transient/batch_results_[BATCH_NUMBER].json",
         content=[collected_results_json]
     )
     ```
@@ -293,13 +293,13 @@ If you find yourself thinking any of these phrases, STOP:
     4. **Execute merge script**:
     ```bash
     ./.claude/scripts/mutation_test_merge_batch_results.sh \
-        .claude/types/batch_results_[BATCH_NUMBER].json \
-        .claude/types/all_types.json
+        .claude/transient/batch_results_[BATCH_NUMBER].json \
+        .claude/transient/all_types.json
     ```
 
     5. **Cleanup temp file**:
     ```bash
-    rm -f .claude/types/batch_results_[BATCH_NUMBER].json
+    rm -f .claude/transient/batch_results_[BATCH_NUMBER].json
     ```
 </ProcessBatchResults>
 
@@ -397,7 +397,7 @@ If you find yourself thinking any of these phrases, STOP:
 
     4. **Handle User Choice**:
     - **Investigate**: Launch Task tool with specific investigation prompt
-    - **Known Issue**: Add to `.claude/mutation_test_known_issues.json` with full details and continue
+    - **Known Issue**: Add to `.claude/transient/mutation_test_known_issues.json` with full details and continue
     - **Skip**: Continue to next failure without marking as known
     - **Stop**: Exit failure review
 
@@ -424,14 +424,14 @@ What would you prefer?
 **Keyword Actions**:
 - **Investigate**: Launch detailed investigation Task for the current failure
 - **Known Issue**:
-  1. Add type/mutation path pair to `.claude/mutation_test_known_issues.json`
+  1. Add type/mutation path pair to `.claude/transient/mutation_test_known_issues.json`
   2. Include the failure reason and error details
   3. Continue to the next failure
 - **Skip**: Continue to the next failure without recording (temporary skip)
 - **Stop**: Exit the failure review process immediately
 
 **Known Issues Tracking**:
-When user selects **Known Issue**, add to `.claude/mutation_test_known_issues.json`:
+When user selects **Known Issue**, add to `.claude/transient/mutation_test_known_issues.json`:
 ```json
 {
   "type": "fully::qualified::type::name",
@@ -441,9 +441,9 @@ When user selects **Known Issue**, add to `.claude/mutation_test_known_issues.js
 ```
 
 **Future Test Behavior**:
-- Check `.claude/mutation_test_known_issues.json` before presenting failures
+- Check `.claude/transient/mutation_test_known_issues.json` before presenting failures
 - Automatically skip known issues without presenting them
-- Summary should note: "X known issues skipped (see `.claude/mutation_test_known_issues.json`)"
+- Summary should note: "X known issues skipped (see `.claude/transient/mutation_test_known_issues.json`)"
 - Known issues are persistent across test runs
 </KeywordHandling>
 
@@ -608,9 +608,9 @@ This returns your specific assignment with complete type data.
 
 <PathHandling>
 **File Path Requirements**:
-- ALWAYS use `.claude/types/` for persistent file storage
+- ALWAYS use `.claude/transient/` for persistent file storage
 - NEVER use $TMPDIR for mutation test files
-- Example: `.claude/types/all_types.json` not `$TMPDIR/all_types.json`
+- Example: `.claude/transient/all_types.json` not `$TMPDIR/all_types.json`
 </PathHandling>
 
 <ParallelExecution>
@@ -671,7 +671,7 @@ This returns your specific assignment with complete type data.
 <ErrorDiagnostics>
 **Detailed Failure Logging**:
 When failures occur, the system automatically:
-1. Saves complete failure details to `.claude/types/all_types_failures_[timestamp].json`
+1. Saves complete failure details to `.claude/transient/all_types_failures_[timestamp].json`
 2. Preserves the exact request/response that caused each failure
 3. Records which operations succeeded before failure
 

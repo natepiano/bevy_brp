@@ -13,7 +13,7 @@ if [ $# -ne 1 ]; then
 fi
 
 BATCH_SIZE="$1"
-JSON_FILE=".claude/types/all_types.json"
+JSON_FILE=".claude/transient/all_types.json"
 
 # Check if the JSON file exists
 if [ ! -f "$JSON_FILE" ]; then

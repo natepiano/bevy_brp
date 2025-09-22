@@ -13,7 +13,7 @@ fi
 <ExecutionSteps/>
 
 <CreateContext>
-[TARGET_FILE]: `.claude/types/all_types.json`
+[TARGET_FILE]: `.claude/transient/all_types.json`
 [PURPOSE]: Creates the mutation test tracking file by discovering all registered component types via BRP and systematically determining spawn support and mutation paths for ALL types.
 [APP_PORT]: 22222
 [APP_NAME]: extras_plugin
@@ -46,7 +46,7 @@ fi
     **comparison_review**:
     1. Generate detailed comparison data:
        ```bash
-       .claude/scripts/create_mutation_test_json_structured_comparison.sh --detailed .claude/types/all_types_baseline.json .claude/types/all_types.json
+       .claude/scripts/create_mutation_test_json_structured_comparison.sh --detailed .claude/transient/all_types_baseline.json .claude/transient/all_types.json
        ```
     2. **CRITICAL - READ THE DETAILED OUTPUT FIRST**:
        ```bash
@@ -72,8 +72,8 @@ fi
             # Use the EXACT type and mutation_path from the details file example
             # WRONG: Choosing a similar but different type or path
             # RIGHT: Using the exact values from {"type": "X", "mutation_path": "Y"}
-            .claude/scripts/get_mutation_path.sh "[EXACT_TYPE_FROM_DETAILS]" "[EXACT_PATH_FROM_DETAILS]" .claude/types/all_types_baseline.json
-            .claude/scripts/get_mutation_path.sh "[EXACT_TYPE_FROM_DETAILS]" "[EXACT_PATH_FROM_DETAILS]" .claude/types/all_types.json
+            .claude/scripts/get_mutation_path.sh "[EXACT_TYPE_FROM_DETAILS]" "[EXACT_PATH_FROM_DETAILS]" .claude/transient/all_types_baseline.json
+            .claude/scripts/get_mutation_path.sh "[EXACT_TYPE_FROM_DETAILS]" "[EXACT_PATH_FROM_DETAILS]" .claude/transient/all_types.json
             ```
           - **CRITICAL**: Present using <FormatComparison/> showing the COMPLETE JSON returned by get_mutation_path.sh, not excerpts or selective fields
 
@@ -94,7 +94,7 @@ fi
     **add_expected**: Add pattern to expected changes JSON:
     1. Extract pattern type, field name, occurrences, and types affected from current pattern
     2. Ask user for human-readable name/description for this expected change
-    3. Generate next available ID and add entry to `.claude/types/create_mutation_test_json_expected_changes.json`
+    3. Generate next available ID and add entry to `.claude/transient/create_mutation_test_json_expected_changes.json`
     4. Continue to next pattern in review
     **check_type**: Ask user "Which type would you like me to check?", then execute:
     ```bash
@@ -226,12 +226,12 @@ fi
     - DO NOT use `cp` to create `all_types_previous.json` or any other files
     - ONLY read existing files for comparison
     - The comparison is ALWAYS between:
-      - BASELINE: `.claude/types/all_types_baseline.json` (the known good baseline)
-      - CURRENT: `.claude/types/all_types.json` (the newly created file from Step 3)
+      - BASELINE: `.claude/transient/all_types_baseline.json` (the known good baseline)
+      - CURRENT: `.claude/transient/all_types.json` (the newly created file from Step 3)
 
     **Run structured comparison directly**:
     ```bash
-    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/types/all_types_baseline.json .claude/types/all_types.json
+    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/transient/all_types_baseline.json .claude/transient/all_types.json
     ```
 
     This comprehensive comparison provides:
@@ -258,7 +258,7 @@ fi
 
     The comparison script now handles categorization internally:
     ```bash
-    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/types/all_types_baseline.json .claude/types/all_types.json
+    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/transient/all_types_baseline.json .claude/transient/all_types.json
     ```
 
     This will automatically:
