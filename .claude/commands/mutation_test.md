@@ -248,6 +248,10 @@ If you find yourself thinking any of these phrases, STOP:
     Assignment script says: "bevy_core_pipeline::tonemapping::ColorGrading"
     ✅ CORRECT: Use exactly "bevy_core_pipeline::tonemapping::ColorGrading"
     ❌ WRONG: Change to "bevy_render::view::ColorGrading" because you "know better"
+
+    Assignment script says: "bevy_ecs::hierarchy::Children"
+    ✅ CORRECT: Use exactly "bevy_ecs::hierarchy::Children"
+    ❌ WRONG: Change to "bevy_hierarchy::components::children::Children" because you think that's the "correct" module path
     ```
 
     **ENFORCEMENT**: If you detect yourself trying to modify type names, STOP and report the validation failure.
