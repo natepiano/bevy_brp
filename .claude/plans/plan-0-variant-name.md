@@ -86,16 +86,46 @@ pub struct PathKindWithVariants {
 }
 ```
 
-### Step 4: Update Usage Sites
+### Step 4: Update Trait Signatures and Usage Sites
 
-Update all places that create or consume variant names:
+Update the MaybeVariants trait and all places that create or consume variant names:
 
 ```rust
-// In collect_children():
+// First, update the MaybeVariants trait in path_builder.rs:
+pub trait MaybeVariants {
+    /// Returns applicable variants if this is from an enum builder
+    fn applicable_variants(&self) -> Option<&[VariantName]> {
+        None
+    }
+
+    /// Extract the `PathKind` if there is one (`None` for unit variants)
+    fn into_path_kind(self) -> Option<PathKind>;
+}
+
+// Update the variant_name factory function to return VariantName directly:
+// In mcp/src/brp_tools/brp_type_guide/brp_type_name.rs:
+pub fn variant_name(&self, variant: &str) -> VariantName {
+    VariantName::from(format!("{}::{}", self.short_enum_type_name(), variant))
+}
+
+// Then in collect_children(), the usage becomes simpler:
 let applicable_variants: Vec<VariantName> = variants_in_group
     .iter()
-    .map(|v| VariantName::from(ctx.type_name().variant_name(v.name())))
+    .map(|v| ctx.type_name().variant_name(v.name()))
     .collect();
+
+// The PathKindWithVariants implementation in enum_builder.rs remains simple:
+impl MaybeVariants for PathKindWithVariants {
+    fn applicable_variants(&self) -> Option<&[VariantName]> {
+        Some(&self.applicable_variants)
+    }
+    // ... rest of implementation
+}
+
+// Update builder.rs line 207 to handle the new type:
+let variant_info = item.applicable_variants().map(|variants|
+    variants.iter().map(|v| v.as_ref().to_string()).collect::<Vec<_>>()
+);
 
 // In any place that needs the raw string:
 let variant_string: &str = variant_name.as_ref();
@@ -117,6 +147,22 @@ pub struct ExampleGroup {
     pub example: Value,
     /// The variant signature as a string
     pub signature: String,
+}
+
+// VariantPath structure:
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VariantPath {
+    /// The mutation path where this variant is required (e.g., `""`, `".nested_config"`)
+    pub full_mutation_path: FullMutationPath,
+    /// The variant name including enum type (e.g., `"TestEnumWithSerDe::Nested"`)
+    #[serde(skip)]
+    pub variant: VariantName,  // Changed from String
+    /// Clear instruction for this step (e.g., `"Set root to TestEnumWithSerDe::Nested"`)
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    pub instructions: String,
+    /// The exact mutation value needed for this step
+    #[serde(skip_serializing_if = "Value::is_null", default)]
+    pub variant_example: Value,
 }
 
 // VariantExampleData (if it exists):
