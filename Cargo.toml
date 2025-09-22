@@ -3,6 +3,9 @@ exclude  = ["test-duplicate-a", "test-duplicate-b"]
 members  = ["extras", "mcp", "mcp_macros", "test-app"]
 resolver = "2"
 
+[workspace.package]
+repository = "https://github.com/natepiano/bevy_brp"
+
 [workspace.dependencies]
 # Bevy with no default features - each crate specifies what it needs
 bevy       = { version = "0.16.1", default-features = false }

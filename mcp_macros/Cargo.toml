@@ -7,7 +7,7 @@ keywords    = ["bevy", "brp", "macros", "mcp"]
 license     = "MIT OR Apache-2.0"
 name        = "bevy_brp_mcp_macros"
 readme      = "README.md"
-repository  = "https://github.com/natepiano/bevy_brp/mcp_macros"
+repository.workspace = true
 version     = "0.3.0"
 
 [lib]
