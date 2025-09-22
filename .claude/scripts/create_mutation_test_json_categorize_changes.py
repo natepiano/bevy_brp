@@ -192,7 +192,13 @@ def main():
 
     # Read expected changes
     with open(args.expected_changes, 'r') as f:
-        expected_changes = json.load(f)
+        expected_data = json.load(f)
+        # Filter out the example entry (id: 0) which is just documentation
+        filtered_changes = [
+            change for change in expected_data.get('expected_changes', [])
+            if change.get('id', -1) != 0
+        ]
+        expected_changes = {'expected_changes': filtered_changes}
 
     # Parse patterns from comparison output
     patterns = parse_comparison_output(comparison_text)
