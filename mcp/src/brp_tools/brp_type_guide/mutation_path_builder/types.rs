@@ -200,7 +200,7 @@ impl MutationPath {
                 // PartiallyMutable and NotMutable: no example at all (not even null)
                 (vec![], None)
             }
-            _ => {
+            MutationStatus::Mutable => {
                 path.enum_root_examples.as_ref().map_or_else(
                     || {
                         // Mutable paths: use the example value

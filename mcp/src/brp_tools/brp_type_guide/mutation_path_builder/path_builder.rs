@@ -10,8 +10,8 @@ use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
 /// Trait for items that might carry variant information
-/// The enum_builder can return PathKind::IndexedElement or PathKind::StructField and
-/// each need to their associated applicable_variants so this makes it possible
+/// The `enum_builder` can return `PathKind::IndexedElement` or `PathKind::StructField` and
+/// each need to their associated `applicable_variants` so this makes it possible
 pub trait MaybeVariants {
     /// Returns applicable variants if this is from an enum builder
     fn applicable_variants(&self) -> Option<&[String]> {
