@@ -346,9 +346,9 @@ If you find yourself thinking any of these phrases, STOP:
     ```
     ## MUTATION TEST EXECUTION COMPLETE
 
-    **Status**: STOPPED DUE TO FAILURES
-    **Progress**: Batch [N] of [TOTAL] processed
-    **Results**: [PASS_COUNT] PASSED, [FAIL_COUNT] FAILED, [MISSING_COUNT] MISSING COMPONENTS
+    - **Status**: STOPPED DUE TO FAILURES
+    - **Progress**: Batch [N] of [TOTAL] processed
+    - **Results**: [PASS_COUNT] PASSED, [FAIL_COUNT] FAILED, [MISSING_COUNT] MISSING COMPONENTS
 
     **Detailed failure log saved to**: [PATH]
     ```
