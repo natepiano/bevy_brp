@@ -39,18 +39,27 @@ fi
     **skip**: Keep existing baseline, document decision, continue
     **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus
     **comparison_review**:
-    1. Create todos for each unexpected change pattern identified
-    2. For each pattern, select one representative type/mutation path
-    3. Extract the actual JSON from baseline vs current using the comparison script:
+    1. Generate detailed comparison data:
        ```bash
-       # Get from baseline
-       .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types_baseline.json
-       # Get from current
-       .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types.json
+       .claude/scripts/create_mutation_test_json_structured_comparison.sh --detailed .claude/types/all_types_baseline.json .claude/types/all_types.json
        ```
-    4. Format the comparison using <FormatComparison/> and present to user with pattern context
-    5. Wait for user response before proceeding to next pattern
-    6. Stop when user says to stop or all patterns reviewed
+    2. Read the detailed output:
+       ```bash
+       Read tool: $TMPDIR/mutation_comparison_details.json
+       ```
+    3. Create todos for each unexpected change pattern identified
+    4. For each pattern with examples in the details file:
+       - Select representative type/mutation path from the examples
+       - Extract the actual JSON using:
+         ```bash
+         # Get from baseline
+         .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types_baseline.json
+         # Get from current
+         .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types.json
+         ```
+    5. Format the comparison using <FormatComparison/> and present to user with pattern context
+    6. Wait for user response before proceeding to next pattern
+    7. Stop when user says to stop or all patterns reviewed
     **check_type**: Ask user "Which type would you like me to check?", then execute:
     ```bash
     python3 .claude/scripts/compare_mutations_check_type.py "[TYPE_NAME]"

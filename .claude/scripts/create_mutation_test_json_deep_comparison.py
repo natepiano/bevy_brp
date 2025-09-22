@@ -561,8 +561,105 @@ def main(baseline_file: str, current_file: str):
     return 0
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <baseline_file> <current_file>")
+    if len(sys.argv) not in [3, 4]:
+        print(f"Usage: {sys.argv[0]} <baseline_file> <current_file> [--detailed]")
         sys.exit(1)
-    
-    sys.exit(main(sys.argv[1], sys.argv[2]))
+
+    baseline_file = sys.argv[1]
+    current_file = sys.argv[2]
+
+    # Check for --detailed flag
+    if len(sys.argv) == 4 and sys.argv[3] == "--detailed":
+        # Generate detailed JSON output
+        import os
+        from collections import defaultdict
+
+        detailed_output_file = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'mutation_comparison_details.json')
+
+        # Load files
+        with open(baseline_file) as f:
+            baseline = json.load(f)
+        with open(current_file) as f:
+            current = json.load(f)
+
+        # Extract type guides
+        baseline_tg = extract_type_guide(baseline)
+        current_tg = extract_type_guide(current)
+
+        # Create lookups
+        baseline_dict = {t.get('type_name', f'type_{i}'): t for i, t in enumerate(baseline_tg)}
+        current_dict = {t.get('type_name', f'type_{i}'): t for i, t in enumerate(current_tg)}
+
+        # Find changes focusing on the unexpected patterns
+        all_type_names = set(baseline_dict.keys()) | set(current_dict.keys())
+        detailed_changes = []
+
+        for type_name in all_type_names:
+            b_type = baseline_dict.get(type_name, {})
+            c_type = current_dict.get(type_name, {})
+
+            # Check mutation_paths for removed/added example fields
+            b_mutations = b_type.get('mutation_paths', {})
+            c_mutations = c_type.get('mutation_paths', {})
+
+            for path, b_data in b_mutations.items():
+                c_data = c_mutations.get(path, {})
+                if 'examples' in b_data and 'examples' not in c_data:
+                    detailed_changes.append({
+                        'pattern': 'FIELD_REMOVED examples',
+                        'type': type_name,
+                        'mutation_path': path
+                    })
+                if 'example' in b_data and 'example' not in c_data:
+                    detailed_changes.append({
+                        'pattern': 'FIELD_REMOVED example',
+                        'type': type_name,
+                        'mutation_path': path
+                    })
+
+            for path, c_data in c_mutations.items():
+                b_data = b_mutations.get(path, {})
+                if 'example' in c_data and 'example' not in b_data:
+                    detailed_changes.append({
+                        'pattern': 'FIELD_ADDED example',
+                        'type': type_name,
+                        'mutation_path': path
+                    })
+                if 'examples' in c_data and 'examples' not in b_data:
+                    detailed_changes.append({
+                        'pattern': 'FIELD_ADDED examples',
+                        'type': type_name,
+                        'mutation_path': path
+                    })
+
+            # Check spawn_format changes
+            if 'spawn_format' not in b_type and 'spawn_format' in c_type:
+                detailed_changes.append({
+                    'pattern': 'FIELD_ADDED spawn_format',
+                    'type': type_name,
+                    'mutation_path': ''
+                })
+
+        # Group by pattern
+        patterns = defaultdict(list)
+        for change in detailed_changes:
+            patterns[change['pattern']].append(change)
+
+        # Create output
+        output = {'unexpected_changes': {}}
+        for pattern, changes in patterns.items():
+            output['unexpected_changes'][pattern] = {
+                'count': len(changes),
+                'types_affected': len(set(c['type'] for c in changes)),
+                'examples': changes[:10]  # First 10 examples
+            }
+
+        # Write output
+        with open(detailed_output_file, 'w') as f:
+            json.dump(output, f, indent=2)
+
+        print(f"✅ Generated detailed comparison data to {detailed_output_file}")
+        sys.exit(0)
+    else:
+        # Run normal comparison
+        sys.exit(main(baseline_file, current_file))
