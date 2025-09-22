@@ -313,6 +313,15 @@ The workspace uses `release.toml` with:
 - Manual push/publish for safety
 - Test apps excluded via `[package.metadata.release] release = false`
 
+## Design Review Skip Notes
+
+### DESIGN-4: Limited Error Recovery Mechanisms - **Verdict**: CONFIRMED
+- **Status**: SKIPPED
+- **Location**: Section: Rollback Instructions
+- **Issue**: Rollback instructions only cover post-push scenarios. No recovery mechanisms for failures during the multi-phase release process.
+- **Reasoning**: While the finding correctly identifies gaps in error recovery procedures for each phase of the release process, the current documentation is sufficient.
+- **Decision**: User elected to skip this recommendation - will figure out recovery if failures happen as this isn't that complex of a process
+
 ## Common Issues
 
 1. **"Version already exists"**: The version is already published on crates.io
