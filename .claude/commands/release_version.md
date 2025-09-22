@@ -3,7 +3,8 @@
 Perform a coordinated release for bevy_brp workspace crates using cargo-release. This command handles the 3-crate dependency chain and ensures safe publishing to crates.io.
 
 ## Usage
-`/release X.Y.Z` - Release all 3 crates as version X.Y.Z
+- `/release X.Y.Z-rc.N` - Release all 3 crates as RC version (e.g., `0.3.0-rc.1`)
+- `/release X.Y.Z` - Release all 3 crates as final version (e.g., `0.3.0`)
 
 ## Crate Dependency Chain
 1. `mcp_macros` (no dependencies) - must be released first
@@ -17,6 +18,28 @@ Before starting the release, verify:
 2. Working directory is clean (no uncommitted changes)
 3. You're up to date with remote
 4. cargo-release is installed (`cargo install cargo-release`)
+
+## Step 0: One-Time Repository Setup (if not already done)
+
+**Update repository URLs to use workspace inheritance:**
+
+```bash
+# Add workspace.package section to root Cargo.toml
+```
+→ **Manual edit**: Add this to `/Users/natemccoy/rust/bevy_brp/Cargo.toml`:
+```toml
+[workspace.package]
+repository = "https://github.com/natepiano/bevy_brp"
+```
+
+```bash
+# Update each crate to use workspace inheritance
+```
+→ **Manual edit**: In each crate's Cargo.toml (mcp_macros, mcp, extras), replace repository field with:
+```toml
+[package]
+repository.workspace = true
+```
 
 ## Step 1: Pre-Release Validation
 
@@ -184,7 +207,37 @@ cd ../mcp && cargo publish
 cd ..
 ```
 
-## Step 5: Create GitHub Release
+## Step 5: Update Documentation (First Release Only)
+
+**For first release, add migration guide to README.md:**
+
+→ **Manual edit**: Add this section to main README.md:
+```markdown
+## Migrating from Split Crates
+
+If you were using the previous split crates, update your `Cargo.toml`:
+
+```toml
+# Old (remove these)
+bevy_mcp = "0.2.0"
+bevy_mcp_macros = "0.2.0"
+bevy_mcp_extras = "0.2.0"
+
+# New (use these)
+bevy_brp_mcp = "0.3.0"
+bevy_brp_mcp_macros = "0.3.0"
+bevy_brp_extras = "0.3.0"
+```
+
+No code changes required - just dependency updates.
+```
+
+```bash
+git add README.md && git commit -m "docs: add migration guide for split crate users"
+```
+→ **Auto-check**: Continue if commit succeeds
+
+## Step 6: Create GitHub Release
 
 → **I will gather CHANGELOG entries from all three crates and create a combined release using GitHub CLI**
 
@@ -196,7 +249,7 @@ gh release create v<version> \
 ```
 → **Auto-check**: Continue if release created successfully, stop if fails
 
-## Step 6: Post-Release Verification
+## Step 7: Post-Release Verification
 
 ```bash
 for crate in bevy_brp_mcp_macros bevy_brp_extras bevy_brp_mcp; do
@@ -211,7 +264,10 @@ cargo install bevy_brp_mcp --version <version>
 ```
 ✅ **Verify**: Installation succeeds, pulling all dependencies from crates.io
 
-## Step 7: Prepare for Next Release
+**Run agentic tests to verify functionality:**
+→ **Manual**: Run your agentic test suite to verify RC/release functionality
+
+## Step 8: Prepare for Next Release
 
 → **I will add [Unreleased] sections to all three CHANGELOG.md files**
 
