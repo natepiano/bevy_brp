@@ -196,14 +196,14 @@ impl MutationPath {
         };
 
         let (examples, example) = match path.mutation_status {
-            MutationStatus::PartiallyMutable => {
-                // PartiallyMutable: no example at all (not even null)
+            MutationStatus::PartiallyMutable | MutationStatus::NotMutable => {
+                // PartiallyMutable and NotMutable: no example at all (not even null)
                 (vec![], None)
             }
             _ => {
                 path.enum_root_examples.as_ref().map_or_else(
                     || {
-                        // Everything else: use the example value
+                        // Mutable paths: use the example value
                         // This includes enum children (with embedded `applicable_variants`) and
                         // regular values
                         (vec![], Some(path.example.clone()))
