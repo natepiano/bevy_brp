@@ -373,10 +373,18 @@ impl ResponseBuilder {
         }
 
         // Check parameters added to the builder
-        if let Some(Value::Object(params_obj)) = builder.parameters_ref()
-            && let Some(value) = params_obj.get(placeholder)
-        {
-            return Some(Self::value_to_string(value));
+        if let Some(Value::Object(params_obj)) = builder.parameters_ref() {
+            // Special handling for entity_count from entities array
+            if placeholder == "entity_count"
+                && let Some(Value::Array(entities)) = params_obj.get("entities")
+            {
+                return Some(entities.len().to_string());
+            }
+
+            // Regular parameter lookup
+            if let Some(value) = params_obj.get(placeholder) {
+                return Some(Self::value_to_string(value));
+            }
         }
 
         // Finally check request parameters
