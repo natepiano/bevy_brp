@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::super::brp_type_name::BrpTypeName;
 use super::path_builder::MaybeVariants;
 use super::type_kind::TypeKind;
+use super::types::PathSignature;
 
 /// A semantic identifier for mutation paths in the builder system
 ///
@@ -155,6 +156,25 @@ impl PathKind {
             Self::StructField { .. } => "StructField",
             Self::IndexedElement { .. } => "IndexedElement",
             Self::ArrayElement { .. } => "ArrayElement",
+        }
+    }
+
+    /// Convert this `PathKind` to a `PathSignature` for grouping purposes
+    #[allow(dead_code)] // Will be used in Plan 1 implementation
+    pub fn to_signature(&self) -> PathSignature {
+        match self {
+            Self::RootValue { type_name, .. } => PathSignature::Root {
+                type_name: type_name.clone(),
+            },
+            Self::StructField { type_name, .. } => PathSignature::Field {
+                type_name: type_name.clone(),
+            },
+            Self::IndexedElement { type_name, .. } => PathSignature::Index {
+                type_name: type_name.clone(),
+            },
+            Self::ArrayElement { type_name, .. } => PathSignature::Array {
+                type_name: type_name.clone(),
+            },
         }
     }
 }

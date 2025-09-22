@@ -23,11 +23,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -218,9 +218,9 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         // Extend the inherited variant chain with this enum's variant
                         child_ctx.variant_chain.push(VariantPath {
                             full_mutation_path: ctx.full_mutation_path.clone(),
-                            variant: representative_variant.clone(),
-                            instructions: String::new(), // Will be filled during ascent
-                            variant_example: json!(null), // Will be filled during ascent
+                            variant:            representative_variant.clone(),
+                            instructions:       String::new(), // Will be filled during ascent
+                            variant_example:    json!(null),   // Will be filled during ascent
                         });
                     }
 
