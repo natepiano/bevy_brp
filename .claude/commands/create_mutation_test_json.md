@@ -123,9 +123,15 @@ fi
     6. After all patterns reviewed OR user stops:
        - Return to main decision prompt from Step 6C
     **add_expected**: Add pattern to expected changes JSON:
-    1. Extract pattern type, field name, occurrences, and types affected from current pattern
+    1. Extract from current pattern: pattern_type (e.g., "FIELD_REMOVED"), field name, occurrences count, types affected count, and affected type names
     2. Ask user for human-readable name/description for this expected change
-    3. Generate next available ID and add entry to `.claude/transient/create_mutation_test_json_expected_changes.json`
+    3. Generate next available ID and add entry to `.claude/transient/create_mutation_test_json_expected_changes.json` with:
+       - `pattern_type`: Pattern type from comparison (e.g., "FIELD_REMOVED", "FIELD_ADDED")
+       - `field`: Field name from pattern (e.g., "example", "examples")
+       - `min_occurrences`: Occurrences count from current pattern
+       - `min_types_affected`: Types affected count from current pattern
+       - `exact_types_affected`: Array of actual type names from current pattern
+       - `description_contains`: null (unless specific path substring matching needed)
     4. Continue to next pattern in review
     **check_type**: Ask user "Which type would you like me to check?", then execute:
     ```bash

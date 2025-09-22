@@ -137,13 +137,10 @@ def match_expected_changes(patterns, expected_changes):
                 matched = True
 
         elif pattern_type == 'TYPE_ADDED':
-            type_prefix = pattern_match.get('type_prefix', '')
-            test_types = pattern_match.get('test_types', [])
+            exact_types_affected = pattern_match.get('exact_types_affected', [])
 
             for new_type in patterns['new_types']:
-                if new_type.startswith(type_prefix):
-                    type_name = new_type.split('::')[-1]
-                    if not test_types or type_name in test_types:
+                if not exact_types_affected or new_type in exact_types_affected:
                         matched_expected.append({
                             'change_id': expected['id'],
                             'name': expected['name'],

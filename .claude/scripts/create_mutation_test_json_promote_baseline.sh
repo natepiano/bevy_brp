@@ -44,9 +44,6 @@ cat > .claude/transient/create_mutation_test_json_expected_changes.json << 'EOF'
         "min_occurrences": 1,
         "min_types_affected": 1,
         "exact_types_affected": null,
-        "type_prefix": null,
-        "test_types": null,
-        "contains": null,
         "description_contains": null
       },
       "description": "This entry (id: 0) is ignored by comparison scripts and serves as documentation for the expected_changes structure. When actual changes are detected after promotion, add them with id >= 1"
