@@ -43,7 +43,14 @@ repository = "https://github.com/natepiano/bevy_brp"
 repository.workspace = true
 ```
 
-## Step 1: Pre-Release Validation
+## Step 1: Version Confirmation and Pre-Release Validation
+
+**Confirm version format with user:**
+```
+Version to release: <version>
+Format should be X.Y.Z (e.g., 0.3.0) or X.Y.Z-rc.N (e.g., 0.3.0-rc.1)
+```
+→ **Manual confirmation**: Verify the version looks correct before proceeding
 
 ```bash
 git status
