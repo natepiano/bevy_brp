@@ -20,13 +20,18 @@ fi
 </CreateContext>
 
 <CreateKeywords>
-    **For validation decisions:**
-    - **promote**: Mark this version as the new good baseline
-    - **skip**: Keep existing baseline, don't promote this version
-    - **investigate**: Launch deeper investigation of the differences
-    - **comparison_review** - Show actual JSON examples for each unexpected change pattern, one type at a time, for user examination and testing decisions
-    - **check_type**: Check mutation paths for a specific type across all versions
-    - **summarize**: Summarize test results from a JSON file
+**For validation decisions:**
+- **promote**: Mark this version as the new good baseline
+- **skip**: Keep existing baseline, don't promote this version
+- **investigate**: Launch deeper investigation of the differences
+- **comparison_review** - Show actual JSON examples for each unexpected change pattern, one type at a time, for user examination and testing decisions
+- **check_type**: Check mutation paths for a specific type across all versions
+- **summarize**: Summarize test results from a JSON file
+
+**For comparison_review decisions:**
+- **continue**: Move to next pattern without any changes
+- **add_expected**: Add this pattern to expected changes JSON, then continue to next pattern
+- **stop**: End the review now
 </CreateKeywords>
 
 <KeywordExecution>
@@ -73,13 +78,24 @@ fi
           - **CRITICAL**: Present using <FormatComparison/> showing the COMPLETE JSON returned by get_mutation_path.sh, not excerpts or selective fields
 
        c. **CRITICAL - STOP AND WAIT**: After presenting each pattern example:
-          - Ask: "Continue with next pattern? (yes/no/stop)"
-          - **DO NOT PROCEED** until user responds
-          - If "yes" or user just types "next": Continue to next pattern
-          - If "no" or "stop": End review and return to main decision prompt
+          - Present the following options:
+
+- **continue** - Move to next pattern without any changes
+- **add_expected** - Add this pattern to expected changes JSON, then continue to next pattern
+- **stop** - End the review now
+
+          - **DO NOT PROCEED** until user responds with one of the keywords
+          - If "continue": Continue to next pattern
+          - If "add_expected": Add pattern to expected changes JSON, then continue to next pattern
+          - If "stop": End review and return to main decision prompt
 
     5. After all patterns reviewed OR user stops:
        - Return to main decision prompt from Step 6C
+    **add_expected**: Add pattern to expected changes JSON:
+    1. Extract pattern type, field name, occurrences, and types affected from current pattern
+    2. Ask user for human-readable name/description for this expected change
+    3. Generate next available ID and add entry to `.claude/types/create_mutation_test_json_expected_changes.json`
+    4. Continue to next pattern in review
     **check_type**: Ask user "Which type would you like me to check?", then execute:
     ```bash
     python3 .claude/scripts/compare_mutations_check_type.py "[TYPE_NAME]"
