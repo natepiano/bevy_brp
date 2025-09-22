@@ -5,21 +5,21 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::super::brp_type_name::BrpTypeName;
-use super::types::{MutationStatus, PathSummary};
+use super::types::{FullMutationPath, MutationStatus, PathSummary};
 
 /// Path detail for mutable paths
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PathDetail {
-    pub path:      String,
+    pub full_mutation_path: FullMutationPath,
     pub type_name: BrpTypeName,
 }
 
 /// Path detail with reason for not/partially mutable paths
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PathDetailWithReason {
-    pub path:      String,
+    pub full_mutation_path: FullMutationPath,
     pub type_name: BrpTypeName,
-    pub reason:    String,
+    pub reason: String,
 }
 
 /// Represents detailed mutation support status for a type
@@ -30,7 +30,7 @@ pub enum NotMutableReason {
     /// Container type has non-mutable element type
     NonMutableHandle {
         container_type: BrpTypeName,
-        element_type:   BrpTypeName,
+        element_type: BrpTypeName,
     },
     /// Type not found in registry
     NotInRegistry(BrpTypeName),
@@ -44,9 +44,9 @@ pub enum NotMutableReason {
     NoExampleAvailable(BrpTypeName),
     /// Some children are mutable, others are not (results in `PartiallyMutable`)
     PartialChildMutability {
-        parent_type:             BrpTypeName,
-        mutable_paths:           Vec<PathDetail>,
-        not_mutable_paths:       Vec<PathDetailWithReason>,
+        parent_type: BrpTypeName,
+        mutable_paths: Vec<PathDetail>,
+        not_mutable_paths: Vec<PathDetailWithReason>,
         partially_mutable_paths: Vec<PathDetailWithReason>,
     },
 }
@@ -76,7 +76,7 @@ impl NotMutableReason {
             match summary.status {
                 MutationStatus::Mutable => {
                     mutable_paths.push(PathDetail {
-                        path:      summary.path,
+                        full_mutation_path: summary.full_mutation_path.clone(),
                         type_name: summary.type_name,
                     });
                 }
@@ -88,7 +88,7 @@ impl NotMutableReason {
                         .unwrap_or_else(|| "unknown".to_string());
 
                     not_mutable_paths.push(PathDetailWithReason {
-                        path: summary.path,
+                        full_mutation_path: summary.full_mutation_path.clone(),
                         type_name: summary.type_name,
                         reason,
                     });
@@ -101,7 +101,7 @@ impl NotMutableReason {
                         .unwrap_or_else(|| "partial".to_string());
 
                     partially_mutable_paths.push(PathDetailWithReason {
-                        path: summary.path,
+                        full_mutation_path: summary.full_mutation_path.clone(),
                         type_name: summary.type_name,
                         reason,
                     });

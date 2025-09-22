@@ -224,7 +224,7 @@ impl TypeGuide {
 
         for path in paths {
             // Debug logging for enum root examples
-            if path.path.is_empty() && path.enum_root_examples.is_some() {
+            if path.full_mutation_path.is_empty() && path.enum_root_examples.is_some() {
                 tracing::debug!(
                     "Converting root path for {} with {} enum examples",
                     path.type_name,
@@ -236,7 +236,7 @@ impl TypeGuide {
             let path_info = MutationPath::from_mutation_path_internal(path, registry);
 
             // Debug log the result
-            if path.path.is_empty() && !path_info.examples.is_empty() {
+            if path.full_mutation_path.is_empty() && !path_info.examples.is_empty() {
                 tracing::debug!(
                     "After conversion: root path has {} examples in MutationPath",
                     path_info.examples.len()
@@ -245,7 +245,7 @@ impl TypeGuide {
 
             // Keep empty path as empty for root mutations
             // BRP expects empty string for root replacements, not "."
-            let key = path.path.clone();
+            let key = (*path.full_mutation_path).clone();
 
             result.insert(key, path_info);
         }

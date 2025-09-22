@@ -23,11 +23,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -115,7 +115,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
         let mut paths_to_expose_mut = paths_to_expose;
         Self::update_child_variant_paths(
             &mut paths_to_expose_mut,
-            &ctx.mutation_path,
+            &ctx.full_mutation_path,
             &example_to_use,
             enum_root_examples.as_ref(),
         );
@@ -217,10 +217,10 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                     if let Some(representative_variant) = variants.first() {
                         // Extend the inherited variant chain with this enum's variant
                         child_ctx.variant_chain.push(VariantPath {
-                            path:            ctx.mutation_path.clone(),
-                            variant:         representative_variant.clone(),
-                            instructions:    String::new(), // Will be filled during ascent
-                            variant_example: json!(null),   // Will be filled during ascent
+                            full_mutation_path: ctx.full_mutation_path.clone(),
+                            variant: representative_variant.clone(),
+                            instructions: String::new(), // Will be filled during ascent
+                            variant_example: json!(null), // Will be filled during ascent
                         });
                     }
 
@@ -411,20 +411,20 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             let description = if ctx.variant_chain.len() > 1 {
                 format!(
                     "`{}` mutation path requires {} variant selections. Follow the instructions in variant_path array to set each variant in order.",
-                    ctx.mutation_path,
+                    ctx.full_mutation_path,
                     ctx.variant_chain.len()
                 )
             } else {
                 format!(
                     "'{}' mutation path requires a variant selection as shown in 'enum_variant_path'.",
-                    ctx.mutation_path
+                    ctx.full_mutation_path
                 )
             };
             (Some(description), ctx.variant_chain.clone())
         };
 
         let result = MutationPathInternal {
-            path: ctx.mutation_path.clone(),
+            full_mutation_path: ctx.full_mutation_path.clone(),
             example: example.clone(),
             enum_root_examples: enum_root_examples.clone(),
             enum_root_example_for_parent: enum_root_example_for_parent.clone(),
@@ -439,7 +439,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         tracing::debug!(
             "Created MutationPathInternal for {} at path '{}': example={}, enum_root_examples={}, enum_root_example_for_parent={}",
             ctx.type_name(),
-            ctx.mutation_path,
+            ctx.full_mutation_path,
             example,
             enum_root_examples.is_some(),
             enum_root_example_for_parent.is_some()
@@ -498,7 +498,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         tracing::debug!(
             "Processing assembled example for {} with path '{}' and enum_context: {:?}",
             ctx.type_name(),
-            ctx.mutation_path,
+            ctx.full_mutation_path,
             ctx.enum_context
         );
 
@@ -507,7 +507,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 tracing::debug!(
                     "Type {} at path '{}' has EnumContext::Root, checking for enum_root_data",
                     ctx.type_name(),
-                    ctx.mutation_path
+                    ctx.full_mutation_path
                 );
                 // Check if the assembled_example contains enum_root_data marker
                 assembled_example
@@ -519,7 +519,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                             tracing::debug!(
                                 "EnumRoot for {} at path '{}' has no enum_root_data in assembled_example: {}",
                                 ctx.type_name(),
-                                ctx.mutation_path,
+                                ctx.full_mutation_path,
                                 assembled_example
                             );
                             (assembled_example, None, None)
@@ -540,7 +540,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                             tracing::debug!(
                                 "EnumRoot extraction for {} at path '{}': found {} examples, default_example: {}",
                                 ctx.type_name(),
-                                ctx.mutation_path,
+                                ctx.full_mutation_path,
                                 examples.len(),
                                 default_example
                             );
@@ -574,14 +574,14 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             if !child.enum_variant_path.is_empty() {
                 // Find matching entry in child's variant_path that corresponds to our level
                 for entry in &mut child.enum_variant_path {
-                    if entry.path == current_path {
+                    if *entry.full_mutation_path == current_path {
                         // This entry represents our current level - update it
                         entry.instructions = format!(
                             "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",
-                            if entry.path.is_empty() {
+                            if entry.full_mutation_path.is_empty() {
                                 "root"
                             } else {
-                                &entry.path
+                                &entry.full_mutation_path
                             },
                             &entry.variant
                         );
