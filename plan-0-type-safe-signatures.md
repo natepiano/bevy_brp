@@ -67,12 +67,12 @@ Plan 1's new `deduplicate_mutation_paths` function will use the type-safe signat
 /// Groups mutation paths by signature, keeping one representative per group
 /// Called during final output processing to deduplicate similar paths
 fn deduplicate_mutation_paths(all_paths: Vec<MutationPathInternal>) -> Vec<MutationPathInternal> {
-    // Group paths by (path_string, signature) - using PathSignature enum
-    let mut groups: HashMap<(String, PathSignature), Vec<MutationPathInternal>> = HashMap::new();
+    // Group paths by (full_mutation_path, signature) - using PathSignature enum
+    let mut groups: HashMap<(FullMutationPath, PathSignature), Vec<MutationPathInternal>> = HashMap::new();
 
     for path in all_paths {
         let signature = path.signature();  // Returns PathSignature enum
-        let key = (path.path.clone(), signature);
+        let key = (path.full_mutation_path.clone(), signature);
         groups.entry(key).or_default().push(path);
     }
 
