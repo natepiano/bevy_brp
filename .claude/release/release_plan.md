@@ -36,19 +36,22 @@ Must release in this specific order due to dependencies:
 
 ### Phase 1: Update Versions
 ```bash
-# Update all crates to RC version
-# In workspace Cargo.toml:
-bevy_brp_mcp_macros = { path = "./mcp_macros", version = "0.3.0-rc.1" }
-
+# Step 1: Update all crate versions to RC
 # In mcp_macros/Cargo.toml:
 version = "0.3.0-rc.1"
 
 # In mcp/Cargo.toml:
 version = "0.3.0-rc.1"
-bevy_brp_mcp_macros = "0.3.0-rc.1"  # After macros is published
 
 # In extras/Cargo.toml:
 version = "0.3.0-rc.1"
+
+# Step 2: After macros is published, update workspace dependency
+# In workspace Cargo.toml, change from path to published version:
+bevy_brp_mcp_macros = "0.3.0-rc.1"
+
+# Step 3: Verify mcp/Cargo.toml uses workspace inheritance:
+bevy_brp_mcp_macros.workspace = true
 ```
 
 ### Phase 2: Update Repository URLs
