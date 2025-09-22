@@ -18,3 +18,11 @@ Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `
 
 ## getting an example to test with
 - you always need to use launch example with examples_plugin if you want to test something
+
+## folders
+.claude/bug_reports/ - for bugs we want to track
+./claude/commands/ - slash commands
+./claude/scripts/ - scripts used by slash commands
+./claude/tests/ - predefined test instructions used by ./claude/commands/integration_tests.md
+./claude/transient/ - transient .gitignore'd test output
+./claude/types/ - transient .gitignore'd test output
