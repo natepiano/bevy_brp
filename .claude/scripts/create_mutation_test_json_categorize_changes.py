@@ -68,86 +68,33 @@ def match_expected_changes(patterns, expected_changes):
 
     for expected in expected_changes['expected_changes']:
         pattern_type = expected['pattern_type']
-        pattern_match = expected['pattern_match']
+        field = expected.get('field')
+        affected_types = expected.get('affected_types', [])
         matched = False
 
-        if pattern_type == 'FIELD_REMOVED':
-            field = pattern_match.get('field')
-            if field in patterns['field_removed']:
-                data = patterns['field_removed'][field]
-                min_occurrences = pattern_match.get('min_occurrences', 0)
-                min_types = pattern_match.get('min_types_affected', 0)
+        if pattern_type == 'FIELD_REMOVED' and field in patterns['field_removed']:
+            data = patterns['field_removed'][field]
+            matched_expected.append({
+                'change_id': expected['id'],
+                'reason': expected['reason'],
+                'occurrences': data['occurrences'],
+                'types_affected': data['types_affected'],
+                'status': 'matched'
+            })
+            matched = True
+            patterns['field_removed'][field]['processed'] = True
 
-                if data['occurrences'] >= min_occurrences and data['types_affected'] >= min_types:
-                    matched_expected.append({
-                        'change_id': expected['id'],
-                        'name': expected['name'],
-                        'occurrences': data['occurrences'],
-                        'types_affected': data['types_affected'],
-                        'status': 'matched'
-                    })
-                    matched = True
-                    # Mark as processed
-                    patterns['field_removed'][field]['processed'] = True
-                else:
-                    # Below threshold - unexpected
-                    unmatched_patterns.append({
-                        'pattern': f"FIELD_REMOVED '{field}'",
-                        'occurrences': data['occurrences'],
-                        'types_affected': data['types_affected'],
-                        'reason': f"Below threshold (expected {min_occurrences}+ occurrences, {min_types}+ types)"
-                    })
-                    patterns['field_removed'][field]['processed'] = True
-
-        elif pattern_type == 'FIELD_ADDED':
-            field = pattern_match.get('field')
-            if field in patterns['field_added']:
-                data = patterns['field_added'][field]
-                min_occurrences = pattern_match.get('min_occurrences', 0)
-                min_types = pattern_match.get('min_types_affected', 0)
-
-                if data['occurrences'] >= min_occurrences and data['types_affected'] >= min_types:
-                    matched_expected.append({
-                        'change_id': expected['id'],
-                        'name': expected['name'],
-                        'occurrences': data['occurrences'],
-                        'types_affected': data['types_affected'],
-                        'status': 'matched'
-                    })
-                    matched = True
-                    patterns['field_added'][field]['processed'] = True
-                else:
-                    unmatched_patterns.append({
-                        'pattern': f"FIELD_ADDED '{field}'",
-                        'occurrences': data['occurrences'],
-                        'types_affected': data['types_affected'],
-                        'reason': f"Below threshold (expected {min_occurrences}+ occurrences, {min_types}+ types)"
-                    })
-                    patterns['field_added'][field]['processed'] = True
-
-        elif pattern_type == 'VALUE_CHANGE':
-            min_occurrences = pattern_match.get('min_occurrences', 0)
-            if patterns['value_changes'] >= min_occurrences:
-                matched_expected.append({
-                    'change_id': expected['id'],
-                    'name': expected['name'],
-                    'occurrences': patterns['value_changes'],
-                    'status': 'matched'
-                })
-                matched = True
-
-        elif pattern_type == 'TYPE_ADDED':
-            exact_types_affected = pattern_match.get('exact_types_affected', [])
-
-            for new_type in patterns['new_types']:
-                if not exact_types_affected or new_type in exact_types_affected:
-                        matched_expected.append({
-                            'change_id': expected['id'],
-                            'name': expected['name'],
-                            'type': new_type,
-                            'status': 'matched'
-                        })
-                        matched = True
+        elif pattern_type == 'FIELD_ADDED' and field in patterns['field_added']:
+            data = patterns['field_added'][field]
+            matched_expected.append({
+                'change_id': expected['id'],
+                'reason': expected['reason'],
+                'occurrences': data['occurrences'],
+                'types_affected': data['types_affected'],
+                'status': 'matched'
+            })
+            matched = True
+            patterns['field_added'][field]['processed'] = True
 
     # Collect any unprocessed patterns as unexpected
     for field, data in patterns['field_removed'].items():
@@ -189,13 +136,7 @@ def main():
 
     # Read expected changes
     with open(args.expected_changes, 'r') as f:
-        expected_data = json.load(f)
-        # Filter out the example entry (id: 0) which is just documentation
-        filtered_changes = [
-            change for change in expected_data.get('expected_changes', [])
-            if change.get('id', -1) != 0
-        ]
-        expected_changes = {'expected_changes': filtered_changes}
+        expected_changes = json.load(f)
 
     # Parse patterns from comparison output
     patterns = parse_comparison_output(comparison_text)
