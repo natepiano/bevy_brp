@@ -22,8 +22,12 @@ Using Release Candidate (RC) process to allow early adopters to test from crates
 - [ ] Update version numbers in all Cargo.toml files
 - [ ] Update inter-crate dependencies to use RC versions
 - [ ] Update repository URLs in all Cargo.toml files (from archived to new repo)
-- [ ] Update CHANGELOG.md for each crate
+- [ ] Update CHANGELOG.md for each crate:
+  1. Move content from "## [Unreleased]" to "## [0.3.0-rc.1] - YYYY-MM-DD"
+  2. Add release date
+  3. Do NOT add new Unreleased section yet (post-release step)
 - [ ] Update README.md files with new installation instructions
+- [ ] Add migration guide section to main README.md with simple dependency update instructions for users of previous split crates
 - [ ] Tag the commit with version (e.g., `v0.3.0-rc.1`)
 
 ### 2. Dependency Order
@@ -128,6 +132,7 @@ Release RC2 if:
 - Create GitHub release with notes
 
 ### Post-Release
+- [ ] Add new empty "## [Unreleased]" section to all three CHANGELOG.md files
 - [ ] Announce on relevant channels (Discord, Reddit, etc.)
 - [ ] Update any documentation sites
 - [ ] Archive old repository with final notice pointing to new repo
@@ -147,6 +152,5 @@ If critical issues found after publish:
 
 1. **Version Strategy**: Should we use 0.3.0-rc.1 or jump straight to 0.3.0 final since this is the first publish?
 2. **Breaking Changes**: Are there any breaking API changes from the split repositories that need documentation?
-3. **Migration Guide**: Should we create a migration guide for users of the old split crates?
-4. **GitHub Release**: Should we create a single release for all three crates or individual releases?
-5. **Announcement Strategy**: Where should we announce the RC availability?
+3. **GitHub Release**: Should we create a single release for all three crates or individual releases?
+4. **Announcement Strategy**: Where should we announce the RC availability?
