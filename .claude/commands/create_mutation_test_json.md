@@ -43,25 +43,32 @@ fi
        ```bash
        .claude/scripts/create_mutation_test_json_structured_comparison.sh --detailed .claude/types/all_types_baseline.json .claude/types/all_types.json
        ```
-    2. Read the detailed output:
+    2. **CRITICAL - READ THE DETAILED OUTPUT FIRST**:
        ```bash
        Read tool: $TMPDIR/mutation_comparison_details.json
        ```
+       **IMPORTANT**: This file contains the EXACT type names and mutation paths you MUST use for comparison.
+       Each pattern's "examples" array contains objects like: {"type": "...", "mutation_path": "..."}
+
     3. Create todos for each unexpected change pattern identified
+
     4. **INTERACTIVE REVIEW**: For each unexpected pattern in the details file:
        a. Present pattern overview:
           - Pattern name and occurrence count
           - Types affected count
           - Brief explanation of what this pattern means
 
-       b. Show FIRST example with FULL JSON (not snippets):
-          - Select first type/mutation path from the examples list
-          - Extract the COMPLETE mutation path data:
+       b. **CRITICAL - USE EXACT TYPE/PATH FROM DETAILS FILE**:
+          - Take the FIRST example from the "examples" array for this pattern
+          - The example specifies: {"type": "...", "mutation_path": "..."}
+          - **YOU MUST USE THESE EXACT VALUES** - do not choose different types or paths
+          - Extract the COMPLETE mutation path data using EXACTLY these values:
             ```bash
-            # Get FULL data from baseline
-            .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types_baseline.json
-            # Get FULL data from current
-            .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types.json
+            # Use the EXACT type and mutation_path from the details file example
+            # WRONG: Choosing a similar but different type or path
+            # RIGHT: Using the exact values from {"type": "X", "mutation_path": "Y"}
+            .claude/scripts/get_mutation_path.sh "[EXACT_TYPE_FROM_DETAILS]" "[EXACT_PATH_FROM_DETAILS]" .claude/types/all_types_baseline.json
+            .claude/scripts/get_mutation_path.sh "[EXACT_TYPE_FROM_DETAILS]" "[EXACT_PATH_FROM_DETAILS]" .claude/types/all_types.json
             ```
           - **CRITICAL**: Present using <FormatComparison/> showing the COMPLETE JSON returned by get_mutation_path.sh, not excerpts or selective fields
 
