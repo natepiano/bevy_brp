@@ -254,16 +254,16 @@ If you find yourself thinking any of these phrases, STOP:
 
     **Example for MAX_SUBAGENTS=3, TYPES_PER_SUBAGENT=1**:
     ```
-    Subagent index 0: port BASE_PORT, batch 5, description "Test Bloom"
-    Subagent index 1: port BASE_PORT+1, batch 5, description "Test Camera3d"
-    Subagent index 2: port BASE_PORT+2, batch 5, description "Test Skybox"
+    Subagent index 0: port BASE_PORT, batch 5, description "Test Bloom (1 of 3)"
+    Subagent index 1: port BASE_PORT+1, batch 5, description "Test Camera3d (2 of 3)"
+    Subagent index 2: port BASE_PORT+2, batch 5, description "Test Skybox (3 of 3)"
     ```
 
     **Example for MAX_SUBAGENTS=3, TYPES_PER_SUBAGENT=2**:
     ```
-    Subagent index 0: port BASE_PORT, batch 5, description "Test Bloom, BloomSettings"
-    Subagent index 1: port BASE_PORT+1, batch 5, description "Test Camera3d, Camera2d"
-    Subagent index 2: port BASE_PORT+2, batch 5, description "Test Skybox, Tonemapping"
+    Subagent index 0: port BASE_PORT, batch 5, description "Test Bloom, BloomSettings (1 of 3)"
+    Subagent index 1: port BASE_PORT+1, batch 5, description "Test Camera3d, Camera2d (2 of 3)"
+    Subagent index 2: port BASE_PORT+2, batch 5, description "Test Skybox, Tonemapping (3 of 3)"
     ```
 
     Send ALL Tasks in ONE message for parallel execution.
