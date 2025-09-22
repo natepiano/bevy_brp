@@ -22,52 +22,71 @@ Currently, we group enum variants by signature early in `enum_builder.rs::collec
    - Create `ExampleGroup` with correct `applicable_variants`
    - Select one representative mutation path per signature
 
+**Migration Strategy: Phased**
+
 ## Implementation Changes
 
 ### Phase 1: Remove Early Grouping in enum_builder.rs
 
-#### Remove `PathKindWithVariants`
-```rust
-// DELETE this entire type
-pub struct PathKindWithVariants {
-    pub path: Option<PathKind>,
-    pub applicable_variants: Vec<String>,
-}
-```
+#### Keep Signature-Based Grouping in collect_children()
 
-#### Update `collect_children()`
+**Current Implementation Problem**: The current `collect_children()` groups variants by signature, which is actually necessary to avoid HashMap key collisions. The real issue is that we need to defer EXAMPLE grouping, not path grouping.
+
+**Key Insight**: Processing variants individually would create HashMap collisions when multiple variants have the same structure (e.g., Variant1(i32) and Variant2(i32) both create index 0). The signature grouping prevents this collision.
+
+**Changes Needed**:
+1. Keep signature-based grouping to prevent collisions
+2. Preserve all variant information for later use
+3. Focus changes on `assemble_from_children()` instead
+
 ```rust
 impl PathBuilder for EnumMutationBuilder {
-    type Item = Option<PathKind>;  // Changed from PathKindWithVariants
+    type Item = PathKindWithVariants;  // Keep this for now to avoid collisions
 
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
         let schema = ctx.require_registry_schema()?;
         let variants = extract_enum_variants(schema, &ctx.registry);
 
+        // KEEP signature grouping to prevent HashMap key collisions
+        let variant_groups = group_variants_by_signature(variants);
         let mut children = Vec::new();
 
-        // Process EACH variant individually (no grouping!)
-        for variant in variants {
-            match variant {
-                EnumVariantInfo::Unit(_) => {
-                    children.push(None);  // Unit variants have no fields
+        // Process by signature to avoid duplicate descriptors
+        for (signature, variants_in_group) in variant_groups {
+            let applicable_variants: Vec<String> = variants_in_group
+                .iter()
+                .map(|v| ctx.type_name().variant_name(v.name()))
+                .collect();
+
+            match signature {
+                VariantSignature::Unit => {
+                    children.push(PathKindWithVariants {
+                        path: None,
+                        applicable_variants,
+                    });
                 }
-                EnumVariantInfo::Tuple(name, types) => {
+                VariantSignature::Tuple(types) => {
                     for (index, type_name) in types.iter().enumerate() {
-                        children.push(Some(PathKind::IndexedElement {
-                            index,
-                            type_name: type_name.clone(),
-                            parent_type: ctx.type_name().clone(),
-                        }));
+                        children.push(PathKindWithVariants {
+                            path: Some(PathKind::IndexedElement {
+                                index,
+                                type_name: type_name.clone(),
+                                parent_type: ctx.type_name().clone(),
+                            }),
+                            applicable_variants: applicable_variants.clone(),
+                        });
                     }
                 }
-                EnumVariantInfo::Struct(name, fields) => {
+                VariantSignature::Struct(fields) => {
                     for field in fields {
-                        children.push(Some(PathKind::StructField {
-                            field_name: field.field_name.clone(),
-                            type_name: field.type_name.clone(),
-                            parent_type: ctx.type_name().clone(),
-                        }));
+                        children.push(PathKindWithVariants {
+                            path: Some(PathKind::StructField {
+                                field_name: field.field_name.clone(),
+                                type_name: field.type_name.clone(),
+                                parent_type: ctx.type_name().clone(),
+                            }),
+                            applicable_variants: applicable_variants.clone(),
+                        });
                     }
                 }
             }
@@ -76,50 +95,58 @@ impl PathBuilder for EnumMutationBuilder {
         Ok(children.into_iter())
     }
 }
+
 ```
 
-### Phase 2: Update Example Assembly
+### Phase 2: Update Example Assembly with Signature-Aware Processing
 
-#### Modify `assemble_from_children()`
+#### Modify `assemble_from_children()` - Signature-Aware Approach
 ```rust
 fn assemble_from_children(
     &self,
     ctx: &RecursionContext,
-    children: HashMap<MutationPathDescriptor, Value>,
+    children: HashMap<MutationPathDescriptor, Value>,  // May have collision issues
 ) -> Result<Value> {
     let schema = ctx.require_registry_schema()?;
     let all_variants = extract_enum_variants(schema, &ctx.registry);
 
     match &ctx.enum_context {
         Some(EnumContext::Root) => {
-            // Build examples for ALL variants (no grouping!)
+            // Build examples for ALL variants independently
+            // Process each signature group separately to avoid HashMap collisions
+            let variant_groups = group_variants_by_signature(all_variants);
             let mut all_examples = Vec::new();
 
-            for variant in all_variants {
-                let variant_name = variant.name();
-                let signature = variant.signature();
+            for (signature, variants_in_group) in variant_groups {
+                // Build examples for each variant in this signature group
+                for variant in variants_in_group {
+                    let variant_name = variant.name();
 
-                let example = Self::build_variant_example(
-                    &signature,
-                    variant_name,
-                    &children,
-                    ctx.type_name(),
-                );
+                    // Build example for this specific variant
+                    // Note: For now we use the shared children HashMap, but in the future
+                    // we might process each signature's children independently
+                    let example = Self::build_variant_example(
+                        &signature,
+                        variant_name,
+                        &children,
+                        ctx.type_name(),
+                    );
 
-                // Store each variant example individually
-                all_examples.push(json!({
-                    "variant": variant_name,
-                    "signature": signature.to_string(),
-                    "example": example,
-                }));
+                    // Store structured data for each variant
+                    all_examples.push(VariantExampleData {
+                        variant_name: variant_name.to_string(),
+                        signature: signature.clone(),
+                        example,
+                    });
+                }
             }
 
-            // Return ALL examples for later grouping
+            // Return ALL variant examples for later grouping
             Ok(json!({
                 "enum_root_data": {
                     "all_variant_examples": all_examples,
                     "enum_root_example_for_parent": all_examples.first()
-                        .map(|e| e["example"].clone())
+                        .map(|e| e.example.clone())
                         .unwrap_or(json!(null))
                 }
             }))
@@ -129,53 +156,91 @@ fn assemble_from_children(
 }
 ```
 
-### Phase 3: Implement Output-Stage Grouping
+### Phase 3: Move Grouping Logic to Output Stage
 
-#### New Grouping Function
+#### Why Move Grouping from EnumMutationBuilder
+
+The current grouping happens inside `EnumMutationBuilder::collect_children()` and `assemble_from_children()`, but for Plan 2 we need ALL variant examples available during recursion. Since `EnumMutationBuilder` instances are destroyed after building paths, the grouping logic must move to the output stage where it operates on the final `Vec<MutationPathInternal>` data.
+
+#### Remove Early Grouping from enum_builder.rs
+
+**In `collect_children()`**: Remove the `group_variants_by_signature()` call and process each variant individually:
+```rust
+// REMOVE this grouping step:
+// let variant_groups = group_variants_by_signature(variants);
+
+// CHANGE: Process all variants individually instead of signature groups
+for variant in variants {
+    // Create children for each individual variant, not grouped by signature
+}
+```
+
+**In `assemble_from_children()`**: Remove the re-grouping and build examples for all variants:
+```rust
+// REMOVE this grouping step:
+// let variant_groups = group_variants_by_signature(all_variants);
+
+// CHANGE: Build examples for each individual variant
+for variant in all_variants {
+    // Build example for this specific variant
+}
+```
+
+#### Add Output-Stage Grouping to builder.rs
+
+**Location in builder.rs**: Add the grouping functions after the `MutationPathBuilder` implementation but before the `recurse_mutation_paths()` function. This keeps them logically grouped with the path building functionality.
+
+**Structured Data Types**:
+```rust
+/// Structured data for variant examples instead of JSON
+#[derive(Debug, Clone)]
+struct VariantExampleData {
+    variant_name: String,
+    signature: VariantSignature,
+    example: Value,
+}
+```
+
+**Grouping Functions**:
 ```rust
 /// Groups variant examples by signature to create ExampleGroups
-fn group_variant_examples(all_examples: Vec<Value>) -> Vec<ExampleGroup> {
-    // Parse all examples and group by signature
-    let mut groups: HashMap<String, Vec<(String, Value)>> = HashMap::new();
+/// Called during output stage processing to group ungrouped variant data
+fn group_variant_examples(all_examples: Vec<VariantExampleData>) -> Vec<ExampleGroup> {
+    // Group by actual VariantSignature enum, not string
+    let mut groups: HashMap<VariantSignature, Vec<VariantExampleData>> = HashMap::new();
 
-    for example_json in all_examples {
-        let variant = example_json["variant"].as_str().unwrap();
-        let signature = example_json["signature"].as_str().unwrap();
-        let example = example_json["example"].clone();
-
-        groups.entry(signature.to_string())
+    for example_data in all_examples {
+        groups.entry(example_data.signature.clone())
             .or_default()
-            .push((variant.to_string(), example));
+            .push(example_data);
     }
 
     // Create ExampleGroup for each signature
     groups.into_iter().map(|(signature, variant_examples)| {
         let applicable_variants: Vec<String> = variant_examples.iter()
-            .map(|(variant, _)| variant.clone())
+            .map(|data| data.variant_name.clone())
             .collect();
 
         let representative_example = variant_examples.first()
-            .map(|(_, example)| example.clone())
+            .map(|data| data.example.clone())
             .unwrap_or(json!(null));
 
         ExampleGroup {
             applicable_variants,
-            signature,
+            signature: signature.to_string(),
             example: representative_example,
         }
     }).collect()
 }
-```
 
-#### Mutation Path Deduplication
-```rust
 /// Groups mutation paths by signature, keeping one representative per group
+/// Called during final output processing to deduplicate similar paths
 fn deduplicate_mutation_paths(all_paths: Vec<MutationPathInternal>) -> Vec<MutationPathInternal> {
     // Group paths by (path_string, type_signature)
     let mut groups: HashMap<(String, String), Vec<MutationPathInternal>> = HashMap::new();
 
     for path in all_paths {
-        // Extract signature (this might need path_kind analysis)
+        // Extract signature from path_kind analysis
         let signature = extract_path_signature(&path);
         let key = (path.path.clone(), signature);
         groups.entry(key).or_default().push(path);
@@ -185,6 +250,34 @@ fn deduplicate_mutation_paths(all_paths: Vec<MutationPathInternal>) -> Vec<Mutat
     groups.into_values()
         .map(|mut group| group.pop().unwrap())
         .collect()
+}
+
+/// Extracts a signature string from a mutation path for grouping purposes
+fn extract_path_signature(path: &MutationPathInternal) -> String {
+    // Analyze path.path_kind to determine the signature
+    match &path.path_kind {
+        PathKind::StructField { type_name, .. } => format!("field:{}", type_name),
+        PathKind::IndexedElement { type_name, .. } => format!("index:{}", type_name),
+        PathKind::ArrayElement { type_name, .. } => format!("array:{}", type_name),
+        PathKind::RootValue { type_name, .. } => format!("root:{}", type_name),
+    }
+}
+```
+
+#### Integration with MutationPathBuilder
+
+**In `process_enum_context()` method**: Update to handle the new ungrouped format and call grouping functions:
+```rust
+// When processing enum root data, check for ungrouped format
+if let Some(all_variant_examples) = enum_data.get("all_variant_examples") {
+    // Deserialize ungrouped data
+    let variant_data: Vec<VariantExampleData> = serde_json::from_value(all_variant_examples.clone())
+        .unwrap_or_default();
+
+    // Apply output-stage grouping
+    let grouped_examples = group_variant_examples(variant_data);
+
+    (json!(null), Some(grouped_examples), Some(default_example))
 }
 ```
 
