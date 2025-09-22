@@ -48,18 +48,31 @@ fi
        Read tool: $TMPDIR/mutation_comparison_details.json
        ```
     3. Create todos for each unexpected change pattern identified
-    4. For each pattern with examples in the details file:
-       - Select representative type/mutation path from the examples
-       - Extract the actual JSON using:
-         ```bash
-         # Get from baseline
-         .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types_baseline.json
-         # Get from current
-         .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types.json
-         ```
-    5. Format the comparison using <FormatComparison/> and present to user with pattern context
-    6. Wait for user response before proceeding to next pattern
-    7. Stop when user says to stop or all patterns reviewed
+    4. **INTERACTIVE REVIEW**: For each unexpected pattern in the details file:
+       a. Present pattern overview:
+          - Pattern name and occurrence count
+          - Types affected count
+          - Brief explanation of what this pattern means
+
+       b. Show FIRST example with FULL JSON (not snippets):
+          - Select first type/mutation path from the examples list
+          - Extract the COMPLETE mutation path data:
+            ```bash
+            # Get FULL data from baseline
+            .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types_baseline.json
+            # Get FULL data from current
+            .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/types/all_types.json
+            ```
+          - **CRITICAL**: Present using <FormatComparison/> showing the COMPLETE JSON returned by get_mutation_path.sh, not excerpts or selective fields
+
+       c. **CRITICAL - STOP AND WAIT**: After presenting each pattern example:
+          - Ask: "Continue with next pattern? (yes/no/stop)"
+          - **DO NOT PROCEED** until user responds
+          - If "yes" or user just types "next": Continue to next pattern
+          - If "no" or "stop": End review and return to main decision prompt
+
+    5. After all patterns reviewed OR user stops:
+       - Return to main decision prompt from Step 6C
     **check_type**: Ask user "Which type would you like me to check?", then execute:
     ```bash
     python3 .claude/scripts/compare_mutations_check_type.py "[TYPE_NAME]"
@@ -252,18 +265,18 @@ fi
  - If metadata only differs: Count differences
  - If structural changes exist: Full deep analysis output with two sections:]
 
-   #### Expected Changes:
-   [Use the categorization JSON output to list each matched expected change:
-    - Expected Change #N: [Name from expected_matches]
-    - Occurrences: [count from expected_matches]
-    - Types Affected: [if available from expected_matches]]
+#### Expected Changes:
+[Use the categorization JSON output to list each matched expected change:
+- Expected Change #N: [Name from expected_matches]
+- Occurrences: [count from expected_matches]
+- Types Affected: [if available from expected_matches]]
 
-   #### Unexpected Changes (need review):
-   [Use the categorization JSON output to list unexpected patterns:
-    - Pattern: [from unexpected_patterns]
-    - Occurrences: [count]
-    - Types Affected: [count if available]
-    - Reason: [why it's unexpected from the JSON output]]
+#### Unexpected Changes (need review):
+[Use the categorization JSON output to list unexpected patterns:
+- Pattern: [from unexpected_patterns]
+- Occurrences: [count]
+- Types Affected: [count if available]
+- Reason: [why it's unexpected from the JSON output]]
 
    [IF NO unexpected_patterns in JSON: State "None - all detected patterns map to expected changes"]
 
@@ -310,12 +323,18 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
 }
 ```
 
-**CRITICAL**:
+**CRITICAL FOR comparison_review**:
+- Show the COMPLETE JSON returned by get_mutation_path.sh
+- DO NOT extract or show only selective fields
+- DO NOT abbreviate or use [...] placeholders in comparison_review mode
+- The full JSON structure must be visible for proper review
+- Only use abbreviations in the initial summary, not in detailed review
+
+**General formatting**:
 - Use separate ```json code blocks for BASELINE and CURRENT
 - Include // BASELINE and // CURRENT comments inside the code blocks
 - Use proper JSON formatting with correct indentation
-- Use [...] or {...} to abbreviate unchanged nested content
-- Add inline comments with // <-- to highlight key differences
+- Add inline comments with // <-- to highlight key differences when helpful
 </FormatComparison>
 
 <NoIntermediateFiles>
