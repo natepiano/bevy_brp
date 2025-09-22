@@ -74,10 +74,16 @@ fi
           - **NEVER use examples from detail files or previous runs**
 
        c. **RETRIEVE AND VERIFY MUTATION PATH DATA**:
+          **IMPORTANT**: Extract only the mutation path from the comparison output.
+
+          Example: If comparison shows `Path: mutation_paths..0.0.example`, use only `.0.0` (remove `mutation_paths.` prefix and `.example` suffix)
+
           ```bash
-          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[PATH_FROM_CURRENT_OUTPUT]" .claude/transient/all_types_baseline.json
-          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[PATH_FROM_CURRENT_OUTPUT]" .claude/transient/all_types.json
+          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[MUTATION_PATH_ONLY]" .claude/transient/all_types_baseline.json
+          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[MUTATION_PATH_ONLY]" .claude/transient/all_types.json
           ```
+
+          Where `[MUTATION_PATH_ONLY]` is the mutation path key (like `.0.0`) extracted from the full comparison path.
 
        d. **MANDATORY VERIFICATION BEFORE PROCEEDING**:
           - Compare the retrieved baseline vs current JSON data
