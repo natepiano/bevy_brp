@@ -1,5 +1,7 @@
 # Release Command - cargo-release Integration
 
+**Migration Strategy: Phased**
+
 Perform a coordinated release for bevy_brp workspace crates using cargo-release. This command handles the 3-crate dependency chain and ensures safe publishing to crates.io.
 
 ## Usage
