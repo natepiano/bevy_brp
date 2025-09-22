@@ -219,7 +219,7 @@ If you find yourself thinking any of these phrases, STOP:
     4. For each subagent (index 0 through MAX_SUBAGENTS-1):
        - Subagent index = loop index (0-based)
        - Port = BASE_PORT + index (where BASE_PORT = 30001)
-       - Task description = "Test [TYPE_NAMES]" where TYPE_NAMES is comma-separated list of last segments after "::" from assignment data
+       - Task description = "Test [TYPE_NAMES] ([INDEX+1] of [MAX_SUBAGENTS])" where TYPE_NAMES is comma-separated list of last segments after "::" from assignment data and INDEX is 0-based
        - Provide minimal information in prompt:
          * Batch number
          * Subagent index (0-based)
@@ -517,7 +517,11 @@ This returns your specific assignment with complete type data.
         - Query for an entity with the component first
         - Replace `8589934670` with the actual entity ID from the query
         - Then perform the mutation with the real entity ID
-   d. **MUTATION TESTING**: Test ALL mutable mutation paths from the mutation_paths object
+   d. **MUTATION TESTING**: Test ONLY mutable paths from the mutation_paths object
+      - **SKIP NON-MUTABLE PATHS**: Check `path_info.mutation_status` before attempting ANY mutation:
+        * `"not_mutable"` → SKIP (don't count in total)
+        * `"partially_mutable"` → SKIP unless `example` or `examples` exists
+        * `"mutable"` or missing → TEST normally
       - Apply Entity ID substitution BEFORE sending any mutation request
       - If a mutation uses Entity IDs and you don't have real ones, query for them first
       - **ENUM TESTING REQUIREMENT**: When a mutation path contains an "examples" array (indicating enum variants), you MUST test each example individually:
@@ -526,6 +530,7 @@ This returns your specific assignment with complete type data.
           1. Mutate `.depth_load_op` with `{"Clear": 3.14}`
           2. Mutate `.depth_load_op` with `"Load"`
         * Count each example test as a separate mutation attempt in your totals
+      - **IMPORTANT**: Only count actually attempted mutations in `total_mutations_attempted`
 3. **CAPTURE ALL ERROR DETAILS**: When ANY operation fails, record the COMPLETE request and response
 4. Return ONLY JSON result array for ALL tested types
 5. NEVER test types not provided in your assignment data
