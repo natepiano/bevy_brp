@@ -22,6 +22,8 @@ Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `
 ## folders
 .claude/bug_reports/ - for bugs we want to track
 ./claude/commands/ - slash commands
+./claude/plans/ - implementation plans
+./claude/plans/ - release plans
 ./claude/scripts/ - scripts used by slash commands
 ./claude/tests/ - predefined test instructions used by ./claude/commands/integration_tests.md
 ./claude/transient/ - transient .gitignore'd test output
