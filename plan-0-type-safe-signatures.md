@@ -10,7 +10,7 @@ Plan 1 proposes using string-based signatures like `format!("field:{}", type_nam
 
 ### Step 1: Define PathSignature Enum
 
-Add to `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs` after line 64 (after the VariantSignature Display implementation) and before line 66 (before the MutationPathInternal struct):
+Add to `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs` after the VariantSignature Display implementation (after the closing brace of `impl std::fmt::Display for VariantSignature`) and before the MutationPathInternal struct definition:
 
 ```rust
 /// A signature for grouping PathKinds that have similar structure
@@ -24,7 +24,15 @@ pub enum PathSignature {
 }
 ```
 
-### Step 2: Add to_signature Method to PathKind
+### Step 2: Export PathSignature from Module
+
+Add PathSignature to the public exports in `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`:
+
+```rust
+pub use types::{MutationPath, MutationPathInternal, MutationStatus, PathAction, PathSignature};
+```
+
+### Step 3: Add to_signature Method to PathKind
 
 Add to `PathKind` implementation in `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_kind.rs`:
 
@@ -46,7 +54,7 @@ impl PathKind {
 }
 ```
 
-### Step 3: Add Signature Method to MutationPathInternal
+### Step 4: Add Signature Method to MutationPathInternal
 
 Add to `MutationPathInternal` implementation in `types.rs`:
 
@@ -59,7 +67,7 @@ impl MutationPathInternal {
 }
 ```
 
-### Step 4: Update Plan 1's Functions to Use PathSignature
+### Step 5: Update Plan 1's Functions to Use PathSignature
 
 Plan 1's new `deduplicate_mutation_paths` function will use the type-safe signature:
 
