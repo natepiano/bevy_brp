@@ -10,7 +10,7 @@ Plan 1 proposes using string-based signatures like `format!("field:{}", type_nam
 
 ### Step 1: Define PathSignature Enum
 
-Add to `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`:
+Add to `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs` after line 64 (after the VariantSignature Display implementation) and before line 66 (before the MutationPathInternal struct):
 
 ```rust
 /// A signature for grouping PathKinds that have similar structure
@@ -22,25 +22,31 @@ pub enum PathSignature {
     Index { type_name: BrpTypeName },
     Array { type_name: BrpTypeName },
 }
+```
 
-impl PathSignature {
-    /// Create a signature from a PathKind for grouping purposes
-    pub fn from_path_kind(path_kind: &PathKind) -> Self {
-        match path_kind {
-            PathKind::RootValue { type_name, .. } =>
+### Step 2: Add to_signature Method to PathKind
+
+Add to `PathKind` implementation in `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_kind.rs`:
+
+```rust
+impl PathKind {
+    /// Convert this PathKind to a PathSignature for grouping purposes
+    pub fn to_signature(&self) -> PathSignature {
+        match self {
+            Self::RootValue { type_name, .. } =>
                 PathSignature::Root { type_name: type_name.clone() },
-            PathKind::StructField { type_name, .. } =>
+            Self::StructField { type_name, .. } =>
                 PathSignature::Field { type_name: type_name.clone() },
-            PathKind::IndexedElement { type_name, .. } =>
+            Self::IndexedElement { type_name, .. } =>
                 PathSignature::Index { type_name: type_name.clone() },
-            PathKind::ArrayElement { type_name, .. } =>
+            Self::ArrayElement { type_name, .. } =>
                 PathSignature::Array { type_name: type_name.clone() },
         }
     }
 }
 ```
 
-### Step 2: Add Signature Method to MutationPathInternal
+### Step 3: Add Signature Method to MutationPathInternal
 
 Add to `MutationPathInternal` implementation in `types.rs`:
 
@@ -48,12 +54,12 @@ Add to `MutationPathInternal` implementation in `types.rs`:
 impl MutationPathInternal {
     /// Get the signature of this path for grouping purposes
     pub fn signature(&self) -> PathSignature {
-        PathSignature::from_path_kind(&self.path_kind)
+        self.path_kind.to_signature()
     }
 }
 ```
 
-### Step 3: Update Plan 1's Functions to Use PathSignature
+### Step 4: Update Plan 1's Functions to Use PathSignature
 
 Plan 1's new `deduplicate_mutation_paths` function will use the type-safe signature:
 
