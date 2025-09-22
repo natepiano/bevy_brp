@@ -168,6 +168,8 @@ fn assemble_from_children(
 
 ### Phase 3: Move Grouping Logic to Output Stage
 
+**Prerequisites**: Implement Plan 0 (Type-Safe Path Signatures) first to provide the `PathSignature` enum.
+
 #### Why Move Grouping from EnumMutationBuilder
 
 The current grouping happens inside `EnumMutationBuilder::collect_children()` and `assemble_from_children()`, but for Plan 2 we need ALL variant examples available during recursion. Since `EnumMutationBuilder` instances are destroyed after building paths, the grouping logic must move to the output stage where it operates on the final `Vec<MutationPathInternal>` data.
@@ -246,12 +248,12 @@ fn group_variant_examples(all_examples: Vec<VariantExampleData>) -> Vec<ExampleG
 /// Groups mutation paths by signature, keeping one representative per group
 /// Called during final output processing to deduplicate similar paths
 fn deduplicate_mutation_paths(all_paths: Vec<MutationPathInternal>) -> Vec<MutationPathInternal> {
-    // Group paths by (path_string, type_signature)
-    let mut groups: HashMap<(String, String), Vec<MutationPathInternal>> = HashMap::new();
+    // Group paths by (path_string, signature) - using PathSignature from Plan 0
+    let mut groups: HashMap<(String, PathSignature), Vec<MutationPathInternal>> = HashMap::new();
 
     for path in all_paths {
-        // Extract signature from path_kind analysis
-        let signature = extract_path_signature(&path);
+        // Use type-safe signature method from Plan 0
+        let signature = path.signature();  // Returns PathSignature enum
         let key = (path.path.clone(), signature);
         groups.entry(key).or_default().push(path);
     }
@@ -260,17 +262,6 @@ fn deduplicate_mutation_paths(all_paths: Vec<MutationPathInternal>) -> Vec<Mutat
     groups.into_values()
         .map(|mut group| group.pop().unwrap())
         .collect()
-}
-
-/// Extracts a signature string from a mutation path for grouping purposes
-fn extract_path_signature(path: &MutationPathInternal) -> String {
-    // Analyze path.path_kind to determine the signature
-    match &path.path_kind {
-        PathKind::StructField { type_name, .. } => format!("field:{}", type_name),
-        PathKind::IndexedElement { type_name, .. } => format!("index:{}", type_name),
-        PathKind::ArrayElement { type_name, .. } => format!("array:{}", type_name),
-        PathKind::RootValue { type_name, .. } => format!("root:{}", type_name),
-    }
 }
 ```
 
