@@ -124,7 +124,8 @@
       "Bash(.claude/scripts/create_mutation_test_json_promote_baseline.sh:*)",
       "Bash(.claude/scripts/get_type_guide.sh:*)",
       "mcp__brp__bevy_reparent",
-      "WebFetch(domain:crates.io)"
+      "WebFetch(domain:crates.io)",
+      "WebFetch(domain:keepachangelog.com)"
     ],
     "deny": [
       "Bash(sed:*)"
