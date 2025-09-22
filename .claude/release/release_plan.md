@@ -52,10 +52,21 @@ version = "0.3.0-rc.1"
 ```
 
 ### Phase 2: Update Repository URLs
-All Cargo.toml files need updated repository fields:
+Update to use workspace inheritance following Rust ecosystem standards:
+
+**In root Cargo.toml, add workspace.package section:**
 ```toml
+[workspace.package]
 repository = "https://github.com/natepiano/bevy_brp"
 ```
+
+**In each crate's Cargo.toml, replace repository field:**
+```toml
+[package]
+repository.workspace = true
+```
+
+This follows the pattern used by major projects like tokio, serde, bevy, and clap.
 
 ### Phase 3: Publish Sequence
 ```bash
@@ -100,7 +111,7 @@ Release RC2 if:
 - Breaking API changes needed
 - Significant documentation updates
 
-## Final Release (0.4.0)
+## Final Release (0.3.0)
 
 ### Pre-Release
 - [ ] Address all feedback from RC period
