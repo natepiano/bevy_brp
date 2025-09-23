@@ -204,7 +204,9 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         // Recurse to each child (they handle their own protocol)
         for item in child_items {
             // Check if we have variant information (from enum builder)
-            let variant_info = item.applicable_variants().map(<[String]>::to_vec);
+            let variant_info = item
+                .applicable_variants()
+                .map(<[super::types::VariantName]>::to_vec);
 
             // Always try to extract the PathKind first (may be None for unit variants)
             if let Some(path_kind) = item.into_path_kind() {

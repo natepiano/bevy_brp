@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::mutation_path_builder::MutationKnowledge;
+use super::mutation_path_builder::{MutationKnowledge, VariantName};
 
 /// A newtype wrapper for BRP type names used as `HashMap` keys
 ///
@@ -133,8 +133,8 @@ impl BrpTypeName {
 
     /// Create a full variant name using the shortened enum type name
     /// e.g., `"core::option::Option<String>"` + `"Some"` → `"Option<String>::Some"`
-    pub fn variant_name(&self, variant: &str) -> String {
-        format!("{}::{}", self.short_enum_type_name(), variant)
+    pub fn variant_name(&self, variant: &str) -> VariantName {
+        VariantName::from(format!("{}::{}", self.short_enum_type_name(), variant))
     }
 }
 

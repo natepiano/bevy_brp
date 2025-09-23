@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 
 use super::{
     MutationPathDescriptor, MutationPathInternal, NotMutableReason, PathAction, PathKind,
-    RecursionContext,
+    RecursionContext, VariantName,
 };
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
@@ -14,7 +14,7 @@ use crate::error::Result;
 /// each need to their associated `applicable_variants` so this makes it possible
 pub trait MaybeVariants {
     /// Returns applicable variants if this is from an enum builder
-    fn applicable_variants(&self) -> Option<&[String]> {
+    fn applicable_variants(&self) -> Option<&[VariantName]> {
         None
     }
 

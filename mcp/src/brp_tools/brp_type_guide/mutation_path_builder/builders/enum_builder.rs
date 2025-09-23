@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use super::super::path_builder::{MaybeVariants, PathBuilder};
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::{EnumContext, RecursionContext};
-use super::super::types::{ExampleGroup, VariantSignature};
+use super::super::types::{ExampleGroup, VariantName, VariantSignature};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -34,11 +34,11 @@ pub struct PathKindWithVariants {
     /// The path kind (None for unit variants)
     pub path:                Option<PathKind>,
     /// Variants this path applies to
-    pub applicable_variants: Vec<String>,
+    pub applicable_variants: Vec<VariantName>,
 }
 
 impl MaybeVariants for PathKindWithVariants {
-    fn applicable_variants(&self) -> Option<&[String]> {
+    fn applicable_variants(&self) -> Option<&[VariantName]> {
         Some(&self.applicable_variants)
     }
 
@@ -323,7 +323,7 @@ impl PathBuilder for EnumMutationBuilder {
 
         // Create PathKindWithVariants for each signature group
         for (signature, variants_in_group) in variant_groups {
-            let applicable_variants: Vec<String> = variants_in_group
+            let applicable_variants: Vec<VariantName> = variants_in_group
                 .iter()
                 .map(|v| ctx.type_name().variant_name(v.name()))
                 .collect();
@@ -400,7 +400,7 @@ impl PathBuilder for EnumMutationBuilder {
                         ctx.type_name(),
                     );
 
-                    let applicable_variants: Vec<String> = variants_in_group
+                    let applicable_variants: Vec<VariantName> = variants_in_group
                         .iter()
                         .map(|v| ctx.type_name().variant_name(v.name()))
                         .collect();

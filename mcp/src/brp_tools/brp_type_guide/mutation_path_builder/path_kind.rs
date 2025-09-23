@@ -195,7 +195,9 @@ impl Serialize for PathKind {
 }
 
 impl MaybeVariants for PathKind {
-    fn applicable_variants(&self) -> Option<&[String]> {
+    fn applicable_variants(
+        &self,
+    ) -> Option<&[crate::brp_tools::brp_type_guide::mutation_path_builder::VariantName]> {
         None // Regular paths have no variant information
     }
 

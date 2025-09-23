@@ -14,4 +14,4 @@ pub use not_mutable_reason::NotMutableReason;
 pub use path_kind::{MutationPathDescriptor, PathKind};
 pub use recursion_context::{EnumContext, RecursionContext};
 pub use type_kind::TypeKind;
-pub use types::{MutationPath, MutationPathInternal, MutationStatus, PathAction};
+pub use types::{MutationPath, MutationPathInternal, MutationStatus, PathAction, VariantName};

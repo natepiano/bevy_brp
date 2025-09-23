@@ -42,6 +42,25 @@ impl std::fmt::Display for FullMutationPath {
     }
 }
 
+/// A variant name from a Bevy enum type (e.g., "Option<String>::Some", "Color::Srgba")
+///
+/// This newtype wrapper provides type safety and documentation for variant names
+/// discovered through Bevy's reflection system at runtime.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct VariantName(String);
+
+impl From<String> for VariantName {
+    fn from(name: String) -> Self {
+        Self(name)
+    }
+}
+
+impl std::fmt::Display for VariantName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// Action to take regarding path creation during recursion
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathAction {
@@ -186,7 +205,7 @@ pub struct PathInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExampleGroup {
     /// List of variants that share this signature
-    pub applicable_variants: Vec<String>,
+    pub applicable_variants: Vec<VariantName>,
     /// Example value for this group
     pub example:             Value,
     /// The variant signature as a string
@@ -200,7 +219,7 @@ pub struct VariantPath {
     pub full_mutation_path: FullMutationPath,
     /// The variant name including enum type (e.g., `"TestEnumWithSerDe::Nested"`)
     #[serde(skip)]
-    pub variant:            String,
+    pub variant:            VariantName,
     /// Clear instruction for this step (e.g., `"Set root to TestEnumWithSerDe::Nested"`)
     #[serde(skip_serializing_if = "String::is_empty", default)]
     pub instructions:       String,
