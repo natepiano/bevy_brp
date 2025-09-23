@@ -549,6 +549,7 @@ fn main() {
         .register_type::<CalculatedClip>()
         .register_type::<Button>()
         .register_type::<Label>()
+        .register_type::<BorderRadius>()
         .add_systems(
             Startup,
             (setup_test_entities, setup_ui, minimize_window_on_start),
@@ -686,6 +687,12 @@ fn spawn_visual_entities(commands: &mut Commands) {
 
     // Entity with Anchor for testing mutations
     commands.spawn((bevy::sprite::Anchor::Center, Name::new("AnchorTestEntity")));
+
+    // Entity with BorderRadius for testing mutations
+    commands.spawn((
+        BorderRadius::all(Val::Px(10.0)),
+        Name::new("BorderRadiusTestEntity"),
+    ));
 
     // Entity with CursorIcon for testing mutations
     commands.spawn((
