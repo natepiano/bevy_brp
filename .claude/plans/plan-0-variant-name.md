@@ -21,16 +21,8 @@ Add to `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs` after t
 ///
 /// This newtype wrapper provides type safety and documentation for variant names
 /// discovered through Bevy's reflection system at runtime.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VariantName(String);
-
-impl Deref for VariantName {
-    type Target = String;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 impl From<String> for VariantName {
     fn from(name: String) -> Self {
@@ -38,21 +30,9 @@ impl From<String> for VariantName {
     }
 }
 
-impl From<&str> for VariantName {
-    fn from(name: &str) -> Self {
-        Self(name.to_string())
-    }
-}
-
 impl std::fmt::Display for VariantName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-impl AsRef<str> for VariantName {
-    fn as_ref(&self) -> &str {
-        &self.0
     }
 }
 ```
@@ -102,35 +82,64 @@ pub trait MaybeVariants {
     fn into_path_kind(self) -> Option<PathKind>;
 }
 
+// Update ALL implementors of MaybeVariants:
+
+// 1. PathKind implementation in path_kind.rs:
+impl MaybeVariants for PathKind {
+    fn applicable_variants(&self) -> Option<&[VariantName]> {
+        None // Regular paths have no variant information
+    }
+    fn into_path_kind(self) -> Option<PathKind> {
+        Some(self)
+    }
+}
+
 // Update the variant_name factory function to return VariantName directly:
 // In mcp/src/brp_tools/brp_type_guide/brp_type_name.rs:
 pub fn variant_name(&self, variant: &str) -> VariantName {
     VariantName::from(format!("{}::{}", self.short_enum_type_name(), variant))
 }
 
-// Then in collect_children(), the usage becomes simpler:
+// Then in collect_children(), update the local variable type:
 let applicable_variants: Vec<VariantName> = variants_in_group
     .iter()
     .map(|v| ctx.type_name().variant_name(v.name()))
     .collect();
 
-// The PathKindWithVariants implementation in enum_builder.rs remains simple:
+// Also update extract_variant_name() helper function in enum_builder.rs:
+fn extract_variant_name(field_name: &str) -> Option<VariantName> {
+    field_name
+        .split("::")
+        .last()
+        .map(|s| VariantName::from(s.to_string()))
+}
+
+// 2. PathKindWithVariants implementation in enum_builder.rs:
 impl MaybeVariants for PathKindWithVariants {
     fn applicable_variants(&self) -> Option<&[VariantName]> {
         Some(&self.applicable_variants)
     }
-    // ... rest of implementation
+    fn into_path_kind(self) -> Option<PathKind> {
+        self.path
+    }
 }
 
-// Update builder.rs line 207 to handle the new type:
-let variant_info = item.applicable_variants().map(|variants|
-    variants.iter().map(|v| v.as_ref().to_string()).collect::<Vec<_>>()
-);
+// Update builder.rs line 207 to keep VariantName throughout:
+let variant_info = item.applicable_variants().map(<[VariantName]>::to_vec);
 
-// In any place that needs the raw string:
-let variant_string: &str = variant_name.as_ref();
-// or with deref coercion:
-let variant_string: &String = &*variant_name;
+// For string comparisons in builder.rs (e.g., line 594), use PartialEq directly:
+// The PartialEq trait on VariantName allows direct comparison without conversion
+if let Some(examples) = enum_examples {
+    entry.variant_example = examples
+        .iter()
+        .find(|ex| ex.applicable_variants.contains(&entry.variant))
+        .map_or_else(|| current_example.clone(), |ex| ex.example.clone());
+}
+
+// For format strings that need the variant name as a string, use Display trait:
+let instructions = format!("Set to variant {}", variant_name); // Display trait handles conversion
+
+// Only convert to String at JSON serialization boundaries when absolutely necessary
 ```
 
 ### Step 5: Update Related Structures
@@ -191,10 +200,9 @@ This is a pure refactoring with no behavior changes. Testing involves:
 
 ## Migration Notes
 
-- The `Deref` implementation allows most existing string operations to work unchanged
-- The `From` traits make conversion from existing strings straightforward
-- The `AsRef<str>` trait enables passing to functions expecting string slices
+- The `From<String>` trait makes conversion from existing strings straightforward
 - Serialization derives ensure JSON output remains identical
+- The minimal trait set focuses on actual usage patterns without unnecessary convenience traits
 
 ## Why This Is Better Than Raw Strings
 
@@ -203,3 +211,19 @@ While variant names are indeed dynamic and discovered at runtime, using a newtyp
 - Prevents mixing variant names with other string types
 - Provides a central place for any future variant name logic
 - Follows Rust best practices for domain modeling
+
+## Design Review Skip Notes
+
+### DESIGN-1: Incomplete module exports specification - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Step 2: Export VariantName from Module
+- **Issue**: The plan shows adding FullMutationPath to exports but doesn't address whether PathSignature and other types from types.rs should also be exported
+- **Reasoning**: The finding is incorrect because the plan explicitly shows adding all three types (PathSignature, VariantName, FullMutationPath) in Step 2, not just FullMutationPath as claimed
+- **Decision**: User elected to skip this recommendation
+
+### DESIGN-4: Missing AsRef<str> implementation usage guidance - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Migration Notes
+- **Issue**: The plan provides AsRef<str> implementation but doesn't show how to update string comparison sites like entry.variant comparisons
+- **Reasoning**: The finding is incorrect because after removing AsRef<str> from the plan (following the principle of only adding traits we need), this guidance is no longer relevant. Additionally, the .contains() method works correctly with PartialEq/Eq traits without needing AsRef conversions
+- **Decision**: User elected to skip this recommendation
