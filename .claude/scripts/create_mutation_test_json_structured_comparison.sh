@@ -27,7 +27,7 @@ CURRENT_FILE="$2"
 SCRIPT_DIR="$(dirname "$0")"
 PYTHON_SCRIPT="$SCRIPT_DIR/create_mutation_test_json_deep_comparison.py"
 CATEGORIZE_SCRIPT="$SCRIPT_DIR/create_mutation_test_json_categorize_changes.py"
-EXPECTED_CHANGES=".claude/transient/create_mutation_test_json_expected_changes.json"
+EXPECTED_CHANGES=".claude/config/create_mutation_test_json_expected_changes.json"
 
 # Check if files exist
 if [ ! -f "$BASELINE_FILE" ]; then

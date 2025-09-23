@@ -15,10 +15,10 @@ fi
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Backup current expected changes before reset
-if [[ -f ".claude/transient/create_mutation_test_json_expected_changes.json" ]]; then
+if [[ -f ".claude/config/create_mutation_test_json_expected_changes.json" ]]; then
     # Ensure archive directory exists
     mkdir -p .claude/transient/archive
-    cp .claude/transient/create_mutation_test_json_expected_changes.json \
+    cp .claude/config/create_mutation_test_json_expected_changes.json \
        .claude/transient/archive/expected_changes_${TIMESTAMP}.json
     echo "📦 Archived current expected changes to: .claude/transient/archive/expected_changes_${TIMESTAMP}.json"
 fi
@@ -31,7 +31,7 @@ cp .claude/transient/all_types.json .claude/transient/all_types_good_${TIMESTAMP
 
 # Reset expected changes file to template state
 # ID 0 is reserved as an example that comparison scripts will ignore
-cat > .claude/transient/create_mutation_test_json_expected_changes.json << 'EOF'
+cat > .claude/config/create_mutation_test_json_expected_changes.json << 'EOF'
 {
   "expected_changes": [
     {
