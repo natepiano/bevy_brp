@@ -229,11 +229,13 @@ impl BrpClient {
     /// Enhanced format error creation with type guide embedding
     async fn try_add_type_guide_to_error(&self, error: &BrpClientError) -> Result<ResponseStatus> {
         // Step 1: Try parameter-based extraction using Operation enum
-        let mut extracted_types = Vec::new();
-        if let Ok(operation) = Operation::try_from(self.method) {
-            let params = self.params.as_ref().unwrap_or(&serde_json::Value::Null);
-            extracted_types = operation.extract_type_names(params);
-        }
+        let mut extracted_types = Operation::try_from(self.method).map_or_else(
+            |_| Vec::new(),
+            |operation| {
+                let params = self.params.as_ref().unwrap_or(&serde_json::Value::Null);
+                operation.extract_type_names(params)
+            },
+        );
 
         // Step 2: Fallback to error message parsing if parameter extraction failed
         if extracted_types.is_empty() {
