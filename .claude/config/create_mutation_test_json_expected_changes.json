@@ -1,0 +1,18 @@
+{
+  "expected_changes": [
+    {
+      "id": 1,
+      "pattern_type": "FIELD_REMOVED",
+      "field": "examples",
+      "affected_types": ["bevy_mesh::skinning::SkinnedMesh", "bevy_render::camera::camera::Camera", "bevy_window::window::Window", "bevy_input::gamepad::GamepadSettings"],
+      "reason": "Examples removed correctly for mutation_reason of non-mutable"
+    },
+    {
+      "id": 2,
+      "pattern_type": "FIELD_REMOVED",
+      "field": "example",
+      "affected_types": ["bevy_render::camera::camera::Camera", "bevy_input::gamepad::GamepadSettings"],
+      "reason": "Enum type identification improvement shows examples array instead of single example"
+    }
+  ]
+}

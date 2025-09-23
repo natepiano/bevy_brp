@@ -125,7 +125,7 @@ fi
     **add_expected**: Add pattern to expected changes JSON:
     1. Extract from current pattern: pattern_type (e.g., "FIELD_REMOVED"), field name, and affected type names
     2. Ask user for human-readable reason/description for this expected change
-    3. Generate next available ID and add entry to `.claude/transient/create_mutation_test_json_expected_changes.json` with:
+    3. Generate next available ID and add entry to `.claude/config/create_mutation_test_json_expected_changes.json` with:
        - `pattern_type`: Pattern type from comparison (e.g., "FIELD_REMOVED", "FIELD_ADDED")
        - `field`: Field name from pattern (e.g., "example", "examples")
        - `affected_types`: Array of actual type names from current pattern

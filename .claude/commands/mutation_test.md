@@ -171,9 +171,8 @@ If you find yourself thinking any of these phrases, STOP:
        - NEVER combine or skip Task invocations
     4. Execute <ProcessBatchResults/> after all subagents complete
     5. Execute <CheckForFailures/> which will:
-       - Continue to next batch if all pass
-       - Trigger cleanup and filtering if failures detected
-       - Only stop if NEW (non-known) failures are found after filtering
+       - Continue to next batch if all pass OR only known issues found
+       - Stop only if NEW (non-known) failures are detected
 
     Continue until all batches are processed or NEW failures occur.
 </BatchProcessingLoop>
@@ -367,7 +366,7 @@ If you find yourself thinking any of these phrases, STOP:
     - Exit code 2: **NEW FAILURES DETECTED** → Stop and review
 
     **MERGE SCRIPT BEHAVIOR**:
-    - Automatically loads `.claude/transient/mutation_test_known_issues.json` if it exists
+    - Automatically loads `.claude/config/mutation_test_known_issues.json` if it exists
     - Filters out known issues from the failure count
     - Returns exit code 0 if only known issues were found
     - Returns exit code 2 only if NEW (non-known) failures exist
@@ -513,26 +512,28 @@ What would you prefer?
 **Keyword Actions**:
 - **Investigate**: Launch detailed investigation Task for the current failure
 - **Known Issue**:
-  1. Add type/mutation path pair to `.claude/transient/mutation_test_known_issues.json`
-  2. Include the failure reason and error details
+  1. Add type to `.claude/transient/mutation_test_known_issues.json`
+  2. Include a brief description of the issue
   3. Continue to the next failure
 - **Skip**: Continue to the next failure without recording (temporary skip)
 - **Stop**: Exit the failure review process immediately
 
 **Known Issues Tracking**:
-When user selects **Known Issue**, add to `.claude/transient/mutation_test_known_issues.json`:
+When user selects **Known Issue**, add to `.claude/config/mutation_test_known_issues.json`:
 ```json
 {
   "type": "fully::qualified::type::name",
-  "path": ".mutation.path",
   "issue": "Brief description of the problem"
 }
 ```
 
+**Note**: See `.claude/config/mutation_test_known_issues.json.example` for format reference.
+The merge script automatically loads `.claude/config/mutation_test_known_issues.json` if it exists to filter known issues.
+
 **Future Test Behavior**:
-- Check `.claude/transient/mutation_test_known_issues.json` before presenting failures
+- Check `.claude/config/mutation_test_known_issues.json` before presenting failures
 - Automatically skip known issues without presenting them
-- Summary should note: "X known issues skipped (see `.claude/transient/mutation_test_known_issues.json`)"
+- Summary should note: "X known issues skipped (see `.claude/config/mutation_test_known_issues.json`)"
 - Known issues are persistent across test runs
 </KeywordHandling>
 
