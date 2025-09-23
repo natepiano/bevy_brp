@@ -63,9 +63,9 @@ impl PathBuilder for EnumMutationBuilder {
 
         // Process by signature to avoid duplicate descriptors
         for (signature, variants_in_group) in variant_groups {
-            let applicable_variants: Vec<String> = variants_in_group
+            let applicable_variants: Vec<VariantName> = variants_in_group
                 .iter()
-                .map(|v| ctx.type_name().variant_name(v.name()))
+                .map(|v| VariantName::from(ctx.type_name().variant_name(v.name())))
                 .collect();
 
             match signature {
@@ -144,7 +144,7 @@ fn assemble_from_children(
 
                     // Store structured data for each variant
                     all_examples.push(VariantExampleData {
-                        variant_name: variant_name.to_string(),
+                        variant_name: VariantName::from(variant_name),
                         signature: signature.clone(),
                         example,
                     });
@@ -207,7 +207,7 @@ for variant in all_variants {
 /// Structured data for variant examples instead of JSON
 #[derive(Debug, Clone)]
 struct VariantExampleData {
-    variant_name: String,
+    variant_name: VariantName,
     signature: VariantSignature,
     example: Value,
 }
@@ -229,7 +229,7 @@ fn group_variant_examples(all_examples: Vec<VariantExampleData>) -> Vec<ExampleG
 
     // Create ExampleGroup for each signature
     groups.into_iter().map(|(signature, variant_examples)| {
-        let applicable_variants: Vec<String> = variant_examples.iter()
+        let applicable_variants: Vec<VariantName> = variant_examples.iter()
             .map(|data| data.variant_name.clone())
             .collect();
 
@@ -386,9 +386,9 @@ fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
     let mut children = Vec::new();
 
     for (detailed_sig, variants_in_group) in variant_groups {
-        let applicable_variants: Vec<String> = variants_in_group
+        let applicable_variants: Vec<VariantName> = variants_in_group
             .iter()
-            .map(|v| ctx.type_name().variant_name(v.name()))
+            .map(|v| VariantName::from(ctx.type_name().variant_name(v.name())))
             .collect();
 
         match detailed_sig.structure {

@@ -59,7 +59,7 @@ pub struct MutationPathInternal {
 
     /// The specific variant chain for this path
     /// E.g., ["TestVariantChainEnum::WithMiddleStruct", "BottomEnum::VariantB"]
-    pub variant_chain: Vec<String>,
+    pub variant_chain: Vec<VariantName>,
 
     /// Complete root example with correct variant chain
     pub root_variant_example: Option<Value>,
@@ -74,7 +74,7 @@ pub struct MutationPathInternal {
 During enum assembly, maintain:
 ```rust
 /// Maps variant chains to complete root examples
-type VariantChainMap = HashMap<Vec<String>, Value>;
+type VariantChainMap = HashMap<Vec<VariantName>, Value>;
 ```
 
 Example entries:
@@ -120,7 +120,7 @@ fn finalize_mutation_paths(paths: Vec<MutationPathInternal>, variant_map: Varian
 
 ### Phase 1: Add Variant Chain Tracking
 
-1. Add `variant_chain: Vec<String>` to `MutationPathInternal`
+1. Add `variant_chain: Vec<VariantName>` to `MutationPathInternal`
 2. Update `RecursionContext` to track current variant
 3. Propagate variant information during recursion
 
