@@ -29,12 +29,18 @@ PORT_RANGE = 30001-30010                                # Each subagent gets ded
 - ❌ Using bash loops or automation to replace the explicit step-by-step process
 - ❌ "Batching" the batches themselves
 - ❌ Assuming success means you can deviate from the process
+- ❌ **MODIFYING ANY SPECIFIED COMMANDS** - Use commands EXACTLY as written
+- ❌ **CREATING INTERMEDIATE FILES** to work around truncated output
+- ❌ **PIPING COMMAND OUTPUT TO FILES** unless explicitly required
+- ❌ **ADDING CUSTOM PYTHON PROCESSING** to extract data from command output
 
 **REQUIRED MINDSET**:
 - ✅ Each batch is independent and requires FULL execution of ALL steps
 - ✅ Even if batch 1 succeeds perfectly, batch 2 must follow IDENTICAL procedures
 - ✅ The repetition is INTENTIONAL for reliability and debugging
 - ✅ Following the exact pattern enables proper failure isolation
+- ✅ **USE ALL COMMANDS EXACTLY AS SPECIFIED** - no modifications allowed
+- ✅ **WORK WITH COMMAND OUTPUT DIRECTLY** even if truncated in display
 
 **ENFORCEMENT RULE**:
 If you find yourself thinking any of these phrases, STOP:
@@ -44,8 +50,11 @@ If you find yourself thinking any of these phrases, STOP:
 - "I'll just combine these..."
 - "We can skip..."
 - "Let me make this more efficient..."
+- "Let me pipe this to a file..."
+- "Let me create a custom script to parse this..."
+- "This output is truncated, I need to work around it..."
 
-**REMINDER**: The instructions are optimized for RELIABILITY, not speed. The parallel subagents within each batch ARE the optimization.
+**REMINDER**: The instructions are optimized for RELIABILITY, not speed. The parallel subagents within each batch ARE the optimization. Commands are specified exactly as they should be used.
 </NoOptimizationAllowed>
 
 ## MAIN WORKFLOW
@@ -100,13 +109,16 @@ If you find yourself thinking any of these phrases, STOP:
 ## STEP 3: CLEANUP PREVIOUS RUNS
 
 <CleanupPreviousRuns>
-    **Remove leftover batch result files to prevent interference:**
+    **Remove leftover files from previous runs to prevent interference:**
 
     ```bash
     rm -f .claude/transient/batch_results_*.json
+    rm -f .claude/transient/all_types_failures_*.json
     ```
 
-    Clean up any batch result files from previous runs.
+    Clean up:
+    - Batch result files from previous runs
+    - Old failure log files to prevent confusion with new failures
 </CleanupPreviousRuns>
 
 ## STEP 4: APPLICATION LAUNCH
@@ -172,12 +184,19 @@ If you find yourself thinking any of these phrases, STOP:
 <GetBatchAssignments>
     **Retrieve subagent assignments for current batch:**
 
+    **MANDATORY EXACT COMMAND - DO NOT MODIFY**:
     ```bash
-    python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
-        --batch [BATCH_NUMBER] \
-        --max-subagents [MAX_SUBAGENTS] \
-        --types-per-subagent [TYPES_PER_SUBAGENT]
+    python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py --batch [BATCH_NUMBER] --max-subagents [MAX_SUBAGENTS] --types-per-subagent [TYPES_PER_SUBAGENT]
     ```
+
+    **CRITICAL INSTRUCTION**: Use the command EXACTLY as specified above. DO NOT:
+    - Create intermediate files
+    - Pipe output to files
+    - Add custom Python processing
+    - Modify the command in any way
+    - Work around truncated output by creating files
+
+    **If output appears truncated**: Work with the available data directly from the command output.
 
     Returns JSON with:
     - batch_number, max_subagents, types_per_subagent, total_types
@@ -191,7 +210,7 @@ If you find yourself thinking any of these phrases, STOP:
     3. **STOP IF** any assignment doesn't have exactly TYPES_PER_SUBAGENT types
        - ERROR: "Assignment {subagent} has {actual_count} types, expected {TYPES_PER_SUBAGENT}"
 
-    **Store this output in a variable for systematic processing.**
+    **Extract essential information directly from the command output for the next steps.**
 </GetBatchAssignments>
 
 <SetWindowTitles>
@@ -396,7 +415,32 @@ If you find yourself thinking any of these phrases, STOP:
     **Detailed failure log saved to**: [PATH]
     ```
 
-    2. **Present Each Failure One by One**:
+    2. **COMPONENT_NOT_FOUND Debugging Protocol**:
+
+    **CRITICAL**: Before presenting any `COMPONENT_NOT_FOUND` failure, execute this mandatory debugging step:
+
+    1. **Always run `mcp__brp__bevy_list` first** to get the complete list of registered components
+    2. **Search the list** for similar type names to the failed type
+    3. **Verify the exact type name** from the original test data
+    4. **Re-test with the correct name** if a match is found
+
+    **Purpose**: This prevents false `COMPONENT_NOT_FOUND` failures caused by:
+    - Agent incorrectly modifying type names during testing
+    - Typos or path errors in the agent's query attempts
+    - Using wrong module paths due to agent assumptions
+
+    **Only mark as legitimate `COMPONENT_NOT_FOUND`** after:
+    1. Running `mcp__brp__bevy_list`
+    2. Confirming the exact type name is not in the registered components list
+    3. Verifying the agent used the exact type name from the original test data
+
+    **Example**:
+    - Failure: `bevy_render::mesh::skinning::SkinnedMesh` not found
+    - Run `mcp__brp__bevy_list`, find `bevy_mesh::skinning::SkinnedMesh` exists
+    - Re-test with correct name from original data
+    - Only report as missing if still not found after correction
+
+    3. **Present Each Failure One by One**:
 
     For each failure, present it with this format:
 
