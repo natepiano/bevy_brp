@@ -28,7 +28,10 @@ Create a todo list for each issue returned by basedpyright. **Fix all errors fir
 - Replace `Any` types with specific types where possible
 - For JSON data, create TypedDict or dataclass definitions to properly type the data structures
 - Don't use `# type: ignore` comments to suppress warnings - fix the underlying type issues
+- **NEVER use file-level suppressions** like `# pyright: reportExplicitAny=false` as it allows avoiding thinking hard about whether any particular thing CAN be typed
+- When fixing warnings, examine EVERY usage to determine if it can be properly typed before adding ignore comments
 - **Exception**: `# pyright: ignore[reportAny]` is acceptable ONLY when:
   - Loading JSON files with `json.load()` where the structure varies or comes from external sources
   - Using third-party libraries that don't provide type stubs
+  - Functions that genuinely process arbitrary JSON values (like a generic JSON validator)
   - Other cases where the source legitimately returns `Any` and cannot be typed more specifically
