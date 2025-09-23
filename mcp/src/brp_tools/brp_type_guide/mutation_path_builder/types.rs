@@ -42,7 +42,7 @@ impl std::fmt::Display for FullMutationPath {
     }
 }
 
-/// A variant name from a Bevy enum type (e.g., "Option<String>::Some", "Color::Srgba")
+/// A variant name from a Bevy enum type (e.g., "`Option<String>::Some`", "`Color::Srgba`")
 ///
 /// This newtype wrapper provides type safety and documentation for variant names
 /// discovered through Bevy's reflection system at runtime.
