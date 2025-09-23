@@ -41,7 +41,7 @@ impl McpService {
                 tool.annotations
                     .as_ref()
                     .and_then(|ann| ann.title.as_ref())
-                    .map_or(tool.name.as_ref(), String::as_str)
+                    .map_or_else(|| tool.name.as_ref(), String::as_str)
                     .to_string()
             })
             .collect();
