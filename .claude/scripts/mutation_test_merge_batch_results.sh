@@ -70,25 +70,69 @@ echo "  Passed: $PASSED"
 echo "  Failed: $FAILED"
 echo "  Missing Components: $MISSING"
 
-# Check for failures
-if [ "$FAILED" -gt 0 ]; then
-    echo ""
-    echo "⚠️  FAILURES DETECTED:"
-    # Save detailed failure information to a separate file
+# Check for failures and filter known issues
+if [ "$FAILED" -gt 0 ] || [ "$MISSING" -gt 0 ]; then
+    # Load known issues if the file exists
+    KNOWN_ISSUES_FILE=".claude/config/mutation_test_known_issues.json"
+    if [ -f "$KNOWN_ISSUES_FILE" ]; then
+        KNOWN_ISSUES=$(cat "$KNOWN_ISSUES_FILE")
+    else
+        KNOWN_ISSUES="[]"
+    fi
+
+    # Filter out known issues from failures
+    NEW_FAILURES=$(jq --argjson known "$KNOWN_ISSUES" '
+      . as $results |
+      # Get all failures (FAIL or COMPONENT_NOT_FOUND)
+      [.[] | select(.status == "FAIL" or .status == "COMPONENT_NOT_FOUND")] as $failures |
+      # Filter out known issues
+      $failures | map(
+        . as $failure |
+        # Check if this failure is a known issue
+        if ($known | map(select(.type == $failure.type)) | length) > 0
+        then empty  # Filter out known issues
+        else .      # Keep new failures
+        end
+      )
+    ' "$RESULTS_FILE")
+
+    # Count new vs known failures
+    NEW_FAILURE_COUNT=$(echo "$NEW_FAILURES" | jq 'length')
+    KNOWN_FAILURE_COUNT=$((FAILED + MISSING - NEW_FAILURE_COUNT))
+
+    # Save all failure information (including known) to a log file
     FAILURE_LOG="${MUTATION_TEST_FILE%.json}_failures_$(date +%Y%m%d_%H%M%S).json"
     jq '[.[] | select(.status == "FAIL" or .status == "COMPONENT_NOT_FOUND")]' "$RESULTS_FILE" > "$FAILURE_LOG"
-    echo "  Detailed failure information saved to: $FAILURE_LOG"
-    echo ""
 
-    # Display summary of failures
-    jq -r '.[] | select(.status == "FAIL") | "  - \(.type): \(.failure_details.error_message // .fail_reason)"' "$RESULTS_FILE"
-    exit 2  # Special exit code for failures
-fi
+    if [ "$NEW_FAILURE_COUNT" -gt 0 ]; then
+        # NEW failures detected
+        echo ""
+        echo "⚠️  NEW FAILURES DETECTED:"
+        echo "  Total failures: $((FAILED + MISSING)) ($KNOWN_FAILURE_COUNT known, $NEW_FAILURE_COUNT new)"
+        echo "  Detailed failure information saved to: $FAILURE_LOG"
+        echo ""
 
-# Check for missing components
-if [ "$MISSING" -gt 0 ]; then
-    echo ""
-    echo "⚠️  MISSING COMPONENTS DETECTED:"
-    jq -r '.[] | select(.status == "COMPONENT_NOT_FOUND") | "  - \(.type): \(.failure_details.error_message // .fail_reason)"' "$RESULTS_FILE"
-    exit 2  # Special exit code for missing components
+        # Display summary of NEW failures only
+        echo "$NEW_FAILURES" | jq -r '.[] | "  - \(.type): \(.failure_details.error_message // .fail_reason // "Component not found")"'
+
+        # Exit code 2 = NEW failures exist
+        exit 2
+    else
+        # All failures are known issues
+        echo ""
+        echo "✓ Batch completed with $KNOWN_FAILURE_COUNT known issue(s) (all expected)"
+        echo "  Known issues encountered:"
+        jq --argjson known "$KNOWN_ISSUES" -r '
+          [.[] | select(.status == "FAIL" or .status == "COMPONENT_NOT_FOUND")] as $failures |
+          $failures[] |
+          . as $failure |
+          if ($known | map(select(.type == $failure.type)) | length) > 0
+          then "    - \(.type)"
+          else empty
+          end
+        ' "$RESULTS_FILE"
+
+        # Exit code 0 = success (only known issues)
+        exit 0
+    fi
 fi

@@ -8,8 +8,27 @@ import json
 import sys
 import glob
 from pathlib import Path
+from typing import TypedDict
 
-def check_type(type_name):
+
+class PathInfo(TypedDict, total=False):
+    mutation_status: str
+
+
+class MutationPath(TypedDict):
+    path_info: PathInfo
+
+
+class TypeData(TypedDict, total=False):
+    mutation_paths: dict[str, MutationPath]
+    supported_operations: list[str]
+
+
+class TypeGuide(TypedDict):
+    type_guide: dict[str, TypeData]
+
+
+def check_type(type_name: str) -> None:
     """Check a specific type's mutation paths across all versions."""
     # Find all all_types*.json files in .claude/transient
     pattern = ".claude/transient/all_types*.json"
@@ -28,10 +47,10 @@ def check_type(type_name):
         
         try:
             with open(filepath, 'r') as f:
-                data = json.load(f)
-            
+                file_data: TypeGuide = json.load(f)  # pyright: ignore[reportAny]
+
             # Handle JSON structure with type_guide dict
-            type_guide = data.get('type_guide', {})
+            type_guide = file_data.get('type_guide', {})
 
             # Find the type in dict format
             type_data = type_guide.get(type_name)
@@ -70,8 +89,8 @@ def check_type(type_name):
         print("\nAvailable types (from latest file):")
         try:
             with open(files[-1], 'r') as f:
-                data = json.load(f)
-            type_guide = data.get('type_guide', {})
+                last_file_data: TypeGuide = json.load(f)  # pyright: ignore[reportAny]
+            type_guide = last_file_data.get('type_guide', {})
             all_type_names = sorted(type_guide.keys())
             # Show types that partially match
             matches = [t for t in all_type_names if type_name.lower() in t.lower()]
@@ -79,7 +98,7 @@ def check_type(type_name):
                 print("Possible matches:")
                 for t in matches[:10]:
                     print(f"  - {t}")
-        except:
+        except Exception:
             pass
 
 if __name__ == "__main__":
