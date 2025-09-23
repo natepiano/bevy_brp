@@ -61,7 +61,8 @@ If you find yourself thinking any of these phrases, STOP:
     **STEP 5:** Execute the <ApplicationVerification/>
     **STEP 6:** Execute the <BatchProcessingLoop/>
     **STEP 7:** Execute the <FinalCleanup/> (SILENTLY if failures detected)
-    **STEP 8:** Execute the <InteractiveFailureReview/> (ONLY if failures detected)
+    **STEP 8:** Execute the <FilterKnownIssues/> (ONLY if failures detected)
+    **STEP 9:** Execute the <InteractiveFailureReview/> (ONLY if NEW failures detected after filtering)
 </ExecutionFlow>
 
 ## STEP 1: INITIAL SETUP
@@ -158,9 +159,12 @@ If you find yourself thinking any of these phrases, STOP:
        - MUST be exactly [MAX_SUBAGENTS] Task invocations
        - NEVER combine or skip Task invocations
     4. Execute <ProcessBatchResults/> after all subagents complete
-    5. Execute <CheckForFailures/> and stop if any failures detected
+    5. Execute <CheckForFailures/> which will:
+       - Continue to next batch if all pass
+       - Trigger cleanup and filtering if failures detected
+       - Only stop if NEW (non-known) failures are found after filtering
 
-    Continue until all batches are processed or a failure occurs.
+    Continue until all batches are processed or NEW failures occur.
 </BatchProcessingLoop>
 
 ### BATCH PROCESSING SUBSTEPS
@@ -311,17 +315,18 @@ If you find yourself thinking any of these phrases, STOP:
     **Check merge script exit code and results:**
 
     - Exit code 0: All passed, continue to next batch
-    - Exit code 2: **FAILURES DETECTED - STOP IMMEDIATELY**
-    - COMPONENT_NOT_FOUND status: **STOP IMMEDIATELY**
+    - Exit code 2: **FAILURES DETECTED - PROCEED TO FILTERING**
+    - COMPONENT_NOT_FOUND status: **PROCEED TO FILTERING**
 
     **FAILURE PROTOCOL**:
     1. **Store failure details** in a variable from batch results JSON
     2. Save progress for passed types (merge script handles this)
     3. Execute <FinalCleanup/> SILENTLY - no output during cleanup
-    4. Execute <InteractiveFailureReview/> to present failures one by one
-    5. **DO NOT CONTINUE** to next batch
+    4. Execute <FilterKnownIssues/> to filter out known issues
+    5. Execute <InteractiveFailureReview/> ONLY if new failures remain after filtering
+    6. **DO NOT CONTINUE** to next batch if new failures exist
 
-    **CRITICAL**: Do NOT display failure details during this step. Store them for the interactive review after cleanup.
+    **CRITICAL**: Do NOT display failure details during this step. Store them for filtering and potential review.
 </CheckForFailures>
 
 ## STEP 7: FINAL CLEANUP
@@ -337,7 +342,45 @@ If you find yourself thinking any of these phrases, STOP:
     **CRITICAL**: Do NOT display shutdown status messages. Execute silently.
 </FinalCleanup>
 
-## STEP 8: INTERACTIVE FAILURE REVIEW (Only if failures detected)
+## STEP 8: FILTER KNOWN ISSUES (Only if failures detected)
+
+<FilterKnownIssues>
+    **Filter out known issues before determining if review is needed:**
+
+    1. **Load known issues list**:
+    ```bash
+    # Check if known issues file exists
+    if [ -f ".claude/transient/mutation_test_known_issues.json" ]; then
+        KNOWN_ISSUES=$(cat .claude/transient/mutation_test_known_issues.json)
+    else
+        KNOWN_ISSUES="[]"
+    fi
+    ```
+
+    2. **Load failure details** from the latest failure log file (path stored from CheckForFailures step)
+
+    3. **Filter failures**:
+    - For each failure in the failure log:
+      - Check if type AND path match an entry in known_issues.json
+      - If matched: Mark as "known issue" and exclude from review
+      - If not matched: Add to "new failures" list for review
+
+    4. **Determine next action**:
+    - **ALL failures are known issues**:
+      - Display brief summary: "✓ Batch [N] completed with [X] known issues (all expected)"
+      - Log known issues encountered for reference
+      - **CONTINUE TO NEXT BATCH** in the BatchProcessingLoop
+    - **NEW failures exist**:
+      - Store filtered list of new failures
+      - Proceed to <InteractiveFailureReview/> with only the new failures
+    - **Mix of known and new**:
+      - Note in summary: "[X] known issues filtered out, [Y] new failures to review"
+      - Proceed to review only the new failures
+
+    **CRITICAL**: This filtering prevents the test from stopping on already-documented issues.
+</FilterKnownIssues>
+
+## STEP 9: INTERACTIVE FAILURE REVIEW (Only if NEW failures detected after filtering)
 
 <InteractiveFailureReview>
     **After cleanup is complete, present failures interactively:**
