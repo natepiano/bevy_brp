@@ -217,19 +217,49 @@ If you find yourself thinking any of these phrases, STOP:
     **Set window titles for visual tracking:**
 
     **EXACT PROCEDURE**:
-    1. Get the assignments from GetBatchAssignments (returns exactly MAX_SUBAGENTS assignments - one per subagent)
-    2. For each of the MAX_SUBAGENTS subagent assignments:
-       - Port = assignment.port
-       - Types = assignment.types (already contains complete type data)
-       - **VALIDATE** types array length == TYPES_PER_SUBAGENT
+    1. **Extract assignments from GetBatchAssignments output**:
+       - Work directly with the JSON output from the previous command
+       - Locate the "assignments" array in the JSON response
+       - **VALIDATE**: Confirm assignments array has exactly MAX_SUBAGENTS entries
+
+    2. **For each of the MAX_SUBAGENTS subagent assignments**:
+       - **Extract port**: `assignment.port`
+       - **Extract types array**: `assignment.types`
+       - **VALIDATE types count**: Ensure `types.length == TYPES_PER_SUBAGENT`
          - **STOP IF** wrong count: "Assignment {subagent} has {actual} types, expected {TYPES_PER_SUBAGENT}"
-       - Title = Create comma-separated list of last segments after `::` from all type names
+
+    3. **Create meaningful window titles**:
+       - **For each assignment**, extract type names: `assignment.types[].type_name`
+       - **Extract short names**: Take everything after the last `::` in each type_name
+         - Example: `"bevy_pbr::light::CascadeShadowConfig"` → `"CascadeShadowConfig"`
+       - **Create title**: Join short names with commas: `"CascadeShadowConfig, AmbientLight, DirectionalLight"`
+       - **Full title format**: `"Subagent {INDEX+1}: {SHORT_NAMES}"`
+
+    **CONCRETE EXAMPLE**:
+    ```
+    Assignment: {
+      "subagent": 1,
+      "port": 30001,
+      "types": [
+        {"type_name": "bevy_pbr::light::CascadeShadowConfig", ...},
+        {"type_name": "bevy_pbr::light::ambient_light::AmbientLight", ...},
+        {"type_name": "bevy_pbr::light::DirectionalLight", ...}
+      ]
+    }
+
+    Extraction process:
+    1. Extract type_names: ["bevy_pbr::light::CascadeShadowConfig", "bevy_pbr::light::ambient_light::AmbientLight", "bevy_pbr::light::DirectionalLight"]
+    2. Get short names: ["CascadeShadowConfig", "AmbientLight", "DirectionalLight"]
+    3. Create title: "Subagent 1: CascadeShadowConfig, AmbientLight, DirectionalLight"
+    ```
 
     **DEFENSIVE VALIDATION**:
-    - Each assignment MUST contain exactly TYPES_PER_SUBAGENT types
-    - FAIL FAST if any assignment has wrong number of types
+    - **STOP IF** cannot extract assignments array from JSON
+    - **STOP IF** any assignment is missing port or types fields
+    - **STOP IF** any assignment has wrong number of types
+    - **STOP IF** any type_name field is missing or empty
 
-    Send all window title updates in parallel.
+    **EXECUTION**: Send all window title updates in parallel using extracted data.
 </SetWindowTitles>
 
 <LaunchSubagents>
