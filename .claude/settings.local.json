@@ -127,7 +127,11 @@
       "WebFetch(domain:crates.io)",
       "WebFetch(domain:keepachangelog.com)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(~/.local/bin/basedpyright:*)",
+      "Bash(if [ -d \".claude/scripts/\" ])",
+      "Bash(then echo \"Scripts directory found\")",
+      "Bash(else echo \"No scripts directory found\")"
     ],
     "deny": [
       "Bash(sed:*)"
