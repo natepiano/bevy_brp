@@ -8,6 +8,9 @@ Perform a coordinated release for bevy_brp workspace crates using cargo-release.
 - `/release X.Y.Z-rc.N` - Release all 3 crates as RC version (e.g., `0.3.0-rc.1`)
 - `/release X.Y.Z` - Release all 3 crates as final version (e.g., `0.3.0`)
 
+**Note: After initial release to crates.io**
+Once all three crates are published on crates.io with proper version dependencies (not path dependencies), future releases can use the simplified `cargo publish --workspace` workflow. See "Future Releases (Post-Initial)" section below.
+
 ## Crate Dependency Chain
 1. `mcp_macros` (no dependencies) - must be released first
 2. `extras` (depends on bevy only) - can be released with mcp
@@ -328,6 +331,34 @@ The workspace uses `release.toml` with:
 - **Issue**: Rollback instructions only cover post-push scenarios. No recovery mechanisms for failures during the multi-phase release process.
 - **Reasoning**: While the finding correctly identifies gaps in error recovery procedures for each phase of the release process, the current documentation is sufficient.
 - **Decision**: User elected to skip this recommendation - will figure out recovery if failures happen as this isn't that complex of a process
+
+## Future Releases (Post-Initial)
+
+**After the first release establishes all crates on crates.io:**
+
+Once the initial release is complete and all crates use version dependencies (not path dependencies), future releases can use the simplified Rust 1.90.0+ workflow:
+
+### Simplified Process
+1. **Version Management**: Use cargo-release for version bumps and CHANGELOG updates
+   ```bash
+   cargo release <version> --workspace --no-publish --execute
+   ```
+
+2. **Publishing**: Use native workspace publishing (automatically handles dependency order)
+   ```bash
+   cargo publish --workspace --dry-run
+   cargo publish --workspace
+   ```
+
+This eliminates the complex 3-phase process and manual dependency updates. The native `cargo publish --workspace` (available since Rust 1.90.0) automatically:
+- Determines correct publishing order based on dependencies
+- Verifies the entire workspace builds with to-be-published versions
+- Publishes all crates in the correct sequence
+
+### Prerequisites for Simplified Workflow
+- All crates must already exist on crates.io
+- `mcp/Cargo.toml` must use version dependency for `mcp_macros` (not path)
+- Rust toolchain version 1.90.0 or later
 
 ## Common Issues
 
