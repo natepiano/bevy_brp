@@ -52,21 +52,3 @@ pub struct NoTargetsFoundError {
     #[to_message(message_template = "No {target_type} named `{target_name}` found in workspace")]
     message_template: String,
 }
-
-/// Error when build is required
-#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct BuildRequiredError {
-    #[to_error_info]
-    target_name: String,
-
-    #[to_error_info]
-    target_type: String,
-
-    #[to_error_info]
-    profile: String,
-
-    #[to_message(
-        message_template = "{target_type} `{target_name}` needs to be built first. Run: cargo build --{profile}"
-    )]
-    message_template: String,
-}
