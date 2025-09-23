@@ -10,7 +10,7 @@ import json
 import sys
 import re
 import argparse
-from typing import TypedDict
+from typing import TypedDict, cast
 
 
 class FieldData(TypedDict):
@@ -177,8 +177,8 @@ def main() -> None:
     args = parser.parse_args()
 
     # Read comparison output
-    comparison_output: str = args.comparison_output  # pyright: ignore[reportAny]
-    expected_changes_file: str = args.expected_changes  # pyright: ignore[reportAny]
+    comparison_output: str = args.comparison_output
+    expected_changes_file: str = args.expected_changes
     if comparison_output == '-':
         comparison_text = sys.stdin.read()
     else:
@@ -187,7 +187,7 @@ def main() -> None:
 
     # Read expected changes
     with open(expected_changes_file, 'r') as f:
-        expected_changes: ExpectedChanges = json.load(f)  # pyright: ignore[reportAny]
+        expected_changes = cast(ExpectedChanges, json.load(f))
 
     # Parse patterns from comparison output
     patterns = parse_comparison_output(comparison_text)

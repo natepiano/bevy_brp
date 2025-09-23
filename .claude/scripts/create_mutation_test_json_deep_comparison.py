@@ -5,16 +5,69 @@ Detects and categorizes structural differences between baseline and current file
 """
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
 # pylint: disable=too-many-lines,too-complex,too-many-arguments,line-too-long
-# flake8: noqa: C901,E501
-# noqa: C901
-# mccabe: disable=C901
-# type: ignore[no-any-return]
 
 import json
 import sys
-from typing import Any, Dict, List
+from typing import Any, TypedDict, cast
 from dataclasses import dataclass
 from enum import Enum
+from collections import defaultdict
+
+
+# Type definitions for the JSON structure
+JsonValue = str | int | float | bool | None | dict[str, "JsonValue"] | list["JsonValue"]
+
+# Root JSON file structures
+class RootJsonFile(TypedDict, total=False):
+    """Root structure of mutation test JSON files"""
+    type_guide: dict[str, "TypeData"] | list["TypeData"]
+    result: "ResultWrapper"
+
+class ResultWrapper(TypedDict, total=False):
+    """Wrapper for nested result structure"""
+    type_guide: dict[str, "TypeData"] | list["TypeData"]
+
+class ExcludedType(TypedDict):
+    """Structure for excluded types JSON"""
+    type_name: str
+
+class ExclusionFile(TypedDict):
+    """Structure for the exclusion file"""
+    excluded_types: list[ExcludedType]
+class PathInfo(TypedDict):
+    mutation_status: str
+    path_kind: str
+    type: str
+    type_kind: str
+
+
+class MutationPathData(TypedDict):
+    description: str
+    example: Any  # pyright: ignore[reportExplicitAny] - arbitrary JSON value
+    path_info: PathInfo
+
+
+class TypeData(TypedDict, total=False):
+    agent_guidance: str | None
+    batch_number: int | None
+    fail_reason: str | None
+    has_deserialize: bool
+    has_serialize: bool
+    in_registry: bool
+    mutation_paths: dict[str, MutationPathData]
+    schema_info: dict[str, Any] | None  # pyright: ignore[reportExplicitAny] - JSON schema
+    spawn_format: Any | None  # pyright: ignore[reportExplicitAny] - arbitrary JSON structure
+    supported_operations: list[str]
+    test_status: str | None
+    type: str
+    type_name: str
+
+
+class TypeGuideData(TypedDict):
+    discovered_count: int
+    requested_types: list[str]
+    summary: dict[str, Any]  # pyright: ignore[reportExplicitAny] - summary data
+    type_guide: dict[str, TypeData]
 
 
 class ChangePattern(Enum):
@@ -38,11 +91,11 @@ class Difference:
     pattern: ChangePattern
     before_structure: str
     after_structure: str
-    before_sample: Any
-    after_sample: Any
+    before_sample: JsonValue
+    after_sample: JsonValue
 
 
-def describe_structure(val: Any) -> str:  # noqa: C901
+def describe_structure(val: JsonValue) -> str:
     """Describe the structure/type of a value"""
     if val is None:
         return "null"
@@ -67,7 +120,7 @@ def describe_structure(val: Any) -> str:  # noqa: C901
             return "enum_schema_array"
         else:
             return f"array[{describe_structure(first)}]"
-    elif isinstance(val, dict):
+    elif isinstance(val, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
         if "variants" in val:
             return "enum_schema"
         elif all(k in val for k in ["x", "y", "z"]):
@@ -76,12 +129,11 @@ def describe_structure(val: Any) -> str:  # noqa: C901
             return "quat_object"
         else:
             return "object"
-    return "unknown"
 
 
 def detect_pattern(
-    before: Any, after: Any, path: str
-) -> ChangePattern:  # noqa: C901
+    before: JsonValue, after: JsonValue, _path: str
+) -> ChangePattern:
     """Detect what kind of change pattern this is"""
     before_struct = describe_structure(before)
     after_struct = describe_structure(after)
@@ -117,10 +169,10 @@ def detect_pattern(
 
 
 def find_differences(
-    baseline_type: Dict, current_type: Dict, type_name: str
-) -> List[Difference]:  # noqa: C901
+    baseline_type: TypeData, current_type: TypeData, type_name: str
+) -> list[Difference]:
     """Find all differences in a single type"""
-    differences = []
+    differences: list[Difference] = []
 
     # Define which fields at each level should have their contents compared as values, not structure
     VALUE_FIELDS = {
@@ -131,17 +183,17 @@ def find_differences(
         "schema_info",
     }
 
-    def should_compare_as_value(path: str, key: str) -> bool:
+    def should_compare_as_value(_path: str, key: str) -> bool:
         """Check if this key's value should be compared as a whole value rather than recursively"""
         # These fields contain data values, not structural schema
         return key in VALUE_FIELDS
 
-    def recurse(b_val: Any, c_val: Any, path: str):  # noqa: C901
+    def recurse(b_val: JsonValue, c_val: JsonValue, path: str) -> None:
         # CRITICAL FIX: Don't flag identical values as changes
         if b_val == c_val:
             return
 
-        if type(b_val) is not type(c_val):
+        if type(b_val) is not type(c_val):  # type: ignore[comparison-overlap]
             # Structural difference
             pattern = detect_pattern(b_val, c_val, path)
             # Always capture the actual values for comparison
@@ -156,16 +208,16 @@ def find_differences(
                     after_sample=c_val,
                 )
             )
-        elif isinstance(b_val, dict):
+        elif isinstance(b_val, dict) and isinstance(c_val, dict):
             all_keys = set(b_val.keys()) | set(c_val.keys())
             for key in all_keys:
-                new_path = f"{path}.{key}" if path else key
+                new_path = f"{path}.{key}" if path else str(key)
 
                 if key not in b_val:
                     differences.append(
                         Difference(
                             type_name=type_name,
-                            path=new_path,
+                            path=new_path,  # type: ignore[arg-type]
                             pattern=ChangePattern.FIELD_ADDED,
                             before_structure="missing",
                             after_structure=describe_structure(c_val[key]),
@@ -181,7 +233,7 @@ def find_differences(
                     differences.append(
                         Difference(
                             type_name=type_name,
-                            path=new_path,
+                            path=new_path,  # type: ignore[arg-type]
                             pattern=ChangePattern.FIELD_REMOVED,
                             before_structure=describe_structure(b_val[key]),
                             after_structure="missing",
@@ -195,7 +247,7 @@ def find_differences(
                     )
                 else:
                     # Check if this field should be compared as a whole value
-                    if should_compare_as_value(path, key):
+                    if should_compare_as_value(path, str(key)):
                         # Compare the entire value, don't recurse into it
                         if b_val[key] != c_val[key]:
                             pattern = detect_pattern(
@@ -204,7 +256,7 @@ def find_differences(
                             differences.append(
                                 Difference(
                                     type_name=type_name,
-                                    path=new_path,
+                                    path=new_path,  # type: ignore[arg-type]
                                     pattern=pattern,
                                     before_structure=describe_structure(
                                         b_val[key]
@@ -218,8 +270,8 @@ def find_differences(
                             )
                     else:
                         # Recurse into structural fields
-                        recurse(b_val[key], c_val[key], new_path)
-        elif isinstance(b_val, list):
+                        recurse(b_val[key], c_val[key], new_path)  # type: ignore[arg-type]
+        elif isinstance(b_val, list) and isinstance(c_val, list):
             for i in range(min(len(b_val), len(c_val))):
                 recurse(b_val[i], c_val[i], f"{path}[{i}]")
             if len(b_val) != len(c_val):
@@ -250,66 +302,65 @@ def find_differences(
                 )
             )
 
-    recurse(baseline_type, current_type, "")
+    recurse(cast(JsonValue, cast(object, baseline_type)), cast(JsonValue, cast(object, current_type)), "")
     return differences
 
 
-def extract_type_guide(data: Dict) -> List[Dict]:  # noqa: C901
+def extract_type_guide(data: RootJsonFile) -> list[TypeData]:
     """Extract type_guide array from either format"""
     if "type_guide" in data:
         type_guide = data["type_guide"]
         # Handle both object format (keys are type names) and array format
         if isinstance(type_guide, dict):
             # Convert object format to array format, adding type_name field
-            return [
-                {**guide, "type_name": type_name}
-                for type_name, guide in type_guide.items()
-            ]
+            result: list[TypeData] = []
+            for type_name, guide in type_guide.items():
+                type_entry = dict(guide)  # Create mutable copy
+                type_entry["type_name"] = type_name
+                result.append(cast(TypeData, cast(object, type_entry)))
+            return result
         else:
             return type_guide
     elif "result" in data and "type_guide" in data["result"]:
-        type_guide = data["result"]["type_guide"]
+        type_guide_nested = data["result"]["type_guide"]
         # Handle both object format (keys are type names) and array format
-        if isinstance(type_guide, dict):
+        if isinstance(type_guide_nested, dict):
             # Convert object format to array format, adding type_name field
-            return [
-                {**guide, "type_name": type_name}
-                for type_name, guide in type_guide.items()
-            ]
+            result_nested: list[TypeData] = []
+            for type_name, guide in type_guide_nested.items():
+                type_entry = dict(guide)  # Create mutable copy
+                type_entry["type_name"] = type_name
+                result_nested.append(cast(TypeData, cast(object, type_entry)))
+            return result_nested
         else:
-            return type_guide
+            return type_guide_nested
     else:
         # If data is a dict with type names as keys, return the values
-        if isinstance(data, dict):
-            return list(data.values())
-        return data
+        return []
 
 
-def calculate_metadata(type_guide: List[Dict]) -> Dict[str, int]:  # noqa: C901
+def calculate_metadata(type_guide: list[TypeData]) -> dict[str, int]:
     """Calculate metadata statistics for a type guide"""
     total_types = len(type_guide)
 
     spawn_supported = len(
-        [t for t in type_guide if isinstance(t, dict) and "spawn_format" in t]
+        [t for t in type_guide if "spawn_format" in t]
     )
 
     with_mutations = len(
         [
             t
             for t in type_guide
-            if isinstance(t, dict)
-            and t.get("mutation_paths")
-            and t["mutation_paths"] != {}
-            and t["mutation_paths"] != []
+            if t.get("mutation_paths")
+            and t.get("mutation_paths") != {}
         ]
     )
 
     total_paths = sum(
         [
             (
-                len(t["mutation_paths"].keys())
-                if isinstance(t, dict)
-                and isinstance(t.get("mutation_paths"), dict)
+                len(t.get("mutation_paths", {}).keys())
+                if isinstance(t.get("mutation_paths"), dict)
                 else 0
             )
             for t in type_guide
@@ -324,14 +375,14 @@ def calculate_metadata(type_guide: List[Dict]) -> Dict[str, int]:  # noqa: C901
     }
 
 
-def get_excluded_types() -> List[str]:  # noqa: C901
+def get_excluded_types() -> list[str]:
     """Get list of excluded types from the exclusion file"""
     exclusion_file = ".claude/scripts/mutation_test_excluded_types.json"
     excluded = []
 
     try:
         with open(exclusion_file, "r") as f:
-            data = json.load(f)
+            data = cast(ExclusionFile, json.load(f))
             excluded = [
                 item["type_name"] for item in data.get("excluded_types", [])
             ]
@@ -352,11 +403,8 @@ def get_excluded_types() -> List[str]:  # noqa: C901
     return excluded
 
 
-def main(baseline_file: str, current_file: str):  # noqa: C901 mccabe:ignore
+def main(baseline_file: str, current_file: str) -> int:
     """Main comparison logic.
-
-    # noqa: C901
-    # mccabe:ignore-complexity
     """
 
     print("🔍 STRUCTURED MUTATION TEST COMPARISON (Full Schema)")
@@ -366,7 +414,7 @@ def main(baseline_file: str, current_file: str):  # noqa: C901 mccabe:ignore
     # Load files
     try:
         with open(baseline_file) as f:
-            baseline = json.load(f)
+            baseline = cast(RootJsonFile, json.load(f))
     except FileNotFoundError:
         print(f"❌ Baseline file not found: {baseline_file}")
         return 1
@@ -376,7 +424,7 @@ def main(baseline_file: str, current_file: str):  # noqa: C901 mccabe:ignore
 
     try:
         with open(current_file) as f:
-            current = json.load(f)
+            current = cast(RootJsonFile, json.load(f))
     except FileNotFoundError:
         print(f"❌ Current file not found: {current_file}")
         return 1
@@ -458,19 +506,19 @@ def main(baseline_file: str, current_file: str):  # noqa: C901 mccabe:ignore
     # Type-level changes analysis
     print("🔍 TYPE-LEVEL CHANGES")
 
-    baseline_types = set(t["type_name"] for t in baseline_tg)
-    current_types = set(t["type_name"] for t in current_tg)
+    baseline_types = set(t.get("type_name", "") for t in baseline_tg if t.get("type_name"))
+    current_types = set(t.get("type_name", "") for t in current_tg if t.get("type_name"))
 
     new_types = current_types - baseline_types
     removed_types = baseline_types - current_types
     common_types = baseline_types & current_types
 
     # Create lookups
-    baseline_dict = {t["type_name"]: t for t in baseline_tg}
-    current_dict = {t["type_name"]: t for t in current_tg}
+    baseline_dict = {t.get("type_name", f"type_{i}"): t for i, t in enumerate(baseline_tg) if t.get("type_name")}
+    current_dict = {t.get("type_name", f"type_{i}"): t for i, t in enumerate(current_tg) if t.get("type_name")}
 
     # Check for changes in common types
-    modified_types = []
+    modified_types: list[str] = []
     for type_name in common_types:
         if baseline_dict[type_name] != current_dict[type_name]:
             modified_types.append(type_name)
@@ -502,10 +550,12 @@ def main(baseline_file: str, current_file: str):  # noqa: C901 mccabe:ignore
     print()
 
     # Find all structural differences in modified types
-    all_differences = []
+    all_differences: list[Difference] = []
     for type_name in modified_types:
         diffs = find_differences(
-            baseline_dict[type_name], current_dict[type_name], type_name
+            baseline_dict[type_name],
+            current_dict[type_name],
+            type_name
         )
         all_differences.extend(diffs)
 
@@ -514,7 +564,7 @@ def main(baseline_file: str, current_file: str):  # noqa: C901 mccabe:ignore
         return 0
 
     # Categorize differences
-    by_pattern = {}
+    by_pattern: dict[ChangePattern, list[Difference]] = {}
     for diff in all_differences:
         if diff.pattern not in by_pattern:
             by_pattern[diff.pattern] = []
@@ -542,18 +592,18 @@ def main(baseline_file: str, current_file: str):  # noqa: C901 mccabe:ignore
         # Special handling for field removals/additions - show which fields changed
         if pattern == ChangePattern.FIELD_REMOVED:
             # Group by field name to show what's being removed
-            field_changes = {}
+            field_changes_removed: dict[str, list[Difference]] = {}
             for diff in diffs:
                 field_name = diff.path.split(".")[
                     -1
                 ]  # Get the last part of the path as field name
-                if field_name not in field_changes:
-                    field_changes[field_name] = []
-                field_changes[field_name].append(diff)
+                if field_name not in field_changes_removed:
+                    field_changes_removed[field_name] = []
+                field_changes_removed[field_name].append(diff)
 
             print()
             print("Fields removed breakdown:")
-            for field_name, field_diffs in field_changes.items():
+            for field_name, field_diffs in field_changes_removed.items():
                 affected_types_for_field = len(
                     set(d.type_name for d in field_diffs)
                 )
@@ -563,18 +613,18 @@ def main(baseline_file: str, current_file: str):  # noqa: C901 mccabe:ignore
 
         elif pattern == ChangePattern.FIELD_ADDED:
             # Group by field name to show what's being added
-            field_changes = {}
+            field_changes_added: dict[str, list[Difference]] = {}
             for diff in diffs:
                 field_name = diff.path.split(".")[
                     -1
                 ]  # Get the last part of the path as field name
-                if field_name not in field_changes:
-                    field_changes[field_name] = []
-                field_changes[field_name].append(diff)
+                if field_name not in field_changes_added:
+                    field_changes_added[field_name] = []
+                field_changes_added[field_name].append(diff)
 
             print()
             print("Fields added breakdown:")
-            for field_name, field_diffs in field_changes.items():
+            for field_name, field_diffs in field_changes_added.items():
                 affected_types_for_field = len(
                     set(d.type_name for d in field_diffs)
                 )
@@ -699,38 +749,46 @@ if __name__ == "__main__":
 
         # Load files
         with open(baseline_file) as f:
-            baseline = json.load(f)
+            baseline = cast(RootJsonFile, json.load(f))
         with open(current_file) as f:
-            current = json.load(f)
+            current = cast(RootJsonFile, json.load(f))
 
         # Extract type guides
         baseline_tg = extract_type_guide(baseline)
         current_tg = extract_type_guide(current)
 
         # Create lookups
-        baseline_dict = {
+        baseline_dict: dict[str, TypeData] = {
             t.get("type_name", f"type_{i}"): t
             for i, t in enumerate(baseline_tg)
         }
-        current_dict = {
+        current_dict: dict[str, TypeData] = {
             t.get("type_name", f"type_{i}"): t
             for i, t in enumerate(current_tg)
         }
 
         # Find changes focusing on the unexpected patterns
         all_type_names = set(baseline_dict.keys()) | set(current_dict.keys())
-        detailed_changes = []
+        detailed_changes: list[dict[str, str]] = []
 
         for type_name in all_type_names:
-            b_type = baseline_dict.get(type_name, {})
-            c_type = current_dict.get(type_name, {})
+            b_type_data = baseline_dict.get(type_name)
+            c_type_data = current_dict.get(type_name)
+
+            # Skip if neither type exists
+            if not b_type_data and not c_type_data:
+                continue
+
+            # Use empty TypeData for missing types
+            b_type: TypeData = b_type_data or cast(TypeData, cast(object, {}))
+            c_type: TypeData = c_type_data or cast(TypeData, cast(object, {}))
 
             # Check mutation_paths for removed/added example fields
-            b_mutations = b_type.get("mutation_paths", {})
-            c_mutations = c_type.get("mutation_paths", {})
+            b_mutations: dict[str, MutationPathData] = b_type.get("mutation_paths", {})
+            c_mutations: dict[str, MutationPathData] = c_type.get("mutation_paths", {})
 
             for path, b_data in b_mutations.items():
-                c_data = c_mutations.get(path, {})
+                c_data = c_mutations.get(path, cast(MutationPathData, cast(object, {})))
                 if "examples" in b_data and "examples" not in c_data:
                     detailed_changes.append(
                         {
@@ -749,7 +807,7 @@ if __name__ == "__main__":
                     )
 
             for path, c_data in c_mutations.items():
-                b_data = b_mutations.get(path, {})
+                b_data = b_mutations.get(path, cast(MutationPathData, cast(object, {})))
                 if "example" in c_data and "example" not in b_data:
                     detailed_changes.append(
                         {
@@ -778,12 +836,12 @@ if __name__ == "__main__":
                 )
 
         # Group by pattern
-        patterns = defaultdict(list)
+        patterns: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
         for change in detailed_changes:
             patterns[change["pattern"]].append(change)
 
         # Create output
-        output = {"unexpected_changes": {}}
+        output: dict[str, dict[str, dict[str, int | list[dict[str, str]]]]] = {"unexpected_changes": {}}
         for pattern, changes in patterns.items():
             output["unexpected_changes"][pattern] = {
                 "count": len(changes),
