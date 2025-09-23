@@ -83,8 +83,8 @@ if types_per_subagent <= 0:
     sys.exit(1)
 
 if subagent_index is not None:
-    if subagent_index < 0 or subagent_index >= max_subagents:
-        print(f"Error: subagent_index must be in range [0, {max_subagents}), got: {subagent_index}", file=sys.stderr)
+    if subagent_index < 0:
+        print(f"Error: subagent_index must be non-negative, got: {subagent_index}", file=sys.stderr)
         sys.exit(1)
 
 # Get the JSON file path from .claude/transient
@@ -120,46 +120,65 @@ if not batch_types:
     print(f"No types found for batch {batch_num}", file=sys.stderr)
     sys.exit(1)
 
-# Calculate total types needed
-total_types_needed: int = max_subagents * types_per_subagent
+# Calculate flexible distribution
+total_available_types: int = len(batch_types)
 
-# Check if we have enough types in this batch
-if len(batch_types) < total_types_needed:
-    print(f"Error: Batch {batch_num} has {len(batch_types)} types, but need {total_types_needed} ({max_subagents} subagents × {types_per_subagent} types each)", file=sys.stderr)
-    sys.exit(1)
+# Calculate optimal distribution: fill subagents with preferred count, handle remainder
+base_types_per_subagent: int = min(types_per_subagent, total_available_types)
+full_subagents: int = total_available_types // types_per_subagent
+remainder_types: int = total_available_types % types_per_subagent
 
-# Take only the types we need for this configuration
-batch_types = batch_types[:total_types_needed]
+# Determine actual number of subagents needed
+if remainder_types > 0:
+    actual_subagents_needed: int = min(full_subagents + 1, max_subagents)
+else:
+    actual_subagents_needed = min(full_subagents, max_subagents)
 
-# Distribute types across subagents
+# Distribute types across subagents flexibly
 assignments: list[SubagentAssignment] = []
-for subagent_num in range(1, max_subagents + 1):
-    start_index = (subagent_num - 1) * types_per_subagent
-    end_index = start_index + types_per_subagent
+type_index = 0
+
+for subagent_num in range(1, actual_subagents_needed + 1):
+    # Determine how many types this subagent gets
+    if subagent_num <= full_subagents:
+        # This subagent gets the full amount
+        types_for_this_subagent = types_per_subagent
+    else:
+        # This is the last subagent, gets the remainder
+        types_for_this_subagent = remainder_types
 
     subagent_types: list[TypeData] = []
-    for type_item in batch_types[start_index:end_index]:
-        type_data: TypeData = cast(TypeData, cast(object, {
-            'type_name': type_item['type_name'],
-            'spawn_format': type_item.get('spawn_format'),
-            'mutation_paths': type_item.get('mutation_paths'),
-            'supported_operations': type_item.get('supported_operations'),
-            'has_serialize': type_item.get('has_serialize'),
-            'has_deserialize': type_item.get('has_deserialize'),
-            'in_registry': type_item.get('in_registry'),
-            'schema_info': type_item.get('schema_info')
-        }))
-        subagent_types.append(type_data)
+    for _ in range(types_for_this_subagent):
+        if type_index < len(batch_types):
+            type_item = batch_types[type_index]
+            type_data: TypeData = cast(TypeData, cast(object, {
+                'type_name': type_item['type_name'],
+                'spawn_format': type_item.get('spawn_format'),
+                'mutation_paths': type_item.get('mutation_paths'),
+                'supported_operations': type_item.get('supported_operations'),
+                'has_serialize': type_item.get('has_serialize'),
+                'has_deserialize': type_item.get('has_deserialize'),
+                'in_registry': type_item.get('in_registry'),
+                'schema_info': type_item.get('schema_info')
+            }))
+            subagent_types.append(type_data)
+            type_index += 1
 
-    assignment: SubagentAssignment = {
-        'subagent': subagent_num,
-        'port': 30000 + subagent_num,
-        'types': subagent_types
-    }
-    assignments.append(assignment)
+    if subagent_types:  # Only create assignment if there are types
+        assignment: SubagentAssignment = {
+            'subagent': subagent_num,
+            'port': 30000 + subagent_num,
+            'types': subagent_types
+        }
+        assignments.append(assignment)
 
 # Check if we're returning a single subagent assignment or all assignments
 if subagent_index is not None:
+    # Validate subagent_index against actual assignments
+    if subagent_index >= len(assignments):
+        print(f"Error: subagent_index {subagent_index} is out of range. This batch has {len(assignments)} subagents (indices 0-{len(assignments)-1})", file=sys.stderr)
+        sys.exit(1)
+
     # Return single assignment for the specified subagent
     # subagent_index is 0-based, but subagent numbers are 1-based
     subagent_num: int = subagent_index + 1
@@ -185,9 +204,9 @@ else:
     # Return all assignments (original behavior for main agent)
     output: AllAssignmentsOutput = {
         'batch_number': batch_num,
-        'max_subagents': max_subagents,
-        'types_per_subagent': types_per_subagent,
-        'total_types': len(batch_types),
+        'max_subagents': len(assignments),  # Report actual subagents used
+        'types_per_subagent': types_per_subagent,  # Keep original for reference
+        'total_types': total_available_types,
         'assignments': assignments
     }
     print(json.dumps(output, indent=2))

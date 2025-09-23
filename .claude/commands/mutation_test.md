@@ -201,12 +201,12 @@ If you find yourself thinking any of these phrases, STOP:
     - assignments: Array with subagent, port, and types (complete type data including spawn_format and mutation_paths)
 
     **CRITICAL VALIDATION**:
-    1. **STOP IF** assignments array length != MAX_SUBAGENTS
-       - ERROR: "Expected exactly {MAX_SUBAGENTS} assignments, got {actual_count}"
+    1. **STOP IF** assignments array length > MAX_SUBAGENTS or < 1
+       - ERROR: "Expected 1-{MAX_SUBAGENTS} assignments, got {actual_count}"
     2. **STOP IF** any port is outside range BASE_PORT through (BASE_PORT + MAX_SUBAGENTS - 1)
        - ERROR: "Invalid port {port} - must be in range {BASE_PORT}-{BASE_PORT + MAX_SUBAGENTS - 1}"
-    3. **STOP IF** any assignment doesn't have exactly TYPES_PER_SUBAGENT types
-       - ERROR: "Assignment {subagent} has {actual_count} types, expected {TYPES_PER_SUBAGENT}"
+    3. **STOP IF** any assignment has 0 types or > TYPES_PER_SUBAGENT types
+       - ERROR: "Assignment {subagent} has {actual_count} types, expected 1-{TYPES_PER_SUBAGENT}"
 
     **Extract essential information directly from the command output for the next steps.**
 </GetBatchAssignments>
@@ -218,13 +218,13 @@ If you find yourself thinking any of these phrases, STOP:
     1. **Extract assignments from GetBatchAssignments output**:
        - Work directly with the JSON output from the previous command
        - Locate the "assignments" array in the JSON response
-       - **VALIDATE**: Confirm assignments array has exactly MAX_SUBAGENTS entries
+       - **VALIDATE**: Confirm assignments array has reasonable length (1 to MAX_SUBAGENTS)
 
-    2. **For each of the MAX_SUBAGENTS subagent assignments**:
+    2. **For each subagent assignment (flexible count)**:
        - **Extract port**: `assignment.port`
        - **Extract types array**: `assignment.types`
-       - **VALIDATE types count**: Ensure `types.length == TYPES_PER_SUBAGENT`
-         - **STOP IF** wrong count: "Assignment {subagent} has {actual} types, expected {TYPES_PER_SUBAGENT}"
+       - **VALIDATE types count**: Ensure `1 <= types.length <= TYPES_PER_SUBAGENT`
+         - **STOP IF** wrong count: "Assignment {subagent} has {actual} types, expected 1-{TYPES_PER_SUBAGENT}"
 
     3. **Create meaningful window titles**:
        - **For each assignment**, extract type names: `assignment.types[].type_name`
@@ -265,12 +265,12 @@ If you find yourself thinking any of these phrases, STOP:
 
     **EXACT PROCEDURE**:
     1. Use the assignments from GetBatchAssignments to determine type names and counts
-    2. Create exactly MAX_SUBAGENTS Task invocations - one per subagent
+    2. Create exactly assignments.length Task invocations - one per actual assignment
     3. Each subagent will fetch their own complete type data
-    4. For each subagent (index 0 through MAX_SUBAGENTS-1):
+    4. For each subagent (index 0 through assignments.length-1):
        - Subagent index = loop index (0-based)
        - Port = BASE_PORT + index (where BASE_PORT = 30001)
-       - Task description = "Test [TYPE_NAMES] ([INDEX+1] of [MAX_SUBAGENTS])" where TYPE_NAMES is comma-separated list of last segments after "::" from assignment data and INDEX is 0-based
+       - Task description = "Test [TYPE_NAMES] ([INDEX+1] of [ACTUAL_SUBAGENTS])" where TYPE_NAMES is comma-separated list of last segments after "::" from assignment data and INDEX is 0-based
        - Provide minimal information in prompt:
          * Batch number
          * Subagent index (0-based)
@@ -281,7 +281,7 @@ If you find yourself thinking any of these phrases, STOP:
     **DEFENSIVE VALIDATION**:
     - Main agent verifies assignment count before launching subagents
     - Subagents fetch their own data to prevent prompt corruption
-    - Always exactly MAX_SUBAGENTS subagent assignments (one per available port)
+    - Use actual assignment count (may be less than MAX_SUBAGENTS for partial batches)
     - Task prompts contain ONLY identification info, not type data
     - Task description should include type names for tracking
     - Subagents retrieve their exact assigned types directly from the script
@@ -330,12 +330,12 @@ If you find yourself thinking any of these phrases, STOP:
     1. **Collect all subagent results** into single JSON array
 
     2. **CRITICAL VALIDATION** of collected results:
-       - **STOP IF** number of subagent results != MAX_SUBAGENTS
-         - ERROR: "Expected {MAX_SUBAGENTS} subagent results, got {actual_count}"
-       - **STOP IF** total number of type results != BATCH_SIZE
-         - ERROR: "Expected {BATCH_SIZE} total type results, got {actual_count}"
-       - Each subagent result should contain exactly TYPES_PER_SUBAGENT type results
-         - **STOP IF** any subagent has wrong count: "Subagent {N} returned {actual} type results, expected {TYPES_PER_SUBAGENT}"
+       - **STOP IF** number of subagent results != actual_assignments_count
+         - ERROR: "Expected {actual_assignments_count} subagent results, got {actual_count}"
+       - **STOP IF** total number of type results != total_types_in_batch
+         - ERROR: "Expected {total_types_in_batch} total type results, got {actual_count}"
+       - Each subagent result should contain 1-TYPES_PER_SUBAGENT type results
+         - **STOP IF** any subagent has wrong count: "Subagent {N} returned {actual} type results, expected {expected_for_this_subagent}"
 
     3. **Write results to temp file** using Write tool:
     ```python
