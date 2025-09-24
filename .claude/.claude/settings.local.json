@@ -3,7 +3,10 @@
     "allow": [
       "Read(//Users/natemccoy/.claude/shared/**)",
       "Read(//Users/natemccoy/rust/bevy_brp/**)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Read(//Users/natemccoy/.claude/commands/reviews/**)",
+      "Bash(chmod:*)",
+      "Read(//Users/natemccoy/.claude/commands/**)"
     ],
     "deny": [],
     "ask": []
