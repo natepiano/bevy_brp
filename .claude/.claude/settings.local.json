@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/natemccoy/.claude/shared/**)",
+      "Read(//Users/natemccoy/rust/bevy_brp/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
