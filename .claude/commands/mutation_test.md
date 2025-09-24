@@ -14,47 +14,19 @@
 <TestConfiguration>
 TYPES_PER_SUBAGENT = 3                                  # Types each subagent tests
 MAX_SUBAGENTS = 10                                      # Parallel subagents per batch
-BATCH_SIZE = [TYPES_PER_SUBAGENT] * [MAX_SUBAGENTS]     # Types per batch (MAX_SUBAGENTS * TYPES_PER_SUBAGENT)
+BATCH_SIZE = ${TYPES_PER_SUBAGENT * MAX_SUBAGENTS}      # Types per batch
 BASE_PORT = 30001                                       # Starting port for subagents
-PORT_RANGE = 30001-30010                                # Each subagent gets dedicated port
+MAX_PORT = ${BASE_PORT + MAX_SUBAGENTS - 1}             # Last port in range
+PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagents
 </TestConfiguration>
 
 <NoOptimizationAllowed>
-**CRITICAL - NO OPTIMIZATIONS OR SHORTCUTS ALLOWED**:
-
-**FORBIDDEN ACTIONS**:
-- ❌ Creating custom scripts to "speed up" the process
-- ❌ Combining multiple batches into a single operation
-- ❌ Skipping steps that "seem successful" from previous batches
-- ❌ Using bash loops or automation to replace the explicit step-by-step process
-- ❌ "Batching" the batches themselves
-- ❌ Assuming success means you can deviate from the process
-- ❌ **MODIFYING ANY SPECIFIED COMMANDS** - Use commands EXACTLY as written
-- ❌ **CREATING INTERMEDIATE FILES** to work around truncated output
-- ❌ **PIPING COMMAND OUTPUT TO FILES** unless explicitly required
-- ❌ **ADDING CUSTOM PYTHON PROCESSING** to extract data from command output
-
-**REQUIRED MINDSET**:
-- ✅ Each batch is independent and requires FULL execution of ALL steps
-- ✅ Even if batch 1 succeeds perfectly, batch 2 must follow IDENTICAL procedures
-- ✅ The repetition is INTENTIONAL for reliability and debugging
-- ✅ Following the exact pattern enables proper failure isolation
-- ✅ **USE ALL COMMANDS EXACTLY AS SPECIFIED** - no modifications allowed
-- ✅ **WORK WITH COMMAND OUTPUT DIRECTLY** even if truncated in display
-
-**ENFORCEMENT RULE**:
-If you find yourself thinking any of these phrases, STOP:
-- "This would be faster if..."
-- "Since batch 1 passed, I can..."
-- "Let me streamline this..."
-- "I'll just combine these..."
-- "We can skip..."
-- "Let me make this more efficient..."
-- "Let me pipe this to a file..."
-- "Let me create a custom script to parse this..."
-- "This output is truncated, I need to work around it..."
-
-**REMINDER**: The instructions are optimized for RELIABILITY, not speed. The parallel subagents within each batch ARE the optimization. Commands are specified exactly as they should be used.
+**CRITICAL CONSTRAINTS**:
+- Use commands EXACTLY as specified - no modifications
+- Execute each batch independently with full procedures
+- Work with command output directly even if truncated
+- No custom scripts, intermediate files, or automation shortcuts
+- No combining or skipping steps regardless of previous success
 </NoOptimizationAllowed>
 
 ## MAIN WORKFLOW
@@ -123,24 +95,24 @@ If you find yourself thinking any of these phrases, STOP:
 ## STEP 4: APPLICATION LAUNCH
 
 <ApplicationLaunch>
-    **Launch 10 extras_plugin instances on sequential ports starting at 30001:**
+    **Launch ${MAX_SUBAGENTS} extras_plugin instances on sequential ports starting at ${BASE_PORT}:**
 
     1. **Shutdown any existing apps** (clean slate):
     ```python
-    # Execute in parallel for ports 30001-30010:
+    # Execute in parallel for ports ${BASE_PORT}-${MAX_PORT}:
     mcp__brp__brp_shutdown(app_name="extras_plugin", port=PORT)
     ```
 
-    2. **Launch all 10 apps with a single command**:
+    2. **Launch all ${MAX_SUBAGENTS} apps with a single command**:
     ```python
     mcp__brp__brp_launch_bevy_example(
         example_name="extras_plugin",
-        port=30001,
-        instance_count=10
+        port=${BASE_PORT},
+        instance_count=${MAX_SUBAGENTS}
     )
     ```
 
-    This will launch 10 instances on ports 30001-30010 automatically.
+    This will launch ${MAX_SUBAGENTS} instances on ports ${BASE_PORT}-${MAX_PORT} automatically.
 </ApplicationLaunch>
 
 ## STEP 5: APPLICATION VERIFICATION
@@ -149,7 +121,7 @@ If you find yourself thinking any of these phrases, STOP:
     **Verify BRP connectivity on all ports:**
 
     ```python
-    # Execute in parallel for ports 30001-30010:
+    # Execute in parallel for ports ${BASE_PORT}-${MAX_PORT}:
     mcp__brp__brp_status(app_name="extras_plugin", port=PORT)
     ```
 
@@ -167,7 +139,7 @@ If you find yourself thinking any of these phrases, STOP:
     1. Execute <GetBatchAssignments/> for batch N
     2. Execute <SetWindowTitles/> based on assignments
     3. Execute <LaunchSubagents/> with parallel Task invocations
-       - MUST be exactly [MAX_SUBAGENTS] Task invocations
+       - MUST be exactly ${MAX_SUBAGENTS} Task invocations
        - NEVER combine or skip Task invocations
     4. Execute <ProcessBatchResults/> after all subagents complete
     5. Execute <CheckForFailures/> which will:
@@ -184,7 +156,7 @@ If you find yourself thinking any of these phrases, STOP:
 
     **MANDATORY EXACT COMMAND - DO NOT MODIFY**:
     ```bash
-    python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py --batch [BATCH_NUMBER] --max-subagents [MAX_SUBAGENTS] --types-per-subagent [TYPES_PER_SUBAGENT]
+    python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
     ```
 
     **CRITICAL INSTRUCTION**: Use the command EXACTLY as specified above. DO NOT:
@@ -201,63 +173,51 @@ If you find yourself thinking any of these phrases, STOP:
     - assignments: Array with subagent, port, and types (complete type data including spawn_format and mutation_paths)
 
     **CRITICAL VALIDATION**:
-    1. **STOP IF** assignments array length > MAX_SUBAGENTS or < 1
-       - ERROR: "Expected 1-{MAX_SUBAGENTS} assignments, got {actual_count}"
-    2. **STOP IF** any port is outside range BASE_PORT through (BASE_PORT + MAX_SUBAGENTS - 1)
-       - ERROR: "Invalid port {port} - must be in range {BASE_PORT}-{BASE_PORT + MAX_SUBAGENTS - 1}"
-    3. **STOP IF** any assignment has 0 types or > TYPES_PER_SUBAGENT types
-       - ERROR: "Assignment {subagent} has {actual_count} types, expected 1-{TYPES_PER_SUBAGENT}"
+    1. **STOP IF** assignments array length > ${MAX_SUBAGENTS} or < 1
+       - ERROR: "Expected 1-${MAX_SUBAGENTS} assignments, got {actual_count}"
+    2. **STOP IF** any port is outside range ${BASE_PORT} through ${MAX_PORT}
+       - ERROR: "Invalid port {port} - must be in range ${BASE_PORT}-${MAX_PORT}"
+    3. **STOP IF** any assignment has 0 types or > ${TYPES_PER_SUBAGENT} types
+       - ERROR: "Assignment {subagent} has {actual_count} types, expected 1-${TYPES_PER_SUBAGENT}"
 
     **Extract essential information directly from the command output for the next steps.**
 </GetBatchAssignments>
 
 <SetWindowTitles>
-    **Set window titles for visual tracking:**
+    **Set window titles for visual tracking using GetBatchAssignments JSON output:**
 
-    **EXACT PROCEDURE**:
-    1. **Extract assignments from GetBatchAssignments output**:
-       - Work directly with the JSON output from the previous command
-       - Locate the "assignments" array in the JSON response
-       - **VALIDATE**: Confirm assignments array has reasonable length (1 to MAX_SUBAGENTS)
+    **STEP 1: Parse assignments data from previous command output:**
+    - Locate the "assignments" array in the GetBatchAssignments JSON response
+    - **STOP IF** JSON parsing fails: "Error: Cannot parse GetBatchAssignments JSON output"
+    - **STOP IF** assignments array missing: "Error: No 'assignments' array found in JSON"
+    - **STOP IF** assignments.length < 1 or > ${MAX_SUBAGENTS}: "Error: Expected 1-${MAX_SUBAGENTS} assignments, got {actual_count}"
 
-    2. **For each subagent assignment (flexible count)**:
-       - **Extract port**: `assignment.port`
-       - **Extract types array**: `assignment.types`
-       - **VALIDATE types count**: Ensure `1 <= types.length <= TYPES_PER_SUBAGENT`
-         - **STOP IF** wrong count: "Assignment {subagent} has {actual} types, expected 1-{TYPES_PER_SUBAGENT}"
+    **STEP 2: For each assignment in assignments array:**
+    - Extract required fields: `assignment.port`, `assignment.types`
+    - **STOP IF** port missing: "Error: Assignment {index} missing port field"
+    - **STOP IF** types missing: "Error: Assignment {index} missing types array"
+    - **STOP IF** types.length < 1 or > ${TYPES_PER_SUBAGENT}: "Error: Assignment {index} has {actual} types, expected 1-${TYPES_PER_SUBAGENT}"
 
-    3. **Create meaningful window titles**:
-       - **For each assignment**, extract type names: `assignment.types[].type_name`
-       - **Extract short names**: Take everything after the last `::` in each type_name
-         - Example: `"bevy_pbr::light::CascadeShadowConfig"` → `"CascadeShadowConfig"`
-       - **Create title**: Join short names with commas: `"CascadeShadowConfig, AmbientLight, DirectionalLight"`
-       - **Full title format**: `"Subagent {INDEX+1}: {SHORT_NAMES}"`
+    **STEP 3: Create window titles and execute in parallel:**
+    - For each assignment.types[].type_name, extract short name (text after last "::")
+    - Join short names with commas: "ShortName1, ShortName2, ShortName3"
+    - Create title: "Subagent {assignment.subagent}: {joined_short_names}"
+    - Use mcp__brp__brp_extras_set_window_title tool with assignment.port and title
 
-    **CONCRETE EXAMPLE**:
-    ```
-    Assignment: {
-      "subagent": 1,
-      "port": 30001,
-      "types": [
-        {"type_name": "bevy_pbr::light::CascadeShadowConfig", ...},
-        {"type_name": "bevy_pbr::light::ambient_light::AmbientLight", ...},
-        {"type_name": "bevy_pbr::light::DirectionalLight", ...}
-      ]
-    }
-
-    Extraction process:
-    1. Extract type_names: ["bevy_pbr::light::CascadeShadowConfig", "bevy_pbr::light::ambient_light::AmbientLight", "bevy_pbr::light::DirectionalLight"]
-    2. Get short names: ["CascadeShadowConfig", "AmbientLight", "DirectionalLight"]
-    3. Create title: "Subagent 1: CascadeShadowConfig, AmbientLight, DirectionalLight"
+    **EXECUTE ALL WINDOW TITLE UPDATES IN PARALLEL:**
+    ```python
+    # For each assignment, execute in ONE message:
+    mcp__brp__brp_extras_set_window_title(port=assignment1.port, title="Subagent 1: Type1, Type2")
+    mcp__brp__brp_extras_set_window_title(port=assignment2.port, title="Subagent 2: Type3, Type4")
+    # ... continue for all assignments
     ```
 
-    **DEFENSIVE VALIDATION**:
-    - **STOP IF** cannot extract assignments array from JSON
-    - **STOP IF** any assignment is missing port or types fields
-    - **STOP IF** any assignment has wrong number of types
-    - **STOP IF** any type_name field is missing or empty
-
-    **EXECUTION**: Send all window title updates in parallel using extracted data.
+    **Example data transformation:**
+    ```
+    Input: assignment.types = [{"type_name": "bevy_pbr::light::CascadeShadowConfig"}, {"type_name": "bevy_pbr::light::AmbientLight"}]
+    Output: title = "Subagent 1: CascadeShadowConfig, AmbientLight"
+    Tool call: mcp__brp__brp_extras_set_window_title(port=${BASE_PORT}, title="Subagent 1: CascadeShadowConfig, AmbientLight")
+    ```
 </SetWindowTitles>
 
 <LaunchSubagents>
@@ -269,7 +229,7 @@ If you find yourself thinking any of these phrases, STOP:
     3. Each subagent will fetch their own complete type data
     4. For each subagent (index 0 through assignments.length-1):
        - Subagent index = loop index (0-based)
-       - Port = BASE_PORT + index (where BASE_PORT = 30001)
+       - Port = ${BASE_PORT} + index
        - Task description = "Test [TYPE_NAMES] ([INDEX+1] of [ACTUAL_SUBAGENTS])" where TYPE_NAMES is comma-separated list of last segments after "::" from assignment data and INDEX is 0-based
        - Provide minimal information in prompt:
          * Batch number
@@ -334,7 +294,7 @@ If you find yourself thinking any of these phrases, STOP:
          - ERROR: "Expected {actual_assignments_count} subagent results, got {actual_count}"
        - **STOP IF** total number of type results != total_types_in_batch
          - ERROR: "Expected {total_types_in_batch} total type results, got {actual_count}"
-       - Each subagent result should contain 1-TYPES_PER_SUBAGENT type results
+       - Each subagent result should contain 1-${TYPES_PER_SUBAGENT} type results
          - **STOP IF** any subagent has wrong count: "Subagent {N} returned {actual} type results, expected {expected_for_this_subagent}"
 
     3. **Write results to temp file** using Write tool:
@@ -389,7 +349,7 @@ If you find yourself thinking any of these phrases, STOP:
     **Shutdown all applications SILENTLY (no output):**
 
     ```python
-    # Execute in parallel for ports 30001-30010:
+    # Execute in parallel for ports ${BASE_PORT}-${MAX_PORT}:
     mcp__brp__brp_shutdown(app_name="extras_plugin", port=PORT)
     ```
 
@@ -557,8 +517,8 @@ You are subagent with index [INDEX] (0-based) assigned to port [PORT].
 **YOUR ASSIGNED PORT**: [PORT]
 **YOUR BATCH**: [BATCH_NUMBER]
 **YOUR SUBAGENT INDEX**: [INDEX] (0-based)
-**MAX SUBAGENTS**: [MAX_SUBAGENTS]
-**TYPES PER SUBAGENT**: [TYPES_PER_SUBAGENT]
+**MAX SUBAGENTS**: ${MAX_SUBAGENTS}
+**TYPES PER SUBAGENT**: ${TYPES_PER_SUBAGENT}
 
 **DO NOT**:
 - Launch any apps (use EXISTING app on your port)
@@ -583,8 +543,8 @@ You MUST fetch your own assignment data as your FIRST action:
 ```bash
 python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
     --batch [BATCH_NUMBER] \
-    --max-subagents [MAX_SUBAGENTS] \
-    --types-per-subagent [TYPES_PER_SUBAGENT] \
+    --max-subagents ${MAX_SUBAGENTS} \
+    --types-per-subagent ${TYPES_PER_SUBAGENT} \
     --subagent-index [YOUR_INDEX]
 ```
 
@@ -592,7 +552,7 @@ This returns your specific assignment with complete type data.
 
 **Testing Protocol**:
 1. FIRST: Fetch your assignment using the script with --subagent-index parameter
-2. VALIDATE: Ensure you received exactly [TYPES_PER_SUBAGENT] types
+2. VALIDATE: Ensure you received exactly ${TYPES_PER_SUBAGENT} types
 3. For each type in your fetched assignment:
    a. **SPAWN/INSERT TESTING**:
       - **CHECK FIRST**: If `spawn_format` is `null` OR `supported_operations` does NOT include "spawn" or "insert", SKIP spawn/insert testing entirely
@@ -707,7 +667,7 @@ This returns your specific assignment with complete type data.
 <CoreRules>
 **Execution Rules**:
 1. ALWAYS reassign batch numbers before each run
-2. ALWAYS use parallel subagents (10 at once)
+2. ALWAYS use parallel subagents (${MAX_SUBAGENTS} at once)
 3. Main agent orchestrates, subagents test
 4. STOP ON ANY FAILURE - no exceptions
 5. Simple pass/fail per type
