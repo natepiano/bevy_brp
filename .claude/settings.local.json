@@ -131,7 +131,8 @@
       "Bash(~/.local/bin/basedpyright:*)",
       "Bash(if [ -d \".claude/scripts/\" ])",
       "Bash(then echo \"Scripts directory found\")",
-      "Bash(else echo \"No scripts directory found\")"
+      "Bash(else echo \"No scripts directory found\")",
+      "Bash(.claude/scripts/create_mutation_test_json_validate_directory.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
