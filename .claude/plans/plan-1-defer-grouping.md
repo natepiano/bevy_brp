@@ -65,7 +65,7 @@ impl PathBuilder for EnumMutationBuilder {
         for (signature, variants_in_group) in variant_groups {
             let applicable_variants: Vec<VariantName> = variants_in_group
                 .iter()
-                .map(|v| VariantName::from(ctx.type_name().variant_name(v.name())))
+                .map(|v| v.variant_name().clone())
                 .collect();
 
             match signature {
@@ -130,7 +130,7 @@ fn assemble_from_children(
             for (signature, variants_in_group) in variant_groups {
                 // Build examples for each variant in this signature group
                 for variant in variants_in_group {
-                    let variant_name = variant.name();
+                    let variant_name = variant.variant_name();
 
                     // Build example for this specific variant
                     // Note: For now we use the shared children HashMap, but in the future
@@ -144,7 +144,7 @@ fn assemble_from_children(
 
                     // Store structured data for each variant
                     all_examples.push(VariantExampleData {
-                        variant_name: VariantName::from(variant_name),
+                        variant_name: variant_name.clone(),
                         signature: signature.clone(),
                         example,
                     });
@@ -388,7 +388,7 @@ fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
     for (detailed_sig, variants_in_group) in variant_groups {
         let applicable_variants: Vec<VariantName> = variants_in_group
             .iter()
-            .map(|v| VariantName::from(ctx.type_name().variant_name(v.name())))
+            .map(|v| v.variant_name().clone())
             .collect();
 
         match detailed_sig.structure {
