@@ -60,30 +60,59 @@ struct EnumChildrenData {
 }
 ```
 
-### 3. Implement for EnumMutationBuilder
+### 3. Update All Non-Enum Builders (Simple Signature Change)
+
+For all builders EXCEPT enum_builder, only the `assemble_from_children` signature needs to change.
+
+**Example - array_builder.rs (lines 59-62):**
+
+**Before:**
+```rust
+fn assemble_from_children(
+    &self,
+    ctx: &RecursionContext,
+    children: HashMap<MutationPathDescriptor, Value>,
+) -> Result<Value> {
+    // ... existing logic unchanged ...
+}
+```
+
+**After:**
+```rust
+fn assemble_from_children(
+    &self,
+    ctx: &RecursionContext,
+    children: Self::ChildrenData,  // Only this line changes!
+) -> Result<Value> {
+    // ... existing logic unchanged ...
+}
+```
+
+**Files requiring this simple change:**
+- `array_builder.rs` - line 59
+- `list_builder.rs` - (check line number)
+- `map_builder.rs` - (check line number)
+- `set_builder.rs` - (check line number)
+- `struct_builder.rs` - (check line number)
+- `tuple_builder.rs` - (check line number)
+- `value_builder.rs` - (check line number)
+
+Note: These builders will use the default `type ChildrenData = HashMap<MutationPathDescriptor, Value>` from the trait, so `Self::ChildrenData` IS the same HashMap type they already use. No logic changes needed!
+
+### 4. Implement Full Specialization for EnumMutationBuilder
+
+Only enum_builder needs the full implementation with custom data type:
 
 ```rust
 impl PathBuilder for EnumMutationBuilder {
     type Item = PathKindWithVariants;
     type Iter<'a> = std::vec::IntoIter<PathKindWithVariants> where Self: 'a;
 
-    // NEW: Specify we need enriched data
+    // NEW: Specify we need enriched data (only enum_builder does this!)
     type ChildrenData = EnumChildrenData;
 
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
-        let schema = ctx.require_registry_schema()?;
-
-        // Extract and group variants ONCE
-        let variants = extract_enum_variants(schema, &ctx.registry);
-        let variant_groups = group_variants_by_signature(variants);
-
-        // Store the groups for later use in prepare_children_data
-        // Note: We'll need to pass this through somehow - see section 4
-
-        let mut children = Vec::new();
-        // ... rest of existing collect_children logic ...
-
-        Ok(children.into_iter())
+        // ... existing collect_children unchanged ...
     }
 
     fn prepare_children_data(
@@ -168,15 +197,34 @@ fn process_all_children(&mut self, ctx: &RecursionContext) -> Result<()> {
 
 ## Implementation Steps
 
+### Phase 1: Add Trait Infrastructure (Additive - Safe)
 1. Add associated type `ChildrenData` to `PathBuilder` trait with default
 2. Add `prepare_children_data` method with default implementation
-3. Update `assemble_from_children` signature to use `Self::ChildrenData`
-4. Create `EnumChildrenData` struct in enum_builder.rs
-5. Implement `type ChildrenData = EnumChildrenData` for `EnumMutationBuilder`
-6. Implement `prepare_children_data` for `EnumMutationBuilder`
-7. Update `assemble_from_children` to use `children.signature_groups`
-8. Update builder.rs to call `prepare_children_data`
-9. Verify all other builders still work with default implementation
+
+### Phase 2: Update All Implementations (Atomic - Must be done together)
+3. Update `assemble_from_children` signature in trait to use `Self::ChildrenData`
+4. Update `assemble_from_children` signature in ALL 8 builders:
+   - `array_builder.rs` - change line 59-62
+   - `list_builder.rs` - change assemble_from_children signature
+   - `map_builder.rs` - change assemble_from_children signature
+   - `set_builder.rs` - change assemble_from_children signature
+   - `struct_builder.rs` - change assemble_from_children signature
+   - `tuple_builder.rs` - change assemble_from_children signature
+   - `value_builder.rs` - change assemble_from_children signature
+   - `enum_builder.rs` - change assemble_from_children signature
+5. Update builder.rs to call `prepare_children_data` before `assemble_from_children`
+
+### Phase 3: Specialize EnumMutationBuilder (Enhancement - Safe)
+6. Create `EnumChildrenData` struct in enum_builder.rs
+7. Add `type ChildrenData = EnumChildrenData` for `EnumMutationBuilder`
+8. Implement `prepare_children_data` for `EnumMutationBuilder`
+9. Update enum_builder's `assemble_from_children` to use `children.signature_groups`
+10. Remove redundant variant extraction from enum_builder's `assemble_from_children`
+
+### Phase 4: Validation
+11. Run `cargo build` to verify compilation
+12. Run `cargo nextest run` to verify all tests pass
+13. Generate type guides for TestVariantChainEnum and Color - verify identical output
 
 ## Testing
 
