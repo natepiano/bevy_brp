@@ -1,25 +1,25 @@
 # BRP Test Suite Runner
 
 ## Configuration
-**PARALLEL_TESTS**: 12 # Number of tests to run concurrently
-**TEST_CONFIG_FILE**: `.claude/tests/test_config.json` # Test configuration file location
+PARALLEL_TESTS = 12  # Number of tests to run concurrently
+TEST_CONFIG_FILE = .claude/tests/test_config.json  # Test configuration file location
 
 ## Overview
 
 This command runs BRP tests in two modes:
-- **Without arguments**: Runs tests PARALLEL_TESTS at a time with continuous execution, stops immediately on any failure
+- **Without arguments**: Runs tests ${PARALLEL_TESTS} at a time with continuous execution, stops immediately on any failure
 - **With argument**: Runs a single test by name
 
 ## Usage Examples
 ```
-/test                    # Run all tests PARALLEL_TESTS at a time, stop on first failure
+/test                    # Run all tests ${PARALLEL_TESTS} at a time, stop on first failure
 /test extras             # Run only the extras test
 /test data_operations    # Run only the data_operations test
 ```
 
 ## Test Configuration
 
-**Configuration Source**: TEST_CONFIG_FILE (see above)
+**Configuration Source**: ${TEST_CONFIG_FILE} (see above)
 
 This file contains an array of test configurations with the following structure:
 - `test_name`: Identifier for the test
@@ -33,13 +33,13 @@ This file contains an array of test configurations with the following structure:
 - Ports are dynamically allocated from pools based on app requirements
 - Each app instance gets a sequential port starting from BASE_PORT
 
-**IMPORTANT**: Count the number of test objects in test_config.json to determine the total number of tests. Do NOT assume it matches PARALLEL_TESTS.
+**IMPORTANT**: Count the number of test objects in test_config.json to determine the total number of tests. Do NOT assume it matches ${PARALLEL_TESTS}.
 
 **CRITICAL COUNTING INSTRUCTION**: You MUST use the following command to count tests accurately:
 ```bash
-jq '. | length' TEST_CONFIG_FILE
+jq '. | length' ${TEST_CONFIG_FILE}
 ```
-Note: Replace TEST_CONFIG_FILE with the actual path from the configuration section above.
+Note: Replace ${TEST_CONFIG_FILE} with the actual path from the configuration section above.
 Use this exact count in your final summary. Do NOT manually count or assume any number.
 
 ## App Management Strategy
@@ -63,6 +63,36 @@ Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_app"):
 ### Self-Managed Tests
 - **various**: Tests handle their own app launching (path, shutdown tests)
 - **N/A**: No app required (list test)
+
+## Reusable Operation Sections
+
+<LaunchDedicatedApp>
+1. **Determine Launch Tool**: Based on app_type:
+   - If app_type is "example": use `mcp__brp__brp_launch_bevy_example`
+   - If app_type is "app": use `mcp__brp__brp_launch_bevy_app`
+2. **Launch**: Execute with target_name=[APP_NAME], port=[ASSIGNED_PORT], instance_count=[COUNT]
+3. **Track**: Record launched app for cleanup
+</LaunchDedicatedApp>
+
+<AllocatePortFromPool>
+1. **Calculate Port**: Start from BASE_PORT (20100) + offset for app type
+2. **Assign**: Take next available port from the appropriate pool
+3. **Reserve**: Mark port as in-use for tracking
+</AllocatePortFromPool>
+
+<VerifyBrpConnectivity>
+1. **Status Check**: Use `brp_status(app_name=[APP_NAME], port=[ASSIGNED_PORT])`
+2. **Validation**: Confirm status is "running_with_brp"
+3. **Error Handling**: If verification fails, stop and report
+4. **Window Title**: Set title using `brp_extras_set_window_title` with format "{test_name} test - {app_name} - port {port}"
+</VerifyBrpConnectivity>
+
+<CleanupApps>
+1. **For each launched app**:
+   - Shutdown using `mcp__brp__brp_shutdown(app_name=app_name, port=port)`
+2. **Verify shutdown completion**
+3. **Clear port pools and tracking data**
+</CleanupApps>
 
 ## Sub-agent Prompt Templates
 
@@ -172,7 +202,7 @@ Configuration: App [APP_NAME]
 
 ### Execution Instructions
 
-1. **Load Configuration**: Read test configuration from TEST_CONFIG_FILE
+1. **Load Configuration**: Read test configuration from ${TEST_CONFIG_FILE}
 2. **Find Test**: Search for test configuration where `test_name` matches `$ARGUMENTS`
 3. **Validate**: If test not found, report error and list available test names
 4. **Execute Test**: If found, run the single test using appropriate strategy
@@ -180,11 +210,11 @@ Configuration: App [APP_NAME]
 ### Single Test Execution
 
 **For tests where app_name is a specific app (not "various" or "N/A"):**
-1. **Launch App**: Use appropriate launch tool based on app_type ("example" or "app")
-2. **Assign Port**: Allocate a port from BASE_PORT (20100) upward
-3. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on the port
+1. Execute <AllocatePortFromPool/> for single port
+2. Execute <LaunchDedicatedApp/> with instance_count=1
+3. Execute <VerifyBrpConnectivity/> for assigned port
 4. **Execute Test**: Use DedicatedAppPrompt template with assigned port
-6. **Cleanup**: Shutdown app using `mcp__brp__brp_shutdown`
+5. Execute <CleanupApps/> for single app
 
 **For self-managed tests (app_name is "various" or "N/A"):**
 1. **Execute Test**: Use SelfManagedPrompt template directly
@@ -195,7 +225,7 @@ If no test configuration matches `$ARGUMENTS`:
 ```
 # Error: Test Not Found
 
-The test "$ARGUMENTS" was not found in TEST_CONFIG_FILE.
+The test "$ARGUMENTS" was not found in ${TEST_CONFIG_FILE}.
 
 Usage: /test <test_name>
 Example: /test extras
@@ -209,22 +239,19 @@ Example: /test extras
 
 1. **Analyze app requirements** using this command:
    ```bash
-   jq '[.[] | select(.app_name == "extras_plugin" or .app_name == "test_app")] | group_by(.app_name) | map({app_name: .[0].app_name, app_type: .[0].app_type, count: length})' TEST_CONFIG_FILE
+   jq '[.[] | select(.app_name == "extras_plugin" or .app_name == "test_app")] | group_by(.app_name) | map({app_name: .[0].app_name, app_type: .[0].app_type, count: length})' ${TEST_CONFIG_FILE}
    ```
-   Note: Replace TEST_CONFIG_FILE with the actual path from the configuration section.
+   Note: Replace ${TEST_CONFIG_FILE} with the actual path from the configuration section.
    This will show you exactly how many instances of each app type you need.
 
 2. **Launch apps using instance_count** based on the counts from step 1:
-   - For each app in the jq output, launch with the appropriate tool:
-     - If app_type is "example": use `mcp__brp__brp_launch_bevy_example`
-     - If app_type is "app": use `mcp__brp__brp_launch_bevy_app`
+   - Execute <LaunchDedicatedApp/> with appropriate instance_count for each app type
    - Start at BASE_PORT=20100 and increment by the count for each app group
 
 3. **Track port assignments**:
-   - Keep track of which ports belong to which app for later assignment to tests
+   - Execute <AllocatePortFromPool/> to manage port pools for test assignment
 
-4. **Verify all apps**: Use `brp_status` on each port in PARALLEL (single message, multiple tool uses)
-
+4. **Verify all apps**: Execute <VerifyBrpConnectivity/> on each port in PARALLEL (single message, multiple tool uses)
 
 5. **Track launched apps** for cleanup
 
@@ -240,7 +267,7 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
 CORRECT: One message containing 12 Task tool uses for 12 tests
 INCORRECT: 12 separate messages each with one Task tool use
 
-1. **Load Configuration**: Read TEST_CONFIG_FILE
+1. **Load Configuration**: Read ${TEST_CONFIG_FILE}
 2. **Initialize Port Pools**: Based on launched apps
 3. **Categorize Tests**:
    - **Dedicated app tests**: Need port assignment from pool
@@ -270,14 +297,7 @@ INCORRECT: 12 separate messages each with one Task tool use
 ### Cleanup Phase
 
 **After all tests complete (success or failure):**
-1. **For each launched app group:**
-   - Shutdown all instances at once:
-   ```python
-   # For each port in use
-   mcp__brp__brp_shutdown(app_name=app_name, port=port)
-   ```
-2. **Verify all shutdowns completed**
-3. **Clear port pools and tracking data**
+Execute <CleanupApps/> for all launched apps
 
 ### Error Detection and Immediate Stopping
 
@@ -299,14 +319,14 @@ INCORRECT: 12 separate messages each with one Task tool use
 # BRP Test Suite - Consolidated Results
 
 ## Overall Statistics
-- **Total Tests**: [Count from TEST_CONFIG_FILE]
+- **Total Tests**: [Count from ${TEST_CONFIG_FILE}]
 - **Executed**: X
 - **Passed**: X
 - **Failed**: 0 (execution stops on first failure)
 - **Skipped**: Y
 - **Critical Issues**: 0 (execution stops on critical issues)
 - **Total Execution Time**: ~X minutes (continuous parallel)
-- **Execution Strategy**: PARALLEL_TESTS tests at a time with continuous execution
+- **Execution Strategy**: ${PARALLEL_TESTS} tests at a time with continuous execution
 
 ## Test Results Summary
 [List each test by name with its result count, avoiding duplication]

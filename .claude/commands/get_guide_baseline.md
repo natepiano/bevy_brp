@@ -4,12 +4,35 @@ Gets the baseline type guide for a specified type from the baseline file. Option
 
 ## Command Execution
 
-When you request a type guide, I will:
+<ParseArguments>
+Parse the type name from ${ARGUMENTS}:
+- If ${ARGUMENTS} is empty, the script will list all available types in the baseline
+- If type name is not found, the script will show "Type not found" with suggestions
+- If multiple types match (e.g., "Transform"), the script will show disambiguation options
+- If a mutation path is provided as a second argument, validate it exists and extract it for filtering
+- Invalid mutation paths will result in clear error messages from the script
+</ParseArguments>
 
-1. Run the script to get the type guide data from baseline
-2. If a mutation path is provided, filter the results to show only that path
-3. Display the results formatted as proper JSON with syntax highlighting
-4. Present the output in a clear, readable format
+<ExecuteScript>
+Inform the user "Loading type guide from baseline..." then run the script at .claude/scripts/get_type_guide.sh or .claude/scripts/get_mutation_path.sh to retrieve the type guide data from the baseline file at .claude/transient/all_types_baseline.json
+</ExecuteScript>
+
+<FormatOutput>
+Inform the user "Formatting output..." then format the retrieved data as proper JSON with syntax highlighting for readability.
+</FormatOutput>
+
+<DisplayResults>
+Present the output using the UserOutput template with the type name and optional mutation path in the header.
+</DisplayResults>
+
+<ExecutionSteps>
+**EXECUTE THESE STEPS IN ORDER:**
+
+**STEP 1:** Execute <ParseArguments/>
+**STEP 2:** Execute <ExecuteScript/>
+**STEP 3:** Execute <FormatOutput/>
+**STEP 4:** Execute <DisplayResults/>
+</ExecutionSteps>
 
 ## Usage
 
@@ -32,10 +55,10 @@ Get details for a specific mutation path only:
 ```
 
 <UserOutput>
-## Type Guide for $TYPE_NAME [optional: at path $MUTATION_PATH]
+## Type Guide for ${TYPE_NAME} [optional: at path ${MUTATION_PATH}]
 
 ```json
-$JSON_OUTPUT
+${JSON_OUTPUT}
 ```
 </UserOutput>
 
@@ -85,7 +108,7 @@ Displays only the requested mutation path:
 
 ## Prerequisites
 
-- Baseline file at `$TMPDIR/all_types_baseline.json`
+- Baseline file at `.claude/transient/all_types_baseline.json`
 - Python 3 must be installed
 
 ## Script Locations
@@ -123,4 +146,4 @@ Displays only the requested mutation path:
 - The root mutation path is represented by an empty string `""`
 - If the type is not in the baseline, it won't appear in the guide
 
-ARGUMENTS: $ARGUMENTS
+ARGUMENTS: ${ARGUMENTS}

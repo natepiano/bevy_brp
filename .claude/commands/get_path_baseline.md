@@ -2,20 +2,38 @@
 
 Retrieves mutation paths from the baseline file for a given type. Shows all paths as a formatted list when only type is provided, or specific path details when both type and path are given.
 
-## Command Execution
+<ExecutionSteps>
+    **EXECUTE THESE STEPS IN ORDER:**
 
-When you request mutation paths, I will:
+    **STEP 1:** Execute <ArgumentProcessing/>
+    **STEP 2:** Execute <PathRetrieval/>
+    **STEP 3:** Execute <OutputFormatting/>
+</ExecutionSteps>
 
-1. Run the appropriate script to get mutation path data from baseline
-2. If only type is provided: Display all paths as a formatted bullet list
-3. If type and path are provided: Display the specific path's JSON details
-4. Present the output in a clear, readable format
+<ArgumentProcessing>
+if $ARGUMENTS is empty: display usage message from <Usage/> section and exit
+if $ARGUMENTS contains one argument: set MODE="list_all" and TYPE_ARG="$1"
+if $ARGUMENTS contains two arguments: set MODE="specific_path" and TYPE_ARG="$1" and PATH_ARG="$2"
+if $ARGUMENTS contains more than two arguments: display error "Too many arguments" and usage, then exit
+</ArgumentProcessing>
+
+<PathRetrieval>
+if MODE="list_all": Use Bash tool to execute ".claude/scripts/get_mutation_path_list.sh "$TYPE_ARG""
+if MODE="specific_path": Use Bash tool to execute ".claude/scripts/get_mutation_path.sh "$TYPE_ARG" "$PATH_ARG""
+Capture the script output for processing
+</PathRetrieval>
+
+<OutputFormatting>
+if MODE="list_all": Format output using <UserOutput/> template for type-only display
+if MODE="specific_path": Format output using <UserOutput/> template for type+path display
+Present the formatted results to user
+</OutputFormatting>
 
 <UserOutput>
 ## For type only:
-## Mutation Paths for $TYPE_NAME
+## Mutation Paths for ${TYPE_NAME}
 
-**Total paths:** $COUNT
+**Total paths:** ${COUNT}
 
 - `""` (root)
 - `.field1`
@@ -23,10 +41,10 @@ When you request mutation paths, I will:
 - ... (all paths)
 
 ## For type + path:
-## Mutation Path for $TYPE_NAME $PATH
+## Mutation Path for ${TYPE_NAME} ${PATH}
 
 ```json
-$JSON_OUTPUT
+${JSON_OUTPUT}
 ```
 </UserOutput>
 
@@ -130,4 +148,4 @@ The JSON will be properly formatted with:
 - The script reads from the baseline file, not the current/live version
 - Quotes are optional unless the argument contains spaces
 
-ARGUMENTS: $ARGUMENTS
+ARGUMENTS: ${ARGUMENTS}

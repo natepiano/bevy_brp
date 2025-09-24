@@ -12,14 +12,14 @@ If you haven't recently installed the tool or have made changes that need testin
 ### Step 2: Remove Old Trace Log
 Clean up any existing trace log to ensure you're only seeing new output:
 ```bash
-rm /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/bevy_brp_mcp_trace.log
+rm $TMPDIR/bevy_brp_mcp_trace.log
 ```
 
 ### Step 3: Set Trace Level
 Enable debug-level tracing using the BRP tool:
-```bash
-mcp__brp__brp_set_tracing_level(level="debug")
-```
+
+Use the `mcp__brp__brp_set_tracing_level` tool with:
+- level: `"debug"`
 
 ### Step 4: Execute Test Command
 Run the command you want to debug. The trace log will capture detailed information about:
@@ -31,7 +31,7 @@ Run the command you want to debug. The trace log will capture detailed informati
 ### Step 5: Examine Trace Log
 Read the trace log to analyze the results:
 ```bash
-Read(/var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/bevy_brp_mcp_trace.log)
+Read($TMPDIR/bevy_brp_mcp_trace.log)
 ```
 
 Look for:

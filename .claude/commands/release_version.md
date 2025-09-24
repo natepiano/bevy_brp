@@ -1,5 +1,8 @@
 # Release Command - cargo-release Integration
 
+# Template Variables
+VERSION = [from $ARGUMENTS]
+
 **Migration Strategy: Phased**
 
 Perform a coordinated release for bevy_brp workspace crates using cargo-release. This command handles the 3-crate dependency chain and ensures safe publishing to crates.io.
@@ -24,6 +27,31 @@ Before starting the release, verify:
 3. You're up to date with remote
 4. cargo-release is installed (`cargo install cargo-release`)
 
+<ExecutionSteps>
+    **EXECUTE THESE STEPS IN ORDER:**
+
+    **STEP 0:** Execute <ArgumentValidation/>
+    **STEP 1:** Execute <VersionValidationAndPreChecks/>
+    **STEP 2:** Execute <ChangelogVerification/>
+    **STEP 3:** Execute <ThreePhaseReleaseProcess/>
+    **STEP 4:** Execute <PushAndPublishRemaining/>
+    **STEP 5:** Execute <UpdateDocumentation/>
+    **STEP 6:** Execute <CreateGitHubRelease/>
+    **STEP 7:** Execute <PostReleaseVerification/>
+    **STEP 8:** Execute <PrepareNextReleaseCycle/>
+</ExecutionSteps>
+
+<ArgumentValidation>
+## Argument Validation
+
+```bash
+bash .claude/scripts/release_version_validate.sh "$ARGUMENTS"
+```
+→ **Auto-check**: Continue if version is valid format, stop with clear error if invalid
+
+**Note**: This script validates the version format and sets up the VERSION variable for use throughout the release process.
+</ArgumentValidation>
+
 ## Step 0: One-Time Repository Setup (if not already done)
 
 **Update repository URLs to use workspace inheritance:**
@@ -46,15 +74,24 @@ repository = "https://github.com/natepiano/bevy_brp"
 repository.workspace = true
 ```
 
-## Step 1: Version Confirmation and Pre-Release Validation
+<VersionValidationAndPreChecks>
+## Version Confirmation and Pre-Release Validation
 
+Execute <ConfirmVersionFormat/>
+Execute <GitStatusCheck/>
+Execute <PreReleaseChecks/>
+</VersionValidationAndPreChecks>
+
+<ConfirmVersionFormat>
 **Confirm version format with user:**
 ```
-Version to release: <version>
+Version to release: ${VERSION}
 Format should be X.Y.Z (e.g., 0.3.0) or X.Y.Z-rc.N (e.g., 0.3.0-rc.1)
 ```
 → **Manual confirmation**: Verify the version looks correct before proceeding
+</ConfirmVersionFormat>
 
+<GitStatusCheck>
 ```bash
 git status
 ```
@@ -63,8 +100,9 @@ git status
 ```bash
 git fetch origin
 ```
+</GitStatusCheck>
 
-
+<PreReleaseChecks>
 ```bash
 cargo clippy --all-targets --all-features -- -D warnings
 ```
@@ -83,37 +121,52 @@ cargo nextest run --all
 ```bash
 cargo +nightly fmt --all
 ```
+</PreReleaseChecks>
 
-## Step 2: Verify CHANGELOG Entries
+<ChangelogVerification>
+## Verify CHANGELOG Entries
 
+Execute <CheckAllChangelogs/>
+</ChangelogVerification>
+
+<CheckAllChangelogs>
 ```bash
-grep -q "## \[Unreleased\]" mcp_macros/CHANGELOG.md && grep -A 5 "## \[Unreleased\]" mcp_macros/CHANGELOG.md
+for crate in mcp_macros extras mcp; do
+  echo "Checking $crate CHANGELOG..."
+  if ! grep -q "## \[Unreleased\]" $crate/CHANGELOG.md; then
+    echo "ERROR: Missing [Unreleased] section in $crate/CHANGELOG.md"
+    exit 1
+  fi
+  grep -A 5 "## \[Unreleased\]" $crate/CHANGELOG.md
+done
 ```
-→ **Auto-check**: Verify [Unreleased] section exists with content, stop if missing or empty
+→ **Auto-check**: Verify [Unreleased] section exists with content for all crates, stop if missing or empty
+</CheckAllChangelogs>
 
-```bash
-grep -q "## \[Unreleased\]" extras/CHANGELOG.md && grep -A 5 "## \[Unreleased\]" extras/CHANGELOG.md
-```
-→ **Auto-check**: Verify [Unreleased] section exists with content, stop if missing or empty
+<ThreePhaseReleaseProcess>
+## Three-Phase Release Process
 
-```bash
-grep -q "## \[Unreleased\]" mcp/CHANGELOG.md && grep -A 5 "## \[Unreleased\]" mcp/CHANGELOG.md
-```
-→ **Auto-check**: Verify [Unreleased] section exists with content, stop if missing or empty
+Execute <Phase1ReleaseMcpMacros/>
+Execute <Phase2UpdateMcpDependency/>
+Execute <Phase3ReleaseExtrasAndMcp/>
+</ThreePhaseReleaseProcess>
 
-## Step 3: Three-Phase Release Process
-
+<Phase1ReleaseMcpMacros>
 ### Phase 1: Release mcp_macros
 
 ```bash
-cargo release <version> --package bevy_brp_mcp_macros --dry-run
+cargo release ${VERSION} --package bevy_brp_mcp_macros --dry-run
 ```
-✅ **Verify**: Review the dry run output - version bumps, CHANGELOG updates, git operations all look correct
+→ **Manual verification**: Review the dry run output - version bumps, CHANGELOG updates, git operations all look correct
+  - Type **continue** to proceed with release execution
+  - Type **stop** to halt process for manual review
 
 ```bash
-cargo release <version> --package bevy_brp_mcp_macros --execute
+cargo release ${VERSION} --package bevy_brp_mcp_macros --execute
 ```
-✅ **Verify**: Release completed successfully, git commit created
+→ **Manual verification**: Release completed successfully, git commit created
+  - Type **continue** to proceed to next phase
+  - Type **stop** to halt and investigate issues
 
 ```bash
 git push origin main
@@ -125,7 +178,9 @@ git push origin main
 ```bash
 cd mcp_macros && cargo publish --dry-run
 ```
-✅ **Verify**: Review package contents, ensure all files included, no errors
+→ **Manual verification**: Review package contents, ensure all files included, no errors
+  - Type **continue** to proceed with publishing
+  - Type **stop** to halt and fix package issues
 
 ```bash
 cargo publish
@@ -135,7 +190,9 @@ cargo publish
 ```bash
 cd ..
 ```
+</Phase1ReleaseMcpMacros>
 
+<Phase2UpdateMcpDependency>
 ### Phase 2: Update mcp Dependency
 
 **Wait ~1 minute for mcp_macros to be available on crates.io**
@@ -143,7 +200,9 @@ cd ..
 ```bash
 curl -s https://crates.io/api/v1/crates/bevy_brp_mcp_macros | jq '.crate.max_version'
 ```
-✅ **Verify**: Shows the version you just published
+→ **Manual verification**: Shows the version you just published
+  - Type **continue** to proceed with dependency update
+  - Type **retry** to check again after waiting
 - If null or incorrect, wait 10-20 seconds and try again
 
 **Update mcp/Cargo.toml dependency**
@@ -152,7 +211,7 @@ Edit `mcp/Cargo.toml` to change:
 # FROM:
 bevy_brp_mcp_macros = { path = "../mcp_macros" }
 # TO:
-bevy_brp_mcp_macros = "<version>"  # the version you just published
+bevy_brp_mcp_macros = "${VERSION}"  # the version you just published
 ```
 → **I will make this edit for you using the version specified**
 
@@ -170,21 +229,32 @@ cargo nextest run --package bevy_brp_mcp
 git add mcp/Cargo.toml && git commit -m "chore: update mcp_macros dependency to crates.io version"
 ```
 → **Auto-check**: Continue if commit succeeds
+</Phase2UpdateMcpDependency>
 
+<Phase3ReleaseExtrasAndMcp>
 ### Phase 3: Release extras and mcp
 
 ```bash
-cargo release <version> --workspace --exclude bevy_brp_mcp_macros --dry-run
+cargo release ${VERSION} --workspace --exclude bevy_brp_mcp_macros --dry-run
 ```
-✅ **Verify**: Review output - both extras and mcp will be released together
+→ **Manual verification**: Review output - both extras and mcp will be released together
+  - Type **continue** to proceed with workspace release
+  - Type **stop** to halt and review changes
 
 ```bash
-cargo release <version> --workspace --exclude bevy_brp_mcp_macros --execute
+cargo release ${VERSION} --workspace --exclude bevy_brp_mcp_macros --execute
 ```
 → **Auto-check**: Continue if release succeeds, stop if errors
+</Phase3ReleaseExtrasAndMcp>
 
-## Step 4: Push and Publish Remaining Crates
+<PushAndPublishRemaining>
+## Push and Publish Remaining Crates
 
+Execute <PushToGit/>
+Execute <PublishRemainingCrates/>
+</PushAndPublishRemaining>
+
+<PushToGit>
 ```bash
 git push origin main
 ```
@@ -194,16 +264,22 @@ git push origin main
 git push origin --tags
 ```
 → **Auto-check**: Continue if push succeeds, stop if fails
+</PushToGit>
 
+<PublishRemainingCrates>
 ```bash
 cd extras && cargo publish --dry-run
 ```
-✅ **Verify**: Review package contents for extras
+→ **Manual verification**: Review package contents for extras
+  - Type **continue** to proceed with extras publishing
+  - Type **stop** to halt and fix package issues
 
 ```bash
 cd ../mcp && cargo publish --dry-run
 ```
-✅ **Verify**: Review package contents for mcp
+→ **Manual verification**: Review package contents for mcp
+  - Type **continue** to proceed with mcp publishing
+  - Type **stop** to halt and fix package issues
 
 ```bash
 cd ../extras && cargo publish
@@ -218,8 +294,10 @@ cd ../mcp && cargo publish
 ```bash
 cd ..
 ```
+</PublishRemainingCrates>
 
-## Step 5: Update Documentation (First Release Only)
+<UpdateDocumentation>
+## Update Documentation (First Release Only)
 
 **For first release, add migration guide to README.md:**
 
@@ -248,20 +326,24 @@ No code changes required - just dependency updates.
 git add README.md && git commit -m "docs: add migration guide for split crate users"
 ```
 → **Auto-check**: Continue if commit succeeds
+</UpdateDocumentation>
 
-## Step 6: Create GitHub Release
+<CreateGitHubRelease>
+## Create GitHub Release
 
 → **I will gather CHANGELOG entries from all three crates and create a combined release using GitHub CLI**
 
 ```bash
-gh release create v<version> \
+gh release create v${VERSION} \
   --repo natepiano/bevy_brp \
-  --title "bevy_brp v<version>" \
+  --title "bevy_brp v${VERSION}" \
   --notes "Combined release notes from all three crates"
 ```
 → **Auto-check**: Continue if release created successfully, stop if fails
+</CreateGitHubRelease>
 
-## Step 7: Post-Release Verification
+<PostReleaseVerification>
+## Post-Release Verification
 
 ```bash
 for crate in bevy_brp_mcp_macros bevy_brp_extras bevy_brp_mcp; do
@@ -269,17 +351,23 @@ for crate in bevy_brp_mcp_macros bevy_brp_extras bevy_brp_mcp; do
   curl -s https://crates.io/api/v1/crates/$crate | jq '.crate.max_version'
 done
 ```
-✅ **Verify**: All three show version <version>
+→ **Manual verification**: All three show version ${VERSION}
+  - Type **continue** to proceed with installation test
+  - Type **retry** to check versions again
 
 ```bash
-cargo install bevy_brp_mcp --version <version>
+cargo install bevy_brp_mcp --version ${VERSION}
 ```
-✅ **Verify**: Installation succeeds, pulling all dependencies from crates.io
+→ **Manual verification**: Installation succeeds, pulling all dependencies from crates.io
+  - Type **continue** to proceed to agentic testing
+  - Type **stop** to halt and investigate installation issues
 
 **Run agentic tests to verify functionality:**
 → **Manual**: Run your agentic test suite to verify RC/release functionality
+</PostReleaseVerification>
 
-## Step 8: Prepare for Next Release
+<PrepareNextReleaseCycle>
+## Prepare for Next Release
 
 → **I will add [Unreleased] sections to all three CHANGELOG.md files**
 
@@ -297,6 +385,7 @@ git commit -m "chore: prepare CHANGELOGs for next release cycle"
 git push origin main
 ```
 → **Auto-check**: Continue if push succeeds, stop if fails
+</PrepareNextReleaseCycle>
 
 ## Rollback Instructions
 
@@ -304,10 +393,10 @@ If something goes wrong after pushing but before publishing:
 
 ```bash
 # Delete local tag
-git tag -d v<version>
+git tag -d v${VERSION}
 
 # Delete remote tag  
-git push origin :refs/tags/v<version>
+git push origin :refs/tags/v${VERSION}
 
 # Revert the version bump commits (may be multiple commits)
 git revert HEAD~2..HEAD  # Adjust range as needed
@@ -341,7 +430,7 @@ Once the initial release is complete and all crates use version dependencies (no
 ### Simplified Process
 1. **Version Management**: Use cargo-release for version bumps and CHANGELOG updates
    ```bash
-   cargo release <version> --workspace --no-publish --execute
+   cargo release ${VERSION} --workspace --no-publish --execute
    ```
 
 2. **Publishing**: Use native workspace publishing (automatically handles dependency order)

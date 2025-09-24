@@ -2,18 +2,6 @@
 
 Compares a specific mutation path between the baseline and current running app to identify changes.
 
-## Command Execution
-
-When comparing a mutation path, I will:
-
-1. Launch extras_plugin example on port 23456
-2. Verify BRP connectivity and set window title
-3. Get the type guide from the running app
-4. Get the type guide from the baseline
-5. Run the comparison script to show both versions
-6. Present the raw JSON and summarize differences
-7. Shutdown the app
-
 ## Usage
 
 Provide the type name and mutation path as arguments:
@@ -24,58 +12,127 @@ bevy_ui::ui_node::Node .grid_template_columns
 bevy_ui::ui_node::Node .grid_template_columns[0].tracks
 ```
 
-## Execution Steps
+## Argument Processing
 
-1. **Launch App**:
+Parse and validate the required arguments:
+
+```bash
+.claude/scripts/compare_mutation_path_validate_args.sh $ARGUMENTS
+```
+
+This script will:
+- Extract TYPE_NAME and MUTATION_PATH from $ARGUMENTS
+- Validate both arguments are provided
+- Validate TYPE_NAME format (contains :: namespace separators)
+- Exit with error message if validation fails
+- Output validated arguments for use in execution steps
+
+## Argument Processing Output
+
+After successful validation, output the parsed arguments:
+"Processing comparison for type: `${TYPE_NAME}`, mutation path: `${MUTATION_PATH}`"
+
+## Configuration Note
+
+The `extras_plugin` example and port `23456` are intentionally hardcoded throughout this command to ensure consistent testing environment and avoid port conflicts with other running BRP instances.
+
+<ExecutionSteps>
+**EXECUTE THESE STEPS IN ORDER:**
+
+**STEP 1:** Execute <LaunchApp/>
+**STEP 2:** Execute <VerifyBrpConnectivity/>
+**STEP 3:** Execute <SetWindowTitle/>
+**STEP 4:** Execute <GetCurrentTypeGuide/>
+**STEP 5:** Execute <GetBaselineTypeGuide/>
+**STEP 6:** Execute <CompareAndPresentResults/>
+**STEP 7:** Execute <ShutdownApp/>
+</ExecutionSteps>
+
+## STEP 1: LAUNCH APP
+
+<LaunchApp>
+Launch extras_plugin example:
+
 ```bash
 mcp__brp__brp_launch_bevy_example(
     example_name="extras_plugin",
     port=23456
 )
 ```
+</LaunchApp>
 
-2. **Verify BRP Connectivity**:
+## STEP 2: VERIFY BRP CONNECTIVITY
+
+<VerifyBrpConnectivity>
+Verify BRP connectivity:
+
 ```bash
 mcp__brp__brp_status(
     app_name="extras_plugin",
     port=23456
 )
 ```
+</VerifyBrpConnectivity>
 
-3. **Set Window Title**:
+## STEP 3: SET WINDOW TITLE
+
+<SetWindowTitle>
+Set window title for identification:
+
 ```bash
 mcp__brp__brp_extras_set_window_title(
     port=23456,
     title="compare_mutation_path - port 23456"
 )
 ```
+</SetWindowTitle>
 
-4. **Get Current Type Guide**:
+## STEP 4: GET CURRENT TYPE GUIDE
+
+<GetCurrentTypeGuide>
+Get type guide from running app:
+
 ```bash
 mcp__brp__brp_type_guide(
     types=["TYPE_NAME"],
     port=23456
 )
 ```
+</GetCurrentTypeGuide>
 
-5. **Get Baseline Type Guide**:
+## STEP 5: GET BASELINE TYPE GUIDE
+
+<GetBaselineTypeGuide>
+Get baseline type guide:
+
 ```bash
 .claude/scripts/get_type_guide.sh TYPE_NAME
 ```
+</GetBaselineTypeGuide>
 
-6. **Compare and Present Results**:
+## STEP 6: COMPARE AND PRESENT RESULTS
+
+<CompareAndPresentResults>
+Compare and present results:
+
 **DO NOT create temporary files or run comparison scripts**. Instead:
 - Extract the specific mutation path from both the current BRP response and baseline response
 - Present both JSON structures side-by-side
 - Analyze and summarize the differences directly
+</CompareAndPresentResults>
 
-7. **Shutdown App**:
+## STEP 7: SHUTDOWN APP
+
+<ShutdownApp>
+Shutdown the application:
+
 ```bash
 mcp__brp__brp_shutdown(
     app_name="extras_plugin",
     port=23456
 )
 ```
+</ShutdownApp>
 
 ## Output
 

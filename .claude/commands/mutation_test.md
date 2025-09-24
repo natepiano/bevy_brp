@@ -77,6 +77,48 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **STOP CONDITION**: If no untested types remain, stop execution and report completion.
 </BatchRenumbering>
 
+## VALIDATION SECTIONS
+
+<ValidationErrorFormat>
+    **Standard validation error format:**
+    ```
+    ERROR: [Brief description]
+    Expected: [What should have happened]
+    Actual: [What was found instead]
+    ```
+
+    **Apply this format consistently across all validation errors.**
+</ValidationErrorFormat>
+
+<ValidateAssignmentsStructure>
+    **Core assignments array validation:**
+    - **STOP IF** JSON parsing fails:
+      - ERROR: Cannot parse GetBatchAssignments JSON output
+    - **STOP IF** assignments array missing:
+      - ERROR: No 'assignments' array found in JSON
+    - **STOP IF** assignments.length < 1 or > ${MAX_SUBAGENTS}:
+      - ERROR: Invalid assignment count
+      - Expected: 1-${MAX_SUBAGENTS} assignments
+      - Actual: {actual_count} assignments
+</ValidateAssignmentsStructure>
+
+<ValidateAssignmentFields>
+    **Individual assignment field validation:**
+    - **FOR** each assignment in assignments array:
+        - **STOP IF** port missing:
+          - ERROR: Assignment {index} missing port field
+        - **STOP IF** types missing:
+          - ERROR: Assignment {index} missing types array
+        - **STOP IF** types.length < 1 or > ${TYPES_PER_SUBAGENT}:
+          - ERROR: Invalid types count for assignment {index}
+          - Expected: 1-${TYPES_PER_SUBAGENT} types
+          - Actual: {actual} types
+        - **STOP IF** port outside range ${BASE_PORT}-${MAX_PORT}:
+          - ERROR: Invalid port for assignment {index}
+          - Expected: Port in range ${BASE_PORT}-${MAX_PORT}
+          - Actual: Port {port}
+</ValidateAssignmentFields>
+
 ## STEP 3: CLEANUP PREVIOUS RUNS
 
 <CleanupPreviousRuns>
@@ -98,10 +140,9 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **Launch ${MAX_SUBAGENTS} extras_plugin instances on sequential ports starting at ${BASE_PORT}:**
 
     1. **Shutdown any existing apps** (clean slate):
-    ```python
-    # Execute in parallel for ports ${BASE_PORT}-${MAX_PORT}:
-    mcp__brp__brp_shutdown(app_name="extras_plugin", port=PORT)
-    ```
+    Execute <ParallelPortOperation/> with:
+    - Operation: mcp__brp__brp_shutdown
+    - Parameters: app_name="extras_plugin"
 
     2. **Launch all ${MAX_SUBAGENTS} apps with a single command**:
     ```python
@@ -120,10 +161,9 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 <ApplicationVerification>
     **Verify BRP connectivity on all ports:**
 
-    ```python
-    # Execute in parallel for ports ${BASE_PORT}-${MAX_PORT}:
-    mcp__brp__brp_status(app_name="extras_plugin", port=PORT)
-    ```
+    Execute <ParallelPortOperation/> with:
+    - Operation: mcp__brp__brp_status
+    - Parameters: app_name="extras_plugin"
 
     **STOP CONDITION**: If any app fails to respond, stop and report error.
 </ApplicationVerification>
@@ -136,13 +176,14 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     For each batch N (starting from 1):
 
     0. Re-read <NoOptimizationAllowed/> before processing this batch
-    1. Execute <GetBatchAssignments/> for batch N
-    2. Execute <SetWindowTitles/> based on assignments
-    3. Execute <LaunchSubagents/> with parallel Task invocations
+    1. **REPORT PROGRESS**: Display "Processing batch N of [TOTAL_BATCHES] - Testing [TYPES_IN_BATCH] types ([REMAINING_TYPES] remaining)"
+    2. Execute <GetBatchAssignments/> for batch N
+    3. Execute <SetWindowTitles/> based on assignments
+    4. Execute <LaunchSubagents/> with parallel Task invocations
        - MUST be exactly ${MAX_SUBAGENTS} Task invocations
        - NEVER combine or skip Task invocations
-    4. Execute <ProcessBatchResults/> after all subagents complete
-    5. Execute <CheckForFailures/> which will:
+    5. Execute <ProcessBatchResults/> after all subagents complete
+    6. Execute <CheckForFailures/> which will:
        - Continue to next batch if all pass OR only known issues found
        - Stop only if NEW (non-known) failures are detected
 
@@ -173,12 +214,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     - assignments: Array with subagent, port, and types (complete type data including spawn_format and mutation_paths)
 
     **CRITICAL VALIDATION**:
-    1. **STOP IF** assignments array length > ${MAX_SUBAGENTS} or < 1
-       - ERROR: "Expected 1-${MAX_SUBAGENTS} assignments, got {actual_count}"
-    2. **STOP IF** any port is outside range ${BASE_PORT} through ${MAX_PORT}
-       - ERROR: "Invalid port {port} - must be in range ${BASE_PORT}-${MAX_PORT}"
-    3. **STOP IF** any assignment has 0 types or > ${TYPES_PER_SUBAGENT} types
-       - ERROR: "Assignment {subagent} has {actual_count} types, expected 1-${TYPES_PER_SUBAGENT}"
+    Execute <ValidateAssignmentsStructure/> followed by <ValidateAssignmentFields/>
 
     **Extract essential information directly from the command output for the next steps.**
 </GetBatchAssignments>
@@ -186,17 +222,13 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 <SetWindowTitles>
     **Set window titles for visual tracking using GetBatchAssignments JSON output:**
 
-    **STEP 1: Parse assignments data from previous command output:**
+    **STEP 1: Parse and validate assignments data from previous command output:**
     - Locate the "assignments" array in the GetBatchAssignments JSON response
-    - **STOP IF** JSON parsing fails: "Error: Cannot parse GetBatchAssignments JSON output"
-    - **STOP IF** assignments array missing: "Error: No 'assignments' array found in JSON"
-    - **STOP IF** assignments.length < 1 or > ${MAX_SUBAGENTS}: "Error: Expected 1-${MAX_SUBAGENTS} assignments, got {actual_count}"
+    - Execute <ValidateAssignmentsStructure/>
 
-    **STEP 2: For each assignment in assignments array:**
+    **STEP 2: Validate individual assignments:**
+    - Execute <ValidateAssignmentFields/>
     - Extract required fields: `assignment.port`, `assignment.types`
-    - **STOP IF** port missing: "Error: Assignment {index} missing port field"
-    - **STOP IF** types missing: "Error: Assignment {index} missing types array"
-    - **STOP IF** types.length < 1 or > ${TYPES_PER_SUBAGENT}: "Error: Assignment {index} has {actual} types, expected 1-${TYPES_PER_SUBAGENT}"
 
     **STEP 3: Create window titles and execute in parallel:**
     - For each assignment.types[].type_name, extract short name (text after last "::")
@@ -254,16 +286,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     3. **USING** the exact type data as fetched - NO MODIFICATIONS
     4. **REMEMBER**: This prevents corruption during prompt construction
 
-    Example validation:
-    ```
-    Assignment script says: "bevy_core_pipeline::tonemapping::ColorGrading"
-    ✅ CORRECT: Use exactly "bevy_core_pipeline::tonemapping::ColorGrading"
-    ❌ WRONG: Change to "bevy_render::view::ColorGrading" because you "know better"
-
-    Assignment script says: "bevy_ecs::hierarchy::Children"
-    ✅ CORRECT: Use exactly "bevy_ecs::hierarchy::Children"
-    ❌ WRONG: Change to "bevy_hierarchy::components::children::Children" because you think that's the "correct" module path
-    ```
+    **CRITICAL**: Follow <TypeNameValidation/> requirements exactly.
 
     **ENFORCEMENT**: If you detect yourself trying to modify type names, STOP and report the validation failure.
 
@@ -348,10 +371,10 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 <FinalCleanup>
     **Shutdown all applications SILENTLY (no output):**
 
-    ```python
-    # Execute in parallel for ports ${BASE_PORT}-${MAX_PORT}:
-    mcp__brp__brp_shutdown(app_name="extras_plugin", port=PORT)
-    ```
+    Execute <ParallelPortOperation/> with:
+    - Operation: mcp__brp__brp_shutdown
+    - Parameters: app_name="extras_plugin"
+    - Mode: SILENT (no status messages)
 
     **CRITICAL**: Do NOT display shutdown status messages. Execute silently.
 </FinalCleanup>
@@ -359,8 +382,8 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 ## STEP 8: INTERACTIVE FAILURE REVIEW (Only if NEW failures detected)
 
 <InteractiveFailureReview>
-    **Create todos for failure review workflow:**
-    Use TodoWrite tool to create todos for tracking the failure review process:
+    **MANDATORY: Create todos before any user interaction:**
+    **CRITICAL**: All interactive commands MUST use TodoWrite. Create todos for:
     - "Display failure summary and initialize review process"
     - "Review failure [X] of [TOTAL]" (create one for each failure found)
     - "Process user response for failure [X]" (track each user decision)
@@ -389,7 +412,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     1. **Always run `mcp__brp__bevy_list` first** to get the complete list of registered components
     2. **Search the list** for similar type names to the failed type
-    3. **Verify the exact type name** from the original test data
+    3. **Follow <TypeNameValidation/>** - verify the exact type name from original test data
     4. **Re-test with the correct name** if a match is found
 
     **Purpose**: This prevents false `COMPONENT_NOT_FOUND` failures caused by:
@@ -400,7 +423,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **Only mark as legitimate `COMPONENT_NOT_FOUND`** after:
     1. Running `mcp__brp__bevy_list`
     2. Confirming the exact type name is not in the registered components list
-    3. Verifying the agent used the exact type name from the original test data
+    3. Following <TypeNameValidation/> verification requirements
 
     **Example**:
     - Failure: `bevy_render::mesh::skinning::SkinnedMesh` not found
@@ -443,13 +466,13 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     ---
 
-    **Would you like to**:
-    - **Investigate** this specific failure in detail
-    - **Known Issue** - mark as known and continue to next
-    - **Skip** this failure and continue to the next
-    - **Stop** reviewing failures and exit
+    ## Available Actions
+    - **investigate** - Investigate this specific failure in detail
+    - **known** - Mark as known issue and continue to next
+    - **skip** - Skip this failure and continue to the next
+    - **stop** - Stop reviewing failures and exit
 
-    What would you prefer?
+    Please select one of the keywords above.
     ```
 
     3. **Wait for User Response** after each failure presentation
@@ -471,13 +494,13 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 When presenting failures, ALWAYS use this exact format for the options:
 
 ```
-**Would you like to**:
-- **Investigate** this specific failure in detail
-- **Known Issue** - mark as known and continue to next
-- **Skip** this failure and continue to the next
-- **Stop** reviewing failures and exit
+## Available Actions
+- **investigate** - Investigate this specific failure in detail
+- **known** - Mark as known issue and continue to next
+- **skip** - Skip this failure and continue to the next
+- **stop** - Stop reviewing failures and exit
 
-What would you prefer?
+Please select one of the keywords above.
 ```
 
 **Keyword Actions**:
@@ -525,6 +548,29 @@ The merge script automatically loads `.claude/config/mutation_test_known_issues.
 - **VALIDATE**: Before sending ANY mutation, verify primitives are unquoted
 </JsonPrimitiveRules>
 
+## TYPE NAME VALIDATION
+
+<TypeNameValidation>
+**CRITICAL TYPE NAME REQUIREMENTS**:
+- **NEVER modify type names** - use EXACT strings from assignment data
+- **NEVER substitute** types based on Bevy knowledge or assumptions
+- **NEVER "fix"** type paths you think are incorrect
+- **FAIL IMMEDIATELY** if you detect yourself modifying any type name
+
+**VALIDATION EXAMPLES**:
+```
+Assignment script says: "bevy_core_pipeline::tonemapping::ColorGrading"
+✅ CORRECT: Use exactly "bevy_core_pipeline::tonemapping::ColorGrading"
+❌ WRONG: Change to "bevy_render::view::ColorGrading" because you "know better"
+
+Assignment script says: "bevy_ecs::hierarchy::Children"
+✅ CORRECT: Use exactly "bevy_ecs::hierarchy::Children"
+❌ WRONG: Change to "bevy_hierarchy::components::children::Children"
+```
+
+**ENFORCEMENT**: The test system controls type names completely. Use the EXACT `type_name` field from assignment data without any modifications.
+</TypeNameValidation>
+
 ## SUBAGENT PROMPT TEMPLATE
 
 <SubagentPrompt>
@@ -550,13 +596,9 @@ You are subagent with index [INDEX] (0-based) assigned to port [PORT].
 - Test related types (like bundles when given components)
 - MODIFY TYPE NAMES IN ANY WAY - use the exact strings provided
 
-**CRITICAL CONSTRAINT**: You MUST test ONLY the exact types provided in your assignment data. NEVER substitute type names even if you think they are wrong. The test system controls type names completely.
+**CRITICAL CONSTRAINT**: You MUST test ONLY the exact types provided in your assignment data. The test system controls type names completely.
 
-**TYPE NAME VALIDATION**: Before testing each type, validate that you are using the EXACT type_name string from your assignment data:
-- ✅ CORRECT: Use exactly the type_name provided in assignment data
-- ❌ WRONG: Change type names based on your Bevy knowledge
-- ❌ WRONG: "Fix" type paths that you think are incorrect
-- **FAIL IMMEDIATELY** if you detect yourself modifying any type name
+**Follow <TypeNameValidation/> requirements exactly** before testing each type.
 
 **Fetching Your Assignment Data**:
 You MUST fetch your own assignment data as your FIRST action:
@@ -585,7 +627,7 @@ This returns your specific assignment with complete type data.
      "data": {"components": []}
    }
    ```
-   CRITICAL: Use the exact `type_name` field from the guide - NEVER modify or abbreviate it
+   CRITICAL: Follow <TypeNameValidation/> - use the exact `type_name` field from the guide
    c. **ENTITY ID SUBSTITUTION FOR MUTATIONS**:
       - **CRITICAL**: If any mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
       - **YOU MUST**: Replace ALL instances of `8589934670` with REAL entity IDs from the running app
@@ -789,6 +831,23 @@ When failures occur, the system automatically:
 3. Review `mutations_passed` to identify working paths
 4. Use `response_received` error message for specific issue
 </ErrorDiagnostics>
+
+## REUSABLE PATTERNS
+
+<ParallelPortOperation>
+    **Execute operations across all configured ports in parallel:**
+
+    ```python
+    # Execute in parallel for ports ${BASE_PORT}-${MAX_PORT}:
+    [Operation](app_name=[Parameters.app_name], port=PORT)
+    ```
+
+    - **Operation**: The BRP operation to execute (e.g., mcp__brp__brp_shutdown, mcp__brp__brp_status)
+    - **Parameters**: Operation-specific parameters (e.g., app_name)
+    - **Mode**: Optional - SILENT for no output, otherwise show status
+
+    This pattern ensures consistent parallel execution across the port range.
+</ParallelPortOperation>
 
 ## COMPLETION CRITERIA
 

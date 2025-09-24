@@ -20,19 +20,21 @@ fi
 </CreateContext>
 
 <CreateKeywords>
-**For validation decisions:**
-- **promote**: Mark this version as the new good baseline
-- **skip**: Keep existing baseline, don't promote this version
-- **investigate**: Launch deeper investigation of the differences
-- **comparison_review** - Show actual JSON examples for each unexpected change pattern, one type at a time, for user examination and testing decisions
-- **check_type**: Check mutation paths for a specific type across all versions
-- **summarize**: Summarize test results from a JSON file
-
-**For comparison_review decisions:**
-- **continue**: Move to next pattern without any changes
-- **add_expected**: Add this pattern to expected changes JSON, then continue to next pattern
-- **stop**: End the review now
+**Main Decision Keywords:**
+- **promote** - Mark this version as the new good baseline
+- **skip** - Keep existing baseline, don't promote this version
+- **investigate** - Launch deeper investigation of the differences
+- **comparison_review** - Review unexpected patterns with examples
+- **check_type** - Check mutation paths for a specific type
+- **summarize** - Summarize test results from a JSON file
 </CreateKeywords>
+
+<ComparisonReviewKeywords>
+**Pattern Review Keywords:**
+- **continue** - Move to next pattern without any changes
+- **add_expected** - Add this pattern to expected changes JSON
+- **stop** - End the review now
+</ComparisonReviewKeywords>
 
 <KeywordExecution>
     **CRITICAL**: Follow tagged procedures for all execution steps.
@@ -43,85 +45,7 @@ fi
     ```
     **skip**: Keep existing baseline, document decision, continue
     **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus
-    **comparison_review**:
-    **DATA SOURCE HIERARCHY (STRICT ORDER)**:
-    1. Current comparison run output (ALWAYS most reliable)
-    2. Never use cached detail files
-    3. Never use examples from previous comparison runs
-
-    1. **ALWAYS re-run fresh comparison to get current examples**:
-       ```bash
-       .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/transient/all_types_baseline.json .claude/transient/all_types.json
-       ```
-       **CRITICAL**: Use examples from THIS current run output, never cached files.
-
-    2. **EXTRACT EXAMPLES FROM CURRENT COMPARISON OUTPUT**:
-       - For each FIELD_REMOVED/FIELD_ADDED pattern in the current comparison output
-       - Use the first example listed in that pattern's "Example 1:" section
-       - **NEVER** rely on separate detail files or previous comparison runs
-
-    3. Create todos for each unexpected change pattern identified
-
-    4. **INTERACTIVE REVIEW**: For each unexpected pattern from the CURRENT comparison:
-       a. Present pattern overview:
-          - Pattern name and occurrence count from current run
-          - Types affected count from current run
-          - Brief explanation of what this pattern means
-
-       b. **EXTRACT EXAMPLE FROM CURRENT COMPARISON OUTPUT**:
-          - Take the first "Example 1:" entry from the current comparison output for this pattern
-          - Extract the Type and Path from "Example 1:" (format: "Type: X, Path: Y")
-          - **NEVER use examples from detail files or previous runs**
-
-       c. **RETRIEVE AND VERIFY MUTATION PATH DATA**:
-          **IMPORTANT**: Extract only the mutation path from the comparison output.
-
-          Example: If comparison shows `Path: mutation_paths..0.0.example`, use only `.0.0` (remove `mutation_paths.` prefix and `.example` suffix)
-
-          ```bash
-          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[MUTATION_PATH_ONLY]" .claude/transient/all_types_baseline.json
-          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[MUTATION_PATH_ONLY]" .claude/transient/all_types.json
-          ```
-
-          Where `[MUTATION_PATH_ONLY]` is the mutation path key (like `.0.0`) extracted from the full comparison path.
-
-       d. **MANDATORY VERIFICATION BEFORE PROCEEDING**:
-          - Compare the retrieved baseline vs current JSON data
-          - **VERIFICATION REQUIREMENT**: The claimed change pattern MUST be visible in the data
-          - If FIELD_REMOVED claimed: baseline must have the field, current must lack it
-          - If FIELD_ADDED claimed: baseline must lack the field, current must have it
-          - If data appears identical: IMMEDIATELY flag as "VERIFICATION FAILED"
-
-       e. **VERIFICATION FAILURE HANDLING**:
-          - If verification fails, state: "Verification failed - retrieved data shows no difference for this example"
-          - Try the next example from the same pattern in current comparison output
-          - If 3 consecutive examples fail verification, mark pattern as "False positive - unable to verify"
-          - Skip to next pattern without user interaction
-
-       f. **ONLY PROCEED WITH USER INTERACTION IF VERIFICATION SUCCEEDS**:
-          - Present using <FormatComparison/> showing the COMPLETE JSON
-          - Only show examples where differences are actually visible
-
-       g. **CRITICAL - STOP AND WAIT**: After presenting VERIFIED pattern example:
-          - Present the following options:
-
-- **continue** - Move to next pattern without any changes
-- **add_expected** - Add this pattern to expected changes JSON, then continue to next pattern
-- **stop** - End the review now
-
-          - **DO NOT PROCEED** until user responds with one of the keywords
-          - If "continue": Continue to next pattern
-          - If "add_expected": Add pattern to expected changes JSON, then continue to next pattern
-          - If "stop": End review and return to main decision prompt
-
-    5. **COMMON FAILURE MODES TO AVOID**:
-       - Using examples from detail files instead of current comparison output
-       - Assuming examples will show differences without verification
-       - Proceeding with user interaction when verification fails
-       - Using type/path combinations from previous runs
-
-    6. After all patterns reviewed OR user stops:
-       - Return to main decision prompt from Step 6C
+    **comparison_review**: Execute <ComparisonReviewWorkflow/>
     **add_expected**: Add pattern to expected changes JSON:
     1. Extract from current pattern: pattern_type (e.g., "FIELD_REMOVED"), field name, and affected type names
     2. Ask user for human-readable reason/description for this expected change
@@ -142,6 +66,8 @@ fi
 </KeywordExecution>
 
 ## MAIN WORKFLOW
+
+**MANDATORY**: Create TodoWrite to track command progress through all steps and decision points.
 
 <ExecutionSteps>
     **EXECUTE THESE STEPS IN ORDER:**
@@ -417,6 +343,85 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
 **Execute shell scripts** - Use the provided transformation and statistics scripts as specified
 </ExecuteShellScripts>
 
-<UserValidation>
-**User validation required** - Must present comparison results and get user approval before baseline promotion
-</UserValidation>
+<ComparisonReviewWorkflow>
+    **DATA SOURCE HIERARCHY (STRICT ORDER)**:
+    1. Current comparison run output (ALWAYS most reliable)
+    2. Never use cached detail files
+    3. Never use examples from previous comparison runs
+
+    1. **ALWAYS re-run fresh comparison to get current examples**:
+       ```bash
+       .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/transient/all_types_baseline.json .claude/transient/all_types.json
+       ```
+       **CRITICAL**: Use examples from THIS current run output, never cached files.
+
+    2. **EXTRACT EXAMPLES FROM CURRENT COMPARISON OUTPUT**:
+       - For each FIELD_REMOVED/FIELD_ADDED pattern in the current comparison output
+       - Use the first example listed in that pattern's "Example 1:" section
+       - **NEVER** rely on separate detail files or previous comparison runs
+
+    3. Create todos for each unexpected change pattern identified
+
+    4. **INTERACTIVE REVIEW**: For each unexpected pattern from the CURRENT comparison:
+       a. Present pattern overview:
+          - Pattern name and occurrence count from current run
+          - Types affected count from current run
+          - Brief explanation of what this pattern means
+
+       b. **EXTRACT EXAMPLE FROM CURRENT COMPARISON OUTPUT**:
+          - Take the first "Example 1:" entry from the current comparison output for this pattern
+          - Extract the Type and Path from "Example 1:" (format: "Type: X, Path: Y")
+          - **NEVER use examples from detail files or previous runs**
+
+       c. **RETRIEVE AND VERIFY MUTATION PATH DATA**:
+          **IMPORTANT**: Extract only the mutation path from the comparison output.
+
+          Example: If comparison shows `Path: mutation_paths..0.0.example`, use only `.0.0` (remove `mutation_paths.` prefix and `.example` suffix)
+
+          ```bash
+          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[MUTATION_PATH_ONLY]" .claude/transient/all_types_baseline.json
+          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[MUTATION_PATH_ONLY]" .claude/transient/all_types.json
+          ```
+
+          Where `[MUTATION_PATH_ONLY]` is the mutation path key (like `.0.0`) extracted from the full comparison path.
+
+       d. **MANDATORY VERIFICATION BEFORE PROCEEDING**:
+          - Compare the retrieved baseline vs current JSON data
+          - **VERIFICATION REQUIREMENT**: The claimed change pattern MUST be visible in the data
+          - If FIELD_REMOVED claimed: baseline must have the field, current must lack it
+          - If FIELD_ADDED claimed: baseline must lack the field, current must have it
+          - If data appears identical: IMMEDIATELY flag as "VERIFICATION FAILED"
+
+       e. **VERIFICATION FAILURE HANDLING**:
+          - If verification fails, state: "Verification failed - retrieved data shows no difference for this example"
+          - Try the next example from the same pattern in current comparison output
+          - If 3 consecutive examples fail verification, mark pattern as "False positive - unable to verify"
+          - Skip to next pattern without user interaction
+
+       f. **ONLY PROCEED WITH USER INTERACTION IF VERIFICATION SUCCEEDS**:
+          - Present using <FormatComparison/> showing the COMPLETE JSON
+          - Only show examples where differences are actually visible
+
+       g. **CRITICAL - STOP AND WAIT**: After presenting VERIFIED pattern example:
+          - Present the following options:
+
+          ## Available Actions
+          - **continue** - Move to next pattern without any changes
+          - **add_expected** - Add this pattern to expected changes JSON, then continue to next pattern
+          - **stop** - End the review now
+
+          - **DO NOT PROCEED** until user responds with one of the keywords
+          - If "continue": Continue to next pattern
+          - If "add_expected": Add pattern to expected changes JSON, then continue to next pattern
+          - If "stop": End review and return to main decision prompt
+
+    5. **COMMON FAILURE MODES TO AVOID**:
+       - Using examples from detail files instead of current comparison output
+       - Assuming examples will show differences without verification
+       - Proceeding with user interaction when verification fails
+       - Using type/path combinations from previous runs
+
+    6. After all patterns reviewed OR user stops:
+       - Return to main decision prompt from Step 6C
+</ComparisonReviewWorkflow>
+

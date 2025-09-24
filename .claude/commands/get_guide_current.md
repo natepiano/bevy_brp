@@ -1,18 +1,56 @@
 # Get Type Guide (Current)
 
-Gets the current type guide for a specified type by launching the extras_plugin example and running brp_type_guide. Optionally filters to a specific mutation path.
+EXAMPLE_NAME = extras_plugin
+
+Gets the current type guide for a specified type by launching the ${EXAMPLE_NAME} example and running brp_type_guide. Optionally filters to a specific mutation path.
 
 ## Command Execution
 
-When you request a type guide, I will:
+<ArgumentProcessing>
+Process the provided arguments:
 
-1. Check if extras_plugin is already running (skip if I know it's still running from a previous invocation)
-2. Launch extras_plugin if not running (and remember that I launched it)
-3. Run brp_type_guide on the specified type
-4. If a mutation path is provided, filter the results to show only that path
-5. Display the results formatted as proper JSON with syntax highlighting
-6. Present the output in a clear, readable format
-7. Ask if you want to shutdown the app (useful if you plan to run more type guides)
+```bash
+.claude/scripts/get_guide_current_validate_args.sh $ARGUMENTS
+```
+
+This script will:
+- Extract TYPE_NAME from $ARGUMENTS (required)
+- Extract MUTATION_PATH from $ARGUMENTS (optional)
+- Validate TYPE_NAME is provided
+- Exit with error message if validation fails
+- Output validated arguments for use in execution steps
+</ArgumentProcessing>
+
+<AppManagement>
+Ensure ${EXAMPLE_NAME} is available:
+1. Check if ${EXAMPLE_NAME} is already running (skip if known running)
+2. Launch ${EXAMPLE_NAME} if not running (and remember that I launched it)
+</AppManagement>
+
+<TypeGuideExecution>
+Execute type guide generation:
+1. Use TodoWrite to track workflow progress for user visibility
+2. Run brp_type_guide on the specified type
+3. If type not found: "Type '${TYPE_NAME}' not registered with BRP. Use brp_list to see available types."
+4. If mutation path provided, filter results to show only that path
+5. If mutation path invalid: "Mutation path '${MUTATION_PATH}' not found for type '${TYPE_NAME}'. Available paths: [list from type guide]"
+6. Display results formatted as JSON with syntax highlighting
+7. Present output in clear, readable format
+8. Mark current todo as "in_progress" before asking: "Would you like me to shutdown the ${EXAMPLE_NAME} app?"
+9. **STOP** - Wait for user response about app shutdown
+10. If user responds **yes** or **shutdown**: Execute brp_shutdown
+11. If user responds **no** or **keep**: Leave app running
+12. If unclear response: Ask for clarification with yes/no options
+13. After handling response, mark todo as "completed"
+</TypeGuideExecution>
+
+<ExecutionSteps>
+**EXECUTE THESE STEPS IN ORDER:**
+
+**STEP 1:** Execute <ArgumentProcessing/>
+**STEP 2:** Execute <AppManagement/>
+**STEP 3:** Execute <TypeGuideExecution/>
+</ExecutionSteps>
 
 <UserOutput>
 ## Type Guide for $TYPE_NAME [optional: at path $MUTATION_PATH]
@@ -21,7 +59,7 @@ When you request a type guide, I will:
 $JSON_OUTPUT
 ```
 
-Would you like me to shutdown the extras_plugin app? (It will remain running if you plan to run more type guides)
+Would you like me to shutdown the ${EXAMPLE_NAME} app? (It will remain running if you plan to run more type guides)
 </UserOutput>
 
 ## Usage
@@ -46,13 +84,10 @@ Get details for a specific mutation path only:
 
 ## Features
 
-- **Auto-launch**: Automatically launches extras_plugin if not already running
 - **Short name support**: Use just the type name (e.g., Transform) or full path
-- **Complete mutation paths**: Shows all available mutation paths for the type
 - **Path filtering**: Optional second argument to show only a specific mutation path
 - **Supported operations**: Lists which BRP operations work with the type
 - **Schema information**: Includes type structure and field information
-- **Live version**: Gets the current implementation, not baseline
 
 ## Output Format
 
@@ -91,7 +126,7 @@ Displays only the requested mutation path:
 
 ## Prerequisites
 
-- Bevy app with BRP and extras_plugin example available
+- Bevy app with BRP and ${EXAMPLE_NAME} example available
 - MCP tool must be installed (use build_and_install.md if changes were made)
 
 ## Examples
@@ -113,10 +148,7 @@ Displays only the requested mutation path:
 
 ## Notes
 
-- This gets the CURRENT implementation from a running app
 - For baseline comparison, use get_path.md instead
-- The app will be kept running if you might run more type guides
-- I'll remember if the app is already running to avoid unnecessary checks
 - If the type is not registered with BRP, it won't appear in the guide
 - When a mutation path is provided, only that specific path's data is shown
 - The root mutation path is represented by an empty string `""`
