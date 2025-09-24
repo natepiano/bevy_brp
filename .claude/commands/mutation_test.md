@@ -497,20 +497,29 @@ The merge script automatically loads `.claude/config/mutation_test_known_issues.
 - Known issues are persistent across test runs
 </KeywordHandling>
 
-## SUBAGENT PROMPT TEMPLATE
+## JSON PRIMITIVE RULES
 
-<SubagentPrompt>
-**CRITICAL RESPONSE LIMIT**: Return ONLY the JSON array result. NO explanations, NO commentary, NO test steps, NO summaries.
-
-**🚨 CRITICAL JSON PRIMITIVE RULES - READ FIRST 🚨**:
+<JsonPrimitiveRules>
+**CRITICAL JSON PRIMITIVE REQUIREMENTS**:
 - ALL numeric values MUST be JSON numbers, NOT strings
 - NEVER quote numbers: ❌ "3.1415927410125732" → ✅ 3.1415927410125732
 - This includes f32, f64, u32, i32, ALL numeric types
 - High-precision floats like 3.1415927410125732 are STILL JSON numbers
 - ALL boolean values MUST be JSON booleans, NOT strings
 - NEVER quote booleans: ❌ "true" → ✅ true, ❌ "false" → ✅ false
+- Numbers: ✅ 3.14, ✅ 42, ✅ 3.1415927410125732
+- Booleans: ✅ true, ✅ false
+- NEVER: ❌ "3.14", ❌ "42", ❌ "true", ❌ "false"
 - If you get "invalid type: string" error, you quoted a number or boolean
 - **VALIDATE**: Before sending ANY mutation, verify primitives are unquoted
+</JsonPrimitiveRules>
+
+## SUBAGENT PROMPT TEMPLATE
+
+<SubagentPrompt>
+**CRITICAL RESPONSE LIMIT**: Return ONLY the JSON array result. NO explanations, NO commentary, NO test steps, NO summaries.
+
+**IMPORTANT**: Follow <JsonPrimitiveRules/> for all JSON values
 
 You are subagent with index [INDEX] (0-based) assigned to port [PORT].
 
@@ -584,11 +593,7 @@ This returns your specific assignment with complete type data.
         * `"mutable"` or missing → TEST normally
       - Apply Entity ID substitution BEFORE sending any mutation request
       - If a mutation uses Entity IDs and you don't have real ones, query for them first
-      - **JSON PRIMITIVE VALIDATION**: Before EVERY mutation request:
-        * Check your `value` field contains NO quoted primitives
-        * Number example: ✅ `"value": 3.14` ❌ `"value": "3.14"`
-        * Boolean example: ✅ `"value": true` ❌ `"value": "true"`
-        * Float precision: ✅ `3.1415927410125732` ❌ `"3.1415927410125732"`
+      - **IMPORTANT**: Follow <JsonPrimitiveRules/> before EVERY mutation request
       - **ENUM TESTING REQUIREMENT**: When a mutation path contains an "examples" array (indicating enum variants), you MUST test each example individually:
         * For each entry in the "examples" array, perform a separate mutation using that specific "example" value
         * Example: If `.depth_load_op` has examples `[{"example": {"Clear": 3.14}}, {"example": "Load"}]`, test BOTH:
@@ -600,14 +605,8 @@ This returns your specific assignment with complete type data.
 4. Return ONLY JSON result array for ALL tested types
 5. NEVER test types not provided in your assignment data
 
-**JSON PRIMITIVE RULES - ENFORCED AT EVERY MUTATION**:
-- ALL numeric values MUST be JSON numbers, NOT strings
-- ALL boolean values MUST be JSON booleans, NOT strings
-- Numbers: ✅ 3.14, ✅ 42, ✅ 3.1415927410125732
-- Booleans: ✅ true, ✅ false
-- NEVER: ❌ "3.14", ❌ "42", ❌ "true", ❌ "false"
-- **CRITICAL**: Validate every `"value"` field before sending mutations
-- **ERROR SIGNAL**: "invalid type: string" means you quoted a primitive
+**IMPORTANT**: Follow <JsonPrimitiveRules/> - validate every `"value"` field before sending mutations.
+**ERROR SIGNAL**: "invalid type: string" means you quoted a primitive.
 
 **Return EXACTLY this format (nothing else)**:
 ```json
@@ -652,12 +651,7 @@ This returns your specific assignment with complete type data.
 }]
 ```
 
-**PRE-OUTPUT VALIDATION**: Before generating your final JSON:
-1. Scan ALL numeric and boolean values in your result
-2. Ensure NO primitives are quoted as strings
-3. Pay special attention to `"value"` fields in failure_details
-4. Number check: ✅ `"value": 3.14` ❌ `"value": "3.14"`
-5. Boolean check: ✅ `"value": false` ❌ `"value": "false"`
+**PRE-OUTPUT VALIDATION**: Before generating your final JSON, follow <JsonPrimitiveRules/> and pay special attention to `"value"` fields in failure_details.
 
 **FINAL INSTRUCTION**: Output ONLY the JSON array above. Nothing before. Nothing after.
 </SubagentPrompt>
@@ -680,12 +674,9 @@ This returns your specific assignment with complete type data.
 </CoreRules>
 
 <PrimitiveHandling>
-**JSON Primitive Requirements**:
-- ALL numeric primitives MUST be JSON numbers
+**JSON Primitive Requirements**: Follow <JsonPrimitiveRules/> for all JSON values.
 - This includes: u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64
 - Large numbers like 18446744073709551615 are STILL JSON numbers
-- ALL boolean primitives MUST be JSON booleans (true/false)
-- NEVER quote booleans: ❌ "true"/"false" → ✅ true/false
 - "invalid type: string" = primitive serialization error, fix and retry
 </PrimitiveHandling>
 
