@@ -4,19 +4,16 @@
 
 **DIRECTORY VALIDATION**: Ensure you are in the correct working directory before starting:
 ```bash
-if [[ ! -f ".claude/commands/create_mutation_test_json.md" ]]; then
-    echo "❌ Not in bevy_brp root directory. Please cd to the project root."
-    exit 1
-fi
+.claude/scripts/create_mutation_test_json_validate_directory.sh
 ```
 
 <ExecutionSteps/>
 
 <CreateContext>
-[TARGET_FILE]: `.claude/transient/all_types.json`
-[PURPOSE]: Creates the mutation test tracking file by discovering all registered component types via BRP and systematically determining spawn support and mutation paths for ALL types.
-[APP_PORT]: 22222
-[APP_NAME]: extras_plugin
+TARGET_FILE = .claude/transient/all_types.json
+PURPOSE = Creates the mutation test tracking file by discovering all registered component types via BRP and systematically determining spawn support and mutation paths for ALL types.
+APP_PORT = 22222
+APP_NAME = extras_plugin
 </CreateContext>
 
 <CreateKeywords>
@@ -69,6 +66,16 @@ fi
 
 **MANDATORY**: Create TodoWrite to track command progress through all steps and decision points.
 
+Create a todo list with the following 6 items:
+1. "Execute app launch and verify BRP connectivity" (pending → in_progress when starting STEP 1)
+2. "Discover all registered types using brp_all_type_guides" (pending → in_progress when starting STEP 2)
+3. "Transform BRP response and create mutation test file" (pending → in_progress when starting STEP 3)
+4. "Clean shutdown of test application" (pending → in_progress when starting STEP 4)
+5. "Compare with baseline and categorize changes" (pending → in_progress when starting STEP 5)
+6. "Present results and get user decision on baseline promotion" (pending → in_progress when starting STEP 6)
+
+Mark each todo as "in_progress" when beginning that step, and "completed" when the step finishes successfully.
+
 <ExecutionSteps>
     **EXECUTE THESE STEPS IN ORDER:**
 
@@ -88,16 +95,16 @@ fi
     1. **Launch Example**:
     ```bash
     mcp__brp__brp_launch_bevy_example(
-        example_name="[APP_NAME]",
-        port=[APP_PORT]
+        example_name="${APP_NAME}",
+        port=${APP_PORT}
     )
     ```
 
     2. **Verify BRP connectivity**:
     ```bash
     mcp__brp__brp_status(
-        app_name="[APP_NAME]",
-        port=[APP_PORT]
+        app_name="${APP_NAME}",
+        port=${APP_PORT}
     )
     ```
 
@@ -113,7 +120,7 @@ fi
 
     Call `brp_all_type_guides` to get type guides for all registered types in one operation:
     ```bash
-    mcp__brp__brp_all_type_guides(port=[APP_PORT])
+    mcp__brp__brp_all_type_guides(port=${APP_PORT})
     ```
 
     This automatically discovers all registered types and returns their type guides. The tool will save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_all_type_guides_12345.json`).
@@ -132,10 +139,10 @@ fi
 
     Execute the augmentation script:
     ```bash
-    .claude/scripts/create_mutation_test_json_augment_response.sh [FILEPATH] [TARGET_FILE]
+    .claude/scripts/create_mutation_test_json_augment_response.sh [FILEPATH] ${TARGET_FILE}
     ```
 
-    Replace `[FILEPATH]` with the actual path from Step 2 and `[TARGET_FILE]` with the target location from <CreateContext/>.
+    Replace `[FILEPATH]` with the actual path from Step 2 and `${TARGET_FILE}` with the target location from <CreateContext/>.
 
     The script augments the full BRP response with test metadata for each type:
     - Preserves ALL original type guide data (mutation_paths with examples, spawn_format, etc.)
@@ -165,8 +172,8 @@ fi
 
     ```bash
     mcp__brp__brp_shutdown(
-        app_name="[APP_NAME]",
-        port=[APP_PORT]
+        app_name="${APP_NAME}",
+        port=${APP_PORT}
     )
     ```
 
@@ -236,7 +243,7 @@ fi
     The comparison script now provides all statistics including excluded types. Extract and present them in this format:
 
 ## Mutation Test File Generation Complete
-- **File created**: [TARGET_FILE]
+- **File created**: ${TARGET_FILE}
 - **Types registered in Bevy**: [extract from comparison output]
 - **Spawn-supported types**: [extract from comparison output]
 - **Types with mutations**: [extract from comparison output]
