@@ -58,12 +58,12 @@ pub struct EnumMutationBuilder;
 /// This enum makes invalid states impossible to construct
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EnumVariantInfo {
-    /// Unit variant - just the variant name
-    Unit(String),
-    /// Tuple variant - name and guaranteed tuple types
-    Tuple(String, Vec<BrpTypeName>),
-    /// Struct variant - name and guaranteed struct fields
-    Struct(String, Vec<EnumFieldInfo>),
+    /// Unit variant - qualified variant name (e.g., "Color::Srgba")
+    Unit(VariantName),
+    /// Tuple variant - qualified name and guaranteed tuple types
+    Tuple(VariantName, Vec<BrpTypeName>),
+    /// Struct variant - qualified name and guaranteed struct fields
+    Struct(VariantName, Vec<EnumFieldInfo>),
 }
 
 /// Information about a field in an enum struct variant
@@ -77,10 +77,25 @@ pub struct EnumFieldInfo {
 }
 
 impl EnumVariantInfo {
-    fn name(&self) -> &str {
+    /// Get the fully qualified variant name (e.g., "Color::Srgba")
+    fn variant_name(&self) -> &VariantName {
         match self {
             Self::Unit(name) | Self::Tuple(name, _) | Self::Struct(name, _) => name,
         }
+    }
+
+    /// Get just the variant name without the enum prefix (e.g., "Srgba" from "Color::Srgba")
+    fn short_name(&self) -> &str {
+        self.variant_name()
+            .as_str()
+            .rsplit_once("::")
+            .map(|(_, name)| name)
+            .unwrap_or(self.variant_name().as_str())
+    }
+
+    /// Compatibility method - delegates to short_name
+    fn name(&self) -> &str {
+        self.short_name()
     }
 
     fn signature(&self) -> VariantSignature {
@@ -101,10 +116,12 @@ impl EnumVariantInfo {
     pub fn from_schema_variant(v: &Value, registry: &HashMap<BrpTypeName, Value>) -> Option<Self> {
         // Handle Unit variants which show up as simple strings
         if let Some(variant_str) = v.as_str() {
-            return Some(Self::Unit(variant_str.to_string()));
+            // For simple string variants, create a VariantName from just the string
+            return Some(Self::Unit(VariantName::from(variant_str.to_string())));
         }
 
-        let variant_name = extract_variant_name(v)?;
+        // Extract the fully qualified variant name
+        let variant_name = extract_variant_qualified_name(v)?;
 
         // Check what type of variant this is
         if let Some(prefix_items) = v.get_field(SchemaField::PrefixItems) {
@@ -133,6 +150,22 @@ fn extract_variant_name(v: &Value) -> Option<String> {
     v.get_field(SchemaField::ShortPath)
         .and_then(Value::as_str)
         .map(ToString::to_string)
+}
+
+/// Extract the fully qualified variant name from schema (e.g., "Color::Srgba")
+fn extract_variant_qualified_name(v: &Value) -> Option<VariantName> {
+    // First try to get the type path for the full qualified name
+    if let Some(type_path) = v.get_field(SchemaField::TypePath).and_then(Value::as_str) {
+        // Find second-to-last :: to extract "EnumType::Variant"
+        // e.g., "bevy_color::color::Color::Srgba" -> "Color::Srgba"
+        let parts: Vec<&str> = type_path.rsplitn(3, "::").collect();
+        if parts.len() >= 3 {
+            return Some(VariantName::from(format!("{}::{}", parts[1], parts[0])));
+        }
+    }
+
+    // Fallback to just the variant name if we can't parse it
+    extract_variant_name(v).map(VariantName::from)
 }
 
 fn extract_tuple_types(
@@ -325,7 +358,7 @@ impl PathBuilder for EnumMutationBuilder {
         for (signature, variants_in_group) in variant_groups {
             let applicable_variants: Vec<VariantName> = variants_in_group
                 .iter()
-                .map(|v| ctx.type_name().variant_name(v.name()))
+                .map(|v| v.variant_name().clone())
                 .collect();
 
             match signature {
@@ -402,7 +435,7 @@ impl PathBuilder for EnumMutationBuilder {
 
                     let applicable_variants: Vec<VariantName> = variants_in_group
                         .iter()
-                        .map(|v| ctx.type_name().variant_name(v.name()))
+                        .map(|v| v.variant_name().clone())
                         .collect();
 
                     examples.push(ExampleGroup {

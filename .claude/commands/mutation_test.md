@@ -359,6 +359,17 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 ## STEP 8: INTERACTIVE FAILURE REVIEW (Only if NEW failures detected)
 
 <InteractiveFailureReview>
+    **Create todos for failure review workflow:**
+    Use TodoWrite tool to create todos for tracking the failure review process:
+    - "Display failure summary and initialize review process"
+    - "Review failure [X] of [TOTAL]" (create one for each failure found)
+    - "Process user response for failure [X]" (track each user decision)
+
+    **Update todos as you progress:**
+    - Mark summary todo as completed after showing the initial summary
+    - Mark each failure review todo as in_progress when presenting it
+    - Mark as completed after user responds with a keyword
+
     **After cleanup is complete, present failures interactively:**
 
     1. **Display Summary First**:

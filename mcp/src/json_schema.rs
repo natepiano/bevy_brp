@@ -82,6 +82,8 @@ pub enum SchemaField {
     ShortPath,
     /// The type field
     Type,
+    /// The type path field (e.g., "bevy_color::color::Color::Srgba")
+    TypePath,
     /// Map Value
     Value,
     /// The valueType field for map types

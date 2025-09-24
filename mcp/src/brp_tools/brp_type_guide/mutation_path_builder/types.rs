@@ -61,6 +61,13 @@ impl std::fmt::Display for VariantName {
     }
 }
 
+impl VariantName {
+    /// Get the variant name as a string slice
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Action to take regarding path creation during recursion
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathAction {
