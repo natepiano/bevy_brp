@@ -4,7 +4,7 @@
 
 **DIRECTORY VALIDATION**: Ensure you are in the correct working directory before starting:
 ```bash
-.claude/scripts/create_mutation_test_json_validate_directory.sh
+.claude/scripts/create_mutation_test_json/validate_directory.sh
 ```
 
 <ExecutionSteps/>
@@ -38,7 +38,7 @@ APP_NAME = extras_plugin
 
     **promote**: Mark version as baseline:
     ```bash
-    .claude/scripts/create_mutation_test_json_promote_baseline.sh
+    .claude/scripts/create_mutation_test_json/promote_baseline.sh
     ```
     **skip**: Keep existing baseline, document decision, continue
     **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus
@@ -52,14 +52,11 @@ APP_NAME = extras_plugin
        - `affected_types`: Array of actual type names from current pattern
        - `reason`: Human-readable explanation for why this change is expected
     4. Continue to next pattern in review
-    **check_type**: Ask user "Which type would you like me to check?", then execute:
+    **check_type**: Ask user "Which type would you like me to check?", then use:
     ```bash
-    python3 .claude/scripts/compare_mutations_check_type.py "[TYPE_NAME]"
+    python3 .claude/scripts/create_mutation_test_json/read_comparison_detail.py pattern <num>
     ```
-    **summarize**: Ask user "Which JSON file would you like me to summarize?", then execute:
-    ```bash
-    .claude/scripts/compare_mutations_summarize.sh [JSON_FILE]
-    ```
+    to explore patterns related to that type.
 </KeywordExecution>
 
 ## MAIN WORKFLOW
@@ -139,7 +136,7 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
     Execute the augmentation script:
     ```bash
-    .claude/scripts/create_mutation_test_json_augment_response.sh [FILEPATH] ${TARGET_FILE}
+    .claude/scripts/create_mutation_test_json/augment_response.sh [FILEPATH] ${TARGET_FILE}
     ```
 
     Replace `[FILEPATH]` with the actual path from Step 2 and `${TARGET_FILE}` with the target location from <CreateContext/>.
@@ -197,9 +194,9 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
       - BASELINE: `.claude/transient/all_types_baseline.json` (the known good baseline)
       - CURRENT: `.claude/transient/all_types.json` (the newly created file from Step 3)
 
-    **Run structured comparison directly**:
+    **Run comprehensive comparison directly**:
     ```bash
-    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/transient/all_types_baseline.json .claude/transient/all_types.json
+    python3 .claude/scripts/create_mutation_test_json/compare.py .claude/transient/all_types_baseline.json .claude/transient/all_types.json
     ```
 
     This comprehensive comparison provides:
@@ -224,9 +221,9 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
     **Automatically categorize changes using the expected changes JSON**:
 
-    The comparison script now handles categorization internally:
+    The comparison script handles everything internally:
     ```bash
-    .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/transient/all_types_baseline.json .claude/transient/all_types.json
+    python3 .claude/scripts/create_mutation_test_json/compare.py .claude/transient/all_types_baseline.json .claude/transient/all_types.json
     ```
 
     This will automatically:
@@ -356,11 +353,11 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
     2. Never use cached detail files
     3. Never use examples from previous comparison runs
 
-    1. **ALWAYS re-run fresh comparison to get current examples**:
+    1. **Use the detail reader to get examples from the comparison file**:
        ```bash
-       .claude/scripts/create_mutation_test_json_structured_comparison.sh .claude/transient/all_types_baseline.json .claude/transient/all_types.json
+       python3 .claude/scripts/create_mutation_test_json/read_comparison_detail.py next
        ```
-       **CRITICAL**: Use examples from THIS current run output, never cached files.
+       **CRITICAL**: The comparison file at $TMPDIR/mutation_comparison_full.json contains ALL changes.
 
     2. **EXTRACT EXAMPLES FROM CURRENT COMPARISON OUTPUT**:
        - For each FIELD_REMOVED/FIELD_ADDED pattern in the current comparison output
@@ -369,25 +366,23 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
 
     3. Create todos for each unexpected change pattern identified
 
-    4. **INTERACTIVE REVIEW**: For each unexpected pattern from the CURRENT comparison:
-       a. Present pattern overview using <PatternOverviewFormat/>
-
-       b. **EXTRACT EXAMPLE FROM CURRENT COMPARISON OUTPUT**:
-          - Take the first "Example 1:" entry from the current comparison output for this pattern
-          - Extract the Type and Path from "Example 1:" (format: "Type: X, Path: Y")
-          - **NEVER use examples from detail files or previous runs**
-
-       c. **RETRIEVE AND VERIFY MUTATION PATH DATA**:
-          **IMPORTANT**: Extract only the mutation path from the comparison output.
-
-          Example: If comparison shows `Path: mutation_paths..0.0.example`, use only `.0.0` (remove `mutation_paths.` prefix and `.example` suffix)
-
+    4. **INTERACTIVE REVIEW**: Use read_comparison_detail.py to walk through changes:
+       a. Get the next change to review:
           ```bash
-          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[MUTATION_PATH_ONLY]" .claude/transient/all_types_baseline.json
-          .claude/scripts/get_mutation_path.sh "[TYPE_FROM_CURRENT_OUTPUT]" "[MUTATION_PATH_ONLY]" .claude/transient/all_types.json
+          python3 .claude/scripts/create_mutation_test_json/read_comparison_detail.py next
           ```
 
-          Where `[MUTATION_PATH_ONLY]` is the mutation path key (like `.0.0`) extracted from the full comparison path.
+       b. The tool will show complete details for one change including:
+          - Pattern name and position
+          - Type and path affected
+          - Full baseline and current values
+
+       c. **RETRIEVE FULL MUTATION PATH DATA IF NEEDED**:
+          For deeper inspection of mutation paths, use:
+          ```bash
+          .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/transient/all_types_baseline.json
+          .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/transient/all_types.json
+          ```
 
        d. **MANDATORY VERIFICATION BEFORE PROCEEDING**:
           - Compare the retrieved baseline vs current JSON data
