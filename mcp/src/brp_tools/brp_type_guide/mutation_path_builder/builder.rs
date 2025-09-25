@@ -13,7 +13,7 @@ use super::builders::{
     StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
 };
 use super::mutation_knowledge::MutationKnowledge;
-use super::path_builder::{MaybeVariants, PathBuilder};
+use super::path_builder::PathBuilder;
 use super::types::{ExampleGroup, PathAction, PathSummary, VariantPath};
 use super::{
     MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathKind,
@@ -35,7 +35,7 @@ pub struct MutationPathBuilder<B: PathBuilder> {
     inner: B,
 }
 
-impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
+impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
     type Item = B::Item;
     type Iter<'a>
         = B::Iter<'a>
@@ -189,7 +189,7 @@ fn populate_variant_path_for_builder(
     populated_paths
 }
 
-impl<B: PathBuilder> MutationPathBuilder<B> {
+impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     pub const fn new(inner: B) -> Self {
         Self { inner }
     }
@@ -207,81 +207,53 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         let mut child_examples = HashMap::<MutationPathDescriptor, Value>::new();
 
         // Recurse to each child (they handle their own protocol)
-        for item in child_items {
-            // Check if we have variant information (from enum builder)
-            let variant_info = item
-                .applicable_variants()
-                .map(<[super::types::VariantName]>::to_vec);
+        for path_kind in child_items {
+            let mut child_ctx =
+                ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
 
-            // Always try to extract the PathKind first (may be None for unit variants)
-            if let Some(path_kind) = item.into_path_kind() {
-                let mut child_ctx =
-                    ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
-
-                // Check if we need special variant handling
-                if let Some(variants) = variant_info {
-                    // Special handling for enum items: Set up variant chain
-                    if let Some(representative_variant) = variants.first() {
-                        // Extend the inherited variant chain with this enum's variant
-                        child_ctx.variant_chain.push(VariantPath {
-                            full_mutation_path: ctx.full_mutation_path.clone(),
-                            variant:            representative_variant.clone(),
-                            instructions:       String::new(), // Will be filled during ascent
-                            variant_example:    json!(null),   // Will be filled during ascent
-                        });
-                    }
-
-                    child_ctx.enum_context = Some(EnumContext::Child);
-                } else {
-                    // Check if this child is an enum and set EnumContext appropriately
-                    if let Some(child_schema) = child_ctx.get_registry_schema(child_ctx.type_name())
-                    {
-                        let child_type_kind =
-                            TypeKind::from_schema(child_schema, child_ctx.type_name());
-                        if matches!(child_type_kind, TypeKind::Enum) {
-                            // This child is an enum
+            // Check if this child is an enum and set EnumContext appropriately
+            if let Some(child_schema) = child_ctx.get_registry_schema(child_ctx.type_name()) {
+                let child_type_kind = TypeKind::from_schema(child_schema, child_ctx.type_name());
+                if matches!(child_type_kind, TypeKind::Enum) {
+                    // This child is an enum
+                    match &ctx.enum_context {
+                        Some(EnumContext::Child) => {
+                            // We're in a variant and found a nested enum
+                            // The nested enum gets Root context (to generate examples)
+                            // The chain will be extended when this enum's variants are expanded
+                            child_ctx.enum_context = Some(EnumContext::Root);
+                        }
+                        _ => {
+                            // Check if parent has enum context
                             match &ctx.enum_context {
-                                Some(EnumContext::Child) => {
-                                    // We're in a variant and found a nested enum
-                                    // The nested enum gets Root context (to generate examples)
-                                    // The chain will be extended when this enum's variants are
-                                    // expanded
-                                    child_ctx.enum_context = Some(EnumContext::Root);
+                                Some(_) => {
+                                    // We're inside another enum - don't set enum context
+                                    // for simple example
                                 }
-                                _ => {
-                                    // Check if parent has enum context
-                                    match &ctx.enum_context {
-                                        Some(_) => {
-                                            // We're inside another enum - don't set enum context
-                                            // for simple example
-                                        }
-                                        None => {
-                                            // Not inside an enum - this enum gets Root treatment
-                                            child_ctx.enum_context = Some(EnumContext::Root);
-                                        }
-                                    }
+                                None => {
+                                    // Not inside an enum - this enum gets Root treatment
+                                    child_ctx.enum_context = Some(EnumContext::Root);
                                 }
                             }
                         }
                     }
                 }
-
-                // Extract descriptor from PathKind for HashMap
-                let child_key = path_kind.to_mutation_path_descriptor();
-
-                let (child_paths, child_example) =
-                    Self::process_child(&child_key, &mut child_ctx, depth)?;
-                child_examples.insert(child_key, child_example);
-
-                // Always collect all paths for analysis
-                all_paths.extend(child_paths.clone());
-
-                // Only add to paths_to_expose if this child should be created
-                if matches!(child_ctx.path_action, PathAction::Create) {
-                    paths_to_expose.extend(child_paths);
-                }
             }
-            // If into_path_kind() returns None, skip this item (e.g., for filtering)
+
+            // Extract descriptor from PathKind for HashMap
+            let child_key = path_kind.to_mutation_path_descriptor();
+
+            let (child_paths, child_example) =
+                Self::process_child(&child_key, &mut child_ctx, depth)?;
+            child_examples.insert(child_key, child_example);
+
+            // Always collect all paths for analysis
+            all_paths.extend(child_paths.clone());
+
+            // Only add to paths_to_expose if this child should be created
+            if matches!(child_ctx.path_action, PathAction::Create) {
+                paths_to_expose.extend(child_paths);
+            }
         }
 
         Ok(ChildProcessingResult {

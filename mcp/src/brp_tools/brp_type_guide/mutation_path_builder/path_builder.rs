@@ -2,25 +2,10 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::types::{PathAction, VariantName};
-use super::{
-    MutationPathDescriptor, MutationPathInternal, NotMutableReason, PathKind, RecursionContext,
-};
+use super::types::PathAction;
+use super::{MutationPathDescriptor, MutationPathInternal, NotMutableReason, RecursionContext};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
-
-/// Trait for items that might carry variant information
-/// The `enum_builder` can return `PathKind::IndexedElement` or `PathKind::StructField` and
-/// each need to their associated `applicable_variants` so this makes it possible
-pub trait MaybeVariants {
-    /// Returns applicable variants if this is from an enum builder
-    fn applicable_variants(&self) -> Option<&[VariantName]> {
-        None
-    }
-
-    /// Extract the `PathKind` if there is one (`None` for unit variants)
-    fn into_path_kind(self) -> Option<PathKind>;
-}
 
 /// Trait for building mutation paths for different type kinds
 ///
@@ -31,7 +16,7 @@ pub trait PathBuilder {
     /// The item type returned by `collect_children` - allows for
     /// `enum_builder` to return `PathKind` with `applicable_variants` where
     ///  all the other builders just return `PathKind`
-    type Item: MaybeVariants;
+    type Item;
 
     /// Iterator type for children
     type Iter<'a>: Iterator<Item = Self::Item>
