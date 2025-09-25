@@ -77,11 +77,23 @@ impl EnumVariantInfo {
     }
 
     /// Extract variant information from a schema variant
-    fn from_schema_variant(v: &Value, registry: &HashMap<BrpTypeName, Value>) -> Option<Self> {
+    fn from_schema_variant(
+        v: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+        enum_type: &BrpTypeName,
+    ) -> Option<Self> {
         // Handle Unit variants which show up as simple strings
         if let Some(variant_str) = v.as_str() {
-            // For simple string variants, create a VariantName from just the string
-            return Some(Self::Unit(VariantName::from(variant_str.to_string())));
+            // For simple string variants, we need to construct the full variant name
+            // Extract just the type name without module path
+            let type_name = enum_type
+                .as_str()
+                .rsplit("::")
+                .next()
+                .unwrap_or(enum_type.as_str());
+
+            let qualified_name = format!("{}::{}", type_name, variant_str);
+            return Some(Self::Unit(VariantName::from(qualified_name)));
         }
 
         // Extract the fully qualified variant name
@@ -141,12 +153,9 @@ fn extract_variant_name(v: &Value) -> Option<String> {
 fn extract_variant_qualified_name(v: &Value) -> Option<VariantName> {
     // First try to get the type path for the full qualified name
     if let Some(type_path) = v.get_field(SchemaField::TypePath).and_then(Value::as_str) {
-        // Find second-to-last :: to extract "EnumType::Variant"
-        // e.g., "bevy_color::color::Color::Srgba" -> "Color::Srgba"
-        let parts: Vec<&str> = type_path.rsplitn(3, "::").collect();
-        if parts.len() >= 3 {
-            return Some(VariantName::from(format!("{}::{}", parts[1], parts[0])));
-        }
+        // Use the new parser to handle nested generics properly
+        let simplified_name = super::type_parser::extract_simplified_variant_name(type_path);
+        return Some(VariantName::from(simplified_name));
     }
 
     // Fallback to just the variant name if we can't parse it
@@ -181,6 +190,7 @@ fn extract_struct_fields(
 fn extract_enum_variants(
     registry_schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
+    enum_type: &BrpTypeName,
 ) -> Vec<EnumVariantInfo> {
     let one_of_field = registry_schema.get_field(SchemaField::OneOf);
 
@@ -189,7 +199,7 @@ fn extract_enum_variants(
         .map(|variants| {
             variants
                 .iter()
-                .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry))
+                .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry, enum_type))
                 .collect()
         })
         .unwrap_or_default()
@@ -233,10 +243,16 @@ impl TypeCategory {
     }
 
     fn extract_option_inner(type_name: &BrpTypeName) -> Option<BrpTypeName> {
+        const OPTION_PREFIX: &str = "core::option::Option<";
+        const OPTION_SUFFIX: char = '>';
+
         let type_str = type_name.as_str();
-        if type_str.starts_with("core::option::Option<") && type_str.ends_with('>') {
-            let inner = &type_str[21..type_str.len() - 1]; // Remove "core::option::Option<" and ">"
-            Some(BrpTypeName::from(inner.to_string()))
+        if let Some(inner_with_suffix) = type_str.strip_prefix(OPTION_PREFIX) {
+            if let Some(inner) = inner_with_suffix.strip_suffix(OPTION_SUFFIX) {
+                Some(BrpTypeName::from(inner.to_string()))
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -350,7 +366,7 @@ fn extract_and_group_variants(
     ctx: &RecursionContext,
 ) -> Result<HashMap<VariantSignature, Vec<EnumVariantInfo>>> {
     let schema = ctx.require_registry_schema()?;
-    let variants = extract_enum_variants(schema, &ctx.registry);
+    let variants = extract_enum_variants(schema, &ctx.registry, ctx.type_name());
     Ok(group_variants_by_signature(variants))
 }
 

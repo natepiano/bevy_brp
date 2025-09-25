@@ -1,5 +1,5 @@
 pub mod builder;
-pub mod builders;
+mod builders;
 mod enum_path_builder;
 mod mutation_knowledge;
 mod not_mutable_reason;
@@ -7,6 +7,7 @@ mod path_builder;
 mod path_kind;
 mod recursion_context;
 pub mod type_kind;
+mod type_parser;
 pub mod types;
 
 pub use builder::recurse_mutation_paths;

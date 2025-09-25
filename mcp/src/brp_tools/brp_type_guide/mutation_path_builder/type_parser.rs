@@ -1,0 +1,282 @@
+//! Parser for Rust type paths with support for nested generics
+//!
+//! This module uses nom to properly parse type paths like:
+//! - `Color::Srgba`
+//! - `Option<T>::Some`
+//! - `Option<Handle<Mesh>>::Some`
+//! - `core::option::Option<bevy_asset::handle::Handle<bevy_mesh::mesh::Mesh>>::Some`
+
+use nom::branch::alt;
+use nom::bytes::complete::{tag, take_while1};
+use nom::character::complete::char;
+use nom::combinator::{opt, recognize};
+use nom::multi::separated_list0;
+use nom::sequence::{delimited, pair, preceded};
+use nom::{IResult, Parser};
+
+/// A parsed type path with optional variant
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedTypePath {
+    /// The full type including module path and generics
+    /// e.g., "core::option::Option<bevy_asset::handle::Handle<bevy_mesh::mesh::Mesh>>"
+    pub full_type:       String,
+    /// The simplified type name with generics but no module paths
+    /// e.g., "Option<Handle<Mesh>>"
+    pub simplified_type: String,
+    /// The variant name if present
+    /// e.g., "Some"
+    pub variant:         Option<String>,
+}
+
+/// Parse an identifier (alphanumeric + underscore, not starting with digit)
+fn identifier(input: &str) -> IResult<&str, &str> {
+    take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)
+}
+
+/// Parse a module path segment (e.g., "core::option")
+fn module_path(input: &str) -> IResult<&str, Vec<&str>> {
+    separated_list0(tag("::"), identifier).parse(input)
+}
+
+/// Parse generic arguments recursively
+fn generics(input: &str) -> IResult<&str, &str> {
+    recognize(delimited(
+        char('<'),
+        separated_list0(
+            tag(", "),
+            alt((
+                // Type with generics
+                recognize(pair(type_path_inner, opt(generics))),
+                // Simple type
+                type_path_inner,
+            )),
+        ),
+        char('>'),
+    ))
+    .parse(input)
+}
+
+/// Internal type path parser (needed because we can't reference type_path before it's defined)
+fn type_path_inner(input: &str) -> IResult<&str, &str> {
+    recognize(pair(separated_list0(tag("::"), identifier), opt(generics))).parse(input)
+}
+
+/// Parse a complete type path (module::Type<Generics>)
+fn type_path(input: &str) -> IResult<&str, &str> {
+    type_path_inner(input)
+}
+
+/// Parse the complete type path with optional variant
+fn full_type_path(input: &str) -> IResult<&str, (&str, Option<&str>)> {
+    // Special case: for simple Type::Variant (single ::), split at the last ::
+    // This handles both "Color::Srgba" and "mod::Type::Variant" correctly
+    if !input.contains('<') {
+        // No generics - count the :: separators
+        let separator_count = input.matches("::").count();
+
+        if separator_count == 1 {
+            // Simple case like "Color::Srgba" - assume it's Type::Variant
+            if let Some(pos) = input.find("::") {
+                let type_part = &input[..pos];
+                let variant_part = &input[pos + 2..];
+                return Ok(("", (type_part, Some(variant_part))));
+            }
+        } else if separator_count > 1 {
+            // Multiple :: - the last one is likely the variant separator
+            // Find the position of the last ::
+            if let Some(last_pos) = input.rfind("::") {
+                let type_part = &input[..last_pos];
+                let variant_part = &input[last_pos + 2..];
+                // Check if variant_part looks like a variant (starts with uppercase)
+                if variant_part
+                    .chars()
+                    .next()
+                    .map_or(false, |c| c.is_uppercase())
+                {
+                    return Ok(("", (type_part, Some(variant_part))));
+                }
+            }
+        }
+    }
+
+    // Fall back to the original parsing for complex cases with generics
+    let (input, type_part) = type_path(input)?;
+    let (input, variant) = opt(preceded(tag("::"), identifier)).parse(input)?;
+    Ok((input, (type_part, variant)))
+}
+
+/// Simplify a type by removing module paths but keeping generic structure
+fn simplify_type(type_str: &str) -> String {
+    // Find where generics start (if any)
+    if let Some(generic_start) = type_str.find('<') {
+        let base_type = &type_str[..generic_start];
+        let generics_part = &type_str[generic_start..];
+
+        // Get just the type name (last segment before generics)
+        let type_name = if base_type.contains("::") {
+            base_type.rsplit("::").next().unwrap_or(base_type)
+        } else {
+            base_type
+        };
+
+        // Recursively simplify types within generics
+        let simplified_generics = simplify_generics(generics_part);
+
+        format!("{}{}", type_name, simplified_generics)
+    } else {
+        // No generics - check if this has module paths
+        if let Some(last_sep_pos) = type_str.rfind("::") {
+            // Check if there's another :: before this one
+            let before_last = &type_str[..last_sep_pos];
+            if before_last.contains("::") {
+                // This is a module path like "mod::Type" or "mod1::mod2::Type"
+                // Return just the type name
+                type_str[last_sep_pos + 2..].to_string()
+            } else {
+                // This is a simple "Type::Variant" - but we shouldn't get here
+                // because variants should be separated before calling this function
+                type_str.to_string()
+            }
+        } else {
+            // No :: at all, return as-is
+            type_str.to_string()
+        }
+    }
+}
+
+/// Simplify generic parameters recursively
+fn simplify_generics(generics_str: &str) -> String {
+    if !generics_str.starts_with('<') || !generics_str.ends_with('>') {
+        return generics_str.to_string();
+    }
+
+    let inner = &generics_str[1..generics_str.len() - 1];
+    let mut result = String::from("<");
+    let mut depth = 0;
+    let mut current_type = String::new();
+
+    for ch in inner.chars() {
+        match ch {
+            '<' => {
+                depth += 1;
+                current_type.push(ch);
+            }
+            '>' => {
+                depth -= 1;
+                current_type.push(ch);
+            }
+            ',' if depth == 0 => {
+                // End of a type parameter
+                if !result.ends_with('<') {
+                    result.push_str(", ");
+                }
+                result.push_str(&simplify_type(current_type.trim()));
+                current_type.clear();
+            }
+            _ => {
+                current_type.push(ch);
+            }
+        }
+    }
+
+    // Handle the last type parameter
+    if !current_type.trim().is_empty() {
+        if !result.ends_with('<') {
+            result.push_str(", ");
+        }
+        result.push_str(&simplify_type(current_type.trim()));
+    }
+
+    result.push('>');
+    result
+}
+
+/// Parse a complete type path and extract simplified variant name
+pub fn parse_type_with_variant(input: &str) -> Result<ParsedTypePath, String> {
+    match full_type_path(input) {
+        Ok((remaining, (type_part, variant))) => {
+            if !remaining.is_empty() {
+                return Err(format!(
+                    "Unexpected characters after type path: {}",
+                    remaining
+                ));
+            }
+
+            let simplified = simplify_type(type_part);
+
+            Ok(ParsedTypePath {
+                full_type:       type_part.to_string(),
+                simplified_type: simplified,
+                variant:         variant.map(ToString::to_string),
+            })
+        }
+        Err(e) => Err(format!("Failed to parse type path: {:?}", e)),
+    }
+}
+
+/// Extract a simplified variant name from a full type path
+/// e.g., "core::option::Option<bevy_asset::handle::Handle<bevy_mesh::mesh::Mesh>>::Some"
+///    -> "Option<Handle<Mesh>>::Some"
+pub fn extract_simplified_variant_name(type_path: &str) -> String {
+    match parse_type_with_variant(type_path) {
+        Ok(parsed) => {
+            if let Some(variant) = parsed.variant {
+                format!("{}::{}", parsed.simplified_type, variant)
+            } else {
+                parsed.simplified_type
+            }
+        }
+        Err(_) => {
+            // Fallback: if parsing fails, try simple extraction
+            if let Some(pos) = type_path.rfind("::") {
+                let variant = &type_path[pos + 2..];
+                format!("UnknownType::{}", variant)
+            } else {
+                type_path.to_string()
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_enum_variant() {
+        let input = "Color::Srgba";
+        let result = parse_type_with_variant(input).unwrap();
+        assert_eq!(result.simplified_type, "Color");
+        assert_eq!(result.variant, Some("Srgba".to_string()));
+        assert_eq!(extract_simplified_variant_name(input), "Color::Srgba");
+    }
+
+    #[test]
+    fn test_option_with_simple_type() {
+        let input = "core::option::Option<i32>::Some";
+        let result = parse_type_with_variant(input).unwrap();
+        assert_eq!(result.simplified_type, "Option<i32>");
+        assert_eq!(result.variant, Some("Some".to_string()));
+        assert_eq!(extract_simplified_variant_name(input), "Option<i32>::Some");
+    }
+
+    #[test]
+    fn test_deeply_nested_generics() {
+        let input = "core::option::Option<bevy_asset::handle::Handle<bevy_mesh::mesh::Mesh>>::Some";
+        let result = parse_type_with_variant(input).unwrap();
+        assert_eq!(result.simplified_type, "Option<Handle<Mesh>>");
+        assert_eq!(result.variant, Some("Some".to_string()));
+        assert_eq!(
+            extract_simplified_variant_name(input),
+            "Option<Handle<Mesh>>::Some"
+        );
+    }
+
+    #[test]
+    fn test_multiple_generic_params() {
+        let input = "std::collections::HashMap<String, Vec<u32>>::new";
+        let result = parse_type_with_variant(input).unwrap();
+        assert_eq!(result.simplified_type, "HashMap<String, Vec<u32>>");
+        assert_eq!(result.variant, Some("new".to_string()));
+    }
+}
