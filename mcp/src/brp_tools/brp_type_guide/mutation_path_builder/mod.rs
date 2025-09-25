@@ -1,5 +1,6 @@
 pub mod builder;
 pub mod builders;
+mod enum_path_builder;
 mod mutation_knowledge;
 mod not_mutable_reason;
 mod path_builder;
@@ -16,5 +17,5 @@ pub use recursion_context::{EnumContext, RecursionContext};
 pub use type_kind::TypeKind;
 pub use types::{
     ExampleGroup, MutationPath, MutationPathInternal, MutationStatus, PathAction, VariantName,
-    VariantPath, VariantSignature,
+    VariantPath,
 };

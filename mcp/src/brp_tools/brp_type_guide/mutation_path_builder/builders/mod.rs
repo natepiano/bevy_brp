@@ -8,8 +8,6 @@ mod tuple_builder;
 mod value_builder;
 
 pub use array_builder::ArrayMutationBuilder;
-//pub use enum_builder::EnumMutationBuilder;
-pub use enum_builder::EnumMutationBuilder;
 pub use list_builder::ListMutationBuilder;
 pub use map_builder::MapMutationBuilder;
 pub use set_builder::SetMutationBuilder;

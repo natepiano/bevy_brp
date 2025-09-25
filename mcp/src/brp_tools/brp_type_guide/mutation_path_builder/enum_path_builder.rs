@@ -4,14 +4,15 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::mutation_path_builder::builders::enum_builder::{
-    build_enum_examples, extract_and_group_variants,
+use super::super::constants::RecursionDepth;
+use super::builders::enum_builder::{
+    EnumVariantInfo, build_enum_examples, extract_and_group_variants,
 };
-use super::mutation_path_builder::{
+use super::types::VariantSignature;
+use super::{
     EnumContext, ExampleGroup, MutationPathDescriptor, MutationPathInternal, MutationStatus,
-    PathAction, PathKind, RecursionContext, TypeKind, VariantName, VariantPath,
+    PathAction, PathKind, RecursionContext, TypeKind, VariantName, VariantPath, builder,
 };
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
 /// Standalone enum path builder - no PathBuilder dependency
@@ -43,10 +44,7 @@ impl EnumPathBuilder {
     /// Process child paths - simplified version of MutationPathBuilder's child processing
     fn process_children(
         &self,
-        variant_groups: &HashMap<
-            super::mutation_path_builder::types::VariantSignature,
-            Vec<super::mutation_path_builder::builders::enum_builder::EnumVariantInfo>,
-        >,
+        variant_groups: &HashMap<VariantSignature, Vec<EnumVariantInfo>>,
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<(
@@ -90,7 +88,7 @@ impl EnumPathBuilder {
                         TypeKind::from_schema(child_schema, child_ctx.type_name());
 
                     // Use the same recursion function as MutationPathBuilder
-                    use super::mutation_path_builder::builder::recurse_mutation_paths;
+                    use builder::recurse_mutation_paths;
                     let child_paths =
                         recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
 
@@ -115,11 +113,11 @@ impl EnumPathBuilder {
     /// Create PathKind objects for a signature - mirrors EnumMutationBuilder logic
     fn create_paths_for_signature(
         &self,
-        signature: &super::mutation_path_builder::types::VariantSignature,
+        signature: &VariantSignature,
         _applicable_variants: &[VariantName],
         ctx: &RecursionContext,
     ) -> Vec<Option<PathKind>> {
-        use super::mutation_path_builder::types::VariantSignature;
+        use VariantSignature;
 
         match signature {
             VariantSignature::Unit => {
@@ -147,30 +145,6 @@ impl EnumPathBuilder {
                 })
                 .collect(),
         }
-    }
-
-    /// Process a single child - simplified version of MutationPathBuilder::process_child
-    fn process_single_child(
-        &self,
-        child_ctx: &RecursionContext,
-        depth: RecursionDepth,
-    ) -> Result<Value> {
-        // Get child's type information
-        let child_schema = child_ctx.require_registry_schema()?;
-        let child_type_kind = TypeKind::from_schema(child_schema, child_ctx.type_name());
-
-        // Use the same recursion function as MutationPathBuilder
-        use super::mutation_path_builder::builder::recurse_mutation_paths;
-        let child_paths = recurse_mutation_paths(child_type_kind, child_ctx, depth.increment())?;
-
-        // Extract example from first path (same logic as MutationPathBuilder)
-        let child_example = child_paths.first().map_or(json!(null), |p| {
-            p.enum_root_example_for_parent
-                .as_ref()
-                .map_or_else(|| p.example.clone(), Clone::clone)
-        });
-
-        Ok(child_example)
     }
 
     /// Create final result paths - includes both root and child paths

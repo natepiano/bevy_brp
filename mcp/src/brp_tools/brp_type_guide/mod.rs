@@ -7,7 +7,6 @@
 mod all_types_tool;
 mod brp_type_name;
 mod constants;
-mod enum_path_builder;
 mod mutation_path_builder;
 mod response_types;
 mod tool;

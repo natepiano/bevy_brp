@@ -4,11 +4,13 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::constants::RecursionDepth;
 use super::super::mutation_path_builder::EnumContext;
 use super::builders::{
-    ArrayMutationBuilder, EnumMutationBuilder, ListMutationBuilder, MapMutationBuilder,
-    SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
+    ArrayMutationBuilder, ListMutationBuilder, MapMutationBuilder, SetMutationBuilder,
+    StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
 };
+use super::enum_path_builder::EnumPathBuilder;
 use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::{MaybeVariants, PathBuilder};
 use super::type_kind::TypeKind;
@@ -17,7 +19,6 @@ use super::{
     MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathAction,
     PathKind, RecursionContext,
 };
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::{Error, Result};
 
 /// Result of processing all children during mutation path building
@@ -133,8 +134,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
     }
 }
 
-/// Feature flag to control enum implementation
-const USE_DECOUPLED_ENUM: bool = true; // Enable new EnumPathBuilder
+// Feature flag removed - EnumPathBuilder is now the permanent implementation
 
 /// Single dispatch point for creating builders - used for both entry and recursion
 /// This is the ONLY place where we match on `TypeKind` to create builders
@@ -143,8 +143,6 @@ pub fn recurse_mutation_paths(
     ctx: &RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
-    use PathBuilder;
-
     tracing::debug!(
         "recurse_mutation_paths: Dispatching {} as TypeKind::{:?}",
         ctx.type_name(),
@@ -152,6 +150,12 @@ pub fn recurse_mutation_paths(
     );
 
     match type_kind {
+        // Enum is distinct from the rest
+        TypeKind::Enum => {
+            tracing::debug!("Using EnumPathBuilder for {}", ctx.type_name());
+            use EnumPathBuilder;
+            EnumPathBuilder.process_enum(ctx, depth)
+        }
         TypeKind::Struct => {
             tracing::debug!("Using StructMutationBuilder for {}", ctx.type_name());
             MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx, depth)
@@ -175,17 +179,6 @@ pub fn recurse_mutation_paths(
         TypeKind::Set => {
             tracing::debug!("Using SetMutationBuilder for {}", ctx.type_name());
             MutationPathBuilder::new(SetMutationBuilder).build_paths(ctx, depth)
-        }
-        TypeKind::Enum => {
-            if USE_DECOUPLED_ENUM {
-                tracing::debug!("Using EnumPathBuilder for {}", ctx.type_name());
-                // Use the new EnumPathBuilder directly
-                use crate::brp_tools::brp_type_guide::enum_path_builder::EnumPathBuilder;
-                EnumPathBuilder.process_enum(ctx, depth)
-            } else {
-                tracing::debug!("Using EnumMutationBuilder for {}", ctx.type_name());
-                MutationPathBuilder::new(EnumMutationBuilder).build_paths(ctx, depth)
-            }
         }
         TypeKind::Value => {
             tracing::debug!("Using ValueMutationBuilder for {}", ctx.type_name());

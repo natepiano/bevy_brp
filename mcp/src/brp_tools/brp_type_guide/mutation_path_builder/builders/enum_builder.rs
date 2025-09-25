@@ -1,13 +1,11 @@
-//! `PathBuilder` for Enum types using the new protocol
+//! Shared enum processing functions for both EnumPathBuilder and legacy code
 
 use std::collections::HashMap;
 
-use error_stack::Report;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::super::path_builder::{MaybeVariants, PathBuilder};
-use super::super::path_kind::{MutationPathDescriptor, PathKind};
+use super::super::path_kind::MutationPathDescriptor;
 use super::super::recursion_context::{EnumContext, RecursionContext};
 use super::super::types::{ExampleGroup, VariantName, VariantSignature};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
@@ -27,25 +25,7 @@ enum MutationExample {
     EnumRoot(Vec<ExampleGroup>),
 }
 
-/// Represents a path with associated variant information
-/// Used by the enum builder to track which variants a path applies to
-#[derive(Debug, Clone)]
-pub struct PathKindWithVariants {
-    /// The path kind (None for unit variants)
-    pub path:                Option<PathKind>,
-    /// Variants this path applies to
-    pub applicable_variants: Vec<VariantName>,
-}
-
-impl MaybeVariants for PathKindWithVariants {
-    fn applicable_variants(&self) -> Option<&[VariantName]> {
-        Some(&self.applicable_variants)
-    }
-
-    fn into_path_kind(self) -> Option<PathKind> {
-        self.path
-    }
-}
+// PathKindWithVariants and MaybeVariants removed - no longer needed with EnumPathBuilder
 
 /// Builder for enum mutation paths using the new protocol
 pub struct EnumMutationBuilder;
@@ -452,78 +432,7 @@ pub fn build_enum_examples(
 }
 
 // ============================================================================
-// MutationPathBuilder Implementation
+// EnumMutationBuilder is now deprecated - use EnumPathBuilder instead
 // ============================================================================
 
-impl PathBuilder for EnumMutationBuilder {
-    type Item = PathKindWithVariants;
-    type Iter<'a>
-        = std::vec::IntoIter<PathKindWithVariants>
-    where
-        Self: 'a;
-
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
-        // Use shared function for consistent variant processing
-        let variant_groups = extract_and_group_variants(ctx)?;
-
-        let mut children = Vec::new();
-
-        // Create PathKindWithVariants for each signature group
-        for (signature, variants_in_group) in variant_groups {
-            let applicable_variants: Vec<VariantName> = variants_in_group
-                .iter()
-                .map(|v| v.variant_name().clone())
-                .collect();
-
-            match signature {
-                VariantSignature::Unit => {
-                    // Unit variants have no path (no fields to mutate)
-                    children.push(PathKindWithVariants {
-                        path: None,
-                        applicable_variants,
-                    });
-                }
-                VariantSignature::Tuple(types) => {
-                    // Create PathKindWithVariants for each tuple element
-                    for (index, type_name) in types.iter().enumerate() {
-                        children.push(PathKindWithVariants {
-                            path:                Some(PathKind::IndexedElement {
-                                index,
-                                type_name: type_name.clone(),
-                                parent_type: ctx.type_name().clone(),
-                            }),
-                            applicable_variants: applicable_variants.clone(),
-                        });
-                    }
-                }
-                VariantSignature::Struct(fields) => {
-                    // Create PathKindWithVariants for each struct field
-                    for (field_name, type_name) in fields {
-                        children.push(PathKindWithVariants {
-                            path:                Some(PathKind::StructField {
-                                field_name:  field_name.clone(),
-                                type_name:   type_name.clone(),
-                                parent_type: ctx.type_name().clone(),
-                            }),
-                            applicable_variants: applicable_variants.clone(),
-                        });
-                    }
-                }
-            }
-        }
-
-        Ok(children.into_iter())
-    }
-
-    fn assemble_from_children(
-        &self,
-        ctx: &RecursionContext,
-        children: HashMap<MutationPathDescriptor, Value>,
-    ) -> Result<Value> {
-        // Use shared function for consistent variant processing
-        let variant_groups = extract_and_group_variants(ctx)?;
-
-        // Use shared function for example building
-        build_enum_examples(&variant_groups, children, ctx)
-    }
-}
+// PathBuilder implementation removed - enums now use EnumPathBuilder directly
