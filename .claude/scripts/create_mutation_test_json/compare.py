@@ -63,9 +63,16 @@ class ExpectedMatchDict(TypedDict):
     expected_id: int
     changes: list[DifferenceDict]
 
+class FileStatsDict(TypedDict):
+    total_types: int
+    spawn_supported: int
+    types_with_mutations: int
+    total_mutation_paths: int
+
 class CategorizedOutputDict(TypedDict):
     metadata: MetadataDict
-    summary: SummaryDict
+    current_file_stats: FileStatsDict
+    comparison_summary: SummaryDict
     expected_matches: dict[str, ExpectedMatchDict]
     unexpected_changes: list[DifferenceDict]
 
@@ -414,6 +421,24 @@ def categorize_changes(all_changes: list[DifferenceDict], expected_patterns: lis
 
     return expected_matches, unmatched_changes
 
+def calculate_file_statistics(data: dict[str, JsonValue]) -> dict[str, int]:
+    """Calculate statistics for a mutation test file."""
+    total_types = len(data)
+    spawn_supported = sum(1 for t in data.values() if isinstance(t, dict) and t.get('spawn_format') is not None)
+    types_with_mutations = sum(1 for t in data.values() if isinstance(t, dict) and t.get('mutation_paths'))
+    total_paths = sum(
+        len(t.get('mutation_paths', {}))
+        for t in data.values()
+        if isinstance(t, dict) and isinstance(t.get('mutation_paths'), dict)
+    )
+
+    return {
+        "total_types": total_types,
+        "spawn_supported": spawn_supported,
+        "types_with_mutations": types_with_mutations,
+        "total_mutation_paths": total_paths
+    }
+
 def main() -> None:
     if '--help-expected-changes' in sys.argv:
         show_expected_changes_help()
@@ -428,6 +453,9 @@ def main() -> None:
 
     # Load files
     baseline, current = load_files(baseline_path, current_path)
+
+    # Calculate statistics for current file
+    current_stats = calculate_file_statistics(current)
 
     # Compare types and get ALL changes
     comparison_result = compare_types(baseline, current)
@@ -444,6 +472,15 @@ def main() -> None:
     expected_matches, unexpected_changes = categorize_changes(all_changes, expected_patterns)
 
     print("🔍 MUTATION TEST COMPARISON COMPLETE")
+    print("=" * 60)
+    print()
+    print("Current File Statistics:")
+    print(f"  Types registered in Bevy: {current_stats['total_types']}")
+    print(f"  Spawn-supported types: {current_stats['spawn_supported']}")
+    print(f"  Types with mutations: {current_stats['types_with_mutations']}")
+    print(f"  Total mutation paths: {current_stats['total_mutation_paths']}")
+    print()
+    print("Comparison Results:")
     print("=" * 60)
     print(f"Total changes: {len(all_changes)}")
     print(f"Types modified: {len(modified_types)}")
@@ -475,7 +512,8 @@ def main() -> None:
             "generated_at": datetime.now().isoformat(),
             "output_version": "2.0.0"
         },
-        "summary": {
+        "current_file_stats": current_stats,
+        "comparison_summary": {
             "total_changes": len(all_changes),
             "types_modified": len(modified_types),
             "types_added": len(added_types),

@@ -71,41 +71,56 @@ jq --arg excluded "$EXCLUDED_TYPES" '
 if [ $? -eq 0 ]; then
     echo "Successfully augmented BRP response to $TARGET_FILE"
 
-    # Display statistics about the augmented file
-    TYPE_COUNT=$(jq -r '
+    # Calculate comprehensive statistics about the augmented file
+    STATS_JSON=$(jq -r '
         if .type_guide then
-            .type_guide | length
+            .type_guide as $types
         elif .result.type_guide then
-            .result.type_guide | length
+            .result.type_guide as $types
         else
-            length
-        end
+            . as $types
+        end |
+        {
+            "total_types": ($types | length),
+            "spawn_supported": [
+                $types | to_entries | .[] |
+                select(.value.spawn_format != null)
+            ] | length,
+            "types_with_mutations": [
+                $types | to_entries | .[] |
+                select(.value.mutation_paths != null and .value.mutation_paths != {})
+            ] | length,
+            "total_mutation_paths": [
+                $types | to_entries | .[] |
+                .value.mutation_paths // {} | keys | .[]
+            ] | length,
+            "untested_count": [
+                $types | to_entries | .[] |
+                select(.value.test_status == "untested")
+            ] | length,
+            "auto_passed_count": [
+                $types | to_entries | .[] |
+                select(.value.test_status == "passed")
+            ] | length
+        }
     ' "$TARGET_FILE")
 
-    UNTESTED_COUNT=$(jq -r '
-        if .type_guide then
-            [.type_guide | to_entries | .[] | select(.value.test_status == "untested")] | length
-        elif .result.type_guide then
-            [.result.type_guide | to_entries | .[] | select(.value.test_status == "untested")] | length
-        else
-            [. | to_entries | .[] | select(.value.test_status == "untested")] | length
-        end
-    ' "$TARGET_FILE")
+    # Output statistics in both human-readable and JSON format
+    echo "$STATS_JSON" | jq -r '
+        "Statistics:",
+        "  Total types: \(.total_types)",
+        "  Spawn-supported types: \(.spawn_supported)",
+        "  Types with mutations: \(.types_with_mutations)",
+        "  Total mutation paths: \(.total_mutation_paths)",
+        "  Untested: \(.untested_count)",
+        "  Auto-passed: \(.auto_passed_count)"
+    '
 
-    PASSED_COUNT=$(jq -r '
-        if .type_guide then
-            [.type_guide | to_entries | .[] | select(.value.test_status == "passed")] | length
-        elif .result.type_guide then
-            [.result.type_guide | to_entries | .[] | select(.value.test_status == "passed")] | length
-        else
-            [. | to_entries | .[] | select(.value.test_status == "passed")] | length
-        end
-    ' "$TARGET_FILE")
-
-    echo "Statistics:"
-    echo "  Total types: $TYPE_COUNT"
-    echo "  Untested: $UNTESTED_COUNT"
-    echo "  Auto-passed: $PASSED_COUNT"
+    # Save statistics to a companion file for easy parsing
+    STATS_FILE="${TARGET_FILE%.json}_stats.json"
+    echo "$STATS_JSON" > "$STATS_FILE"
+    echo ""
+    echo "Statistics saved to: $STATS_FILE"
     echo ""
     echo "The file contains the COMPLETE BRP schema for each type including:"
     echo "  - spawn_format with examples"
