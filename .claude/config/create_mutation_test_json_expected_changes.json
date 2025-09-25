@@ -1,18 +1,18 @@
 {
   "expected_changes": [
     {
-      "id": 1,
-      "pattern_type": "FIELD_REMOVED",
-      "field": "examples",
-      "affected_types": ["bevy_mesh::skinning::SkinnedMesh", "bevy_render::camera::camera::Camera", "bevy_window::window::Window", "bevy_input::gamepad::GamepadSettings"],
-      "reason": "Examples removed correctly for mutation_reason of non-mutable"
-    },
-    {
-      "id": 2,
-      "pattern_type": "FIELD_REMOVED",
-      "field": "example",
-      "affected_types": ["bevy_render::camera::camera::Camera", "bevy_input::gamepad::GamepadSettings"],
-      "reason": "Enum type identification improvement shows examples array instead of single example"
+      "id": 0,
+      "name": "EXAMPLE ENTRY - Ignored by comparison scripts",
+      "pattern_type": "EXAMPLE",
+      "pattern_match": {
+        "description": "This is a template entry showing the expected structure",
+        "field": "example_field",
+        "min_occurrences": 1,
+        "min_types_affected": 1,
+        "exact_types_affected": null,
+        "description_contains": null
+      },
+      "description": "This entry (id: 0) is ignored by comparison scripts and serves as documentation for the expected_changes structure. When actual changes are detected after promotion, add them with id >= 1"
     }
   ]
 }
