@@ -126,6 +126,21 @@ impl EnumVariantInfo {
 
 /// Process enum type directly, bypassing `PathBuilder` trait
 /// Uses the same shared functions as `EnumMutationBuilder` for identical output
+///
+/// # Why Mutable Context
+///
+/// This function takes a mutable `RecursionContext` because enums need to self-validate
+/// and potentially set their own `EnumContext`. When an enum appears as a field in a
+/// struct or other container, it arrives here with `enum_context = None`. The enum must
+/// then determine its own context:
+///
+/// - Sets `EnumContext::Root` when `None` - means the enum should generate a full
+///   examples array showing all variants for discoverability
+/// - Respects existing context if already set by a parent enum
+///
+/// This self-validation ensures that enum fields in structs properly generate their
+/// examples arrays while maintaining clean separation of concerns - the enum builder
+/// is the sole authority on enum context decisions.
 pub fn process_enum(
     ctx: &mut RecursionContext,
     depth: RecursionDepth,

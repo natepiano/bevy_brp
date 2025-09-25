@@ -1,5 +1,22 @@
 # NotMutableReason Error Handling Refactor Plan
 
+## Overview
+Refactor `NotMutableReason` to be internal to the TypeGuide module, preventing leakage of internal mutation path building concepts into the general error system.
+
+## Design: Internal Error Type with Conversion
+
+### Core Concept
+- Create `TypeGuideError` inside `mutation_path_builder` module
+- `NotMutableReason` remains completely internal to mutation_path_builder
+- Convert to public `Error` types at module boundaries
+- Remove `Error::NotMutable` variant from public error enum
+
+### Benefits
+1. **Encapsulation**: TypeGuide implementation details stay internal
+2. **Clean API**: Public error enum only contains general-purpose errors
+3. **Flexibility**: Internal error types can evolve without affecting public API
+4. **Type Safety**: Compiler enforces boundary conversions
+
 ## Design Review Skip Notes
 
 ## TYPE-SYSTEM-1: Information Loss in Type-to-String Conversion - **Verdict**: REJECTED
@@ -29,23 +46,6 @@
 - **Issue**: The plan requires a constant for the "mutation_path_building" operation string but doesn't specify where to define it.
 - **Reasoning**: This finding addresses the same dead code as TYPE-SYSTEM-2. Since the entire TypeGuideError to Error::SchemaProcessing conversion logic should be removed (as it never executes), there is no need to specify where to define constants for code that shouldn't exist.
 - **Decision**: Skip this finding as it's redundant with TYPE-SYSTEM-2 resolution
-
-## Overview
-Refactor `NotMutableReason` to be internal to the TypeGuide module, preventing leakage of internal mutation path building concepts into the general error system.
-
-## Design: Internal Error Type with Conversion
-
-### Core Concept
-- Create `TypeGuideError` inside `mutation_path_builder` module
-- `NotMutableReason` remains completely internal to mutation_path_builder
-- Convert to public `Error` types at module boundaries
-- Remove `Error::NotMutable` variant from public error enum
-
-### Benefits
-1. **Encapsulation**: TypeGuide implementation details stay internal
-2. **Clean API**: Public error enum only contains general-purpose errors
-3. **Flexibility**: Internal error types can evolve without affecting public API
-4. **Type Safety**: Compiler enforces boundary conversions
 
 ## Implementation
 
