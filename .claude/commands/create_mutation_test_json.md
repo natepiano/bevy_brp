@@ -370,10 +370,7 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
     3. Create todos for each unexpected change pattern identified
 
     4. **INTERACTIVE REVIEW**: For each unexpected pattern from the CURRENT comparison:
-       a. Present pattern overview:
-          - Pattern name and occurrence count from current run
-          - Types affected count from current run
-          - Brief explanation of what this pattern means
+       a. Present pattern overview using <PatternOverviewFormat/>
 
        b. **EXTRACT EXAMPLE FROM CURRENT COMPARISON OUTPUT**:
           - Take the first "Example 1:" entry from the current comparison output for this pattern
@@ -431,4 +428,13 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
     6. After all patterns reviewed OR user stops:
        - Return to main decision prompt from Step 6C
 </ComparisonReviewWorkflow>
+
+<PatternOverviewFormat>
+## Pattern [NUMBER]: [PATTERN_NAME]
+
+**Occurrences**: [COUNT] changes across [TYPE_COUNT] types
+**What this means**: [EXPLANATION]
+
+Retrieving first example - [TYPE_NAME] at path [PATH]:
+</PatternOverviewFormat>
 
