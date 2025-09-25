@@ -11,6 +11,7 @@ mod mutation_path_builder;
 mod response_types;
 mod tool;
 mod type_guide;
+mod type_kind;
 
 // Re-export public API
 // Internal use for format discovery

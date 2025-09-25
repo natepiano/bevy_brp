@@ -6,8 +6,8 @@ use std::ops::Deref;
 use serde::{Deserialize, Serialize};
 
 use super::super::brp_type_name::BrpTypeName;
+use super::super::type_kind::TypeKind;
 use super::path_builder::MaybeVariants;
-use super::type_kind::TypeKind;
 use super::types::{PathSignature, StructFieldName, VariantName};
 
 /// A semantic identifier for mutation paths in the builder system
@@ -63,21 +63,21 @@ pub enum PathKind {
     RootValue { type_name: BrpTypeName },
     /// Mutate a field in a struct
     StructField {
-        field_name:  StructFieldName,
-        type_name:   BrpTypeName,
+        field_name: StructFieldName,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in a tuple by index
     /// Applies to tuple elements, enums variants, including generics such as Option<T>
     IndexedElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in an array
     ArrayElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
 }

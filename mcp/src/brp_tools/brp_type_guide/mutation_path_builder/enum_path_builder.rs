@@ -6,13 +6,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::super::constants::RecursionDepth;
+use super::super::type_kind::TypeKind;
 use super::builder::recurse_mutation_paths;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::{EnumContext, RecursionContext};
 use super::types::{
     ExampleGroup, PathAction, StructFieldName, VariantName, VariantPath, VariantSignature,
 };
-use super::{MutationPathInternal, MutationStatus, PathKind, TypeKind};
+
+use super::{MutationPathInternal, MutationStatus, PathKind};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -40,7 +42,7 @@ struct EnumFieldInfo {
     field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name:  BrpTypeName,
+    type_name: BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -553,9 +555,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant:            representative_variant.clone(),
-                    instructions:       String::new(),
-                    variant_example:    json!(null),
+                    variant: representative_variant.clone(),
+                    instructions: String::new(),
+                    variant_example: json!(null),
                 });
             }
             // Recursively process child and collect paths
@@ -622,8 +624,8 @@ fn create_paths_for_signature(
             .iter()
             .map(|(field_name, type_name)| {
                 Some(PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
             })
