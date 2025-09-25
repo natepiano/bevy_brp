@@ -38,7 +38,7 @@ struct EnumFieldInfo {
     field_name: String,
     /// Field type
     #[serde(rename = "type")]
-    type_name: BrpTypeName,
+    type_name:  BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -213,9 +213,34 @@ fn group_variants_by_signature(
 // Static methods moved from EnumMutationBuilder
 // ============================================================================
 
-/// Check if a type is `Option<T>`
-fn is_option_type(type_name: &BrpTypeName) -> bool {
-    type_name.as_str().starts_with("core::option::Option<")
+#[derive(Debug, Clone, PartialEq)]
+enum TypeCategory {
+    Option { inner_type: BrpTypeName },
+    Regular(BrpTypeName),
+}
+
+impl TypeCategory {
+    fn from_type_name(type_name: &BrpTypeName) -> Self {
+        if let Some(inner_type) = Self::extract_option_inner(type_name) {
+            Self::Option { inner_type }
+        } else {
+            Self::Regular(type_name.clone())
+        }
+    }
+
+    fn is_option(&self) -> bool {
+        matches!(self, Self::Option { .. })
+    }
+
+    fn extract_option_inner(type_name: &BrpTypeName) -> Option<BrpTypeName> {
+        let type_str = type_name.as_str();
+        if type_str.starts_with("core::option::Option<") && type_str.ends_with('>') {
+            let inner = &type_str[21..type_str.len() - 1]; // Remove "core::option::Option<" and ">"
+            Some(BrpTypeName::from(inner.to_string()))
+        } else {
+            None
+        }
+    }
 }
 
 /// Apply `Option<T>` transformation if needed: {"Some": value} → value, "None" → null
@@ -224,8 +249,8 @@ fn apply_option_transformation(
     variant_name: &str,
     enum_type: &BrpTypeName,
 ) -> Value {
-    // Only transform if this is actually `core::option::Option<T>`
-    if !is_option_type(enum_type) {
+    let type_category = TypeCategory::from_type_name(enum_type);
+    if !type_category.is_option() {
         return example;
     }
 
@@ -443,9 +468,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant: representative_variant.clone(),
-                    instructions: String::new(),
-                    variant_example: json!(null),
+                    variant:            representative_variant.clone(),
+                    instructions:       String::new(),
+                    variant_example:    json!(null),
                 });
             }
             child_ctx.enum_context = Some(EnumContext::Child);
@@ -503,8 +528,8 @@ fn create_paths_for_signature(
             .iter()
             .map(|(field_name, type_name)| {
                 Some(PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
             })
