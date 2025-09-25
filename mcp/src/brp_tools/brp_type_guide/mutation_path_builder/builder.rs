@@ -24,11 +24,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -286,66 +286,11 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 );
                 &json!(null)
             });
-        tracing::debug!(
-            "Child '{}' schema found: {}",
-            &**descriptor,
-            child_schema != &json!(null)
-        );
 
         let child_type = child_ctx.type_name().clone();
         let child_kind = TypeKind::from_schema(child_schema, &child_type);
-        tracing::debug!("Child '{}' TypeKind: {:?}", &**descriptor, child_kind);
-
-        // If child is an enum and we're building a non-root path for it, set EnumContext::Root
-        // This ensures the enum generates proper examples for its mutation path
-        // Check if it's either None OR if it's a Child context (which needs to become Root for this
-        // enum)
-        let should_set_enum_root = matches!(child_kind, TypeKind::Enum)
-            && (child_ctx.enum_context.is_none()
-                || matches!(&child_ctx.enum_context, Some(EnumContext::Child)));
-
-        if should_set_enum_root {
-            tracing::debug!(
-                "Detected enum field '{}' with type '{}', current context: {:?}, checking if should set EnumContext::Root",
-                &**descriptor,
-                child_ctx.type_name(),
-                child_ctx.enum_context
-            );
-            match child_ctx.path_kind {
-                PathKind::StructField { .. }
-                | PathKind::IndexedElement { .. }
-                | PathKind::ArrayElement { .. } => {
-                    tracing::debug!(
-                        "Setting EnumContext::Root for enum field '{}' with PathKind {:?}",
-                        &**descriptor,
-                        child_ctx.path_kind
-                    );
-                    child_ctx.enum_context = Some(EnumContext::Root);
-                }
-                PathKind::RootValue { .. } => {
-                    // RootValue paths don't need EnumContext::Root
-                    tracing::debug!(
-                        "Skipping EnumContext::Root for RootValue path '{}'",
-                        &**descriptor
-                    );
-                }
-            }
-        }
-
-        // Use the single dispatch point for recursion
-        // THIS is the recursion point - after this everything pops back up to build examples
-        tracing::debug!(
-            "MutationPathBuilder: Calling build_paths on child '{}' of type '{}'",
-            &**descriptor,
-            child_ctx.type_name()
-        );
 
         let child_paths = recurse_mutation_paths(child_kind, child_ctx, depth.increment())?;
-        tracing::debug!(
-            "MutationPathBuilder: Child '{}' returned {} paths",
-            &**descriptor,
-            child_paths.len()
-        );
 
         // Extract child's example - handle both simple and enum root cases
         let child_example = child_paths.first().map_or(json!(null), |p| {
