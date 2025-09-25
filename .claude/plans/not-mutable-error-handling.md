@@ -9,6 +9,13 @@
 - **Reasoning**: The finding is incorrect because NotMutableReason errors never escape the module as errors - they are always caught internally by handle_assemble_error() and converted to valid MutationPath objects with MutationStatus::NotMutable. The plan correctly recognizes that NotMutableReason is internal information that should stay within the mutation_path_builder module.
 - **Decision**: User elected to skip this recommendation
 
+## IMPLEMENTATION-GAP-1: Missing Complete Boundary Identification - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Update boundary functions
+- **Issue**: Plan only identifies recurse_mutation_paths as boundary function but doesn't systematically identify ALL functions that expose Result<T> containing NotMutableReason to external callers
+- **Reasoning**: The finding is incorrect because NotMutableReason errors never propagate to TypeGuide::from_registry_schema or TypeGuideEngine::generate_response. These errors are always caught within MutationPathBuilder::build_paths() by handle_assemble_error() and converted to successful MutationPath results with NotMutable status. External functions only receive Vec<MutationPathInternal> where NotMutable cases are valid results, not errors. The plan correctly identifies that conversion is only needed within the mutation_path_builder module.
+- **Decision**: User elected to skip this recommendation
+
 ## Overview
 Refactor `NotMutableReason` to be internal to the TypeGuide module, preventing leakage of internal mutation path building concepts into the general error system.
 
@@ -62,11 +69,13 @@ impl From<TypeGuideError> for Report<Error> {
         match tge {
             TypeGuideError::NotMutable(reason) => {
                 // Convert to SchemaProcessing error with details
+                // Note: This conversion rarely happens since NotMutableReason is usually
+                // caught internally and converted to MutationPath results
                 Report::new(Error::SchemaProcessing {
                     message: reason.to_string(),
                     type_name: Some(reason.get_deepest_failing_type().to_string()),
                     operation: Some("mutation_path_building".to_string()),
-                    details: Some(format!("Reason: {}", reason.category())),
+                    details: None,  // Display impl already provides detailed info in message
                 })
             }
             TypeGuideError::Other(err) => err,
@@ -85,25 +94,7 @@ impl TypeGuideError {
 ### 2. Update NotMutableReason Implementation
 **Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/not_mutable_reason.rs`
 
-Add helper method for conversion (Note: type_name() is not needed as get_deepest_failing_type() already exists):
-
-```rust
-impl NotMutableReason {
-    // NOTE: No need for type_name() method - use existing get_deepest_failing_type()
-
-    /// Get a category string for this reason
-    pub fn category(&self) -> &'static str {
-        match self {
-            Self::MissingSerializationTraits(_) => "missing_serialization",
-            Self::NonMutableHandle { .. } => "handle_wrapper",
-            Self::ComplexCollectionKey(_) => "complex_collection_key",
-            Self::NoMutableChildren { .. } => "no_mutable_children",
-            Self::PartiallyMutable { .. } => "partially_mutable",
-            Self::NoExampleAvailable(_) => "no_example",
-        }
-    }
-}
-```
+No changes needed. The existing `get_deepest_failing_type()` and `Display` implementations provide all necessary functionality.
 
 ### 3. Update Internal Result Type Alias
 **Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`
@@ -113,7 +104,8 @@ impl NotMutableReason {
 mod type_guide_error;
 
 // Internal result type for mutation path builder operations
-pub(crate) type BuilderResult<T> = Result<T, TypeGuideError>;
+// Use distinct name to avoid confusion with standard Result<T>
+pub(crate) type TypeGuideResult<T> = Result<T, TypeGuideError>;
 
 // Re-export for internal use only
 pub(crate) use type_guide_error::TypeGuideError;
@@ -127,25 +119,25 @@ pub(crate) use type_guide_error::TypeGuideError;
 
 ```rust
 use super::type_guide_error::TypeGuideError;
-use super::BuilderResult;
+use super::TypeGuideResult;
 
 pub trait PathBuilder {
-    // Change return types from Result<T> to BuilderResult<T>
+    // Change return types from Result<T> to TypeGuideResult<T>
     fn build_paths(
         &self,
         ctx: &RecursionContext,
         depth: RecursionDepth,
-    ) -> BuilderResult<Vec<MutationPathInternal>> {
+    ) -> TypeGuideResult<Vec<MutationPathInternal>> {
         Ok(vec![])
     }
 
-    fn collect_children(&self, ctx: &RecursionContext) -> BuilderResult<Self::Iter<'_>>;
+    fn collect_children(&self, ctx: &RecursionContext) -> TypeGuideResult<Self::Iter<'_>>;
 
     fn assemble_from_children(
         &self,
         ctx: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Value>,
-    ) -> BuilderResult<Value> {
+    ) -> TypeGuideResult<Value> {
         Ok(json!(null))
     }
 
@@ -153,7 +145,7 @@ pub trait PathBuilder {
         &self,
         element: &Value,
         ctx: &RecursionContext,
-    ) -> BuilderResult<()> {
+    ) -> TypeGuideResult<()> {
         use crate::json_object::JsonObjectAccess;
         if element.is_complex_type() {
             return Err(TypeGuideError::not_mutable(
@@ -184,7 +176,7 @@ fn assemble_from_children(...) -> Result<Value> {
 }
 
 // To:
-fn assemble_from_children(...) -> BuilderResult<Value> {
+fn assemble_from_children(...) -> TypeGuideResult<Value> {
     return Err(TypeGuideError::not_mutable(NotMutableReason::SomeReason { ... }));
 }
 ```
@@ -194,9 +186,9 @@ fn assemble_from_children(...) -> BuilderResult<Value> {
 
 ```rust
 use super::type_guide_error::TypeGuideError;
-use super::BuilderResult;
+use super::TypeGuideResult;
 
-// Update all function signatures from Result<T> to BuilderResult<T>
+// Update all function signatures from Result<T> to TypeGuideResult<T>
 // Update error creation sites
 
 // At the public API boundary (recurse_mutation_paths function):
@@ -206,8 +198,8 @@ pub fn recurse_mutation_paths(
     wrapper_info: Option<&HashMap<String, Value>>,
     enum_variants: Option<&HashMap<String, String>>,
 ) -> Result<HashMap<String, MutationPath>> {
-    // Internal processing uses BuilderResult
-    let internal_result: BuilderResult<HashMap<String, MutationPathInternal>> =
+    // Internal processing uses TypeGuideResult
+    let internal_result: TypeGuideResult<HashMap<String, MutationPathInternal>> =
         do_internal_processing()?;
 
     // Convert at boundary
@@ -248,6 +240,33 @@ pub enum Error {
 # Find external references
 rg "Error::NotMutable" --glob '!**/mutation_path_builder/**'
 ```
+
+**Update handle_assemble_error function**:
+**Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
+
+Since this function is internal to mutation_path_builder, update it to work with TypeGuideError:
+
+```rust
+/// Handle errors from `assemble_from_children`, creating `NotMutatable` paths when appropriate
+fn handle_assemble_error(
+    ctx: &RecursionContext,
+    error: TypeGuideError,  // Changed from Report<Error>
+) -> TypeGuideResult<Vec<MutationPathInternal>> {
+    // Check if it's a NotMutatable condition
+    match error {
+        TypeGuideError::NotMutable(reason) => {
+            // Return a single NotMutatable path for this type
+            Ok(vec![Self::build_not_mutable_path(ctx, reason)])
+        }
+        TypeGuideError::Other(err) => {
+            // Real error - propagate it
+            Err(TypeGuideError::Other(err))
+        }
+    }
+}
+```
+
+Note: The `as_not_mutable()` method on Error will be removed, so all internal code must use pattern matching on TypeGuideError instead.
 
 ## Migration Steps
 
