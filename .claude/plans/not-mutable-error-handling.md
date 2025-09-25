@@ -16,6 +16,20 @@
 - **Reasoning**: The finding is incorrect because NotMutableReason errors never propagate to TypeGuide::from_registry_schema or TypeGuideEngine::generate_response. These errors are always caught within MutationPathBuilder::build_paths() by handle_assemble_error() and converted to successful MutationPath results with NotMutable status. External functions only receive Vec<MutationPathInternal> where NotMutable cases are valid results, not errors. The plan correctly identifies that conversion is only needed within the mutation_path_builder module.
 - **Decision**: User elected to skip this recommendation
 
+## TYPE-SYSTEM-2: Magic String Violation in Operation Field - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: New Internal Error Type
+- **Issue**: The TypeGuideError conversion uses magic string "mutation_path_building" for the operation field, violating the type system principle of avoiding magic literals. This should be a named constant for consistency with existing error handling patterns.
+- **Reasoning**: Investigation revealed that NotMutableReason errors are NEVER converted to Error::SchemaProcessing in practice - they are always caught internally by handle_assemble_error() and converted to successful MutationPath results with NotMutable status. The conversion to SchemaProcessing with the "mutation_path_building" operation string is dead code that never executes. Since this conversion path is unnecessary, the magic string should be removed entirely rather than converted to a constant.
+- **Decision**: The plan should remove the unnecessary TypeGuideError to SchemaProcessing conversion logic instead of fixing the magic string
+
+## DESIGN-2: Missing Constants Definition Location Specification - **Verdict**: REJECTED
+- **Status**: SKIPPED - REDUNDANT WITH TYPE-SYSTEM-2
+- **Location**: Section: New Internal Error Type
+- **Issue**: The plan requires a constant for the "mutation_path_building" operation string but doesn't specify where to define it.
+- **Reasoning**: This finding addresses the same dead code as TYPE-SYSTEM-2. Since the entire TypeGuideError to Error::SchemaProcessing conversion logic should be removed (as it never executes), there is no need to specify where to define constants for code that shouldn't exist.
+- **Decision**: Skip this finding as it's redundant with TYPE-SYSTEM-2 resolution
+
 ## Overview
 Refactor `NotMutableReason` to be internal to the TypeGuide module, preventing leakage of internal mutation path building concepts into the general error system.
 
@@ -64,19 +78,15 @@ impl From<Error> for TypeGuideError {
 }
 
 /// Convert internal TypeGuideError to public Error at module boundary
+/// Note: NotMutable errors are never converted via this impl - they are always
+/// caught internally by handle_assemble_error() and converted to successful MutationPath results
 impl From<TypeGuideError> for Report<Error> {
     fn from(tge: TypeGuideError) -> Self {
         match tge {
-            TypeGuideError::NotMutable(reason) => {
-                // Convert to SchemaProcessing error with details
-                // Note: This conversion rarely happens since NotMutableReason is usually
-                // caught internally and converted to MutationPath results
-                Report::new(Error::SchemaProcessing {
-                    message: reason.to_string(),
-                    type_name: Some(reason.get_deepest_failing_type().to_string()),
-                    operation: Some("mutation_path_building".to_string()),
-                    details: None,  // Display impl already provides detailed info in message
-                })
+            TypeGuideError::NotMutable(_reason) => {
+                // This branch should never execute in practice since NotMutable errors
+                // are always caught internally by handle_assemble_error()
+                unreachable!("NotMutable errors should be handled internally, not converted to public errors")
             }
             TypeGuideError::Other(err) => err,
         }
@@ -271,8 +281,8 @@ Note: The `as_not_mutable()` method on Error will be removed, so all internal co
 ## Migration Steps
 
 1. **Create TypeGuideError** - Add new error type and conversion impl
-2. **Update type aliases** - Add BuilderResult type alias
-3. **Update trait signatures** - Change PathBuilder trait to use BuilderResult
+2. **Update type aliases** - Add TypeGuideResult type alias
+3. **Update trait signatures** - Change PathBuilder trait to use TypeGuideResult
 4. **Update implementations** - Change all builders to use TypeGuideError
 5. **Update boundary functions** - Add conversion at public API boundaries
 6. **Remove from public API** - Remove NotMutableReason from public exports
