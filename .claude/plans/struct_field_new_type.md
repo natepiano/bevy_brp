@@ -38,6 +38,12 @@ impl StructFieldName {
     }
 }
 
+impl std::fmt::Display for StructFieldName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl std::borrow::Borrow<str> for StructFieldName {
     fn borrow(&self) -> &str {
         &self.0
