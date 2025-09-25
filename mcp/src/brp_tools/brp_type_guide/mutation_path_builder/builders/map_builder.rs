@@ -13,10 +13,8 @@ use serde_json::{Value, json};
 
 use super::super::path_builder::PathBuilder;
 use super::super::recursion_context::RecursionContext;
-use super::super::types::StructFieldName;
-use crate::brp_tools::brp_type_guide::mutation_path_builder::{
-    MutationPathDescriptor, PathAction, PathKind,
-};
+use super::super::types::{PathAction, StructFieldName};
+use crate::brp_tools::brp_type_guide::mutation_path_builder::{MutationPathDescriptor, PathKind};
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;

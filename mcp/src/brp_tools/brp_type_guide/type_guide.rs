@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::constants::{AGENT_GUIDANCE, ENTITY_WARNING, RecursionDepth, TYPE_BEVY_ENTITY};
+use super::mutation_path_builder;
 use super::mutation_path_builder::{
     MutationPath, MutationPathInternal, PathKind, RecursionContext, TypeKind,
     recurse_mutation_paths,
@@ -161,10 +162,8 @@ impl TypeGuide {
             // Handle both the new `example` field and the legacy `examples` array
             root_path.example.as_ref().map_or_else(
                 || {
-                    root_path
-                        .examples
-                        .first()
-                        .map(|example_group| example_group.example.clone())
+                    // Use the shared utility to prefer non-unit variants
+                    mutation_path_builder::select_preferred_example(&root_path.examples)
                 },
                 |example| Some(example.clone()),
             )
@@ -174,11 +173,11 @@ impl TypeGuide {
     /// Check if any mutation paths are mutable (fully or partially)
     /// This determines if the type supports the Mutate operation
     fn has_mutable_paths(mutation_paths: &HashMap<String, MutationPath>) -> bool {
-        use super::mutation_path_builder::MutationStatus;
+        use mutation_path_builder::MutationStatus;
 
-        mutation_paths.values().any(|path| {
+        mutation_paths.values().any(|mutation_path| {
             matches!(
-                path.path_info.mutation_status,
+                mutation_path.path_info.mutation_status,
                 MutationStatus::Mutable | MutationStatus::PartiallyMutable
             )
         })

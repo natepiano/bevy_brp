@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::super::brp_type_name::BrpTypeName;
 use super::path_builder::MaybeVariants;
 use super::type_kind::TypeKind;
-use super::types::{PathSignature, StructFieldName};
+use super::types::{PathSignature, StructFieldName, VariantName};
 
 /// A semantic identifier for mutation paths in the builder system
 ///
@@ -205,9 +205,7 @@ impl Serialize for PathKind {
 }
 
 impl MaybeVariants for PathKind {
-    fn applicable_variants(
-        &self,
-    ) -> Option<&[crate::brp_tools::brp_type_guide::mutation_path_builder::VariantName]> {
+    fn applicable_variants(&self) -> Option<&[VariantName]> {
         None // Regular paths have no variant information
     }
 

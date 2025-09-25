@@ -9,8 +9,10 @@ use super::super::constants::RecursionDepth;
 use super::builder::recurse_mutation_paths;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::{EnumContext, RecursionContext};
-use super::types::{ExampleGroup, StructFieldName, VariantName, VariantSignature};
-use super::{MutationPathInternal, MutationStatus, PathAction, PathKind, TypeKind, VariantPath};
+use super::types::{
+    ExampleGroup, PathAction, StructFieldName, VariantName, VariantPath, VariantSignature,
+};
+use super::{MutationPathInternal, MutationStatus, PathKind, TypeKind};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -332,6 +334,22 @@ fn build_variant_example(
     apply_option_transformation(example, variant_name, enum_type)
 }
 
+/// Select the preferred example from a collection of ExampleGroups.
+/// Prefers non-unit variants for richer examples, falling back to unit variants if needed.
+pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
+    // Try to find a non-unit variant first
+    examples
+        .iter()
+        .find(|example_group| example_group.signature != "unit")
+        .map(|example_group| example_group.example.clone())
+        .or_else(|| {
+            // Fall back to first example (likely unit variant) if no non-unit variants exist
+            examples
+                .first()
+                .map(|example_group| example_group.example.clone())
+        })
+}
+
 /// Create a concrete example value for embedding in a parent structure
 fn concrete_example(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
@@ -439,13 +457,8 @@ fn build_enum_examples(
     };
 
     // For enum roots, return both examples array and a default concrete value
-    // Prefer non-unit variants for richer default examples
-    let default_example = mutation_example
-        .iter()
-        .find(|g| g.signature != "unit")
-        .or_else(|| mutation_example.first())
-        .map(|g| g.example.clone())
-        .unwrap_or(json!(null));
+    // Use the shared utility to prefer non-unit variants
+    let default_example = select_preferred_example(&mutation_example).unwrap_or(json!(null));
 
     tracing::debug!(
         "build_enum_examples returning EnumRoot with {} examples",

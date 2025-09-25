@@ -2,10 +2,9 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::{
-    MutationPathDescriptor, MutationPathInternal, NotMutableReason, PathAction, PathKind,
-    RecursionContext, VariantName,
-};
+use super::NotMutableReason;
+use super::types::{PathAction, VariantName};
+use super::{MutationPathDescriptor, MutationPathInternal, PathKind, RecursionContext};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 

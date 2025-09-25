@@ -11,11 +11,10 @@ mod type_parser;
 mod types;
 
 pub use builder::recurse_mutation_paths;
+pub use enum_path_builder::select_preferred_example;
 pub use mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
 pub use not_mutable_reason::NotMutableReason;
 pub use path_kind::{MutationPathDescriptor, PathKind};
 pub use recursion_context::{EnumContext, RecursionContext};
 pub use type_kind::TypeKind;
-pub use types::{
-    MutationPath, MutationPathInternal, MutationStatus, PathAction, VariantName, VariantPath,
-};
+pub use types::{MutationPath, MutationPathInternal, MutationStatus};

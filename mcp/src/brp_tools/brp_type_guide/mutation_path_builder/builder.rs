@@ -2,6 +2,7 @@
 //! recursively uses the `PathBuilder` trait to build mutation paths for a given type.
 use std::collections::HashMap;
 
+use error_stack::Report;
 use serde_json::{Value, json};
 
 use super::super::constants::RecursionDepth;
@@ -13,10 +14,10 @@ use super::builders::{
 use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::{MaybeVariants, PathBuilder};
 use super::type_kind::TypeKind;
-use super::types::{ExampleGroup, PathSummary, VariantPath};
+use super::types::{ExampleGroup, PathAction, PathSummary, VariantPath};
 use super::{
-    MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathAction,
-    PathKind, RecursionContext, enum_path_builder,
+    MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathKind,
+    RecursionContext, enum_path_builder,
 };
 use crate::error::{Error, Result};
 
@@ -614,7 +615,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     /// Handle errors from `assemble_from_children`, creating `NotMutatable` paths when appropriate
     fn handle_assemble_error(
         ctx: &RecursionContext,
-        error: error_stack::Report<Error>,
+        error: Report<Error>,
     ) -> Result<Vec<MutationPathInternal>> {
         // Check if it's a NotMutatable condition
         // Need to check the root cause of the error stack
