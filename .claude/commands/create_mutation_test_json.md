@@ -316,44 +316,29 @@ Based on the comparison results above, should I mark this version as the new goo
 ## SHARED DEFINITIONS
 
 <FormatComparison>
-**Format the side-by-side JSON comparison with proper syntax highlighting:**
+**Present differences with full context:**
 
-When presenting JSON comparisons, use this exact format with proper markdown JSON code blocks:
+## Mutation Path Comparison
+
+**Type**: `[TYPE_NAME]`
+**Path**: `[MUTATION_PATH]`
+**Change**: [Brief description of what changed, e.g., "examples array → example field"]
 
 ```json
 // BASELINE
-{
-  "field_name": "value",
-  "nested": {
-    "data": [...]
-  }
-}
+[Paste baseline JSON from script output after "=== BASELINE ==="]
 ```
 
 ```json
 // CURRENT
-{
-  "field_name": "new_value",
-  "nested": {
-    "data": [...]
-  }
-}
+[Paste current JSON from script output after "=== CURRENT ==="]
 ```
 
 **CRITICAL FOR comparison_review**:
-- Show the COMPLETE JSON returned by get_mutation_path.sh
-- DO NOT extract or show only selective fields
-- DO NOT abbreviate or use [...] placeholders in comparison_review mode
-- The full JSON structure must be visible for proper review
-- Only use abbreviations in the initial summary, not in detailed review
-- **VERIFICATION MANDATORY**: Before presenting comparison, verify that the claimed change (FIELD_ADDED/FIELD_REMOVED) is actually visible in the JSON difference
-- **NEVER present comparisons where both sides appear identical**
-
-**General formatting**:
-- Use separate ```json code blocks for BASELINE and CURRENT
-- Include // BASELINE and // CURRENT comments inside the code blocks
-- Use proper JSON formatting with correct indentation
-- Add inline comments with // <-- to highlight key differences when helpful
+- ALWAYS include Type, Path, and Change summary headers
+- Show the COMPLETE JSON from compare_mutation_path.sh output
+- Skip if script returns "IDENTICAL"
+- Only present when script returns "DIFFERENT"
 </FormatComparison>
 
 <NoIntermediateFiles>
@@ -376,8 +361,22 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
 **Execute shell scripts** - Use the provided transformation and statistics scripts as specified
 </ExecuteShellScripts>
 
+<MutationPathsExplanation>
+**Understanding Mutation Paths vs JSON Paths**
+
+Mutation paths are string keys in `mutation_paths` dict, NOT JSON navigation:
+- **Mutation path key**: `.image_mode.0.center_scale_mode`
+- **Access**: `type_guide['TypeName']['mutation_paths']['.image_mode.0.center_scale_mode']`
+- **In output**: `mutation_paths..image_mode.0` (double dot = parent + '.' + key)
+
+Patterns: `.field.0` (variant), `.field[0]` (array), `.field.0.nested` (nested in variant)
+</MutationPathsExplanation>
+
 <ComparisonReviewWorkflow>
     **STRUCTURAL REVIEW APPROACH**:
+
+    **FIRST: Review <MutationPathsExplanation/> to understand mutation paths.**
+
     Review changes organized by Type+Path combinations instead of individual changes.
     This reduces overwhelming change counts (e.g., 4000+ changes → 181 combinations).
 
@@ -404,12 +403,14 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
           - Change type summary (added, removed, value_changed, etc.)
           - Representative examples of the changes
 
-       c. **RETRIEVE FULL MUTATION PATH DATA IF NEEDED**:
-          For deeper inspection of mutation paths, use:
+       c. **RETRIEVE AND VALIDATE MUTATION PATH DATA**:
+          Use the comparison script (no permission needed once added to allowed tools):
           ```bash
-          .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/transient/all_types_baseline.json
-          .claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" .claude/transient/all_types.json
+          .claude/scripts/create_mutation_test_json/compare_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]"
           ```
+
+          If output shows "IDENTICAL", skip to next combination without user interaction.
+          If "DIFFERENT", format the output using <FormatComparison/>.
 
        d. **MANDATORY VERIFICATION BEFORE PROCEEDING**:
           - Compare the retrieved baseline vs current JSON data
