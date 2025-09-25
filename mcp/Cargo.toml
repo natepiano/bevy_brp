@@ -24,6 +24,7 @@ either.workspace              = true
 error-stack.workspace         = true
 futures.workspace             = true
 itertools.workspace           = true
+nom.workspace                 = true
 once_cell.workspace           = true
 paste.workspace               = true
 regex.workspace               = true
