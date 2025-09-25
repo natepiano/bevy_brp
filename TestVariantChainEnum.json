@@ -8,13 +8,7 @@
   "has_serialize": true,
   "has_deserialize": true,
   "in_registry": true,
-  "supported_operations": [
-    "query",
-    "get",
-    "spawn",
-    "insert",
-    "mutate"
-  ],
+  "supported_operations": ["query", "get", "spawn", "insert", "mutate"],
   "spawn_format": {
     "WithMiddleStruct": {
       "middle_struct": {
@@ -31,9 +25,7 @@
       "description": "Replace the entire TestVariantChainEnum enum",
       "examples": [
         {
-          "applicable_variants": [
-            "TestVariantChainEnum::WithMiddleStruct"
-          ],
+          "applicable_variants": ["TestVariantChainEnum::WithMiddleStruct"],
           "example": {
             "WithMiddleStruct": {
               "middle_struct": {
@@ -48,9 +40,7 @@
           "signature": "struct{middle_struct: extras_plugin::MiddleStruct}"
         },
         {
-          "applicable_variants": [
-            "TestVariantChainEnum::Empty"
-          ],
+          "applicable_variants": ["TestVariantChainEnum::Empty"],
           "example": "Empty",
           "signature": "unit"
         }
@@ -76,7 +66,7 @@
         "enum_variant_path": [
           {
             "instructions": "Mutate 'root' mutation 'path' to the 'TestVariantChainEnum::WithMiddleStruct' variant using 'variant_example'",
-            "path": "",
+            "full_mutation_path": "",
             "variant_example": {
               "WithMiddleStruct": {
                 "middle_struct": {
@@ -100,18 +90,14 @@
       "description": "Mutate the nested_enum field of MiddleStruct enum",
       "examples": [
         {
-          "applicable_variants": [
-            "BottomEnum::VariantA"
-          ],
+          "applicable_variants": ["BottomEnum::VariantA"],
           "example": {
             "VariantA": 1000000
           },
           "signature": "tuple(u32)"
         },
         {
-          "applicable_variants": [
-            "BottomEnum::VariantB"
-          ],
+          "applicable_variants": ["BottomEnum::VariantB"],
           "example": {
             "VariantB": {
               "name": "Hello, World!",
@@ -121,9 +107,7 @@
           "signature": "struct{name: String, value: f32}"
         },
         {
-          "applicable_variants": [
-            "BottomEnum::VariantC"
-          ],
+          "applicable_variants": ["BottomEnum::VariantC"],
           "example": "VariantC",
           "signature": "unit"
         }
@@ -133,7 +117,7 @@
         "enum_variant_path": [
           {
             "instructions": "Mutate 'root' mutation 'path' to the 'TestVariantChainEnum::WithMiddleStruct' variant using 'variant_example'",
-            "path": "",
+            "full_mutation_path": "",
             "variant_example": {
               "WithMiddleStruct": {
                 "middle_struct": {
@@ -161,7 +145,7 @@
         "enum_variant_path": [
           {
             "instructions": "Mutate 'root' mutation 'path' to the 'TestVariantChainEnum::WithMiddleStruct' variant using 'variant_example'",
-            "path": "",
+            "full_mutation_path": "",
             "variant_example": {
               "WithMiddleStruct": {
                 "middle_struct": {
@@ -176,7 +160,7 @@
           },
           {
             "instructions": "Mutate '.middle_struct.nested_enum' mutation 'path' to the 'BottomEnum::VariantA' variant using 'variant_example'",
-            "path": ".middle_struct.nested_enum",
+            "full_mutation_path": ".middle_struct.nested_enum",
             "variant_example": {
               "VariantA": 1000000
             }
@@ -196,7 +180,7 @@
         "enum_variant_path": [
           {
             "instructions": "Mutate 'root' mutation 'path' to the 'TestVariantChainEnum::WithMiddleStruct' variant using 'variant_example'",
-            "path": "",
+            "full_mutation_path": "",
             "variant_example": {
               "WithMiddleStruct": {
                 "middle_struct": {
@@ -211,7 +195,7 @@
           },
           {
             "instructions": "Mutate '.middle_struct.nested_enum' mutation 'path' to the 'BottomEnum::VariantB' variant using 'variant_example'",
-            "path": ".middle_struct.nested_enum",
+            "full_mutation_path": ".middle_struct.nested_enum",
             "variant_example": {
               "VariantB": {
                 "name": "Hello, World!",
@@ -234,7 +218,7 @@
         "enum_variant_path": [
           {
             "instructions": "Mutate 'root' mutation 'path' to the 'TestVariantChainEnum::WithMiddleStruct' variant using 'variant_example'",
-            "path": "",
+            "full_mutation_path": "",
             "variant_example": {
               "WithMiddleStruct": {
                 "middle_struct": {
@@ -249,7 +233,7 @@
           },
           {
             "instructions": "Mutate '.middle_struct.nested_enum' mutation 'path' to the 'BottomEnum::VariantB' variant using 'variant_example'",
-            "path": ".middle_struct.nested_enum",
+            "full_mutation_path": ".middle_struct.nested_enum",
             "variant_example": {
               "VariantB": {
                 "name": "Hello, World!",
@@ -272,7 +256,7 @@
         "enum_variant_path": [
           {
             "instructions": "Mutate 'root' mutation 'path' to the 'TestVariantChainEnum::WithMiddleStruct' variant using 'variant_example'",
-            "path": "",
+            "full_mutation_path": "",
             "variant_example": {
               "WithMiddleStruct": {
                 "middle_struct": {
@@ -300,7 +284,7 @@
         "enum_variant_path": [
           {
             "instructions": "Mutate 'root' mutation 'path' to the 'TestVariantChainEnum::WithMiddleStruct' variant using 'variant_example'",
-            "path": "",
+            "full_mutation_path": "",
             "variant_example": {
               "WithMiddleStruct": {
                 "middle_struct": {
