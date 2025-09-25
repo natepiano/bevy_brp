@@ -7,12 +7,6 @@ use serde::Serialize;
 use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
-use crate::brp_tools::BrpTypeName;
-use crate::json_object::JsonObjectAccess;
-
-/// JSON Schema reference prefix for type definitions
-pub const SCHEMA_REF_PREFIX: &str = "#/$defs/";
-
 /// JSON schema type names for type schema generation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, Serialize, EnumString)]
 #[strum(serialize_all = "lowercase")]
@@ -88,28 +82,4 @@ pub enum SchemaField {
     Value,
     /// The valueType field for map types
     ValueType,
-}
-
-impl SchemaField {
-    /// Extract field type from field info JSON
-    ///
-    /// This extracts the type reference from a field definition in the schema,
-    /// handling the standard pattern of type.$ref with #/$defs/ prefix.
-    pub fn extract_field_type(field_info: &Value) -> Option<BrpTypeName> {
-        let field_type = field_info
-            .get_field(Self::Type)
-            .and_then(|t| t.get_field(Self::Ref))
-            .and_then(Value::as_str)
-            .and_then(|ref_str| ref_str.strip_prefix(SCHEMA_REF_PREFIX))
-            .map(BrpTypeName::from);
-
-        if field_type.is_none() {
-            tracing::debug!(
-                "Failed to extract field type from schema: {}",
-                serde_json::to_string(field_info).unwrap_or_else(|_| "<invalid json>".to_string())
-            );
-        }
-
-        field_type
-    }
 }

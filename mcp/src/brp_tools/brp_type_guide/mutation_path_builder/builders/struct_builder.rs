@@ -18,7 +18,6 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::StructFieldName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
 
 pub struct StructMutationBuilder;
 
@@ -49,8 +48,8 @@ impl PathBuilder for StructMutationBuilder {
         let mut children = Vec::new();
         for (field_name, field_schema) in properties {
             // Extract field type or return error immediately - no fallback
-            // Note: SchemaField::extract_field_type handles complex schemas with $ref
-            let Some(type_name) = SchemaField::extract_field_type(field_schema) else {
+            // Note: extract_field_type handles complex schemas with $ref
+            let Some(type_name) = field_schema.extract_field_type() else {
                 return Err(Error::SchemaProcessing {
                     message:   format!(
                         "Failed to extract type for field '{}' in struct '{}'",

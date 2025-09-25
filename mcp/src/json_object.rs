@@ -9,6 +9,9 @@ use serde_json::{Map, Value};
 use crate::brp_tools::BrpTypeName;
 use crate::json_schema::SchemaField;
 
+/// JSON Schema reference prefix for type definitions
+const SCHEMA_REF_PREFIX: &str = "#/$defs/";
+
 /// Extension trait for type-safe JSON field access
 pub trait JsonObjectAccess {
     /// Get field value using any type that can be a string reference
@@ -24,10 +27,25 @@ pub trait JsonObjectAccess {
         F: Into<String>,
         V: Into<Value>;
 
+    /// Extract a `BrpTypeName` from a field definition that contains a type.$ref structure
+    ///
+    /// This method expects the JSON value to have the structure:
+    /// ```json
+    /// { "type": { "$ref": "#/$defs/SomeType" } }
+    /// ```
+    /// and extracts "`SomeType`" as a `BrpTypeName`.
+    fn extract_field_type(&self) -> Option<BrpTypeName> {
+        self.get_field(SchemaField::Type)
+            .and_then(|t| t.get_field(SchemaField::Ref))
+            .and_then(Value::as_str)
+            .and_then(|ref_str| ref_str.strip_prefix(SCHEMA_REF_PREFIX))
+            .map(BrpTypeName::from)
+    }
+
     /// Extract a single type reference from a schema field (Items, `KeyType`, `ValueType`, etc.)
     fn get_type(&self, field: SchemaField) -> Option<BrpTypeName> {
-        self.get_field(field)
-            .and_then(SchemaField::extract_field_type)
+        let field_value = self.get_field(field)?;
+        field_value.extract_field_type()
     }
 
     /// Get Properties field as a Map

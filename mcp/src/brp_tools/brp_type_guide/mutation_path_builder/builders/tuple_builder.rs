@@ -11,13 +11,12 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::super::MutationPathDescriptor;
-use super::super::NotMutableReason;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
+use super::super::{MutationPathDescriptor, NotMutableReason};
 use crate::error::{Error, Result};
-use crate::json_schema::SchemaField;
+use crate::json_object::JsonObjectAccess;
 
 pub struct TupleMutationBuilder;
 
@@ -34,13 +33,13 @@ impl PathBuilder for TupleMutationBuilder {
 
         let Some(prefix_items) = schema.get("prefixItems") else {
             return Err(Error::SchemaProcessing {
-                message: format!(
+                message:   format!(
                     "Missing prefixItems in tuple schema for: {}",
                     ctx.type_name()
                 ),
                 type_name: Some(ctx.type_name().to_string()),
                 operation: Some("extract_prefix_items".to_string()),
-                details: None,
+                details:   None,
             }
             .into());
         };
@@ -48,10 +47,10 @@ impl PathBuilder for TupleMutationBuilder {
         // Extract array of element schemas
         let Some(items_array) = prefix_items.as_array() else {
             return Err(Error::SchemaProcessing {
-                message: format!("prefixItems is not an array for tuple: {}", ctx.type_name()),
+                message:   format!("prefixItems is not an array for tuple: {}", ctx.type_name()),
                 type_name: Some(ctx.type_name().to_string()),
                 operation: Some("parse_prefix_items".to_string()),
-                details: None,
+                details:   None,
             }
             .into());
         };
@@ -60,16 +59,16 @@ impl PathBuilder for TupleMutationBuilder {
         let mut children = Vec::new();
         for (index, element_schema) in items_array.iter().enumerate() {
             // Extract element type from schema
-            let Some(element_type) = SchemaField::extract_field_type(element_schema) else {
+            let Some(element_type) = element_schema.extract_field_type() else {
                 return Err(Error::SchemaProcessing {
-                    message: format!(
+                    message:   format!(
                         "Failed to extract type for tuple element {} in '{}'",
                         index,
                         ctx.type_name()
                     ),
                     type_name: Some(ctx.type_name().to_string()),
                     operation: Some("extract_element_type".to_string()),
-                    details: Some(format!("Element index: {index}")),
+                    details:   Some(format!("Element index: {index}")),
                 }
                 .into());
             };
@@ -98,7 +97,7 @@ impl PathBuilder for TupleMutationBuilder {
         if elements.len() == 1 && elements[0].is_handle() {
             return Err(Error::NotMutable(NotMutableReason::NonMutableHandle {
                 container_type: ctx.type_name().clone(),
-                element_type: elements[0].clone(),
+                element_type:   elements[0].clone(),
             })
             .into());
         }

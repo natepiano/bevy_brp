@@ -13,7 +13,6 @@ use super::recursion_context::{EnumContext, RecursionContext};
 use super::types::{
     ExampleGroup, PathAction, StructFieldName, VariantName, VariantPath, VariantSignature,
 };
-
 use super::{MutationPathInternal, MutationStatus, PathKind};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::{Error, Result};
@@ -42,7 +41,7 @@ struct EnumFieldInfo {
     field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name: BrpTypeName,
+    type_name:  BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -179,7 +178,7 @@ fn extract_tuple_types(
 ) -> Vec<BrpTypeName> {
     prefix_items
         .iter()
-        .filter_map(SchemaField::extract_field_type)
+        .filter_map(Value::extract_field_type)
         .collect()
 }
 
@@ -190,10 +189,12 @@ fn extract_struct_fields(
     properties
         .iter()
         .filter_map(|(field_name, field_schema)| {
-            SchemaField::extract_field_type(field_schema).map(|type_name| EnumFieldInfo {
-                field_name: StructFieldName::from(field_name.clone()),
-                type_name,
-            })
+            field_schema
+                .extract_field_type()
+                .map(|type_name| EnumFieldInfo {
+                    field_name: StructFieldName::from(field_name.clone()),
+                    type_name,
+                })
         })
         .collect()
 }
@@ -336,7 +337,7 @@ fn build_variant_example(
     apply_option_transformation(example, variant_name, enum_type)
 }
 
-/// Select the preferred example from a collection of ExampleGroups.
+/// Select the preferred example from a collection of `ExampleGroups`.
 /// Prefers non-unit variants for richer examples, falling back to unit variants if needed.
 pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
     // Try to find a non-unit variant first
@@ -555,9 +556,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant: representative_variant.clone(),
-                    instructions: String::new(),
-                    variant_example: json!(null),
+                    variant:            representative_variant.clone(),
+                    instructions:       String::new(),
+                    variant_example:    json!(null),
                 });
             }
             // Recursively process child and collect paths
@@ -624,8 +625,8 @@ fn create_paths_for_signature(
             .iter()
             .map(|(field_name, type_name)| {
                 Some(PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
             })
