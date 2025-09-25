@@ -132,7 +132,8 @@
       "Bash(if [ -d \".claude/scripts/\" ])",
       "Bash(then echo \"Scripts directory found\")",
       "Bash(else echo \"No scripts directory found\")",
-      "Bash(.claude/scripts/create_mutation_test_json_validate_directory.sh:*)"
+      "Bash(.claude/scripts/create_mutation_test_json_validate_directory.sh:*)",
+      "Bash(.claude/scripts/create_mutation_test_json_deep_comparison.py .claude/transient/all_types_baseline.json .claude/transient/all_types.json)"
     ],
     "deny": [
       "Bash(sed:*)"
