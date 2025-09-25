@@ -135,7 +135,11 @@
       "Bash(.claude/scripts/create_mutation_test_json_validate_directory.sh:*)",
       "Bash(.claude/scripts/create_mutation_test_json_deep_comparison.py .claude/transient/all_types_baseline.json .claude/transient/all_types.json)",
       "Bash(for:*)",
-      "Bash(do echo \"=== $script ===\")"
+      "Bash(do echo \"=== $script ===\")",
+      "Bash(do if [ -f \"$script\" ])",
+      "Bash(.claude/scripts/create_mutation_test_json/create_mutation_test_json_validate_directory.sh:*)",
+      "Bash(.claude/scripts/create_mutation_test_json/validate_directory.sh:*)",
+      "Bash(.claude/scripts/create_mutation_test_json/augment_response.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
