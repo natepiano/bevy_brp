@@ -13,6 +13,128 @@
         "description_contains": null
       },
       "description": "This entry (id: 0) is ignored by comparison scripts and serves as documentation for the expected_changes structure. When actual changes are detected after promotion, add them with id >= 1"
+    },
+    {
+      "id": 1,
+      "name": "Fixed malformed Option variant names",
+      "pattern_type": "VALUE_CHANGE",
+      "pattern_match": {
+        "field": "instructions",
+        "path_contains": "enum_variant_path",
+        "value_pattern": {
+          "before_contains": [">>::Some", ">>::None"],
+          "after_contains": ["Option<", ">::Some", ">::None"],
+          "transformation": "malformed_option_fix"
+        },
+        "min_occurrences": 100,
+        "min_types_affected": 5
+      },
+      "description": "Fixes malformed Option type names that were missing the 'Option<' prefix (e.g., 'Mesh>>::Some' -> 'Option<Handle<Mesh>>::Some')",
+      "introduced_in": "commit f981cb0"
+    },
+    {
+      "id": 2,
+      "name": "Fixed incomplete Handle and AssetId type names",
+      "pattern_type": "VALUE_CHANGE",
+      "pattern_match": {
+        "field": "instructions",
+        "path_contains": "enum_variant_path",
+        "value_pattern": {
+          "before_regex": "^[^:]+>::(Weak|Strong|Index|Uuid)",
+          "after_regex": "(Handle|AssetId)<[^>]+>::(Weak|Strong|Index|Uuid)",
+          "transformation": "incomplete_type_fix"
+        },
+        "min_occurrences": 200,
+        "min_types_affected": 10
+      },
+      "description": "Fixes incomplete type names where the wrapper type was missing (e.g., 'Image>::Weak' -> 'Handle<Image>::Weak')",
+      "introduced_in": "commit f981cb0"
+    },
+    {
+      "id": 3,
+      "name": "Added examples array to enum mutation paths",
+      "pattern_type": "FIELD_ADDED",
+      "pattern_match": {
+        "field": "examples",
+        "path_regex": "^mutation_paths\\.[^.]+$",
+        "structure_type": "array",
+        "min_occurrences": 20,
+        "min_types_affected": 10
+      },
+      "description": "Added examples array to enum mutation paths that previously only had a single example field",
+      "introduced_in": "commit f981cb0"
+    },
+    {
+      "id": 4,
+      "name": "Removed redundant examples from indexed paths",
+      "pattern_type": "FIELD_REMOVED",
+      "pattern_match": {
+        "field": "examples",
+        "path_regex": "^mutation_paths\\.[^.]+\\.0",
+        "min_occurrences": 10,
+        "min_types_affected": 5
+      },
+      "description": "Removed redundant examples array from indexed element paths that should only have a single example",
+      "introduced_in": "commit f981cb0"
+    },
+    {
+      "id": 5,
+      "name": "BTreeMap ordering changes in variant examples",
+      "pattern_type": "VALUE_CHANGE",
+      "pattern_match": {
+        "field": "variant_example",
+        "path_contains": "enum_variant_path",
+        "value_pattern": {
+          "structural_match": true,
+          "content_reordered": true,
+          "transformation": "btreemap_reorder"
+        },
+        "min_occurrences": 50,
+        "min_types_affected": 5
+      },
+      "description": "Variant examples may appear in different order due to BTreeMap introduction for consistent ordering",
+      "introduced_in": "commit f981cb0"
+    },
+    {
+      "id": 6,
+      "name": "Simplified variant names in applicable_variants",
+      "pattern_type": "VALUE_CHANGE",
+      "pattern_match": {
+        "field": "applicable_variants",
+        "path_contains": "examples",
+        "value_pattern": {
+          "before_regex": "[a-z_]+::[A-Z][a-zA-Z0-9_]*::",
+          "after_regex": "^[A-Z][a-zA-Z0-9_]*::",
+          "transformation": "variant_name_simplification"
+        },
+        "min_occurrences": 10,
+        "min_types_affected": 5
+      },
+      "description": "Variant names in applicable_variants are simplified to remove module paths",
+      "introduced_in": "commit f981cb0"
+    },
+    {
+      "id": 7,
+      "name": "Non-unit variant preference in examples",
+      "pattern_type": "VALUE_CHANGE",
+      "pattern_match": {
+        "field": "example",
+        "path_contains": "mutation_paths",
+        "value_pattern": {
+          "before_type": "string",
+          "after_type": "object",
+          "transformation": "prefer_non_unit_variant"
+        },
+        "min_occurrences": 5,
+        "min_types_affected": 3
+      },
+      "description": "Examples now prefer non-unit variants (e.g., VariantB with fields instead of VariantC unit variant)",
+      "introduced_in": "commit f981cb0"
     }
-  ]
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "last_updated": "2025-09-25",
+    "notes": "This file defines expected changes between baseline and current mutation test files. Each entry describes a pattern that should be considered acceptable and not flagged as unexpected."
+  }
 }
