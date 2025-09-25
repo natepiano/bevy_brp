@@ -52,27 +52,27 @@ impl StructFieldName {
 
 3. **`mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs`**
    - Update `EnumFieldInfo` struct field from `field_name: String` to `field_name: StructFieldName`
-   - Update line 72: map to use `StructFieldName` in tuple
-   - Update line 174: construct `EnumFieldInfo` with `StructFieldName::from(field_name)`
-   - Update line 303: create descriptor using field name
-   - Update line 305: use field name for insertion
-   - Update line 531: construct `PathKind::StructField` with `StructFieldName`
+   - Update tuple mapping in `signature()` method to use `StructFieldName` in tuple
+   - Update `EnumFieldInfo` construction in `extract_struct_fields()` to use `StructFieldName::from(field_name)`
+   - Update descriptor creation in `build_variant_example()` to use field name
+   - Update field value insertion in `build_variant_example()` for struct variants
+   - Update `PathKind::StructField` construction in `create_paths_for_signature()` with `StructFieldName`
 
 ### Builder Files
 4. **`mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/struct_builder.rs`**
-   - Line 68: Update to create `StructFieldName::from(field_name)`
+   - Update field name creation in `build()` method to use `StructFieldName::from(field_name)`
 
 5. **`mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`**
-   - Lines 73, 78: Update to use `StructFieldName::from(SchemaField::Key.to_string())`
-   - Lines 95, 103: May need adjustment for HashMap lookups
+   - Update to use `StructFieldName::from(SchemaField::Key.to_string())` and `StructFieldName::from(SchemaField::Value.to_string())` in path creation
+   - May need adjustment for HashMap lookups with `SchemaField::Key.as_ref()` and `SchemaField::Value.as_ref()`
 
 6. **`mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/set_builder.rs`**
-   - Line 47: Update to use `StructFieldName::from(SchemaField::Items.to_string())`
-   - Line 60: May need adjustment for HashMap lookup
+   - Update to use `StructFieldName::from(SchemaField::Items.to_string())` in path creation
+   - May need adjustment for HashMap lookup with `SchemaField::Items.as_ref()`
 
 ### Context and Display
 7. **`mcp/src/brp_tools/brp_type_guide/mutation_path_builder/recursion_context.rs`**
-   - Line with `PathKind::StructField`: Update pattern match and format string usage
+   - Update `PathKind::StructField` pattern match and format string usage in path segment generation
 
 ## Call Site Analysis
 
