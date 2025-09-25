@@ -143,7 +143,8 @@
       "Bash(.claude/scripts/compare_mutation_path_validate_args.sh:*)",
       "Bash(.claude/scripts/create_mutation_test_json/promote_baseline.sh:*)",
       "Bash(cmp:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(.claude/scripts/create_mutation_test_json/compare_mutation_path.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
