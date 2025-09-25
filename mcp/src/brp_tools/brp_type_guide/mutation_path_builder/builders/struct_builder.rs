@@ -52,14 +52,14 @@ impl PathBuilder for StructMutationBuilder {
             // Note: SchemaField::extract_field_type handles complex schemas with $ref
             let Some(type_name) = SchemaField::extract_field_type(field_schema) else {
                 return Err(Error::SchemaProcessing {
-                    message: format!(
+                    message:   format!(
                         "Failed to extract type for field '{}' in struct '{}'",
                         field_name,
                         ctx.type_name()
                     ),
                     type_name: Some(ctx.type_name().to_string()),
                     operation: Some("extract_field_type".to_string()),
-                    details: Some(format!("Field: {field_name}")),
+                    details:   Some(format!("Field: {field_name}")),
                 }
                 .into());
             };

@@ -38,7 +38,7 @@ struct EnumFieldInfo {
     field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name: BrpTypeName,
+    type_name:  BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -92,7 +92,7 @@ impl EnumVariantInfo {
                 .next()
                 .unwrap_or(enum_type.as_str());
 
-            let qualified_name = format!("{}::{}", type_name, variant_str);
+            let qualified_name = format!("{type_name}::{variant_str}");
             return Some(Self::Unit(VariantName::from(qualified_name)));
         }
 
@@ -231,14 +231,13 @@ enum TypeCategory {
 
 impl TypeCategory {
     fn from_type_name(type_name: &BrpTypeName) -> Self {
-        if let Some(inner_type) = Self::extract_option_inner(type_name) {
-            Self::Option { inner_type }
-        } else {
-            Self::Regular(type_name.clone())
-        }
+        Self::extract_option_inner(type_name).map_or_else(
+            || Self::Regular(type_name.clone()),
+            |inner_type| Self::Option { inner_type },
+        )
     }
 
-    fn is_option(&self) -> bool {
+    const fn is_option(&self) -> bool {
         matches!(self, Self::Option { .. })
     }
 
@@ -247,15 +246,13 @@ impl TypeCategory {
         const OPTION_SUFFIX: char = '>';
 
         let type_str = type_name.as_str();
-        if let Some(inner_with_suffix) = type_str.strip_prefix(OPTION_PREFIX) {
-            if let Some(inner) = inner_with_suffix.strip_suffix(OPTION_SUFFIX) {
-                Some(BrpTypeName::from(inner.to_string()))
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        type_str
+            .strip_prefix(OPTION_PREFIX)
+            .and_then(|inner_with_suffix| {
+                inner_with_suffix
+                    .strip_suffix(OPTION_SUFFIX)
+                    .map(|inner| BrpTypeName::from(inner.to_string()))
+            })
     }
 }
 
@@ -484,9 +481,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant: representative_variant.clone(),
-                    instructions: String::new(),
-                    variant_example: json!(null),
+                    variant:            representative_variant.clone(),
+                    instructions:       String::new(),
+                    variant_example:    json!(null),
                 });
             }
             child_ctx.enum_context = Some(EnumContext::Child);
@@ -544,8 +541,8 @@ fn create_paths_for_signature(
             .iter()
             .map(|(field_name, type_name)| {
                 Some(PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
             })

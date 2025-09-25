@@ -33,19 +33,19 @@ pub enum EnumContext {
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind: PathKind,
+    pub path_kind:          PathKind,
     /// Reference to the type registry
-    pub registry: Arc<HashMap<BrpTypeName, Value>>,
+    pub registry:           Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
     pub full_mutation_path: FullMutationPath,
     /// Action to take regarding path creation (set by `MutationPathBuilder`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action: PathAction,
+    pub path_action:        PathAction,
     /// Track enum context - None for non-enum types
-    pub enum_context: Option<EnumContext>,
+    pub enum_context:       Option<EnumContext>,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
-    pub variant_chain: Vec<VariantPath>,
+    pub variant_chain:      Vec<VariantPath>,
 }
 
 impl RecursionContext {
@@ -80,10 +80,10 @@ impl RecursionContext {
     pub fn require_registry_schema(&self) -> crate::error::Result<&Value> {
         self.registry.get(self.type_name()).ok_or_else(|| {
             Error::SchemaProcessing {
-                message: format!("No schema found for type: {}", self.type_name()),
+                message:   format!("No schema found for type: {}", self.type_name()),
                 type_name: Some(self.type_name().to_string()),
                 operation: Some("require_registry_schema".to_string()),
-                details: None,
+                details:   None,
             }
             .into()
         })

@@ -71,13 +71,13 @@ impl PathBuilder for MapMutationBuilder {
         // Create PathKinds for key and value (MutationPathBuilder will create contexts)
         Ok(vec![
             PathKind::StructField {
-                field_name: StructFieldName::from(SchemaField::Key),
-                type_name: key_type_name,
+                field_name:  StructFieldName::from(SchemaField::Key),
+                type_name:   key_type_name,
                 parent_type: ctx.type_name().clone(),
             },
             PathKind::StructField {
-                field_name: StructFieldName::from(SchemaField::Value),
-                type_name: val_type_name,
+                field_name:  StructFieldName::from(SchemaField::Value),
+                type_name:   val_type_name,
                 parent_type: ctx.type_name().clone(),
             },
         ]
