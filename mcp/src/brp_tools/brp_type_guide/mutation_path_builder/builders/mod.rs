@@ -1,5 +1,5 @@
 mod array_builder;
-mod enum_builder;
+pub mod enum_builder;
 mod list_builder;
 mod map_builder;
 mod set_builder;

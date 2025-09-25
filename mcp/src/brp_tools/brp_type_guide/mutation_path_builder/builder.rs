@@ -133,6 +133,9 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
     }
 }
 
+/// Feature flag to control enum implementation
+const USE_DECOUPLED_ENUM: bool = true; // Enable new EnumPathBuilder
+
 /// Single dispatch point for creating builders - used for both entry and recursion
 /// This is the ONLY place where we match on `TypeKind` to create builders
 pub fn recurse_mutation_paths(
@@ -174,8 +177,15 @@ pub fn recurse_mutation_paths(
             MutationPathBuilder::new(SetMutationBuilder).build_paths(ctx, depth)
         }
         TypeKind::Enum => {
-            tracing::debug!("Using NewEnumMutationBuilder for {}", ctx.type_name());
-            MutationPathBuilder::new(EnumMutationBuilder).build_paths(ctx, depth)
+            if USE_DECOUPLED_ENUM {
+                tracing::debug!("Using EnumPathBuilder for {}", ctx.type_name());
+                // Use the new EnumPathBuilder directly
+                use crate::brp_tools::brp_type_guide::enum_path_builder::EnumPathBuilder;
+                EnumPathBuilder.process_enum(ctx, depth)
+            } else {
+                tracing::debug!("Using EnumMutationBuilder for {}", ctx.type_name());
+                MutationPathBuilder::new(EnumMutationBuilder).build_paths(ctx, depth)
+            }
         }
         TypeKind::Value => {
             tracing::debug!("Using ValueMutationBuilder for {}", ctx.type_name());

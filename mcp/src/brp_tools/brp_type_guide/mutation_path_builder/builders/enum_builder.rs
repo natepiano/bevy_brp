@@ -78,7 +78,7 @@ pub struct EnumFieldInfo {
 
 impl EnumVariantInfo {
     /// Get the fully qualified variant name (e.g., "Color::Srgba")
-    fn variant_name(&self) -> &VariantName {
+    pub fn variant_name(&self) -> &VariantName {
         match self {
             Self::Unit(name) | Self::Tuple(name, _) | Self::Struct(name, _) => name,
         }
@@ -333,6 +333,125 @@ impl EnumMutationBuilder {
 }
 
 // ============================================================================
+// Shared Enum Processing Functions
+// ============================================================================
+
+/// Extract all variants from schema and group them by signature
+/// This is the single source of truth for enum variant processing
+pub fn extract_and_group_variants(
+    ctx: &RecursionContext,
+) -> Result<HashMap<VariantSignature, Vec<EnumVariantInfo>>> {
+    let schema = ctx.require_registry_schema()?;
+    let variants = extract_enum_variants(schema, &ctx.registry);
+    Ok(group_variants_by_signature(variants))
+}
+
+/// Build enum examples from variant groups and child examples
+/// This handles all enum context logic in one place
+pub fn build_enum_examples(
+    variant_groups: &HashMap<VariantSignature, Vec<EnumVariantInfo>>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
+    ctx: &RecursionContext,
+) -> Result<Value> {
+    use error_stack::Report;
+
+    // Build internal MutationExample to organize the enum logic
+    tracing::debug!(
+        "build_enum_examples for {} with enum_context: {:?}",
+        ctx.type_name(),
+        ctx.enum_context
+    );
+
+    let mutation_example = match &ctx.enum_context {
+        Some(EnumContext::Root) => {
+            // Build examples array for enum root path
+            let mut examples = Vec::new();
+
+            for (signature, variants_in_group) in variant_groups {
+                let representative = variants_in_group.first().ok_or_else(|| {
+                    Report::new(Error::InvalidState("Empty variant group".to_string()))
+                })?;
+
+                let example = EnumMutationBuilder::build_variant_example(
+                    signature,
+                    representative.name(),
+                    &child_examples,
+                    ctx.type_name(),
+                );
+
+                let applicable_variants: Vec<VariantName> = variants_in_group
+                    .iter()
+                    .map(|v| v.variant_name().clone())
+                    .collect();
+
+                examples.push(ExampleGroup {
+                    applicable_variants,
+                    signature: signature.to_string(),
+                    example,
+                });
+            }
+
+            MutationExample::EnumRoot(examples)
+        }
+
+        Some(EnumContext::Child) => {
+            // Building under another enum - return Simple example
+            let example = EnumMutationBuilder::concrete_example(
+                variant_groups,
+                &child_examples,
+                ctx.type_name(),
+            );
+            MutationExample::Simple(example)
+        }
+
+        None => {
+            // Parent is not an enum - return a concrete example
+            let example = EnumMutationBuilder::concrete_example(
+                variant_groups,
+                &child_examples,
+                ctx.type_name(),
+            );
+            MutationExample::Simple(example)
+        }
+    };
+
+    // Convert MutationExample to Value for MutationPathBuilder to process
+    match mutation_example {
+        MutationExample::Simple(val) => {
+            tracing::debug!(
+                "build_enum_examples {} returning Simple value: {}",
+                ctx.type_name(),
+                val
+            );
+            Ok(val)
+        }
+        MutationExample::EnumRoot(examples) => {
+            // For enum roots, return both examples array and a default concrete value
+            // MutationPathBuilder will extract these to populate MutationPathInternal fields
+            let default_example = examples
+                .first()
+                .map(|g| g.example.clone())
+                .unwrap_or(json!(null));
+
+            let result = json!({
+                "enum_root_data": {
+                    "enum_root_examples": examples,
+                    "enum_root_example_for_parent": default_example
+                }
+            });
+
+            tracing::debug!(
+                "build_enum_examples returning EnumRoot with {} examples: {}",
+                examples.len(),
+                result
+            );
+
+            Ok(result)
+        }
+    }
+}
+
+// ============================================================================
 // MutationPathBuilder Implementation
 // ============================================================================
 
@@ -344,13 +463,8 @@ impl PathBuilder for EnumMutationBuilder {
         Self: 'a;
 
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
-        let schema = ctx.require_registry_schema()?;
-
-        // Extract all variants from schema
-        let variants = extract_enum_variants(schema, &ctx.registry);
-
-        // Group variants by their signature (already handles deduplication)
-        let variant_groups = group_variants_by_signature(variants);
+        // Use shared function for consistent variant processing
+        let variant_groups = extract_and_group_variants(ctx)?;
 
         let mut children = Vec::new();
 
@@ -406,94 +520,10 @@ impl PathBuilder for EnumMutationBuilder {
         ctx: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Value>,
     ) -> Result<Value> {
-        let schema = ctx.require_registry_schema()?;
-        let all_variants = extract_enum_variants(schema, &ctx.registry);
-        let variant_groups = group_variants_by_signature(all_variants);
+        // Use shared function for consistent variant processing
+        let variant_groups = extract_and_group_variants(ctx)?;
 
-        // Build internal MutationExample to organize the enum logic
-        tracing::debug!(
-            "NewEnumBuilder for {} with enum_context: {:?}",
-            ctx.type_name(),
-            ctx.enum_context
-        );
-        let mutation_example = match &ctx.enum_context {
-            Some(EnumContext::Root) => {
-                // Build examples array for enum root path
-                let mut examples = Vec::new();
-
-                for (signature, variants_in_group) in &variant_groups {
-                    let representative = variants_in_group.first().ok_or_else(|| {
-                        Report::new(Error::InvalidState("Empty variant group".to_string()))
-                    })?;
-
-                    let example = Self::build_variant_example(
-                        signature,
-                        representative.name(),
-                        &children,
-                        ctx.type_name(),
-                    );
-
-                    let applicable_variants: Vec<VariantName> = variants_in_group
-                        .iter()
-                        .map(|v| v.variant_name().clone())
-                        .collect();
-
-                    examples.push(ExampleGroup {
-                        applicable_variants,
-                        signature: signature.to_string(),
-                        example,
-                    });
-                }
-
-                MutationExample::EnumRoot(examples)
-            }
-
-            Some(EnumContext::Child) => {
-                // Building under another enum - return Simple example
-                let example = Self::concrete_example(&variant_groups, &children, ctx.type_name());
-                MutationExample::Simple(example)
-            }
-
-            None => {
-                // Parent is not an enum - return a concrete example
-                let example = Self::concrete_example(&variant_groups, &children, ctx.type_name());
-                MutationExample::Simple(example)
-            }
-        };
-
-        // Convert MutationExample to Value for MutationPathBuilder to process
-        match mutation_example {
-            MutationExample::Simple(val) => {
-                tracing::debug!(
-                    "NewEnumBuilder {} returning Simple value: {}",
-                    ctx.type_name(),
-                    val
-                );
-                Ok(val)
-            }
-            MutationExample::EnumRoot(examples) => {
-                // For enum roots, return both examples array and a default concrete value
-                // MutationPathBuilder will extract these to populate MutationPathInternal fields
-                let default_example = examples
-                    .first()
-                    .map(|g| g.example.clone())
-                    .unwrap_or(json!(null));
-
-                let result = json!({
-                    "enum_root_data": {
-                        "enum_root_examples": examples,
-                        "enum_root_example_for_parent": default_example
-                    }
-                });
-
-                tracing::debug!(
-                    "NewEnumBuilder returning EnumRoot with {} examples: {}",
-                    examples.len(),
-                    result
-                );
-
-                Ok(result)
-            }
-        }
+        // Use shared function for example building
+        build_enum_examples(&variant_groups, children, ctx)
     }
 }
