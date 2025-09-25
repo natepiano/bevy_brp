@@ -338,7 +338,18 @@ fn concrete_example(
     children: &HashMap<MutationPathDescriptor, Value>,
     enum_type: &BrpTypeName,
 ) -> Value {
-    // Pick first unit variant if available, otherwise first example
+    // Prefer non-unit variants for richer examples
+    // First try to find a non-unit variant
+    let non_unit_variant = variant_groups
+        .iter()
+        .find(|(sig, _)| !matches!(sig, VariantSignature::Unit))
+        .map(|(sig, variants)| (sig, variants.first()));
+
+    if let Some((sig, Some(variant))) = non_unit_variant {
+        return build_variant_example(sig, variant.name(), children, enum_type);
+    }
+
+    // Fall back to unit variant if no non-unit variants exist
     let unit_variant = variant_groups
         .iter()
         .find(|(sig, _)| matches!(sig, VariantSignature::Unit))
@@ -348,16 +359,8 @@ fn concrete_example(
         return json!(variant.name());
     }
 
-    // Fall back to first available example with full structure
-    variant_groups
-        .iter()
-        .next()
-        .map(|(sig, variants)| {
-            variants.first().map_or(json!(null), |representative| {
-                build_variant_example(sig, representative.name(), children, enum_type)
-            })
-        })
-        .unwrap_or(json!(null))
+    // Shouldn't happen if enum has any variants at all
+    json!(null)
 }
 
 // ============================================================================
@@ -436,9 +439,11 @@ fn build_enum_examples(
     };
 
     // For enum roots, return both examples array and a default concrete value
-    // Return tuple directly instead of JSON wrapper
+    // Prefer non-unit variants for richer default examples
     let default_example = mutation_example
-        .first()
+        .iter()
+        .find(|g| g.signature != "unit")
+        .or_else(|| mutation_example.first())
         .map(|g| g.example.clone())
         .unwrap_or(json!(null));
 
@@ -484,7 +489,7 @@ fn populate_variant_path(
 
         // Generate instructions for this variant step
         populated_path.instructions = format!(
-            "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",
+            "Mutate '{}' 'full_mutation_path' to the '{}' variant using 'variant_example'",
             if populated_path.full_mutation_path.is_empty() {
                 "root".to_string()
             } else {
@@ -540,23 +545,32 @@ fn process_children(
                     variant_example:    json!(null),
                 });
             }
-            child_ctx.enum_context = Some(EnumContext::Child);
-
             // Recursively process child and collect paths
             let child_descriptor = path.to_mutation_path_descriptor();
             let child_schema = child_ctx.require_registry_schema()?;
             let child_type_kind = TypeKind::from_schema(child_schema, child_ctx.type_name());
 
+            // Determine the appropriate enum context for this child
+            // If the child is itself an enum, it should get EnumContext::Root
+            // Otherwise, it inherits EnumContext::Child from being under an enum
+            if matches!(child_type_kind, TypeKind::Enum) {
+                // Child is an enum - it needs its own EnumContext::Root
+                child_ctx.enum_context = Some(EnumContext::Root);
+            } else {
+                // Child is not an enum - it's under an enum so gets Child context
+                child_ctx.enum_context = Some(EnumContext::Child);
+            }
+
             // Use the same recursion function as MutationPathBuilder
             let child_paths =
                 recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
 
-            // Extract example from first path (same logic as MutationPathBuilder)
-            let child_example = child_paths.first().map_or(json!(null), |p| {
-                p.enum_root_example_for_parent
-                    .as_ref()
-                    .map_or_else(|| p.example.clone(), Clone::clone)
-            });
+            // Extract example from first path
+            // When a child enum is processed with EnumContext::Child, it returns
+            // a concrete example directly (not wrapped with enum_root_data)
+            let child_example = child_paths
+                .first()
+                .map_or(json!(null), |p| p.example.clone());
 
             child_examples.insert(child_descriptor, child_example);
 
@@ -604,13 +618,54 @@ fn create_paths_for_signature(
     }
 }
 
+/// Updates `variant_path` entries in child paths with level-appropriate examples
+fn update_child_variant_paths(
+    paths: &mut [MutationPathInternal],
+    current_path: &str,
+    current_example: &Value,
+    enum_examples: Option<&Vec<ExampleGroup>>,
+) {
+    // For each child path that has enum variant requirements
+    for child in paths.iter_mut() {
+        if !child.enum_variant_path.is_empty() {
+            // Find matching entry in child's variant_path that corresponds to our level
+            for entry in &mut child.enum_variant_path {
+                if *entry.full_mutation_path == current_path {
+                    // This entry represents our current level - update it
+                    entry.instructions = format!(
+                        "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",
+                        if entry.full_mutation_path.is_empty() {
+                            "root"
+                        } else {
+                            &entry.full_mutation_path
+                        },
+                        &entry.variant
+                    );
+
+                    // If this is an enum and we have enum_examples, find the matching variant
+                    // example
+                    if let Some(examples) = enum_examples {
+                        entry.variant_example = examples
+                            .iter()
+                            .find(|ex| ex.applicable_variants.contains(&entry.variant))
+                            .map_or_else(|| current_example.clone(), |ex| ex.example.clone());
+                    } else {
+                        // Non-enum case: use the assembled example
+                        entry.variant_example = current_example.clone();
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Create final result paths - includes both root and child paths
 fn create_result_paths(
     ctx: &RecursionContext,
     enum_examples: Vec<ExampleGroup>,
     default_example: Value,
     assembled_value: Value, // Preserve for non-Root enum contexts
-    child_paths: Vec<MutationPathInternal>,
+    mut child_paths: Vec<MutationPathInternal>,
 ) -> Vec<MutationPathInternal> {
     // Generate enum instructions and variant paths before moving values
     let enum_instructions = generate_enum_instructions(ctx);
@@ -621,15 +676,14 @@ fn create_result_paths(
         full_mutation_path: ctx.full_mutation_path.clone(),
         example: match &ctx.enum_context {
             Some(EnumContext::Root) => json!(null),
-            Some(EnumContext::Child) => assembled_value.clone(),
-            None => assembled_value.clone(),
+            Some(EnumContext::Child) | None => assembled_value,
         },
         enum_root_examples: match &ctx.enum_context {
             Some(EnumContext::Root) => Some(enum_examples),
             _ => None,
         },
         enum_root_example_for_parent: match &ctx.enum_context {
-            Some(EnumContext::Root) => Some(default_example),
+            Some(EnumContext::Root) => Some(default_example.clone()),
             _ => None,
         },
         type_name: ctx.type_name().display_name(),
@@ -639,6 +693,20 @@ fn create_result_paths(
         enum_instructions,
         enum_variant_path,
     };
+
+    // Update variant_path entries in child paths with level-appropriate examples
+    // This is the critical missing step that was causing the bug!
+    // For enum roots, use the default_example which contains actual data, not the null example
+    let example_for_children = match &ctx.enum_context {
+        Some(EnumContext::Root) => &default_example,
+        _ => &root_mutation_path.example,
+    };
+    update_child_variant_paths(
+        &mut child_paths,
+        &ctx.full_mutation_path,
+        example_for_children,
+        root_mutation_path.enum_root_examples.as_ref(),
+    );
 
     // Return root path plus all child paths (like MutationPathBuilder does)
     let mut result = vec![root_mutation_path];

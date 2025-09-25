@@ -101,23 +101,11 @@ fn simplify_type(type_str: &str) -> String {
     // Find where generics start (if any)
     type_str.find('<').map_or_else(
         || {
-            // No generics - check if this has module paths
-            type_str.rfind("::").map_or_else(
-                || type_str.to_string(),
-                |last_sep_pos| {
-                    // Check if there's another :: before this one
-                    let before_last = &type_str[..last_sep_pos];
-                    if before_last.contains("::") {
-                        // This is a module path like "mod::Type" or "mod1::mod2::Type"
-                        // Return just the type name
-                        type_str[last_sep_pos + 2..].to_string()
-                    } else {
-                        // This is a simple "Type::Variant" - but we shouldn't get here
-                        // because variants should be separated before calling this function
-                        type_str.to_string()
-                    }
-                },
-            )
+            // No generics - simplify by taking just the type name without module path
+            // "extras_plugin::TestVariantChainEnum" -> "TestVariantChainEnum"
+            // "std::collections::HashMap" -> "HashMap"
+            // "MyType" -> "MyType"
+            type_str.rsplit("::").next().unwrap_or(type_str).to_string()
         },
         |generic_start| {
             let base_type = &type_str[..generic_start];
@@ -273,5 +261,41 @@ mod tests {
         let result = parse_type_with_variant(input).unwrap();
         assert_eq!(result.simplified_type, "HashMap<String, Vec<u32>>");
         assert_eq!(result.variant, Some("new".to_string()));
+    }
+
+    #[test]
+    fn test_module_path_enum_variant() {
+        let input = "extras_plugin::TestVariantChainEnum::WithMiddleStruct";
+        let result = parse_type_with_variant(input).unwrap();
+        assert_eq!(result.simplified_type, "TestVariantChainEnum");
+        assert_eq!(result.variant, Some("WithMiddleStruct".to_string()));
+        assert_eq!(
+            extract_simplified_variant_name(input),
+            "TestVariantChainEnum::WithMiddleStruct"
+        );
+    }
+
+    #[test]
+    fn test_module_path_enum_variant_empty() {
+        let input = "extras_plugin::TestVariantChainEnum::Empty";
+        let result = parse_type_with_variant(input).unwrap();
+        assert_eq!(result.simplified_type, "TestVariantChainEnum");
+        assert_eq!(result.variant, Some("Empty".to_string()));
+        assert_eq!(
+            extract_simplified_variant_name(input),
+            "TestVariantChainEnum::Empty"
+        );
+    }
+
+    #[test]
+    fn test_nested_module_path_enum_variant() {
+        let input = "extras_plugin::BottomEnum::VariantA";
+        let result = parse_type_with_variant(input).unwrap();
+        assert_eq!(result.simplified_type, "BottomEnum");
+        assert_eq!(result.variant, Some("VariantA".to_string()));
+        assert_eq!(
+            extract_simplified_variant_name(input),
+            "BottomEnum::VariantA"
+        );
     }
 }

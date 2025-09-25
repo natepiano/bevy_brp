@@ -374,11 +374,12 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             child_paths.len()
         );
 
-        // Extract child's example - simplified since enum processing is handled by
-        // enum_path_builder
-        let child_example = child_paths
-            .first()
-            .map_or(json!(null), |p| p.example.clone());
+        // Extract child's example - handle both simple and enum root cases
+        let child_example = child_paths.first().map_or(json!(null), |p| {
+            p.enum_root_example_for_parent
+                .as_ref()
+                .map_or_else(|| p.example.clone(), Clone::clone)
+        });
 
         Ok((child_paths, child_example))
     }

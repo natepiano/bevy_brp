@@ -30,27 +30,23 @@ cp .claude/transient/all_types.json .claude/transient/all_types_baseline.json
 cp .claude/transient/all_types.json .claude/transient/all_types_good_${TIMESTAMP}.json
 
 # Reset expected changes file to template state
-# ID 0 is reserved as an example that comparison scripts will ignore
+# Copy the ENUM_VARIANT_QUALIFIED_NAMES pattern from template as it's commonly needed
+cp .claude/config/expected_changes_template.json temp_template.json
 cat > .claude/config/create_mutation_test_json_expected_changes.json << 'EOF'
 {
   "expected_changes": [
     {
-      "id": 0,
-      "name": "EXAMPLE ENTRY - Ignored by comparison scripts",
-      "pattern_type": "EXAMPLE",
-      "pattern_match": {
-        "description": "This is a template entry showing the expected structure",
-        "field": "example_field",
-        "min_occurrences": 1,
-        "min_types_affected": 1,
-        "exact_types_affected": null,
-        "description_contains": null
-      },
-      "description": "This entry (id: 0) is ignored by comparison scripts and serves as documentation for the expected_changes structure. When actual changes are detected after promotion, add them with id >= 1"
+      "id": 1,
+      "pattern_type": "ENUM_VARIANT_QUALIFIED_NAMES",
+      "description": "Enum variants changed from simple names to fully qualified names (e.g. 'Additive' -> 'BloomCompositeMode::Additive')",
+      "change_type": "value_changed",
+      "path_regex": "mutation_paths\\..*\\.examples\\[\\d+\\]\\.applicable_variants\\[\\d+\\]$",
+      "value_condition": "current.endswith('::' + baseline) and '::' not in baseline and '::' in current"
     }
   ]
 }
 EOF
+rm -f temp_template.json
 
 echo "✅ Version marked as good baseline"
 echo "✅ Expected changes file reset to template"
