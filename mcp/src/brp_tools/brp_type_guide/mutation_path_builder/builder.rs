@@ -24,11 +24,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -276,16 +276,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         );
 
         // Get child's schema and create its builder
-        let child_schema = child_ctx
-            .require_registry_schema()
-            .unwrap_or_else(|err| {
-                tracing::warn!(
-                    "🔥 CHOKE POINT: Type '{}' not found in registry - swallowing NotInRegistry error! Error: {:?}",
-                    child_ctx.type_name(),
-                    err
-                );
-                &json!(null)
-            });
+        let child_schema = child_ctx.require_registry_schema()?;
 
         let child_type = child_ctx.type_name().clone();
         let child_kind = TypeKind::from_schema(child_schema, &child_type);
