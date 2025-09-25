@@ -136,10 +136,17 @@ pub fn process_enum(
     let (child_examples, child_paths) = process_children(&variant_groups, ctx, depth)?;
 
     // Use shared function to build examples - same as EnumMutationBuilder
-    let assembled_value = build_enum_examples(&variant_groups, child_examples, ctx)?;
+    let (enum_examples, default_example) =
+        build_enum_examples(&variant_groups, child_examples, ctx)?;
 
     // Create result paths including both root AND child paths
-    Ok(create_result_paths(ctx, assembled_value, child_paths))
+    Ok(create_result_paths(
+        ctx,
+        enum_examples,
+        default_example.clone(),
+        default_example, // Use default_example as assembled_value for non-Root contexts
+        child_paths,
+    ))
 }
 
 // Helper functions for variant processing
@@ -373,7 +380,7 @@ fn build_enum_examples(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     child_examples: HashMap<MutationPathDescriptor, Value>,
     ctx: &RecursionContext,
-) -> Result<Value> {
+) -> Result<(Vec<ExampleGroup>, Value)> {
     use error_stack::Report;
 
     // Build internal MutationExample to organize the enum logic
@@ -418,37 +425,84 @@ fn build_enum_examples(
         Some(EnumContext::Child) => {
             // Building under another enum - return Simple example
             let example = concrete_example(variant_groups, &child_examples, ctx.type_name());
-            return Ok(example);
+            return Ok((Vec::new(), example));
         }
 
         None => {
             // Parent is not an enum - return a concrete example
             let example = concrete_example(variant_groups, &child_examples, ctx.type_name());
-            return Ok(example);
+            return Ok((Vec::new(), example));
         }
     };
 
     // For enum roots, return both examples array and a default concrete value
-    // MutationPathBuilder will extract these to populate MutationPathInternal fields
+    // Return tuple directly instead of JSON wrapper
     let default_example = mutation_example
         .first()
         .map(|g| g.example.clone())
         .unwrap_or(json!(null));
 
-    let result = json!({
-        "enum_root_data": {
-            "enum_root_examples": mutation_example,
-            "enum_root_example_for_parent": default_example
-        }
-    });
-
     tracing::debug!(
-        "build_enum_examples returning EnumRoot with {} examples: {}",
-        mutation_example.len(),
-        result
+        "build_enum_examples returning EnumRoot with {} examples",
+        mutation_example.len()
     );
 
-    Ok(result)
+    Ok((mutation_example, default_example))
+}
+
+/// Generate enum instructions based on variant chain length
+fn generate_enum_instructions(ctx: &RecursionContext) -> Option<String> {
+    if ctx.variant_chain.is_empty() {
+        return None;
+    }
+
+    let description = if ctx.variant_chain.len() > 1 {
+        format!(
+            "`{}` mutation path requires {} variant selections. Follow the instructions in variant_path array to set each variant in order.",
+            ctx.full_mutation_path,
+            ctx.variant_chain.len()
+        )
+    } else {
+        format!(
+            "'{}' mutation path requires a variant selection as shown in 'enum_variant_path'.",
+            ctx.full_mutation_path
+        )
+    };
+    Some(description)
+}
+
+/// Populate variant path with proper instructions and variant examples
+fn populate_variant_path(
+    ctx: &RecursionContext,
+    enum_examples: &[ExampleGroup],
+    default_example: &Value,
+) -> Vec<VariantPath> {
+    let mut populated_paths = Vec::new();
+
+    for variant_path in &ctx.variant_chain {
+        let mut populated_path = variant_path.clone();
+
+        // Generate instructions for this variant step
+        populated_path.instructions = format!(
+            "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",
+            if populated_path.full_mutation_path.is_empty() {
+                "root".to_string()
+            } else {
+                populated_path.full_mutation_path.to_string()
+            },
+            variant_path.variant
+        );
+
+        // Find the appropriate example for this variant
+        populated_path.variant_example = enum_examples
+            .iter()
+            .find(|ex| ex.applicable_variants.contains(&variant_path.variant))
+            .map_or_else(|| default_example.clone(), |ex| ex.example.clone());
+
+        populated_paths.push(populated_path);
+    }
+
+    populated_paths
 }
 
 /// Process child paths - simplified version of `MutationPathBuilder`'s child processing
@@ -553,59 +607,41 @@ fn create_paths_for_signature(
 /// Create final result paths - includes both root and child paths
 fn create_result_paths(
     ctx: &RecursionContext,
-    assembled_value: Value,
+    enum_examples: Vec<ExampleGroup>,
+    default_example: Value,
+    assembled_value: Value, // Preserve for non-Root enum contexts
     child_paths: Vec<MutationPathInternal>,
 ) -> Vec<MutationPathInternal> {
-    // Process assembled value for enum context (same logic as MutationPathBuilder)
-    let (parent_example, enum_root_examples, enum_root_example_for_parent) =
-        process_enum_context(ctx, assembled_value);
+    // Generate enum instructions and variant paths before moving values
+    let enum_instructions = generate_enum_instructions(ctx);
+    let enum_variant_path = populate_variant_path(ctx, &enum_examples, &default_example);
 
-    // Create the main mutation path for this enum root
+    // Direct field assignment - no more JSON wrapper extraction needed
     let root_mutation_path = MutationPathInternal {
         full_mutation_path: ctx.full_mutation_path.clone(),
-        example: parent_example,
-        enum_root_examples,
-        enum_root_example_for_parent,
+        example: match &ctx.enum_context {
+            Some(EnumContext::Root) => json!(null),
+            Some(EnumContext::Child) => assembled_value.clone(),
+            None => assembled_value.clone(),
+        },
+        enum_root_examples: match &ctx.enum_context {
+            Some(EnumContext::Root) => Some(enum_examples),
+            _ => None,
+        },
+        enum_root_example_for_parent: match &ctx.enum_context {
+            Some(EnumContext::Root) => Some(default_example),
+            _ => None,
+        },
         type_name: ctx.type_name().display_name(),
         path_kind: ctx.path_kind.clone(),
         mutation_status: MutationStatus::Mutable, // Simplified for now
         mutation_status_reason: None,
-        enum_instructions: None, // Simplified for now
-        enum_variant_path: ctx.variant_chain.clone(),
+        enum_instructions,
+        enum_variant_path,
     };
 
     // Return root path plus all child paths (like MutationPathBuilder does)
     let mut result = vec![root_mutation_path];
     result.extend(child_paths);
     result
-}
-
-/// Process enum context - same logic as `MutationPathBuilder::process_enum_context`
-fn process_enum_context(
-    ctx: &RecursionContext,
-    assembled_example: Value,
-) -> (Value, Option<Vec<ExampleGroup>>, Option<Value>) {
-    match &ctx.enum_context {
-        Some(EnumContext::Root) => assembled_example
-            .get("enum_root_data")
-            .cloned()
-            .map_or_else(
-                || (assembled_example, None, None),
-                |enum_data| {
-                    let default_example = enum_data
-                        .get("enum_root_example_for_parent")
-                        .cloned()
-                        .unwrap_or(json!(null));
-                    let examples_json = enum_data
-                        .get("enum_root_examples")
-                        .cloned()
-                        .unwrap_or(json!([]));
-                    let examples: Vec<ExampleGroup> =
-                        serde_json::from_value(examples_json).unwrap_or_default();
-
-                    (json!(null), Some(examples), Some(default_example))
-                },
-            ),
-        Some(EnumContext::Child) | None => (assembled_example, None, None),
-    }
 }
