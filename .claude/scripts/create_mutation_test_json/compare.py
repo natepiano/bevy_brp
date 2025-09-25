@@ -383,8 +383,8 @@ def matches_expected_pattern(change: DifferenceDict, pattern: ExpectedChangeDict
             'type': type
         }
 
-        result: object = eval(pattern['value_condition'], {"__builtins__": {}}, eval_globals)
-        return bool(result)
+        eval_result = cast(object, eval(pattern['value_condition'], {"__builtins__": {}}, eval_globals))
+        return bool(eval_result)
     except:
         return False
 
@@ -421,23 +421,23 @@ def categorize_changes(all_changes: list[DifferenceDict], expected_patterns: lis
 
     return expected_matches, unmatched_changes
 
-def calculate_file_statistics(data: dict[str, JsonValue]) -> dict[str, int]:
+def calculate_file_statistics(data: dict[str, JsonValue]) -> FileStatsDict:
     """Calculate statistics for a mutation test file."""
     total_types = len(data)
     spawn_supported = sum(1 for t in data.values() if isinstance(t, dict) and t.get('spawn_format') is not None)
     types_with_mutations = sum(1 for t in data.values() if isinstance(t, dict) and t.get('mutation_paths'))
     total_paths = sum(
-        len(t.get('mutation_paths', {}))
+        len(cast(dict[str, JsonValue], t.get('mutation_paths', {}))) if isinstance(t.get('mutation_paths'), dict) else 0
         for t in data.values()
-        if isinstance(t, dict) and isinstance(t.get('mutation_paths'), dict)
+        if isinstance(t, dict)
     )
 
-    return {
-        "total_types": total_types,
-        "spawn_supported": spawn_supported,
-        "types_with_mutations": types_with_mutations,
-        "total_mutation_paths": total_paths
-    }
+    return FileStatsDict(
+        total_types=total_types,
+        spawn_supported=spawn_supported,
+        types_with_mutations=types_with_mutations,
+        total_mutation_paths=total_paths
+    )
 
 def main() -> None:
     if '--help-expected-changes' in sys.argv:
