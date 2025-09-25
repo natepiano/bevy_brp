@@ -33,11 +33,6 @@ fn identifier(input: &str) -> IResult<&str, &str> {
     take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)
 }
 
-/// Parse a module path segment (e.g., "core::option")
-fn module_path(input: &str) -> IResult<&str, Vec<&str>> {
-    separated_list0(tag("::"), identifier).parse(input)
-}
-
 /// Parse generic arguments recursively
 fn generics(input: &str) -> IResult<&str, &str> {
     recognize(delimited(

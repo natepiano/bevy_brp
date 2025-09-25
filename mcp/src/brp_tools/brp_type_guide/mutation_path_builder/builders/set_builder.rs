@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
+use super::super::types::StructFieldName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::PathAction;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -44,7 +45,7 @@ impl PathBuilder for SetMutationBuilder {
 
         // Create PathKind for items (MutationPathBuilder will create context)
         Ok(vec![PathKind::StructField {
-            field_name:  SchemaField::Items.to_string(),
+            field_name:  StructFieldName::from(SchemaField::Items),
             type_name:   item_t,
             parent_type: ctx.type_name().clone(),
         }]

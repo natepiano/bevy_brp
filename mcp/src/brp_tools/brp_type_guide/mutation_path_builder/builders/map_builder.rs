@@ -13,6 +13,7 @@ use serde_json::{Value, json};
 
 use super::super::path_builder::PathBuilder;
 use super::super::recursion_context::RecursionContext;
+use super::super::types::StructFieldName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::{
     MutationPathDescriptor, PathAction, PathKind,
 };
@@ -51,7 +52,7 @@ impl PathBuilder for MapMutationBuilder {
         let key_type = schema.get_type(SchemaField::KeyType);
         let value_type = schema.get_type(SchemaField::ValueType);
 
-        let Some(key_t) = key_type else {
+        let Some(key_type_name) = key_type else {
             return Err(Error::InvalidState(format!(
                 "Failed to extract key type from schema for type: {}",
                 ctx.type_name()
@@ -59,7 +60,7 @@ impl PathBuilder for MapMutationBuilder {
             .into());
         };
 
-        let Some(val_t) = value_type else {
+        let Some(val_type_name) = value_type else {
             return Err(Error::InvalidState(format!(
                 "Failed to extract value type from schema for type: {}",
                 ctx.type_name()
@@ -70,13 +71,13 @@ impl PathBuilder for MapMutationBuilder {
         // Create PathKinds for key and value (MutationPathBuilder will create contexts)
         Ok(vec![
             PathKind::StructField {
-                field_name:  SchemaField::Key.to_string(),
-                type_name:   key_t,
+                field_name: StructFieldName::from(SchemaField::Key),
+                type_name: key_type_name,
                 parent_type: ctx.type_name().clone(),
             },
             PathKind::StructField {
-                field_name:  SchemaField::Value.to_string(),
-                type_name:   val_t,
+                field_name: StructFieldName::from(SchemaField::Value),
+                type_name: val_type_name,
                 parent_type: ctx.type_name().clone(),
             },
         ]
@@ -88,10 +89,6 @@ impl PathBuilder for MapMutationBuilder {
         ctx: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Value>,
     ) -> Result<Value> {
-        // At this point, children contains COMPLETE examples:
-        // - "key": Full example for the key type (e.g., "example_key" for String)
-        // - "value": Full example for the value type (e.g., complete Transform JSON)
-
         let Some(key_example) = children.get(SchemaField::Key.as_ref()) else {
             return Err(Error::InvalidState(format!(
                 "Protocol violation: Map type {} missing required 'key' child example",

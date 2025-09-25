@@ -15,6 +15,7 @@ use super::super::MutationPathDescriptor;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
+use super::super::types::StructFieldName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -49,24 +50,24 @@ impl PathBuilder for StructMutationBuilder {
         for (field_name, field_schema) in properties {
             // Extract field type or return error immediately - no fallback
             // Note: SchemaField::extract_field_type handles complex schemas with $ref
-            let Some(field_type) = SchemaField::extract_field_type(field_schema) else {
+            let Some(type_name) = SchemaField::extract_field_type(field_schema) else {
                 return Err(Error::SchemaProcessing {
-                    message:   format!(
+                    message: format!(
                         "Failed to extract type for field '{}' in struct '{}'",
                         field_name,
                         ctx.type_name()
                     ),
                     type_name: Some(ctx.type_name().to_string()),
                     operation: Some("extract_field_type".to_string()),
-                    details:   Some(format!("Field: {field_name}")),
+                    details: Some(format!("Field: {field_name}")),
                 }
                 .into());
             };
 
             // Create PathKind for this field
             let path_kind = PathKind::StructField {
-                field_name:  field_name.clone(),
-                type_name:   field_type,
+                field_name: StructFieldName::from(field_name.clone()),
+                type_name,
                 parent_type: ctx.type_name().clone(),
             };
 

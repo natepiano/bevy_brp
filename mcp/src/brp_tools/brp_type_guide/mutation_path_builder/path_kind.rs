@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::super::brp_type_name::BrpTypeName;
 use super::path_builder::MaybeVariants;
 use super::type_kind::TypeKind;
-use super::types::PathSignature;
+use super::types::{PathSignature, StructFieldName};
 
 /// A semantic identifier for mutation paths in the builder system
 ///
@@ -45,13 +45,25 @@ impl From<&str> for MutationPathDescriptor {
     }
 }
 
+impl From<StructFieldName> for MutationPathDescriptor {
+    fn from(field_name: StructFieldName) -> Self {
+        Self(field_name.to_string())
+    }
+}
+
+impl From<&StructFieldName> for MutationPathDescriptor {
+    fn from(field_name: &StructFieldName) -> Self {
+        Self(field_name.to_string())
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub enum PathKind {
     /// Replace the entire value (root mutation with empty path)
     RootValue { type_name: BrpTypeName },
     /// Mutate a field in a struct
     StructField {
-        field_name:  String,
+        field_name:  StructFieldName,
         type_name:   BrpTypeName,
         parent_type: BrpTypeName,
     },
@@ -103,9 +115,7 @@ impl PathKind {
     /// `PathKind` Used by `MutationPathBuilder` to build `child_examples` `HashMap`
     pub fn to_mutation_path_descriptor(&self) -> MutationPathDescriptor {
         match self {
-            Self::StructField { field_name, .. } => {
-                MutationPathDescriptor::from(field_name.clone())
-            }
+            Self::StructField { field_name, .. } => MutationPathDescriptor::from(field_name),
             Self::IndexedElement { index, .. } | Self::ArrayElement { index, .. } => {
                 MutationPathDescriptor::from(index.to_string())
             }

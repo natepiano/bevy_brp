@@ -9,7 +9,7 @@ use super::super::constants::RecursionDepth;
 use super::builder::recurse_mutation_paths;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::{EnumContext, RecursionContext};
-use super::types::{ExampleGroup, VariantName, VariantSignature};
+use super::types::{ExampleGroup, StructFieldName, VariantName, VariantSignature};
 use super::{MutationPathInternal, MutationStatus, PathAction, PathKind, TypeKind, VariantPath};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::{Error, Result};
@@ -35,10 +35,10 @@ enum EnumVariantInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct EnumFieldInfo {
     /// Field name
-    field_name: String,
+    field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name:  BrpTypeName,
+    type_name: BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -180,7 +180,7 @@ fn extract_struct_fields(
         .iter()
         .filter_map(|(field_name, field_schema)| {
             SchemaField::extract_field_type(field_schema).map(|type_name| EnumFieldInfo {
-                field_name: field_name.clone(),
+                field_name: StructFieldName::from(field_name.clone()),
                 type_name,
             })
         })
@@ -316,9 +316,9 @@ fn build_variant_example(
         VariantSignature::Struct(field_types) => {
             let mut field_values = serde_json::Map::new();
             for (field_name, _) in field_types {
-                let descriptor = MutationPathDescriptor::from(field_name.clone());
+                let descriptor = MutationPathDescriptor::from(field_name);
                 let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
-                field_values.insert(field_name.clone(), value);
+                field_values.insert(field_name.to_string(), value);
             }
             json!({ variant_name: field_values })
         }
@@ -484,9 +484,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant:            representative_variant.clone(),
-                    instructions:       String::new(),
-                    variant_example:    json!(null),
+                    variant: representative_variant.clone(),
+                    instructions: String::new(),
+                    variant_example: json!(null),
                 });
             }
             child_ctx.enum_context = Some(EnumContext::Child);
@@ -544,8 +544,8 @@ fn create_paths_for_signature(
             .iter()
             .map(|(field_name, type_name)| {
                 Some(PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
             })
