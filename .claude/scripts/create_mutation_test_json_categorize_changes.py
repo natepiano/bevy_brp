@@ -145,6 +145,30 @@ def match_expected_changes(patterns: Patterns, expected_changes: ExpectedChanges
             # matched = True  # Currently unused
             patterns['field_added'][field]['processed'] = True
 
+    # Process VALUE_CHANGE patterns like FIELD_REMOVED and FIELD_ADDED
+    value_change_matched = False
+    for expected in expected_changes['expected_changes']:
+        pattern_type = expected.get('pattern_type')
+        if pattern_type == 'VALUE_CHANGE' and patterns['value_changes'] > 0:
+            matched_expected.append(MatchedExpected(
+                change_id=expected['id'],
+                reason=expected['reason'],
+                occurrences=patterns['value_changes'],
+                types_affected=len(patterns['modified_types']),
+                status='matched'
+            ))
+            value_change_matched = True
+            break  # Only match first VALUE_CHANGE expected pattern
+
+    # Report unmatched VALUE_CHANGE patterns as unexpected
+    if patterns['value_changes'] > 0 and not value_change_matched:
+        unmatched_patterns.append(UnmatchedPattern(
+            pattern="VALUE_CHANGE",
+            occurrences=patterns['value_changes'],
+            types_affected=len(patterns['modified_types']),
+            reason='No matching expected change definition'
+        ))
+
     # Collect any unprocessed patterns as unexpected
     for field, data in patterns['field_removed'].items():
         if not data.get('processed'):
@@ -177,8 +201,8 @@ def main() -> None:
     args = parser.parse_args()
 
     # Read comparison output
-    comparison_output: str = args.comparison_output
-    expected_changes_file: str = args.expected_changes
+    comparison_output = cast(str, args.comparison_output)
+    expected_changes_file = cast(str, args.expected_changes)
     if comparison_output == '-':
         comparison_text = sys.stdin.read()
     else:
