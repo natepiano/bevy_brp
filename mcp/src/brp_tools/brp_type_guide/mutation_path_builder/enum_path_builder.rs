@@ -1,6 +1,6 @@
 //! Standalone enum path builder - no `PathBuilder` dependency
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -207,8 +207,8 @@ fn extract_enum_variants(
 
 fn group_variants_by_signature(
     variants: Vec<EnumVariantInfo>,
-) -> HashMap<VariantSignature, Vec<EnumVariantInfo>> {
-    let mut groups = HashMap::new();
+) -> BTreeMap<VariantSignature, Vec<EnumVariantInfo>> {
+    let mut groups = BTreeMap::new();
     for variant in variants {
         let signature = variant.signature();
         groups
@@ -327,7 +327,7 @@ fn build_variant_example(
 
 /// Create a concrete example value for embedding in a parent structure
 fn concrete_example(
-    variant_groups: &HashMap<VariantSignature, Vec<EnumVariantInfo>>,
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     children: &HashMap<MutationPathDescriptor, Value>,
     enum_type: &BrpTypeName,
 ) -> Value {
@@ -361,7 +361,7 @@ fn concrete_example(
 /// This is the single source of truth for enum variant processing
 fn extract_and_group_variants(
     ctx: &RecursionContext,
-) -> Result<HashMap<VariantSignature, Vec<EnumVariantInfo>>> {
+) -> Result<BTreeMap<VariantSignature, Vec<EnumVariantInfo>>> {
     let schema = ctx.require_registry_schema()?;
     let variants = extract_enum_variants(schema, &ctx.registry, ctx.type_name());
     Ok(group_variants_by_signature(variants))
@@ -370,7 +370,7 @@ fn extract_and_group_variants(
 /// Build enum examples from variant groups and child examples
 /// This handles all enum context logic in one place
 fn build_enum_examples(
-    variant_groups: &HashMap<VariantSignature, Vec<EnumVariantInfo>>,
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     child_examples: HashMap<MutationPathDescriptor, Value>,
     ctx: &RecursionContext,
 ) -> Result<Value> {
@@ -453,7 +453,7 @@ fn build_enum_examples(
 
 /// Process child paths - simplified version of `MutationPathBuilder`'s child processing
 fn process_children(
-    variant_groups: &HashMap<VariantSignature, Vec<EnumVariantInfo>>,
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     ctx: &RecursionContext,
     depth: RecursionDepth,
 ) -> Result<(

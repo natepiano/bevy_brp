@@ -44,7 +44,7 @@ impl std::fmt::Display for FullMutationPath {
 }
 
 /// A struct field name used in mutation paths and variant signatures
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct StructFieldName(String);
 
 impl StructFieldName {
@@ -132,7 +132,7 @@ pub enum MutationStatus {
 }
 
 /// Variant signature types for enum variants - used for grouping similar structures
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 pub enum VariantSignature {
     /// Unit variant (no data)
     Unit,
