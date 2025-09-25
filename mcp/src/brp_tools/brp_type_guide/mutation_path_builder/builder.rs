@@ -10,7 +10,7 @@ use super::builders::{
     ArrayMutationBuilder, ListMutationBuilder, MapMutationBuilder, SetMutationBuilder,
     StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
 };
-use super::enum_path_builder::EnumPathBuilder;
+use super::enum_path_builder;
 use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::{MaybeVariants, PathBuilder};
 use super::type_kind::TypeKind;
@@ -24,11 +24,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -143,47 +143,18 @@ pub fn recurse_mutation_paths(
     ctx: &RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
-    tracing::debug!(
-        "recurse_mutation_paths: Dispatching {} as TypeKind::{:?}",
-        ctx.type_name(),
-        type_kind
-    );
-
     match type_kind {
         // Enum is distinct from the rest
-        TypeKind::Enum => {
-            tracing::debug!("Using EnumPathBuilder for {}", ctx.type_name());
-            use EnumPathBuilder;
-            EnumPathBuilder.process_enum(ctx, depth)
-        }
-        TypeKind::Struct => {
-            tracing::debug!("Using StructMutationBuilder for {}", ctx.type_name());
-            MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx, depth)
-        }
+        TypeKind::Enum => enum_path_builder::process_enum(ctx, depth),
+        TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx, depth),
         TypeKind::Tuple | TypeKind::TupleStruct => {
-            tracing::debug!("Using TupleMutationBuilder for {}", ctx.type_name());
             MutationPathBuilder::new(TupleMutationBuilder).build_paths(ctx, depth)
         }
-        TypeKind::Array => {
-            tracing::debug!("Using ArrayMutationBuilder for {}", ctx.type_name());
-            MutationPathBuilder::new(ArrayMutationBuilder).build_paths(ctx, depth)
-        }
-        TypeKind::List => {
-            tracing::debug!("Using ListMutationBuilder for {}", ctx.type_name());
-            MutationPathBuilder::new(ListMutationBuilder).build_paths(ctx, depth)
-        }
-        TypeKind::Map => {
-            tracing::debug!("Using MapMutationBuilder for {}", ctx.type_name());
-            MutationPathBuilder::new(MapMutationBuilder).build_paths(ctx, depth)
-        }
-        TypeKind::Set => {
-            tracing::debug!("Using SetMutationBuilder for {}", ctx.type_name());
-            MutationPathBuilder::new(SetMutationBuilder).build_paths(ctx, depth)
-        }
-        TypeKind::Value => {
-            tracing::debug!("Using ValueMutationBuilder for {}", ctx.type_name());
-            MutationPathBuilder::new(ValueMutationBuilder).build_paths(ctx, depth)
-        }
+        TypeKind::Array => MutationPathBuilder::new(ArrayMutationBuilder).build_paths(ctx, depth),
+        TypeKind::List => MutationPathBuilder::new(ListMutationBuilder).build_paths(ctx, depth),
+        TypeKind::Map => MutationPathBuilder::new(MapMutationBuilder).build_paths(ctx, depth),
+        TypeKind::Set => MutationPathBuilder::new(SetMutationBuilder).build_paths(ctx, depth),
+        TypeKind::Value => MutationPathBuilder::new(ValueMutationBuilder).build_paths(ctx, depth),
     }
 }
 
@@ -223,9 +194,9 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         // Extend the inherited variant chain with this enum's variant
                         child_ctx.variant_chain.push(VariantPath {
                             full_mutation_path: ctx.full_mutation_path.clone(),
-                            variant:            representative_variant.clone(),
-                            instructions:       String::new(), // Will be filled during ascent
-                            variant_example:    json!(null),   // Will be filled during ascent
+                            variant: representative_variant.clone(),
+                            instructions: String::new(), // Will be filled during ascent
+                            variant_example: json!(null), // Will be filled during ascent
                         });
                     }
 

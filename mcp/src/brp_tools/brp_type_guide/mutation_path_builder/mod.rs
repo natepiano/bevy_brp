@@ -16,6 +16,5 @@ pub use path_kind::{MutationPathDescriptor, PathKind};
 pub use recursion_context::{EnumContext, RecursionContext};
 pub use type_kind::TypeKind;
 pub use types::{
-    ExampleGroup, MutationPath, MutationPathInternal, MutationStatus, PathAction, VariantName,
-    VariantPath,
+    MutationPath, MutationPathInternal, MutationStatus, PathAction, VariantName, VariantPath,
 };
