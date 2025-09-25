@@ -209,7 +209,7 @@ impl TypeGuide {
         }
 
         // Use the single dispatch point
-        let result = recurse_mutation_paths(type_kind, &ctx, RecursionDepth::ZERO)?;
+        let result = recurse_mutation_paths(type_kind, &mut ctx, RecursionDepth::ZERO)?;
 
         Ok(result)
     }

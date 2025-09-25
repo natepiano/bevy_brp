@@ -127,10 +127,20 @@ impl EnumVariantInfo {
 /// Process enum type directly, bypassing `PathBuilder` trait
 /// Uses the same shared functions as `EnumMutationBuilder` for identical output
 pub fn process_enum(
-    ctx: &RecursionContext,
+    ctx: &mut RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
     tracing::debug!("EnumPathBuilder processing type: {}", ctx.type_name());
+
+    // Self-validate: If we're called with None context, we must be a root enum
+    // (either top-level or as a field in a struct/tuple/array)
+    if ctx.enum_context.is_none() {
+        tracing::debug!(
+            "Enum {} has no context, setting to EnumContext::Root",
+            ctx.type_name()
+        );
+        ctx.enum_context = Some(EnumContext::Root);
+    }
 
     // Use shared function to get variant information - same as EnumMutationBuilder
     let variant_groups = extract_and_group_variants(ctx)?;
@@ -579,7 +589,7 @@ fn process_children(
 
             // Use the same recursion function as MutationPathBuilder
             let child_paths =
-                recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
+                recurse_mutation_paths(child_type_kind, &mut child_ctx, depth.increment())?;
 
             // Extract example from first path
             // When a child enum is processed with EnumContext::Child, it returns

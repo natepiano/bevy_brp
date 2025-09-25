@@ -2,11 +2,9 @@
 //! recursively uses the `PathBuilder` trait to build mutation paths for a given type.
 use std::collections::HashMap;
 
-use error_stack::Report;
 use serde_json::{Value, json};
 
 use super::super::constants::RecursionDepth;
-use super::super::mutation_path_builder::EnumContext;
 use super::super::type_kind::TypeKind;
 use super::builders::{
     ArrayMutationBuilder, ListMutationBuilder, MapMutationBuilder, SetMutationBuilder,
@@ -19,7 +17,7 @@ use super::{
     MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathKind,
     RecursionContext, enum_path_builder,
 };
-use crate::error::{Error, Result};
+use crate::error::Result;
 
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
@@ -79,13 +77,7 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
         } = self.process_all_children(ctx, depth)?;
 
         // Assemble THIS level from children (post-order)
-        let assembled_example = match self.inner.assemble_from_children(ctx, child_examples) {
-            Ok(example) => example,
-            Err(e) => {
-                // Use helper method to handle NotMutatable errors cleanly
-                return Self::handle_assemble_error(ctx, e);
-            }
-        };
+        let assembled_example = self.inner.assemble_from_children(ctx, child_examples)?;
 
         // Direct field assignment - enum processing now handled by enum_path_builder
         let parent_example = assembled_example;
@@ -139,12 +131,24 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
 
 /// Single dispatch point for creating builders - used for both entry and recursion
 /// This is the ONLY place where we match on `TypeKind` to create builders
+///
+/// # Why Mutable Context for Enums
+///
+/// Enums require mutable `RecursionContext` because they need to self-validate and set
+/// their own `EnumContext` when called with `None`. This happens when an enum appears
+/// as a field in a struct or other container type. The enum must determine whether it
+/// should generate a full examples array (`EnumContext::Root`) or a single concrete
+/// example (`EnumContext::Child`).
+///
+/// Other types don't modify context - they just read it and pass clones to children.
+/// Only enums manage their own context because they have special variant-aware recursion
+/// that differs from the generic child processing used by other types.
 pub fn recurse_mutation_paths(
     type_kind: TypeKind,
-    ctx: &RecursionContext,
+    ctx: &mut RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
-    match type_kind {
+    let result = match type_kind {
         // Enum is distinct from the rest
         TypeKind::Enum => enum_path_builder::process_enum(ctx, depth),
         TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx, depth),
@@ -156,6 +160,27 @@ pub fn recurse_mutation_paths(
         TypeKind::Map => MutationPathBuilder::new(MapMutationBuilder).build_paths(ctx, depth),
         TypeKind::Set => MutationPathBuilder::new(SetMutationBuilder).build_paths(ctx, depth),
         TypeKind::Value => MutationPathBuilder::new(ValueMutationBuilder).build_paths(ctx, depth),
+    };
+
+    // Handle NotMutable errors at this single choke point
+    match result {
+        Ok(paths) => Ok(paths),
+        Err(error) => {
+            // Check if it's a NotMutable condition
+            // Need to check the root cause of the error stack
+            if let Some(reason) = error.current_context().as_not_mutable() {
+                // Return a single NotMutable path for this type
+                Ok(vec![
+                    MutationPathBuilder::<ValueMutationBuilder>::build_not_mutable_path(
+                        ctx,
+                        reason.clone(),
+                    ),
+                ])
+            } else {
+                // Real error - propagate it
+                Err(error)
+            }
+        }
     }
 }
 
@@ -211,34 +236,35 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             let mut child_ctx =
                 ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
 
-            // Check if this child is an enum and set EnumContext appropriately
-            if let Some(child_schema) = child_ctx.get_registry_schema(child_ctx.type_name()) {
-                let child_type_kind = TypeKind::from_schema(child_schema, child_ctx.type_name());
-                if matches!(child_type_kind, TypeKind::Enum) {
-                    // This child is an enum
-                    match &ctx.enum_context {
-                        Some(EnumContext::Child) => {
-                            // We're in a variant and found a nested enum
-                            // The nested enum gets Root context (to generate examples)
-                            // The chain will be extended when this enum's variants are expanded
-                            child_ctx.enum_context = Some(EnumContext::Root);
-                        }
-                        _ => {
-                            // Check if parent has enum context
-                            match &ctx.enum_context {
-                                Some(_) => {
-                                    // We're inside another enum - don't set enum context
-                                    // for simple example
-                                }
-                                None => {
-                                    // Not inside an enum - this enum gets Root treatment
-                                    child_ctx.enum_context = Some(EnumContext::Root);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            // COMMENTED OUT FOR TESTING - enum should be sole authority on enum context
+            // // Check if this child is an enum and set EnumContext appropriately
+            // if let Some(child_schema) = child_ctx.get_registry_schema(child_ctx.type_name()) {
+            //     let child_type_kind = TypeKind::from_schema(child_schema, child_ctx.type_name());
+            //     if matches!(child_type_kind, TypeKind::Enum) {
+            //         // This child is an enum
+            //         match &ctx.enum_context {
+            //             Some(EnumContext::Child) => {
+            //                 // We're in a variant and found a nested enum
+            //                 // The nested enum gets Root context (to generate examples)
+            //                 // The chain will be extended when this enum's variants are expanded
+            //                 child_ctx.enum_context = Some(EnumContext::Root);
+            //             }
+            //             _ => {
+            //                 // Check if parent has enum context
+            //                 match &ctx.enum_context {
+            //                     Some(_) => {
+            //                         // We're inside another enum - don't set enum context
+            //                         // for simple example
+            //                     }
+            //                     None => {
+            //                         // Not inside an enum - this enum gets Root treatment
+            //                         child_ctx.enum_context = Some(EnumContext::Root);
+            //                     }
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
 
             // Extract descriptor from PathKind for HashMap
             let child_key = path_kind.to_mutation_path_descriptor();
@@ -518,21 +544,6 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
         // Continue with normal processing, no hard coded mutation knowledge found
         (None, None)
-    }
-
-    /// Handle errors from `assemble_from_children`, creating `NotMutatable` paths when appropriate
-    fn handle_assemble_error(
-        ctx: &RecursionContext,
-        error: Report<Error>,
-    ) -> Result<Vec<MutationPathInternal>> {
-        // Check if it's a NotMutatable condition
-        // Need to check the root cause of the error stack
-        if let Some(reason) = error.current_context().as_not_mutable() {
-            // Return a single NotMutatable path for this type
-            return Ok(vec![Self::build_not_mutable_path(ctx, reason.clone())]);
-        }
-        // Real error - propagate it
-        Err(error)
     }
 
     /// Determine parent's mutation status based on children's statuses and return detailed reasons

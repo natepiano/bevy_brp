@@ -9,6 +9,7 @@ use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::response_types::ReflectTrait;
+use super::NotMutableReason;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
 use super::types::{FullMutationPath, PathAction, VariantPath};
@@ -79,13 +80,7 @@ impl RecursionContext {
     /// Require the schema to be present, returning an error if missing
     pub fn require_registry_schema(&self) -> crate::error::Result<&Value> {
         self.registry.get(self.type_name()).ok_or_else(|| {
-            Error::SchemaProcessing {
-                message:   format!("No schema found for type: {}", self.type_name()),
-                type_name: Some(self.type_name().to_string()),
-                operation: Some("require_registry_schema".to_string()),
-                details:   None,
-            }
-            .into()
+            Error::NotMutable(NotMutableReason::NotInRegistry(self.type_name().clone())).into()
         })
     }
 
@@ -164,12 +159,6 @@ impl RecursionContext {
     /// 2. Exact type match (handles most primitive and simple types) - fallback
     /// 3. Future: Enum signature match (for newtype variants - see plan-enum-variant-knowledge.md)
     pub fn find_knowledge(&self) -> Option<&'static super::mutation_knowledge::MutationKnowledge> {
-        tracing::debug!(
-            "find_knowledge for type: {}, path_kind: {:?}",
-            self.type_name(),
-            self.path_kind
-        );
-
         // Try context-specific matches based on PathKind FIRST - these have higher priority
         match &self.path_kind {
             PathKind::StructField {
@@ -213,20 +202,8 @@ impl RecursionContext {
 
         // Try exact type match as fallback - this handles most cases
         let exact_key = KnowledgeKey::exact(self.type_name().type_string());
-        tracing::debug!("Trying exact type match with key: {:?}", exact_key);
-        BRP_MUTATION_KNOWLEDGE.get(&exact_key).map_or_else(
-            || {
-                tracing::debug!("No exact type match found for {}", self.type_name());
-                None
-            },
-            |knowledge| {
-                tracing::debug!(
-                    "Found exact type match for {}: {:?}",
-                    self.type_name(),
-                    knowledge.example()
-                );
-                Some(knowledge)
-            },
-        )
+        BRP_MUTATION_KNOWLEDGE
+            .get(&exact_key)
+            .map_or_else(|| None, |knowledge| Some(knowledge))
     }
 }
