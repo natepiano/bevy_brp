@@ -1,5 +1,14 @@
 # NotMutableReason Error Handling Refactor Plan
 
+## Design Review Skip Notes
+
+## TYPE-SYSTEM-1: Information Loss in Type-to-String Conversion - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: New Internal Error Type
+- **Issue**: Converting TypeGuideError::NotMutable to Error::SchemaProcessing loses structured type information. Current Error::NotMutable preserves full NotMutableReason enum, but proposed conversion flattens to strings.
+- **Reasoning**: The finding is incorrect because NotMutableReason errors never escape the module as errors - they are always caught internally by handle_assemble_error() and converted to valid MutationPath objects with MutationStatus::NotMutable. The plan correctly recognizes that NotMutableReason is internal information that should stay within the mutation_path_builder module.
+- **Decision**: User elected to skip this recommendation
+
 ## Overview
 Refactor `NotMutableReason` to be internal to the TypeGuide module, preventing leakage of internal mutation path building concepts into the general error system.
 
@@ -55,7 +64,7 @@ impl From<TypeGuideError> for Report<Error> {
                 // Convert to SchemaProcessing error with details
                 Report::new(Error::SchemaProcessing {
                     message: reason.to_string(),
-                    type_name: Some(reason.type_name()),
+                    type_name: Some(reason.get_deepest_failing_type().to_string()),
                     operation: Some("mutation_path_building".to_string()),
                     details: Some(format!("Reason: {}", reason.category())),
                 })
@@ -76,21 +85,11 @@ impl TypeGuideError {
 ### 2. Update NotMutableReason Implementation
 **Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/not_mutable_reason.rs`
 
-Add helper methods for conversion:
+Add helper method for conversion (Note: type_name() is not needed as get_deepest_failing_type() already exists):
 
 ```rust
 impl NotMutableReason {
-    /// Get the type name associated with this reason
-    pub fn type_name(&self) -> String {
-        match self {
-            Self::MissingSerializationTraits(type_name) => type_name.clone(),
-            Self::NonMutableHandle { container_type, .. } => container_type.clone(),
-            Self::ComplexCollectionKey(type_name) => type_name.clone(),
-            Self::NoMutableChildren { parent_type } => parent_type.clone(),
-            Self::PartiallyMutable { parent_type, .. } => parent_type.clone(),
-            Self::NoExampleAvailable(type_name) => type_name.clone(),
-        }
-    }
+    // NOTE: No need for type_name() method - use existing get_deepest_failing_type()
 
     /// Get a category string for this reason
     pub fn category(&self) -> &'static str {
