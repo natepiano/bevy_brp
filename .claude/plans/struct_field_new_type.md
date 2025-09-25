@@ -24,7 +24,7 @@ Based on actual usage patterns found:
 - `Debug`, `PartialEq`, `Eq`, `Hash` - for use in collections and debugging
 - `Serialize`, `Deserialize` - for JSON serialization
 - `Display` - for formatting in descriptions and error messages
-- `AsRef<str>` - used in `children.get()` calls for HashMap lookups
+- `Borrow<str>` - enables HashMap<StructFieldName, V> to accept &str for lookups in `children.get()` calls
 
 Optional implementations to add only if needed:
 - `Deref` to `str` - only if we find we need transparent string access
@@ -34,6 +34,12 @@ Optional implementations to add only if needed:
 impl StructFieldName {
     /// Get the field name as a string slice
     pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::borrow::Borrow<str> for StructFieldName {
+    fn borrow(&self) -> &str {
         &self.0
     }
 }
@@ -105,5 +111,5 @@ impl StructFieldName {
 ## Notes
 
 - No need for `Deref` initially - explicit `.as_str()` is clearer
-- `AsRef<str>` implementation needed for HashMap lookups with `SchemaField::Key.as_ref()`
+- `Borrow<str>` implementation enables HashMap<StructFieldName, V> lookups with &str keys
 - Keep implementation minimal - only add traits we actually use
