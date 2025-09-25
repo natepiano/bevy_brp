@@ -163,25 +163,20 @@ pub fn recurse_mutation_paths(
     };
 
     // Handle NotMutable errors at this single choke point
-    match result {
-        Ok(paths) => Ok(paths),
-        Err(error) => {
-            // Check if it's a NotMutable condition
-            // Need to check the root cause of the error stack
-            if let Some(reason) = error.current_context().as_not_mutable() {
-                // Return a single NotMutable path for this type
-                Ok(vec![
+    result.or_else(|error| {
+        error
+            .current_context()
+            .as_not_mutable()
+            .map(|reason| {
+                vec![
                     MutationPathBuilder::<ValueMutationBuilder>::build_not_mutable_path(
                         ctx,
                         reason.clone(),
                     ),
-                ])
-            } else {
-                // Real error - propagate it
-                Err(error)
-            }
-        }
-    }
+                ]
+            })
+            .ok_or(error)
+    })
 }
 
 /// Populate variant path with proper instructions and variant examples for builder context

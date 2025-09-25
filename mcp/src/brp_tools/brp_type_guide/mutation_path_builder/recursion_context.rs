@@ -204,6 +204,6 @@ impl RecursionContext {
         let exact_key = KnowledgeKey::exact(self.type_name().type_string());
         BRP_MUTATION_KNOWLEDGE
             .get(&exact_key)
-            .map_or_else(|| None, |knowledge| Some(knowledge))
+            .map_or_else(|| None, Some)
     }
 }

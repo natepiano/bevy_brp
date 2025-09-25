@@ -134,8 +134,8 @@ impl EnumVariantInfo {
 /// struct or other container, it arrives here with `enum_context = None`. The enum must
 /// then determine its own context:
 ///
-/// - Sets `EnumContext::Root` when `None` - means the enum should generate a full
-///   examples array showing all variants for discoverability
+/// - Sets `EnumContext::Root` when `None` - means the enum should generate a full examples array
+///   showing all variants for discoverability
 /// - Respects existing context if already set by a parent enum
 ///
 /// This self-validation ensures that enum fields in structs properly generate their
