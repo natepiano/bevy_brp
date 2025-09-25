@@ -54,10 +54,39 @@ APP_NAME = extras_plugin
     4. Continue to next pattern in review
     **check_type**: Ask user "Which type would you like me to check?", then use:
     ```bash
-    python3 .claude/scripts/create_mutation_test_json/read_comparison_detail.py pattern <num>
+    python3 .claude/scripts/create_mutation_test_json/read_comparison.py structural
+    python3 .claude/scripts/create_mutation_test_json/read_comparison.py structural_next
     ```
-    to explore patterns related to that type.
+    to explore type+path combinations for that type in the structural review.
 </KeywordExecution>
+
+## AFTER BASELINE PROMOTION
+
+When you promote a baseline with the **promote** keyword, the expected_changes.json file is automatically reset to `{"expected_changes": []}`. This is intentional to start fresh, but you need to know how to rebuild expected changes.
+
+### Recovery Instructions
+
+1. **Get format documentation**:
+   ```bash
+   python3 .claude/scripts/create_mutation_test_json/compare.py --help-expected-changes
+   ```
+
+2. **Copy from template**:
+   View examples in `.claude/config/expected_changes_template.json` (this file is preserved in git)
+
+3. **Rebuild through review**:
+   - Run comparison: `python3 .claude/scripts/create_mutation_test_json/compare.py baseline.json current.json`
+   - Use **comparison_review** keyword to systematically review unexpected patterns
+   - Use **add_expected** keyword to add patterns to expected_changes.json
+   - Build up the expected changes through manual categorization
+
+4. **Pattern examples preserved**:
+   - Enum variant qualified names pattern (most common)
+   - Field addition/removal patterns
+   - Type change patterns
+   - All examples with proper regex and value conditions
+
+The template file and help system ensure you can quickly rebuild expected changes even after a complete reset.
 
 ## MAIN WORKFLOW
 
@@ -348,34 +377,32 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
 </ExecuteShellScripts>
 
 <ComparisonReviewWorkflow>
-    **DATA SOURCE HIERARCHY (STRICT ORDER)**:
-    1. Current comparison run output (ALWAYS most reliable)
-    2. Never use cached detail files
-    3. Never use examples from previous comparison runs
+    **STRUCTURAL REVIEW APPROACH**:
+    Review changes organized by Type+Path combinations instead of individual changes.
+    This reduces overwhelming change counts (e.g., 4000+ changes → 181 combinations).
 
-    1. **Use the detail reader to get examples from the comparison file**:
+    1. **GET STRUCTURAL OVERVIEW**:
        ```bash
-       python3 .claude/scripts/create_mutation_test_json/read_comparison_detail.py next
+       python3 .claude/scripts/create_mutation_test_json/read_comparison.py structural
        ```
-       **CRITICAL**: The comparison file at $TMPDIR/mutation_comparison_full.json contains ALL changes.
+       This shows all type+path combinations that have changes, grouped by type.
 
-    2. **EXTRACT EXAMPLES FROM CURRENT COMPARISON OUTPUT**:
-       - For each FIELD_REMOVED/FIELD_ADDED pattern in the current comparison output
-       - Use the first example listed in that pattern's "Example 1:" section
-       - **NEVER** rely on separate detail files or previous comparison runs
+    2. **CREATE TODOS FOR REVIEW**:
+       Create todos for reviewing unexpected structural combinations identified in the overview.
 
-    3. Create todos for each unexpected change pattern identified
+    3. **INTERACTIVE STRUCTURAL REVIEW**:
+       Walk through type+path combinations one at a time:
 
-    4. **INTERACTIVE REVIEW**: Use read_comparison_detail.py to walk through changes:
-       a. Get the next change to review:
+       a. Get the next combination to review:
           ```bash
-          python3 .claude/scripts/create_mutation_test_json/read_comparison_detail.py next
+          python3 .claude/scripts/create_mutation_test_json/read_comparison.py structural_next
           ```
 
-       b. The tool will show complete details for one change including:
-          - Pattern name and position
-          - Type and path affected
-          - Full baseline and current values
+       b. The tool shows complete details for one type+path combination including:
+          - Type name and mutation path
+          - Total changes in this combination
+          - Change type summary (added, removed, value_changed, etc.)
+          - Representative examples of the changes
 
        c. **RETRIEVE FULL MUTATION PATH DATA IF NEEDED**:
           For deeper inspection of mutation paths, use:
@@ -392,35 +419,39 @@ When presenting JSON comparisons, use this exact format with proper markdown JSO
           - If data appears identical: IMMEDIATELY flag as "VERIFICATION FAILED"
 
        e. **VERIFICATION FAILURE HANDLING**:
-          - If verification fails, state: "Verification failed - retrieved data shows no difference for this example"
-          - Try the next example from the same pattern in current comparison output
-          - If 3 consecutive examples fail verification, mark pattern as "False positive - unable to verify"
-          - Skip to next pattern without user interaction
+          - If verification fails, state: "Verification failed - retrieved data shows no difference for this combination"
+          - Try the next example from the same type+path combination
+          - If 3 consecutive examples fail verification, mark combination as "False positive - unable to verify"
+          - Skip to next combination without user interaction
 
        f. **ONLY PROCEED WITH USER INTERACTION IF VERIFICATION SUCCEEDS**:
           - Present using <FormatComparison/> showing the COMPLETE JSON
           - Only show examples where differences are actually visible
 
-       g. **CRITICAL - STOP AND WAIT**: After presenting VERIFIED pattern example:
+       g. **CRITICAL - STOP AND WAIT**: After presenting VERIFIED combination example:
           - Present the following options:
 
           ## Available Actions
-          - **continue** - Move to next pattern without any changes
-          - **add_expected** - Add this pattern to expected changes JSON, then continue to next pattern
+          - **continue** - Move to next combination without any changes
+          - **add_expected** - Add this pattern to expected changes JSON, then continue to next combination
           - **stop** - End the review now
 
           - **DO NOT PROCEED** until user responds with one of the keywords
-          - If "continue": Continue to next pattern
-          - If "add_expected": Add pattern to expected changes JSON, then continue to next pattern
+          - If "continue": Continue to next combination
+          - If "add_expected": Add pattern to expected changes JSON, then continue to next combination
           - If "stop": End review and return to main decision prompt
 
-    5. **COMMON FAILURE MODES TO AVOID**:
-       - Using examples from detail files instead of current comparison output
-       - Assuming examples will show differences without verification
-       - Proceeding with user interaction when verification fails
-       - Using type/path combinations from previous runs
+    4. **SESSION MANAGEMENT**:
+       - Review session is persistent - you can stop and resume
+       - Use `structural_reset` to start over from beginning
+       - Tool remembers current position through review
 
-    6. After all patterns reviewed OR user stops:
+    5. **COMMON FAILURE MODES TO AVOID**:
+       - Assuming combinations will show differences without verification
+       - Proceeding with user interaction when verification fails
+       - Using type/path combinations from previous runs instead of current session
+
+    6. After all combinations reviewed OR user stops:
        - Return to main decision prompt from Step 6C
 </ComparisonReviewWorkflow>
 
