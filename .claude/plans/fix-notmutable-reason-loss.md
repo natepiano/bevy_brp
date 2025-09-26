@@ -196,15 +196,20 @@ This is awkward to work with and requires double unwrapping.
 
 1. **Replace MutationResult with BuilderError** in `mutation_path_builder/mod.rs`:
    ```rust
-   // Remove:
-   // pub type MutationResult = Result<Vec<MutationPathInternal>, NotMutableReason>;
+   // CURRENT CODE TO REMOVE:
+   pub(super) type MutationResult = Result<Vec<MutationPathInternal>, NotMutableReason>;
 
-   // Add:
+   // ADD THIS INSTEAD:
+   use crate::error::Error;
+
    #[derive(Debug)]
    pub(super) enum BuilderError {
        NotMutable(NotMutableReason),
        SystemError(Error),
    }
+
+   // Note: pub(super) makes it visible to the entire mutation_path_builder module
+   // This allows all submodules to import and use BuilderError
    ```
 
 2. **Update trait signatures in `path_builder.rs`**:
@@ -290,26 +295,54 @@ This is awkward to work with and requires double unwrapping.
    ```rust
    // collect_children() keeps returning Error (NOT BuilderError):
    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>, Error> {
-       // Existing error returns stay as-is with Error type
-       return Err(Error::InvalidState(format!(
-           "Failed to extract key type from schema for type: {}",
-           ctx.type_name()
-       )));
+       // In the section where key_type extraction fails:
+       let Some(key_type_name) = key_type else {
+           return Err(Error::InvalidState(format!(
+               "Failed to extract key type from schema for type: {}",
+               ctx.type_name()
+           )));
+       };
+
+       // In the section where value_type extraction fails:
+       let Some(val_type_name) = value_type else {
+           return Err(Error::InvalidState(format!(
+               "Failed to extract value type from schema for type: {}",
+               ctx.type_name()
+           )));
+       };
    }
 
-   // In assemble_from_children() where required children are missing:
-   return Err(BuilderError::SystemError(Error::InvalidState(format!(
-       "Protocol violation: Map type {} missing required 'key' child example",
-       ctx.type_name()
-   ))));
-
-   // Update assemble_from_children() signature:
+   // Update assemble_from_children() signature and error returns:
    fn assemble_from_children(
        &self,
        ctx: &RecursionContext,
        children: HashMap<MutationPathDescriptor, Value>,
    ) -> Result<Value, BuilderError> {
-       // Update all 5 error returns to use BuilderError::SystemError(...)
+       // Where key example is missing from children:
+       let Some(key_example) = children.get(SchemaField::Key.as_ref()) else {
+           return Err(BuilderError::SystemError(Error::InvalidState(format!(
+               "Protocol violation: Map type {} missing required 'key' child example",
+               ctx.type_name()
+           ))));
+       };
+
+       // Where value example is missing from children:
+       let Some(value_example) = children.get(SchemaField::Value.as_ref()) else {
+           return Err(BuilderError::SystemError(Error::InvalidState(format!(
+               "Protocol violation: Map type {} missing required 'value' child example",
+               ctx.type_name()
+           ))));
+       };
+
+       // Where map key serialization fails:
+       let Some(map_key) = key_example.as_str() else {
+           return Err(BuilderError::SystemError(Error::schema_processing_for_type(
+               ctx.type_name(),
+               "serialize_map_key",
+               "Failed to serialize key as string for map",
+               None,
+           )));
+       };
    }
    ```
 
@@ -439,11 +472,18 @@ This is awkward to work with and requires double unwrapping.
 5. **Update recursion_context.rs to use BuilderError**:
    ```rust
    // Update require_registry_schema() to return BuilderError:
-   pub fn require_registry_schema(&self) -> Result<&SchemaStruct, BuilderError> {
+   // CURRENT SIGNATURE:
+   pub fn require_registry_schema(&self) -> crate::error::Result<&Value> {
+       // current implementation
+   }
+
+   // CHANGE TO:
+   pub fn require_registry_schema(&self) -> Result<&Value, BuilderError> {
        self.registry.get(self.type_name()).ok_or_else(|| {
            BuilderError::NotMutable(NotMutableReason::NotInRegistry(self.type_name().clone()))
        })
    }
+   // Note: Keep return type as &Value (not &SchemaStruct which doesn't exist)
    ```
 
 6. **Update builder.rs to handle BuilderError throughout**:
@@ -451,19 +491,49 @@ This is awkward to work with and requires double unwrapping.
    **IMPORTANT: MutationPathBuilder<B> struct implementation**:
    ```rust
    // MutationPathBuilder<B> is a generic struct that implements PathBuilder trait
-   // Its build_paths method also needs updating:
+   // CURRENT SIGNATURE:
    impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
+       type Item = B::Item;
+       type Iter<'a> = B::Iter<'a> where Self: 'a, B: 'a;
+
+       fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) -> MutationResult {
+           // Current implementation with MutationResult
+       }
+   }
+
+   // CHANGE TO:
+   impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
+       type Item = B::Item;
+       type Iter<'a> = B::Iter<'a> where Self: 'a, B: 'a;
+
        fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Result<Vec<MutationPathInternal>, BuilderError> {
-           // This method implementation also needs to:
-           // 1. Change return type from MutationResult to Result<Vec<MutationPathInternal>, BuilderError>
-           // 2. When calling inner.build_paths(), it already returns BuilderError (good!)
-           // 3. The method has complex logic for handling mutation status that needs careful updating
-           // 4. Uses build_not_mutable_path internally which is already a method on Self
+           // The existing recursion and registry checks stay the same
+           // When calling inner.build_paths(), it now returns BuilderError (good!)
+
+           // In the section handling mutation status:
+           match Self::determine_mutation_status(&paths, ctx) {
+               MutationStatus::NotMutable => {
+                   let reason = NotMutableReason::NoMutableChildren {
+                       parent_type: ctx.type_name().clone()
+                   };
+                   Ok(vec![Self::build_not_mutable_path(ctx, reason)])
+               }
+               MutationStatus::PartiallyMutable => {
+                   let reason = NotMutableReason::from_partial_mutability(
+                       ctx.type_name().clone(),
+                       summaries
+                   );
+                   Ok(vec![Self::build_not_mutable_path(ctx, reason)])
+               }
+               MutationStatus::FullyMutable => {
+                   Ok(paths)
+               }
+           }
        }
 
-       // Note: The build_not_mutable_path method is already defined on this struct:
+       // The build_not_mutable_path method stays the same - it's already correct:
        fn build_not_mutable_path(ctx: &RecursionContext, reason: NotMutableReason) -> MutationPathInternal {
-           // Existing implementation stays the same
+           // Existing implementation unchanged
        }
    }
    ```
@@ -511,13 +581,13 @@ This is awkward to work with and requires double unwrapping.
 
        // Remove these 2 .map_err patterns in builder.rs that lose error information:
 
-       // Around line 96 - in the build_example function:
+       // In the build_example function where child examples are recursively built:
        let child_example = recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())
            .map_err(|_e| ctx.create_no_mutable_children_error())?;
        // CHANGE TO:
        let child_example = recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
 
-       // Around line 102 - in the assemble_from_children call:
+       // In the same function where assembled children are passed to assemble_from_children:
        builder.assemble_from_children(&ctx, assembled_children)
            .map_err(|_e| ctx.create_no_mutable_children_error())?
        // CHANGE TO:
@@ -527,30 +597,38 @@ This is awkward to work with and requires double unwrapping.
    }
    ```
 
-7. **Update ALL collect_children() methods that return errors**:
-   Since `collect_children()` still returns `Result<Self::Iter<'_>, Error>`, we need to handle the conversion at the call sites in `builder.rs`:
+7. **Update ALL collect_children() call sites in builder.rs**:
+   Since `collect_children()` still returns `Result<Self::Iter<'_>, Error>`, we need to handle the conversion at the call sites:
    ```rust
-   // In builder.rs where collect_children is called:
+   // In builder.rs, in the build_example function where collect_children is called:
+   // CURRENT CODE:
+   let children = builder.collect_children(&ctx)?;  // This propagates Error
+
+   // CHANGE TO:
    let children = builder.collect_children(&ctx)
-       .map_err(|e| BuilderError::SystemError(e))?;
+       .map_err(|e| BuilderError::SystemError(e))?;  // Convert Error to BuilderError
+
+   // This pattern applies to EVERY place where collect_children() is called
+   // The conversion wraps the system Error in BuilderError::SystemError
    ```
 
 8. **Update enum_path_builder.rs error handling**:
    ```rust
    // Remove these 3 .map_err patterns that lose error information:
-   // Line ~171:
+
+   // In the function where enum variants are extracted and grouped:
    extract_and_group_variants(ctx)
        .map_err(|_e| ctx.create_no_mutable_children_error())?;
    // CHANGE TO:
    extract_and_group_variants(ctx)?;  // Let BuilderError propagate
 
-   // Line ~175:
+   // Where a single variant is selected from grouped variants:
    select_single_variant(&grouped_variants, ctx)
        .map_err(|_e| ctx.create_no_mutable_children_error())?;
    // CHANGE TO:
    select_single_variant(&grouped_variants, ctx)?;  // Let BuilderError propagate
 
-   // Line ~180:
+   // Where the variant example is built:
    build_variant_example(&selected_variant, ctx, depth.increment())
        .map_err(|_e| ctx.create_no_mutable_children_error())?;
    // CHANGE TO:
