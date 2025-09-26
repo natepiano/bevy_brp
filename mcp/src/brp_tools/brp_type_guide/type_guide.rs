@@ -199,17 +199,10 @@ impl TypeGuide {
 
         // Create root context for this type
         let path_kind = PathKind::new_root_value(brp_type_name.clone());
-        let mut ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
-
-        // If this is an enum at the root level, set the enum context to Root
-        if matches!(type_kind, TypeKind::Enum) {
-            use super::mutation_path_builder::EnumContext;
-            ctx.enum_context = Some(EnumContext::Root);
-            tracing::debug!("Setting EnumContext::Root for root enum {}", brp_type_name);
-        }
+        let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
 
         // Use the single dispatch point
-        let result = recurse_mutation_paths(type_kind, &mut ctx, RecursionDepth::ZERO)?;
+        let result = recurse_mutation_paths(type_kind, &ctx, RecursionDepth::ZERO)?;
 
         Ok(result)
     }

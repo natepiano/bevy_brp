@@ -9,7 +9,7 @@ use super::super::constants::RecursionDepth;
 use super::super::type_kind::TypeKind;
 use super::builder::recurse_mutation_paths;
 use super::path_kind::MutationPathDescriptor;
-use super::recursion_context::{EnumContext, RecursionContext};
+use super::recursion_context::RecursionContext;
 use super::types::{
     ExampleGroup, PathAction, StructFieldName, VariantName, VariantPath, VariantSignature,
 };
@@ -125,37 +125,29 @@ impl EnumVariantInfo {
 }
 
 /// Process enum type directly, bypassing `PathBuilder` trait
-/// Uses the same shared functions as `EnumMutationBuilder` for identical output
 ///
-/// # Why Mutable Context
+/// # Simplified Design
 ///
-/// This function takes a mutable `RecursionContext` because enums need to self-validate
-/// and potentially set their own `EnumContext`. When an enum appears as a field in a
-/// struct or other container, it arrives here with `enum_context = None`. The enum must
-/// then determine its own context:
+/// This function always generates examples arrays for all enums, regardless of where
+/// they appear in the type hierarchy. This simplification:
 ///
-/// - Sets `EnumContext::Root` when `None` - means the enum should generate a full examples array
-///   showing all variants for discoverability
-/// - Respects existing context if already set by a parent enum
+/// - Removes the need for `EnumContext` tracking
+/// - Ensures all enum fields show their available variants
+/// - Improves discoverability for nested enums
+/// - Makes the behavior predictable and consistent
 ///
-/// This self-validation ensures that enum fields in structs properly generate their
-/// examples arrays while maintaining clean separation of concerns - the enum builder
-/// is the sole authority on enum context decisions.
+/// Every enum will output:
+/// - `example`: null (the example field is always null for enums)
+/// - `enum_root_examples`: array of all variant examples
+/// - `enum_root_example_for_parent`: concrete value for parent assembly
 pub fn process_enum(
-    ctx: &mut RecursionContext,
+    ctx: &RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
     tracing::debug!("EnumPathBuilder processing type: {}", ctx.type_name());
 
-    // Self-validate: If we're called with None context, we must be a root enum
-    // (either top-level or as a field in a struct/tuple/array)
-    if ctx.enum_context.is_none() {
-        tracing::debug!(
-            "Enum {} has no context, setting to EnumContext::Root",
-            ctx.type_name()
-        );
-        ctx.enum_context = Some(EnumContext::Root);
-    }
+    // Enums always generate examples arrays regardless of context
+    tracing::debug!("EnumPathBuilder processing enum: {}", ctx.type_name());
 
     // Use shared function to get variant information - same as EnumMutationBuilder
     let variant_groups = extract_and_group_variants(ctx)?;
@@ -378,37 +370,6 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
         })
 }
 
-/// Create a concrete example value for embedding in a parent structure
-fn concrete_example(
-    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
-    children: &HashMap<MutationPathDescriptor, Value>,
-    enum_type: &BrpTypeName,
-) -> Value {
-    // Prefer non-unit variants for richer examples
-    // First try to find a non-unit variant
-    let non_unit_variant = variant_groups
-        .iter()
-        .find(|(sig, _)| !matches!(sig, VariantSignature::Unit))
-        .map(|(sig, variants)| (sig, variants.first()));
-
-    if let Some((sig, Some(variant))) = non_unit_variant {
-        return build_variant_example(sig, variant.name(), children, enum_type);
-    }
-
-    // Fall back to unit variant if no non-unit variants exist
-    let unit_variant = variant_groups
-        .iter()
-        .find(|(sig, _)| matches!(sig, VariantSignature::Unit))
-        .and_then(|(_, variants)| variants.first());
-
-    if let Some(variant) = unit_variant {
-        return json!(variant.name());
-    }
-
-    // Shouldn't happen if enum has any variants at all
-    json!(null)
-}
-
 // ============================================================================
 // Public functions moved from enum_builder.rs
 // ============================================================================
@@ -433,56 +394,36 @@ fn build_enum_examples(
     use error_stack::Report;
 
     // Build internal MutationExample to organize the enum logic
-    tracing::debug!(
-        "build_enum_examples for {} with enum_context: {:?}",
-        ctx.type_name(),
-        ctx.enum_context
-    );
+    tracing::debug!("build_enum_examples for {}", ctx.type_name());
 
-    let mutation_example = match &ctx.enum_context {
-        Some(EnumContext::Root) => {
-            // Build examples array for enum root path
-            let mut examples = Vec::new();
+    // Always build examples array for enums - no context check needed
+    let mut examples = Vec::new();
 
-            for (signature, variants_in_group) in variant_groups {
-                let representative = variants_in_group.first().ok_or_else(|| {
-                    Report::new(Error::InvalidState("Empty variant group".to_string()))
-                })?;
+    for (signature, variants_in_group) in variant_groups {
+        let representative = variants_in_group
+            .first()
+            .ok_or_else(|| Report::new(Error::InvalidState("Empty variant group".to_string())))?;
 
-                let example = build_variant_example(
-                    signature,
-                    representative.name(),
-                    &child_examples,
-                    ctx.type_name(),
-                );
+        let example = build_variant_example(
+            signature,
+            representative.name(),
+            &child_examples,
+            ctx.type_name(),
+        );
 
-                let applicable_variants: Vec<VariantName> = variants_in_group
-                    .iter()
-                    .map(|v| v.variant_name().clone())
-                    .collect();
+        let applicable_variants: Vec<VariantName> = variants_in_group
+            .iter()
+            .map(|v| v.variant_name().clone())
+            .collect();
 
-                examples.push(ExampleGroup {
-                    applicable_variants,
-                    signature: signature.to_string(),
-                    example,
-                });
-            }
+        examples.push(ExampleGroup {
+            applicable_variants,
+            signature: signature.to_string(),
+            example,
+        });
+    }
 
-            examples
-        }
-
-        Some(EnumContext::Child) => {
-            // Building under another enum - return Simple example
-            let example = concrete_example(variant_groups, &child_examples, ctx.type_name());
-            return Ok((Vec::new(), example));
-        }
-
-        None => {
-            // Parent is not an enum - return a concrete example
-            let example = concrete_example(variant_groups, &child_examples, ctx.type_name());
-            return Ok((Vec::new(), example));
-        }
-    };
+    let mutation_example = examples;
 
     // For enum roots, return both examples array and a default concrete value
     // Use the shared utility to prefer non-unit variants
@@ -591,20 +532,11 @@ fn process_children(
             let child_schema = child_ctx.require_registry_schema()?;
             let child_type_kind = TypeKind::from_schema(child_schema, child_ctx.type_name());
 
-            // Determine the appropriate enum context for this child
-            // If the child is itself an enum, it should get EnumContext::Root
-            // Otherwise, it inherits EnumContext::Child from being under an enum
-            if matches!(child_type_kind, TypeKind::Enum) {
-                // Child is an enum - it needs its own EnumContext::Root
-                child_ctx.enum_context = Some(EnumContext::Root);
-            } else {
-                // Child is not an enum - it's under an enum so gets Child context
-                child_ctx.enum_context = Some(EnumContext::Child);
-            }
+            // No enum context needed - each type handles its own behavior
 
             // Use the same recursion function as MutationPathBuilder
             let child_paths =
-                recurse_mutation_paths(child_type_kind, &mut child_ctx, depth.increment())?;
+                recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
 
             // Extract example from first path
             // When a child enum is processed with EnumContext::Child, it returns
@@ -705,28 +637,20 @@ fn create_result_paths(
     ctx: &RecursionContext,
     enum_examples: Vec<ExampleGroup>,
     default_example: Value,
-    assembled_value: Value, // Preserve for non-Root enum contexts
+    _assembled_value: Value, // No longer needed - enums always use null
     mut child_paths: Vec<MutationPathInternal>,
 ) -> Vec<MutationPathInternal> {
     // Generate enum instructions and variant paths before moving values
     let enum_instructions = generate_enum_instructions(ctx);
     let enum_variant_path = populate_variant_path(ctx, &enum_examples, &default_example);
 
-    // Direct field assignment - no more JSON wrapper extraction needed
+    // Direct field assignment - enums ALWAYS generate examples arrays
     let root_mutation_path = MutationPathInternal {
         full_mutation_path: ctx.full_mutation_path.clone(),
-        example: match &ctx.enum_context {
-            Some(EnumContext::Root) => json!(null),
-            Some(EnumContext::Child) | None => assembled_value,
-        },
-        enum_root_examples: match &ctx.enum_context {
-            Some(EnumContext::Root) => Some(enum_examples),
-            _ => None,
-        },
-        enum_root_example_for_parent: match &ctx.enum_context {
-            Some(EnumContext::Root) => Some(default_example.clone()),
-            _ => None,
-        },
+        example: json!(null), // Enums always use null for the example field
+        enum_root_examples: Some(enum_examples), // Always provide the examples array
+        enum_root_example_for_parent: Some(default_example.clone()), /* Always provide single
+                               * example for parent */
         type_name: ctx.type_name().display_name(),
         path_kind: ctx.path_kind.clone(),
         mutation_status: MutationStatus::Mutable, // Simplified for now
@@ -736,12 +660,8 @@ fn create_result_paths(
     };
 
     // Update variant_path entries in child paths with level-appropriate examples
-    // This is the critical missing step that was causing the bug!
-    // For enum roots, use the default_example which contains actual data, not the null example
-    let example_for_children = match &ctx.enum_context {
-        Some(EnumContext::Root) => &default_example,
-        _ => &root_mutation_path.example,
-    };
+    // Use the default_example which contains actual data, not the null example
+    let example_for_children = &default_example;
     update_child_variant_paths(
         &mut child_paths,
         &ctx.full_mutation_path,

@@ -17,16 +17,6 @@ use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
-/// Tracks enum-specific context during recursion
-#[derive(Debug, Clone)]
-pub enum EnumContext {
-    /// This enum is establishing the root context
-    Root,
-
-    /// Building under enum variant(s)
-    Child,
-}
-
 /// Context for mutation path building operations
 ///
 /// This struct provides all the necessary context for building mutation paths,
@@ -42,8 +32,6 @@ pub struct RecursionContext {
     /// Action to take regarding path creation (set by `MutationPathBuilder`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
     pub path_action:        PathAction,
-    /// Track enum context - None for non-enum types
-    pub enum_context:       Option<EnumContext>,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
     pub variant_chain:      Vec<VariantPath>,
@@ -57,7 +45,6 @@ impl RecursionContext {
             registry,
             full_mutation_path: FullMutationPath::from(""),
             path_action: PathAction::Create, // Default to creating paths
-            enum_context: None,              // Start with no enum context
             variant_chain: Vec::new(),       // Start with empty variant chain
         }
     }
@@ -115,7 +102,6 @@ impl RecursionContext {
             registry: Arc::clone(&self.registry),
             full_mutation_path: new_path_prefix,
             path_action,
-            enum_context: self.enum_context.clone(), // Propagate parent's enum_context
             variant_chain: self.variant_chain.clone(), // Inherit parent's variant chain
         }
     }

@@ -79,13 +79,8 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
         // Assemble THIS level from children (post-order)
         let assembled_example = self.inner.assemble_from_children(ctx, child_examples)?;
 
-        // Direct field assignment - enum processing now handled by enum_path_builder
-        let parent_example = assembled_example;
-        let enum_root_examples = None; // Only enum types set this
-        let enum_root_example_for_parent = None; // Only enum types set this
-
-        // Use knowledge example if available (for Teach types), otherwise use processed example
-        let final_example = knowledge_example.map_or(parent_example, |knowledge_example| {
+        // Use knowledge example if available (for Teach types), otherwise use assembled example
+        let final_example = knowledge_example.map_or(assembled_example, |knowledge_example| {
             tracing::debug!(
                 "Using knowledge example for {} instead of assembled value",
                 ctx.type_name()
@@ -111,7 +106,7 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             &mut paths_to_expose_mut,
             &ctx.full_mutation_path,
             &example_to_use,
-            enum_root_examples.as_ref(),
+            None, // Non-enum types don't have enum examples
         );
 
         // Decide what to return based on PathAction
@@ -119,8 +114,6 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             ctx,
             paths_to_expose_mut,
             example_to_use,
-            enum_root_examples,
-            enum_root_example_for_parent,
             parent_status,
             mutation_status_reason,
         ))
@@ -132,20 +125,13 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
 /// Single dispatch point for creating builders - used for both entry and recursion
 /// This is the ONLY place where we match on `TypeKind` to create builders
 ///
-/// # Why Mutable Context for Enums
+/// # Simplified Context Handling
 ///
-/// Enums require mutable `RecursionContext` because they need to self-validate and set
-/// their own `EnumContext` when called with `None`. This happens when an enum appears
-/// as a field in a struct or other container type. The enum must determine whether it
-/// should generate a full examples array (`EnumContext::Root`) or a single concrete
-/// example (`EnumContext::Child`).
-///
-/// Other types don't modify context - they just read it and pass clones to children.
-/// Only enums manage their own context because they have special variant-aware recursion
-/// that differs from the generic child processing used by other types.
+/// With the removal of `EnumContext`, the `RecursionContext` is now immutable throughout
+/// the recursion. Each type handles its own behavior without needing to coordinate context states.
 pub fn recurse_mutation_paths(
     type_kind: TypeKind,
-    ctx: &mut RecursionContext,
+    ctx: &RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
     let result = match type_kind {
@@ -228,44 +214,13 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
         // Recurse to each child (they handle their own protocol)
         for path_kind in child_items {
-            let mut child_ctx =
+            let child_ctx =
                 ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
-
-            // COMMENTED OUT FOR TESTING - enum should be sole authority on enum context
-            // // Check if this child is an enum and set EnumContext appropriately
-            // if let Some(child_schema) = child_ctx.get_registry_schema(child_ctx.type_name()) {
-            //     let child_type_kind = TypeKind::from_schema(child_schema, child_ctx.type_name());
-            //     if matches!(child_type_kind, TypeKind::Enum) {
-            //         // This child is an enum
-            //         match &ctx.enum_context {
-            //             Some(EnumContext::Child) => {
-            //                 // We're in a variant and found a nested enum
-            //                 // The nested enum gets Root context (to generate examples)
-            //                 // The chain will be extended when this enum's variants are expanded
-            //                 child_ctx.enum_context = Some(EnumContext::Root);
-            //             }
-            //             _ => {
-            //                 // Check if parent has enum context
-            //                 match &ctx.enum_context {
-            //                     Some(_) => {
-            //                         // We're inside another enum - don't set enum context
-            //                         // for simple example
-            //                     }
-            //                     None => {
-            //                         // Not inside an enum - this enum gets Root treatment
-            //                         child_ctx.enum_context = Some(EnumContext::Root);
-            //                     }
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
 
             // Extract descriptor from PathKind for HashMap
             let child_key = path_kind.to_mutation_path_descriptor();
 
-            let (child_paths, child_example) =
-                Self::process_child(&child_key, &mut child_ctx, depth)?;
+            let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx, depth)?;
             child_examples.insert(child_key, child_example);
 
             // Always collect all paths for analysis
@@ -287,7 +242,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     /// Process a single child and return its paths and example value
     fn process_child(
         descriptor: &MutationPathDescriptor,
-        child_ctx: &mut RecursionContext,
+        child_ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<(Vec<MutationPathInternal>, Value)> {
         tracing::debug!(
@@ -392,11 +347,12 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         ctx: &RecursionContext,
         mut paths_to_expose: Vec<MutationPathInternal>,
         example_to_use: Value,
-        enum_root_examples: Option<Vec<ExampleGroup>>,
-        enum_root_example_for_parent: Option<Value>,
         parent_status: MutationStatus,
         mutation_status_reason: Option<Value>,
     ) -> Vec<MutationPathInternal> {
+        // Non-enum types always have None for enum-specific fields
+        let enum_root_examples = None;
+        let enum_root_example_for_parent = None;
         match ctx.path_action {
             PathAction::Create => {
                 // Normal mode: Add root path and return only paths marked for exposure

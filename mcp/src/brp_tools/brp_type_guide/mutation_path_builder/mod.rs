@@ -14,5 +14,5 @@ pub use enum_path_builder::select_preferred_example;
 pub use mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
 pub use not_mutable_reason::NotMutableReason;
 pub use path_kind::{MutationPathDescriptor, PathKind};
-pub use recursion_context::{EnumContext, RecursionContext};
+pub use recursion_context::RecursionContext;
 pub use types::{MutationPath, MutationPathInternal, MutationStatus};
