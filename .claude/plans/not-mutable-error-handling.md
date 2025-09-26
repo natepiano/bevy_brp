@@ -38,7 +38,8 @@ struct NotMutableError(NotMutableReason);
 
 impl fmt::Display for NotMutableError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Type cannot be mutated: {}", self.0)
+        // Forward directly to NotMutableReason's Display to avoid duplication
+        self.0.fmt(f)
     }
 }
 
