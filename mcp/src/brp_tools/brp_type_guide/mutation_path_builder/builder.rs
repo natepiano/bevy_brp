@@ -1,5 +1,29 @@
-//! This is the main `MutationPathBuilder` implementation which
-//! recursively uses the `PathBuilder` trait to build mutation paths for a given type.
+//! Generic mutation path builder for non-enum types using the `PathBuilder` trait
+//!
+//! This module handles path building for all non-enum types (structs, tuples, arrays, etc.)
+//! through a unified `MutationPathBuilder` that wraps type-specific builders. It manages:
+//! - Recursive traversal of type hierarchies
+//! - Mutation status determination based on child mutability
+//! - Variant chain propagation for types inside enum variants
+//!
+//! ## Key Responsibilities
+//!
+//! 1. **Child Processing**: Recursively builds paths for all child elements
+//! 2. **Status Aggregation**: Determines parent mutability from child statuses
+//! 3. **Variant Chain Handling**: Passes through variant requirements from parent enums
+//! 4. **Knowledge Integration**: Applies hardcoded mutation knowledge when available
+//!
+//! ## Central Dispatch
+//!
+//! The `recurse_mutation_paths` function is the single entry point that dispatches to either:
+//! - `enum_path_builder::process_enum` for enum types
+//! - `MutationPathBuilder` with appropriate builder for all other types
+//!
+//! ## Integration
+//!
+//! Types inside enum variants inherit variant chains but don't populate them - parent enums
+//! handle all variant path population through `update_child_variant_paths`.
+
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
@@ -12,7 +36,7 @@ use super::builders::{
 };
 use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::PathBuilder;
-use super::types::{ExampleGroup, PathAction, PathSummary, VariantPath};
+use super::types::{PathAction, PathSummary};
 use super::{
     MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathKind,
     RecursionContext, enum_path_builder,
@@ -22,11 +46,11 @@ use crate::error::Result;
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -156,36 +180,6 @@ pub fn recurse_mutation_paths(
     })
 }
 
-/// Populate variant path with proper instructions and variant examples for builder context
-fn populate_variant_path_for_builder(
-    ctx: &RecursionContext,
-    assembled_example: &Value,
-) -> Vec<VariantPath> {
-    let mut populated_paths = Vec::new();
-
-    for variant_path in &ctx.variant_chain {
-        let mut populated_path = variant_path.clone();
-
-        // Generate instructions for this variant step
-        populated_path.instructions = format!(
-            "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",
-            if populated_path.full_mutation_path.is_empty() {
-                "root".to_string()
-            } else {
-                populated_path.full_mutation_path.to_string()
-            },
-            variant_path.variant
-        );
-
-        // Use the assembled example as the variant example
-        populated_path.variant_example = assembled_example.clone();
-
-        populated_paths.push(populated_path);
-    }
-
-    populated_paths
-}
-
 impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     pub const fn new(inner: B) -> Self {
         Self { inner }
@@ -261,28 +255,18 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     }
 
     /// Build a `MutationPathInternal` with the provided status and example
+    ///
+    /// Used by `build_not_mutable_path` for `NotMutableReason`s and `check_knowledge`
+    /// when we already have a hard coded example and don't need to try to build our own.
+    ///
+    /// Finally, used by `build_final_result`
+    ///
+    /// Generates enum variant selection instructions for any type (non-enum) that exists
+    /// within an enum's variant tree. The instructions explain how many variant
+    /// selections are needed (based on variant_chain length) to reach this mutation path.
     fn build_mutation_path_internal(
         ctx: &RecursionContext,
         example: Value,
-        status: MutationStatus,
-        mutation_status_reason: Option<Value>,
-    ) -> MutationPathInternal {
-        Self::build_mutation_path_internal_with_enum_examples(
-            ctx,
-            example,
-            None,
-            None,
-            status,
-            mutation_status_reason,
-        )
-    }
-
-    /// Build a `MutationPathInternal` with enum examples support
-    fn build_mutation_path_internal_with_enum_examples(
-        ctx: &RecursionContext,
-        example: Value,
-        enum_root_examples: Option<Vec<ExampleGroup>>,
-        enum_root_example_for_parent: Option<Value>,
         status: MutationStatus,
         mutation_status_reason: Option<Value>,
     ) -> MutationPathInternal {
@@ -290,29 +274,17 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         let (enum_instructions, enum_variant_path) = if ctx.variant_chain.is_empty() {
             (None, vec![])
         } else {
-            let description = if ctx.variant_chain.len() > 1 {
-                format!(
-                    "`{}` mutation path requires {} variant selections. Follow the instructions in variant_path array to set each variant in order.",
-                    ctx.full_mutation_path,
-                    ctx.variant_chain.len()
-                )
-            } else {
-                format!(
-                    "'{}' mutation path requires a variant selection as shown in 'enum_variant_path'.",
-                    ctx.full_mutation_path
-                )
-            };
             (
-                Some(description),
-                populate_variant_path_for_builder(ctx, &example),
+                enum_path_builder::generate_enum_instructions(ctx),
+                ctx.variant_chain.clone(),
             )
         };
 
         let result = MutationPathInternal {
             full_mutation_path: ctx.full_mutation_path.clone(),
             example: example.clone(),
-            enum_root_examples: enum_root_examples.clone(),
-            enum_root_example_for_parent: enum_root_example_for_parent.clone(),
+            enum_root_examples: None,
+            enum_root_example_for_parent: None,
             type_name: ctx.type_name().display_name(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: status,
@@ -332,19 +304,14 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         parent_status: MutationStatus,
         mutation_status_reason: Option<Value>,
     ) -> Vec<MutationPathInternal> {
-        // Non-enum types always have None for enum-specific fields
-        let enum_root_examples = None;
-        let enum_root_example_for_parent = None;
         match ctx.path_action {
             PathAction::Create => {
                 // Normal mode: Add root path and return only paths marked for exposure
                 paths_to_expose.insert(
                     0,
-                    Self::build_mutation_path_internal_with_enum_examples(
+                    Self::build_mutation_path_internal(
                         ctx,
                         example_to_use,
-                        enum_root_examples,
-                        enum_root_example_for_parent,
                         parent_status,
                         mutation_status_reason,
                     ),
@@ -355,11 +322,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 // Skip mode: Return ONLY a root path with the example
                 // This ensures the example is available for parent assembly
                 // but child paths aren't exposed in the final result
-                vec![Self::build_mutation_path_internal_with_enum_examples(
+                vec![Self::build_mutation_path_internal(
                     ctx,
                     example_to_use,
-                    enum_root_examples,
-                    enum_root_example_for_parent,
                     parent_status,
                     mutation_status_reason,
                 )]

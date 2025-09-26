@@ -1,32 +1,32 @@
-//! Standalone enum path builder - no `PathBuilder` dependency
-//! enum's have much different requirements than all the other types because
-//! of the distinct variant signatures (struct, tuple, unit) and their
-//! applicable variants that share the same signature.  For this reason
-//! We carve off enum_path_builder.rs specifially to handle enums. Different
-//! than the rest of mutation path builders, enum_path_builder manages its own recursion
-//! and does extra things like managing the variant_path which is used to create
-//! an example for a mutation path. As an example, if the type is
+//! Enum-specific mutation path builder handling variant selection and path generation
 //!
-//! ```rust
-//! enum MyEnum {
-//!     Variant1,
-//!     Variant2(String),
-//!     Variant3 { field1: i32, field2: String },
-//! }
-//! ```
+//! This module exclusively handles enum types, which require special processing due to:
+//! - Multiple variant signatures (unit, tuple, struct) that share the same mutation interface
+//! - Variant selection requirements that cascade through the type hierarchy
+//! - Generation of variant path examples showing how to reach nested mutation targets
+//!   these examples also show the signature and the qualifying applicable variants for each signature
+//!   These more sophisticated examples are necessary because the bevy remote protocol mutation paths
+//!   are the same for all variants with the same signature.
 //!
-//! And it was set at the root mutation path to be MyEnum::Variant1, then even if a
-//! ".variant2" mutation path exists, to which you could update it with a String,
-//! you'd can't mutate that String because we haven't set the root variant path to be
-//! Variant2.
+//! ## Key Responsibilities
 //!
-//! So enum_path_builder helps create the variant path examples that are required
-//! for a particular mutation path to be changeable. Allowing the coding agent to
-//! self-educate on how to help Users who say vague things such as "please set
-//! the Variant2 value to \"some value\"". In this case the coding agent would know
-//! that it would have to mutate the root enum to be:
+//! 1. **Variant Processing**: Groups variants by signature and generates examples for each
+//! 2. **Variant Path Management**: Creates and populates the variant chain showing how to select
+//!    specific variants to reach a mutation target
+//! 3. **Child Path Updates**: Propagates variant examples down to children via
+//!    `update_child_variant_paths`
 //!
-//! path="", value="{\".variant2\" : \"some value\" }"
+//! ## Example
+//!
+//! For `Option<GameState>` where `GameState` has a `mode: GameMode` field:
+//! - To mutate `.mode`, you must first select `Some` variant: `{"Some": {...}}`
+//! - The variant path shows this requirement with instructions and examples
+//!
+//! ## Integration
+//!
+//! Called directly by `recurse_mutation_paths` in builder.rs when `TypeKind::Enum` is detected.
+//! Unlike other types that use `MutationPathBuilder`, enums bypass the trait system for
+//! their specialized processing, then calls back into `recurse_mutation_paths` for its children.
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -453,12 +453,12 @@ fn build_enum_examples(
 }
 
 /// Generate enum instructions based on variant chain length
-fn generate_enum_instructions(ctx: &RecursionContext) -> Option<String> {
+pub fn generate_enum_instructions(ctx: &RecursionContext) -> Option<String> {
     if ctx.variant_chain.is_empty() {
         return None;
     }
 
-    let description = if ctx.variant_chain.len() > 1 {
+    let instructions = if ctx.variant_chain.len() > 1 {
         format!(
             "`{}` mutation path requires {} variant selections. Follow the instructions in variant_path array to set each variant in order.",
             ctx.full_mutation_path,
@@ -470,7 +470,7 @@ fn generate_enum_instructions(ctx: &RecursionContext) -> Option<String> {
             ctx.full_mutation_path
         )
     };
-    Some(description)
+    Some(instructions)
 }
 
 /// Populate variant path with proper instructions and variant examples
