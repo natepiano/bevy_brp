@@ -37,8 +37,8 @@ Refactor `NotMutableReason` to be internal to the TypeGuide module, preventing l
 - **Status**: SKIPPED
 - **Location**: Section: New Internal Error Type
 - **Issue**: The TypeGuideError conversion uses magic string "mutation_path_building" for the operation field, violating the type system principle of avoiding magic literals. This should be a named constant for consistency with existing error handling patterns.
-- **Reasoning**: Investigation revealed that NotMutableReason errors are NEVER converted to Error::SchemaProcessing in practice - they are always caught internally by handle_assemble_error() and converted to successful MutationPath results with NotMutable status. The conversion to SchemaProcessing with the "mutation_path_building" operation string is dead code that never executes. Since this conversion path is unnecessary, the magic string should be removed entirely rather than converted to a constant.
-- **Decision**: The plan should remove the unnecessary TypeGuideError to SchemaProcessing conversion logic instead of fixing the magic string
+- **Reasoning**: Investigation revealed that NotMutableReason errors SHOULD NEVER be converted to Error::SchemaProcessing in practice - they are always caught internally by handle_assemble_error() and converted to successful MutationPath results with NotMutable status. However, we implement a defensive conversion to Error::InvalidState (not SchemaProcessing) to handle logic errors gracefully rather than panicking.
+- **Decision**: The plan implements defensive conversion to InvalidState for safety and debugging, not SchemaProcessing
 
 ## DESIGN-2: Missing Constants Definition Location Specification - **Verdict**: REJECTED
 - **Status**: SKIPPED - REDUNDANT WITH TYPE-SYSTEM-2
@@ -78,15 +78,28 @@ impl From<Error> for TypeGuideError {
 }
 
 /// Convert internal TypeGuideError to public Error at module boundary
-/// Note: NotMutable errors are never converted via this impl - they are always
-/// caught internally by handle_assemble_error() and converted to successful MutationPath results
+///
+/// DEFENSIVE CONVERSION: Under normal operation, NotMutable errors should NEVER reach
+/// this conversion because they are caught internally by handle_assemble_error() and
+/// converted to successful MutationPath results with NotMutable status.
+///
+/// However, we implement a defensive fallback conversion to InvalidState rather than
+/// using unreachable!() for two reasons:
+/// 1. Safety - If our assumption is violated (due to bugs or future refactoring),
+///    we get a proper error instead of a panic
+/// 2. Debugging - The InvalidState error provides diagnostic information about
+///    what went wrong and where
 impl From<TypeGuideError> for Report<Error> {
     fn from(tge: TypeGuideError) -> Self {
         match tge {
-            TypeGuideError::NotMutable(_reason) => {
-                // This branch should never execute in practice since NotMutable errors
-                // are always caught internally by handle_assemble_error()
-                unreachable!("NotMutable errors should be handled internally, not converted to public errors")
+            TypeGuideError::NotMutable(reason) => {
+                // This indicates a logic error - NotMutable errors should be caught
+                // internally and never escape the module boundary
+                Report::new(Error::InvalidState {
+                    message: format!("NotMutable error escaped module boundary: {reason}"),
+                    context: format!("Type: {}", reason.get_deepest_failing_type()),
+                    details: Some("This indicates a logic error in mutation path building - NotMutable errors should be converted to MutationStatus::NotMutable internally".to_string()),
+                })
             }
             TypeGuideError::Other(err) => err,
         }
