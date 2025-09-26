@@ -1,4 +1,32 @@
 //! Standalone enum path builder - no `PathBuilder` dependency
+//! enum's have much different requirements than all the other types because
+//! of the distinct variant signatures (struct, tuple, unit) and their
+//! applicable variants that share the same signature.  For this reason
+//! We carve off enum_path_builder.rs specifially to handle enums. Different
+//! than the rest of mutation path builders, enum_path_builder manages its own recursion
+//! and does extra things like managing the variant_path which is used to create
+//! an example for a mutation path. As an example, if the type is
+//!
+//! ```rust
+//! enum MyEnum {
+//!     Variant1,
+//!     Variant2(String),
+//!     Variant3 { field1: i32, field2: String },
+//! }
+//! ```
+//!
+//! And it was set at the root mutation path to be MyEnum::Variant1, then even if a
+//! ".variant2" mutation path exists, to which you could update it with a String,
+//! you'd can't mutate that String because we haven't set the root variant path to be
+//! Variant2.
+//!
+//! So enum_path_builder helps create the variant path examples that are required
+//! for a particular mutation path to be changeable. Allowing the coding agent to
+//! self-educate on how to help Users who say vague things such as "please set
+//! the Variant2 value to \"some value\"". In this case the coding agent would know
+//! that it would have to mutate the root enum to be:
+//!
+//! path="", value="{\".variant2\" : \"some value\" }"
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -19,10 +47,6 @@ use crate::brp_tools::brp_type_guide::mutation_path_builder::types::FullMutation
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
-
-// ============================================================================
-// Types moved from enum_builder.rs
-// ============================================================================
 
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -503,7 +527,7 @@ fn process_children(
             .collect();
 
         // Create paths for this signature group
-        let paths = create_paths_for_signature(signature, &applicable_variants, ctx);
+        let paths = create_paths_for_signature(signature, ctx);
 
         // Process each path
         for path in paths.into_iter().flatten() {
@@ -549,7 +573,6 @@ fn process_children(
 /// Create `PathKind` objects for a signature
 fn create_paths_for_signature(
     signature: &VariantSignature,
-    _applicable_variants: &[VariantName],
     ctx: &RecursionContext,
 ) -> Vec<Option<PathKind>> {
     use VariantSignature;
@@ -606,16 +629,12 @@ fn update_child_variant_paths(
                         &entry.variant
                     );
 
-                    // If this is an enum and we have enum_examples, find the matching variant
-                    // example
+                    // find the matching variant example
                     if let Some(examples) = enum_examples {
                         entry.variant_example = examples
                             .iter()
                             .find(|ex| ex.applicable_variants.contains(&entry.variant))
                             .map_or_else(|| current_example.clone(), |ex| ex.example.clone());
-                    } else {
-                        // Non-enum case: use the assembled example
-                        entry.variant_example = current_example.clone();
                     }
                 }
             }

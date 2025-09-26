@@ -17,7 +17,6 @@ use super::{
     MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathKind,
     RecursionContext, enum_path_builder,
 };
-use crate::brp_tools::brp_type_guide::mutation_path_builder::types::FullMutationPath;
 use crate::error::Result;
 
 /// Result of processing all children during mutation path building
@@ -101,19 +100,10 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             MutationStatus::Mutable => final_example,
         };
 
-        // Update variant_path entries in child paths with level-appropriate examples
-        let mut paths_to_expose_mut = paths_to_expose;
-        Self::update_child_variant_paths(
-            &mut paths_to_expose_mut,
-            &ctx.full_mutation_path,
-            &example_to_use,
-            None, // Non-enum types don't have enum examples
-        );
-
         // Decide what to return based on PathAction
         Ok(Self::build_final_result(
             ctx,
-            paths_to_expose_mut,
+            paths_to_expose,
             example_to_use,
             parent_status,
             mutation_status_reason,
@@ -373,47 +363,6 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                     parent_status,
                     mutation_status_reason,
                 )]
-            }
-        }
-    }
-
-    /// Updates `variant_path` entries in child paths with level-appropriate examples
-    fn update_child_variant_paths(
-        paths: &mut [MutationPathInternal],
-        current_path: &FullMutationPath,
-        current_example: &Value,
-        enum_examples: Option<&Vec<ExampleGroup>>,
-    ) {
-        // For each child path that has enum variant requirements
-        for child in paths.iter_mut() {
-            if !child.enum_variant_path.is_empty() {
-                // Find matching entry in child's variant_path that corresponds to our level
-                for entry in &mut child.enum_variant_path {
-                    if entry.full_mutation_path == *current_path {
-                        // This entry represents our current level - update it
-                        entry.instructions = format!(
-                            "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",
-                            if entry.full_mutation_path.is_empty() {
-                                "root"
-                            } else {
-                                &entry.full_mutation_path
-                            },
-                            &entry.variant
-                        );
-
-                        // If this is an enum and we have enum_examples, find the matching variant
-                        // example
-                        if let Some(examples) = enum_examples {
-                            entry.variant_example = examples
-                                .iter()
-                                .find(|ex| ex.applicable_variants.contains(&entry.variant))
-                                .map_or_else(|| current_example.clone(), |ex| ex.example.clone());
-                        } else {
-                            // Non-enum case: use the assembled example
-                            entry.variant_example = current_example.clone();
-                        }
-                    }
-                }
             }
         }
     }
