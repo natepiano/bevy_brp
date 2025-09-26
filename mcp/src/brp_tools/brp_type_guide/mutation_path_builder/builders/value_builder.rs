@@ -34,22 +34,21 @@ impl PathBuilder for ValueMutationBuilder {
     ) -> Result<Value> {
         // Check if this Value type has serialization support
         if !ctx.value_type_has_serialization(ctx.type_name()) {
-            // Return NotMutable error for types without serialization
-            // MutationPathBuilder will catch this and create the appropriate NotMutable path
-            return Err(Error::NotMutable(
-                super::super::NotMutableReason::MissingSerializationTraits(ctx.type_name().clone()),
-            )
+            // Return error for types without serialization
+            return Err(Error::General(format!(
+                "Type {} missing serialization traits",
+                ctx.type_name().display_name()
+            ))
             .into());
         }
 
-        // For leaf types with no children that have serialization, return NoExampleAvailable error
+        // For leaf types with no children that have serialization, return error
         // This should only be reached by types that don't have knowledge entries
         // Types with knowledge entries and TreatAsValue guidance stop recursion before getting here
-        Err(
-            Error::NotMutable(super::super::NotMutableReason::NoExampleAvailable(
-                ctx.type_name().clone(),
-            ))
-            .into(),
-        )
+        Err(Error::General(format!(
+            "No example available for {}",
+            ctx.type_name().display_name()
+        ))
+        .into())
     }
 }

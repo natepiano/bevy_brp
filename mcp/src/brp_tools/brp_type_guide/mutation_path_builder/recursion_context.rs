@@ -9,7 +9,6 @@ use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::response_types::ReflectTrait;
-use super::NotMutableReason;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
 use super::types::{FullMutationPath, PathAction, VariantPath};
@@ -67,7 +66,11 @@ impl RecursionContext {
     /// Require the schema to be present, returning an error if missing
     pub fn require_registry_schema(&self) -> crate::error::Result<&Value> {
         self.registry.get(self.type_name()).ok_or_else(|| {
-            Error::NotMutable(NotMutableReason::NotInRegistry(self.type_name().clone())).into()
+            Error::General(format!(
+                "Type {} not found in registry",
+                self.type_name().display_name()
+            ))
+            .into()
         })
     }
 

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::types::PathAction;
-use super::{MutationPathDescriptor, MutationPathInternal, NotMutableReason, RecursionContext};
+use super::{MutationPathDescriptor, MutationResult, RecursionContext};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
@@ -31,11 +31,7 @@ pub trait PathBuilder {
     ///
     /// Returns a `Result` containing a vector of `MutationPathInternal` representing
     /// all possible mutation paths, or an error if path building failed.
-    fn build_paths(
-        &self,
-        _ctx: &RecursionContext,
-        _depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>> {
+    fn build_paths(&self, _ctx: &RecursionContext, _depth: RecursionDepth) -> MutationResult {
         // Implementation details here
         Ok(vec![])
     }
@@ -109,8 +105,9 @@ pub trait PathBuilder {
         use crate::error::Error;
         use crate::json_object::JsonObjectAccess;
         if element.is_complex_type() {
-            return Err(Error::NotMutable(NotMutableReason::ComplexCollectionKey(
-                ctx.type_name().clone(),
+            return Err(Error::General(format!(
+                "Complex collection key not supported for {}",
+                ctx.type_name().display_name()
             ))
             .into());
         }

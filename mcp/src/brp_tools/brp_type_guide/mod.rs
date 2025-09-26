@@ -17,5 +17,4 @@ mod type_kind;
 // Internal use for format discovery
 pub use all_types_tool::{AllTypeGuidesParams, BrpAllTypeGuides};
 pub use brp_type_name::BrpTypeName;
-pub use mutation_path_builder::NotMutableReason;
 pub use tool::{BrpTypeGuide, TypeGuideEngine, TypeGuideParams};

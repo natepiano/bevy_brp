@@ -11,10 +11,10 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::MutationPathDescriptor;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
-use super::super::{MutationPathDescriptor, NotMutableReason};
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 
@@ -95,10 +95,10 @@ impl PathBuilder for TupleMutationBuilder {
 
         // Check if this is a single-element Handle wrapper
         if elements.len() == 1 && elements[0].is_handle() {
-            return Err(Error::NotMutable(NotMutableReason::NonMutableHandle {
-                container_type: ctx.type_name().clone(),
-                element_type:   elements[0].clone(),
-            })
+            return Err(Error::General(format!(
+                "Handle wrapper not mutable for {}",
+                ctx.type_name().display_name()
+            ))
             .into());
         }
 

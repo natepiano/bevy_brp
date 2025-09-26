@@ -38,8 +38,8 @@ use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::PathBuilder;
 use super::types::{PathAction, PathSummary};
 use super::{
-    MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathKind,
-    RecursionContext, enum_path_builder,
+    MutationPathDescriptor, MutationPathInternal, MutationResult, MutationStatus, NotMutableReason,
+    PathKind, RecursionContext, enum_path_builder,
 };
 use crate::error::Result;
 
@@ -70,27 +70,20 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
         self.inner.collect_children(ctx)
     }
 
-    fn build_paths(
-        &self,
-        ctx: &RecursionContext,
-        depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>> {
-        tracing::debug!("MutationPathBuilder processing type: {}", ctx.type_name());
-
-        // Check depth limit for THIS level
+    fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) -> MutationResult {
+        // Early returns for simple cases
         if let Some(result) = Self::check_depth_limit(ctx, depth) {
             return result;
         }
 
-        // Check if type is in registry
         if let Some(result) = Self::check_registry(ctx) {
             return result;
         }
 
-        // Check knowledge for THIS level
-        let (early_return, knowledge_example) = Self::check_knowledge(ctx);
-        if let Some(result) = early_return {
-            return result; // TreatAsValue case - stop recursion
+        // Check knowledge - might return early or provide example
+        let (knowledge_result, knowledge_example) = Self::check_knowledge(ctx);
+        if let Some(result) = knowledge_result {
+            return result;
         }
 
         // Process all children and collect paths
@@ -98,10 +91,19 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             all_paths,
             paths_to_expose,
             child_examples,
-        } = self.process_all_children(ctx, depth)?;
+        } = self.process_all_children(ctx, depth).map_err(|_e| {
+            NotMutableReason::NoMutableChildren {
+                parent_type: ctx.type_name().clone(),
+            }
+        })?;
 
         // Assemble THIS level from children (post-order)
-        let assembled_example = self.inner.assemble_from_children(ctx, child_examples)?;
+        let assembled_example = self
+            .inner
+            .assemble_from_children(ctx, child_examples)
+            .map_err(|_e| NotMutableReason::NoMutableChildren {
+                parent_type: ctx.type_name().clone(),
+            })?;
 
         // Use knowledge example if available (for Teach types), otherwise use assembled example
         let final_example = knowledge_example.map_or(assembled_example, |knowledge_example| {
@@ -124,14 +126,19 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             MutationStatus::Mutable => final_example,
         };
 
-        // Decide what to return based on PathAction
-        Ok(Self::build_final_result(
-            ctx,
-            paths_to_expose,
-            example_to_use,
-            parent_status,
-            mutation_status_reason,
-        ))
+        // Return error if not mutable, otherwise success
+        match parent_status {
+            MutationStatus::NotMutable | MutationStatus::PartiallyMutable => {
+                Err(reason_enum.unwrap())
+            }
+            MutationStatus::Mutable => Ok(Self::build_final_result(
+                ctx,
+                paths_to_expose,
+                example_to_use,
+                parent_status,
+                mutation_status_reason,
+            )),
+        }
     }
 }
 
@@ -149,8 +156,8 @@ pub fn recurse_mutation_paths(
     ctx: &RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
-    let result = match type_kind {
-        // Enum is distinct from the rest
+    let mutation_result = match type_kind {
+        // Enum is distinct from the rest but now returns MutationResult too
         TypeKind::Enum => enum_path_builder::process_enum(ctx, depth),
         TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx, depth),
         TypeKind::Tuple | TypeKind::TupleStruct => {
@@ -163,20 +170,12 @@ pub fn recurse_mutation_paths(
         TypeKind::Value => MutationPathBuilder::new(ValueMutationBuilder).build_paths(ctx, depth),
     };
 
-    // Handle NotMutable errors at this single choke point
-    result.or_else(|error| {
-        error
-            .current_context()
-            .as_not_mutable()
-            .map(|reason| {
-                vec![
-                    MutationPathBuilder::<ValueMutationBuilder>::build_not_mutable_path(
-                        ctx,
-                        reason.clone(),
-                    ),
-                ]
-            })
-            .ok_or(error)
+    // Convert MutationResult to public Result interface
+    // NotMutable errors become NotMutable paths
+    mutation_result.or_else(|reason| {
+        Ok(vec![
+            MutationPathBuilder::<ValueMutationBuilder>::build_not_mutable_path(ctx, reason),
+        ])
     })
 }
 
@@ -347,36 +346,29 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     }
 
     /// Check depth limit and return `NotMutable` path if exceeded
-    fn check_depth_limit(
-        ctx: &RecursionContext,
-        depth: RecursionDepth,
-    ) -> Option<Result<Vec<MutationPathInternal>>> {
+    fn check_depth_limit(ctx: &RecursionContext, depth: RecursionDepth) -> Option<MutationResult> {
         if depth.exceeds_limit() {
-            Some(Ok(vec![Self::build_not_mutable_path(
-                ctx,
-                NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
-            )]))
+            Some(Err(NotMutableReason::RecursionLimitExceeded(
+                ctx.type_name().clone(),
+            )))
         } else {
             None
         }
     }
 
     /// Check if type is in registry and return `NotMutable` path if not found
-    fn check_registry(ctx: &RecursionContext) -> Option<Result<Vec<MutationPathInternal>>> {
+    fn check_registry(ctx: &RecursionContext) -> Option<MutationResult> {
         if ctx.require_registry_schema().is_err() {
-            Some(Ok(vec![Self::build_not_mutable_path(
-                ctx,
-                NotMutableReason::NotInRegistry(ctx.type_name().clone()),
-            )]))
+            Some(Err(NotMutableReason::NotInRegistry(
+                ctx.type_name().clone(),
+            )))
         } else {
             None
         }
     }
 
     /// Check knowledge base and handle based on guidance type
-    fn check_knowledge(
-        ctx: &RecursionContext,
-    ) -> (Option<Result<Vec<MutationPathInternal>>>, Option<Value>) {
+    fn check_knowledge(ctx: &RecursionContext) -> (Option<MutationResult>, Option<Value>) {
         // Use unified knowledge lookup that handles all cases
         if let Some(knowledge) = ctx.find_knowledge() {
             let example = knowledge.example().clone();

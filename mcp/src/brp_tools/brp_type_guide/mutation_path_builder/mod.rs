@@ -16,3 +16,7 @@ pub use not_mutable_reason::NotMutableReason;
 pub use path_kind::{MutationPathDescriptor, PathKind};
 pub use recursion_context::RecursionContext;
 pub use types::{MutationPath, MutationPathInternal, MutationStatus};
+
+// Internal result type for mutation path building
+// This type alias is used by all internal builders
+pub(super) type MutationResult = std::result::Result<Vec<MutationPathInternal>, NotMutableReason>;
