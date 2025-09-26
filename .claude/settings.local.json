@@ -146,7 +146,8 @@
       "Bash(tee:*)",
       "Bash(.claude/scripts/create_mutation_test_json/compare_mutation_path.sh:*)",
       "Bash(bash --version)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(git grep:*)"
     ],
     "deny": [
       "Bash(sed:*)"
