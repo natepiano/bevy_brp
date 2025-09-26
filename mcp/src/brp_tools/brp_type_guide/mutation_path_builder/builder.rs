@@ -122,18 +122,18 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             MutationStatus::Mutable => final_example,
         };
 
-        // Return error if not mutable, otherwise success
+        // Return error only for NotMutable, success for Mutable and PartiallyMutable
         match parent_status {
-            MutationStatus::NotMutable | MutationStatus::PartiallyMutable => {
-                Err(reason_enum.unwrap())
+            MutationStatus::NotMutable => Err(reason_enum.unwrap()),
+            MutationStatus::Mutable | MutationStatus::PartiallyMutable => {
+                Ok(Self::build_final_result(
+                    ctx,
+                    paths_to_expose,
+                    example_to_use,
+                    parent_status,
+                    mutation_status_reason,
+                ))
             }
-            MutationStatus::Mutable => Ok(Self::build_final_result(
-                ctx,
-                paths_to_expose,
-                example_to_use,
-                parent_status,
-                mutation_status_reason,
-            )),
         }
     }
 }
