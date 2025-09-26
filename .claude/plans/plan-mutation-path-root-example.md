@@ -20,7 +20,7 @@ Fix mutation paths within enum chains by using the variant chain as a lookup key
   - Maintain signature grouping only to prevent HashMap key collisions
 
 • **Phase 3: Build variant chain to root example mapping**
-  - Create a `VariantChainMap` type: `HashMap<Vec<VariantName>, Value>`
+  - Create a `VariantChainMap` type: `HashMap<VariantChain, Value>` where `VariantChain` is a semantic alias for `Vec<VariantName>`
   - During root assembly, map each complete variant chain to its correct root example
   - Store this mapping for later lookup
 
@@ -89,7 +89,7 @@ Looking at the type guide output in `TestVariantChainEnum.json` (generated from 
 5. Result: Wrong variant in root example
 
 ### Example of the Problem
-From `TestVariantChainEnum.json` lines 196-222:
+From `TestVariantChainEnum.json` in the enum_variant_path section:
 ```json
 "enum_variant_path": [
   {
@@ -167,8 +167,10 @@ fn process_children() -> Result<(HashMap<MutationPathDescriptor, Value>, Vec<Mut
 At root level assembly, build a map of variant chains to complete root examples:
 
 ```rust
+/// Semantic type for variant chains used as lookup keys
+type VariantChain = Vec<VariantName>;
 /// Maps variant chains to complete root examples
-type VariantChainMap = HashMap<Vec<VariantName>, Value>;
+type VariantChainMap = HashMap<VariantChain, Value>;
 
 fn finalize_mutation_paths(
     paths: &mut Vec<MutationPathInternal>,
@@ -178,8 +180,9 @@ fn finalize_mutation_paths(
         if let Some(enum_data) = &mut path.enum_data {
             // Use the variant chain to lookup the correct root example
             if !enum_data.variant_chain.is_empty() {
+                let chain: VariantChain = enum_data.variant_chain.clone();
                 enum_data.variant_chain_root_example =
-                    variant_map.get(&enum_data.variant_chain).cloned();
+                    variant_map.get(&chain).cloned();
             }
         }
     }
@@ -246,9 +249,12 @@ fn prepare_output(all_paths: Vec<MutationPathInternal>) -> Vec<MutationPath> {
 Create a dedicated struct to group all enum-related data:
 
 ```rust
+/// Semantic type for variant chains used as lookup keys
+type VariantChain = Vec<VariantName>;
+
 pub struct EnumPathData {
     /// The complete variant chain from root (e.g., ["TestVariantChainEnum::WithMiddleStruct", "BottomEnum::VariantB"])
-    pub variant_chain: Vec<VariantName>,
+    pub variant_chain: VariantChain,
 
     /// ALL variants that share the EXACT same signature at this path's level
     /// (same field names AND types - e.g., VariantB and VariantD both have name: String, value: f32)
@@ -422,3 +428,11 @@ This provides type safety and clearer code than working with JSON values directl
 - We've confirmed the signature deduplication already includes field names (safe from Color bug)
 - Performance impact: More paths during recursion, but same output size
 - This is a surgical fix to the specific subset of paths that traverse enum variants
+
+## Design Review Skip Notes
+
+## DESIGN-3: Standalone Functions Should Be Methods on Owning Types - **Verdict**: REJECTED
+- **Status**: REJECTED - Finding was incorrect
+- **Location**: Phase 4: Update output format section
+- **Issue**: Plan proposes standalone functions like `finalize_mutation_paths` and `prepare_output` that operate on data structures they don't own, violating encapsulation principles
+- **Reasoning**: The finding incorrectly applies "functions should be methods" too broadly. The current standalone function design follows clean functional pipeline architecture and is superior for this domain. Converting to methods would violate Rust's "don't implement on foreign types" principle and make the code feel unnatural. Functions like `update_child_variant_paths` operate on slices and coordinate multiple types - this is orchestration logic, not natural object behavior. The functional pipeline design (Input → Processing → Transformation → Output) is architecturally appropriate and should be preserved.
