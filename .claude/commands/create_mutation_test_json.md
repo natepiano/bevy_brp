@@ -336,9 +336,8 @@ Based on the comparison results above, should I mark this version as the new goo
 
 **CRITICAL FOR comparison_review**:
 - ALWAYS include Type, Path, and Change summary headers
-- Show the COMPLETE JSON from compare_mutation_path.sh output
-- Skip if script returns "IDENTICAL"
-- Only present when script returns "DIFFERENT"
+- Show the COMPLETE JSON comparison data from the structural review
+- Focus on the actual nested field changes identified
 </FormatComparison>
 
 <NoIntermediateFiles>
@@ -404,13 +403,10 @@ Patterns: `.field.0` (variant), `.field[0]` (array), `.field.0.nested` (nested i
           - Representative examples of the changes
 
        c. **RETRIEVE AND VALIDATE MUTATION PATH DATA**:
-          Use the comparison script (no permission needed once added to allowed tools):
-          ```bash
-          .claude/scripts/create_mutation_test_json/compare_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]"
-          ```
+          The structural review shows nested field differences within mutation paths.
+          These changes are already captured in the comparison data.
 
-          If output shows "IDENTICAL", skip to next combination without user interaction.
-          If "DIFFERENT", format the output using <FormatComparison/>.
+          Skip to next combination if no meaningful differences exist.
 
        d. **MANDATORY VERIFICATION BEFORE PROCEEDING**:
           - Compare the retrieved baseline vs current JSON data

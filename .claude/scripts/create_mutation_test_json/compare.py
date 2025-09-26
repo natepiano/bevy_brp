@@ -157,17 +157,34 @@ def extract_mutation_path(path: str) -> str | None:
     if path.startswith("mutation_paths.."):
         # Get what comes after the double dots
         rest_after_dots = path[len("mutation_paths.."):]
+
+        # We need to find where the mutation path ends and the nested field begins
+        # Mutation paths can contain dots (like .z_config.far_z_mode)
+        # The nested field is what comes after the mutation path
+
+        # Known nested field patterns that indicate end of mutation path
+        nested_field_indicators = [
+            ".example", ".examples", ".path_info", ".description",
+            ".mutation_status", ".type", ".type_kind", ".enum_variant_path",
+            ".applicable_variants", ".signature"
+        ]
+
+        # Find the first occurrence of a nested field indicator
+        mutation_path = ""
+        for indicator in nested_field_indicators:
+            if indicator in rest_after_dots:
+                # Everything before this indicator is the mutation path
+                mutation_path = rest_after_dots.split(indicator)[0]
+                return f".{mutation_path}" if mutation_path else ""
+
+        # If no indicator found, check if it's a metadata field at root
         if "." in rest_after_dots:
             first_part = rest_after_dots.split(".", 1)[0]
-            # If it starts with metadata fields, this is root path metadata
             if first_part in ["path_info", "description"]:
                 return ""
-            else:
-                # This is data for a specific mutation path
-                return f".{first_part}"
-        else:
-            # Just mutation_paths.. with nothing after
-            return ""
+
+        # If no nested field indicators found, the entire rest is the mutation path
+        return f".{rest_after_dots}" if rest_after_dots else ""
 
     # Normal case: mutation_paths.some_key.rest -> ".some_key"
     parts = path.split(".", 3)  # Split into max 4 parts: ["mutation_paths", "key", "rest", ...]

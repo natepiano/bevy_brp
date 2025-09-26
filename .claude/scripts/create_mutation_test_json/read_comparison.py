@@ -152,42 +152,57 @@ def show_next_unexpected(data: CategorizedComparisonData) -> None:
 
     change = unexpected_changes[change_index]
 
-    print(f"📋 UNEXPECTED CHANGE {change_index + 1} of {len(unexpected_changes)}")
-    print("=" * 60)
-    print(f"Type: {change.get('type_name', 'unknown')}")
-    print(f"Path: {change.get('path', 'unknown')}")
+    # Format exactly as specified in FormatComparison
+    print("## Mutation Path Comparison")
+    print()
+    print(f"**Type**: `{change.get('type_name', 'unknown')}`")
 
-    # Show mutation path if available
-    mutation_path = change.get('mutation_path')
-    if mutation_path is not None:
-        display_path = f'"{mutation_path}"' if mutation_path == "" else mutation_path
-        print(f"Mutation Path: {display_path}")
+    mutation_path = change.get('mutation_path', '')
+    print(f"**Path**: `{mutation_path}`")
 
-    print(f"Change Type: {change.get('change_type', 'unknown')}")
-    print(f"Description: {change.get('description', '')}")
+    # Create change description based on what changed
+    change_type = change.get('change_type', 'unknown')
+    description = change.get('description', '')
+    if 'examples' in description and 'example' in description:
+        change_desc = "examples array → example field"
+    elif change_type == 'added':
+        change_desc = f"Field added: {description}"
+    elif change_type == 'removed':
+        change_desc = f"Field removed: {description}"
+    else:
+        change_desc = description
+    print(f"**Change**: {change_desc}")
     print()
 
-    # Show full baseline and current values
+    # Show full baseline and current values in the exact format
     baseline = change.get('baseline')
     current = change.get('current')
 
+    print("```json")
+    print("// BASELINE")
     if baseline is not None:
-        print("BASELINE:")
-        print("-" * 40)
         if isinstance(baseline, (dict, list)):
             print(json.dumps(baseline, indent=2))
         else:
-            print(str(baseline))
-        print()
+            print(json.dumps(baseline))
+    else:
+        print("(not present)")
+    print("```")
+    print()
 
+    print("```json")
+    print("// CURRENT")
     if current is not None:
-        print("CURRENT:")
-        print("-" * 40)
         if isinstance(current, (dict, list)):
             print(json.dumps(current, indent=2))
         else:
-            print(str(current))
-        print()
+            print(json.dumps(current))
+    else:
+        print("(not present)")
+    print("```")
+    print()
+
+    print(f"[Change {change_index + 1} of {len(unexpected_changes)}]")
 
     # Save state for next time
     save_session_state(change_index + 1)
@@ -309,6 +324,37 @@ def save_structural_session_state(combination_index: int) -> None:
     with open(session_file, 'w') as f:
         json.dump({"combination_index": combination_index}, f)
 
+def get_full_mutation_path_data(type_name: str, mutation_path: str, file_path: str) -> JsonValue:
+    """Get the complete mutation path data from a file."""
+    import json
+    from pathlib import Path
+
+    path = Path(file_path)
+    if not path.exists():
+        return None
+
+    with open(path, 'r') as f:
+        file_data = json.load(f)
+
+    # Handle wrapped format
+    if 'type_guide' in file_data:
+        type_guide = file_data['type_guide']
+    else:
+        type_guide = file_data
+
+    if type_name not in type_guide:
+        return None
+
+    type_data = type_guide[type_name]
+    if 'mutation_paths' not in type_data:
+        return None
+
+    mutation_paths = type_data['mutation_paths']
+    if mutation_path not in mutation_paths:
+        return None
+
+    return mutation_paths[mutation_path]
+
 def show_next_structural(data: CategorizedComparisonData) -> None:
     """Show the next type+path combination for structural review."""
     type_path_changes = get_structural_combinations(data)
@@ -337,47 +383,64 @@ def show_next_structural(data: CategorizedComparisonData) -> None:
 
     type_name, path_display, changes = all_combinations[combination_index]
 
-    print(f"🔍 STRUCTURAL COMBINATION {combination_index + 1} of {len(all_combinations)}")
-    print("=" * 60)
-    print(f"Type: {type_name}")
-    print(f"Path: {path_display}")
-    print(f"Total Changes: {len(changes)}")
+    # Get the actual mutation path from the display string
+    mutation_path = path_display.replace('Mutation Path ', '').strip('"')
+    if path_display == 'Root Path ("")':
+        mutation_path = ""
 
-    # Show change type breakdown
-    change_types = {}
+    # Get the COMPLETE mutation path data for baseline and current
+    baseline_path_data = get_full_mutation_path_data(type_name, mutation_path, '.claude/transient/all_types_baseline.json')
+    current_path_data = get_full_mutation_path_data(type_name, mutation_path, '.claude/transient/all_types.json')
+
+    # Format exactly as specified in FormatComparison
+    print("## Mutation Path Comparison")
+    print()
+    print(f"**Type**: `{type_name}`")
+    print(f"**Path**: `{mutation_path}`")
+
+    # Create a summary of what changed based on the nested changes
+    change_summary = []
+    has_examples_to_example = False
     for change in changes:
-        change_type = change.get('change_type', 'unknown')
-        change_types[change_type] = change_types.get(change_type, 0) + 1
+        path = change.get('path', '')
+        if 'examples' in path and change.get('change_type') == 'removed':
+            has_examples_to_example = True
+        elif 'example' in path and change.get('change_type') == 'added':
+            has_examples_to_example = True
 
-    print(f"Change Types: {', '.join(f'{ct}: {count}' for ct, count in sorted(change_types.items()))}")
+    if has_examples_to_example:
+        change_summary = "examples array → example field pattern across nested fields"
+    else:
+        # Count change types
+        change_types = {}
+        for change in changes:
+            ct = change.get('change_type', 'unknown')
+            change_types[ct] = change_types.get(ct, 0) + 1
+        change_summary = f"{len(changes)} nested changes ({', '.join(f'{ct}: {count}' for ct, count in change_types.items())})"
+
+    print(f"**Change**: {change_summary}")
     print()
 
-    # Show a few representative examples
-    print("📋 REPRESENTATIVE EXAMPLES (first 3):")
-    print("-" * 40)
+    # Show the COMPLETE mutation path data
+    print("```json")
+    print("// BASELINE")
+    if baseline_path_data is not None:
+        print(json.dumps(baseline_path_data, indent=2))
+    else:
+        print("(mutation path not present in baseline)")
+    print("```")
+    print()
 
-    for i, change in enumerate(changes[:3]):
-        print(f"{i+1}. Path: {change.get('path', 'unknown')}")
-        print(f"   Description: {change.get('description', '')}")
+    print("```json")
+    print("// CURRENT")
+    if current_path_data is not None:
+        print(json.dumps(current_path_data, indent=2))
+    else:
+        print("(mutation path not present in current)")
+    print("```")
+    print()
 
-        baseline = change.get('baseline')
-        current = change.get('current')
-
-        if baseline is not None and current is not None:
-            baseline_str = str(baseline)[:100] + "..." if len(str(baseline)) > 100 else str(baseline)
-            current_str = str(current)[:100] + "..." if len(str(current)) > 100 else str(current)
-            print(f"   Change: {baseline_str} → {current_str}")
-        elif baseline is not None:
-            baseline_str = str(baseline)[:100] + "..." if len(str(baseline)) > 100 else str(baseline)
-            print(f"   Removed: {baseline_str}")
-        elif current is not None:
-            current_str = str(current)[:100] + "..." if len(str(current)) > 100 else str(current)
-            print(f"   Added: {current_str}")
-        print()
-
-    if len(changes) > 3:
-        print(f"... and {len(changes) - 3} more changes in this combination")
-        print()
+    print(f"[Structural combination {combination_index + 1} of {len(all_combinations)}]")
 
     # Save state for next time
     save_structural_session_state(combination_index + 1)
