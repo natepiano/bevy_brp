@@ -1,187 +1,51 @@
 # NotMutableReason Error Handling Refactor Plan
 
 ## Overview
-Refactor `NotMutableReason` to be internal to the TypeGuide module, preventing leakage of internal mutation path building concepts into the general error system.
+Refactor `NotMutableReason` to be completely internal to the mutation_path_builder module using error downcasting, removing it from the public Error enum.
 
-## Design: Internal Error Type with Conversion
+## Current Problem
+- `NotMutableReason` is exposed in the public `Error` enum
+- Internal mutation path building details leak into the public API
+- The `as_not_mutable()` method on Error exposes implementation details
 
-### Core Concept
-- Create `TypeGuideError` inside `mutation_path_builder` module
-- `NotMutableReason` remains completely internal to mutation_path_builder
-- Convert to public `Error` types at module boundaries
-- Remove `Error::NotMutable` variant from public error enum
+## Solution: Internal Error with Downcasting
+
+### Core Design
+1. Create a private `NotMutableError` type within mutation_path_builder
+2. Use error_stack's downcasting capability to detect NotMutable errors
+3. Remove `Error::NotMutable` variant from public enum
+4. Remove `as_not_mutable()` method from Error
 
 ### Benefits
-1. **Encapsulation**: TypeGuide implementation details stay internal
-2. **Clean API**: Public error enum only contains general-purpose errors
-3. **Flexibility**: Internal error types can evolve without affecting public API
-4. **Type Safety**: Compiler enforces boundary conversions
-
-## Design Review Skip Notes
-
-## TYPE-SYSTEM-1: Information Loss in Type-to-String Conversion - **Verdict**: REJECTED
-- **Status**: SKIPPED
-- **Location**: Section: New Internal Error Type
-- **Issue**: Converting TypeGuideError::NotMutable to Error::SchemaProcessing loses structured type information. Current Error::NotMutable preserves full NotMutableReason enum, but proposed conversion flattens to strings.
-- **Reasoning**: The finding is incorrect because NotMutableReason errors never escape the module as errors - they are always caught internally by handle_assemble_error() and converted to valid MutationPath objects with MutationStatus::NotMutable. The plan correctly recognizes that NotMutableReason is internal information that should stay within the mutation_path_builder module.
-- **Decision**: User elected to skip this recommendation
-
-## IMPLEMENTATION-GAP-1: Missing Complete Boundary Identification - **Verdict**: REJECTED
-- **Status**: SKIPPED
-- **Location**: Section: Update boundary functions
-- **Issue**: Plan only identifies recurse_mutation_paths as boundary function but doesn't systematically identify ALL functions that expose Result<T> containing NotMutableReason to external callers
-- **Reasoning**: The finding is incorrect because NotMutableReason errors never propagate to TypeGuide::from_registry_schema or TypeGuideEngine::generate_response. These errors are always caught within MutationPathBuilder::build_paths() by handle_assemble_error() and converted to successful MutationPath results with NotMutable status. External functions only receive Vec<MutationPathInternal> where NotMutable cases are valid results, not errors. The plan correctly identifies that conversion is only needed within the mutation_path_builder module.
-- **Decision**: User elected to skip this recommendation
-
-## TYPE-SYSTEM-2: Magic String Violation in Operation Field - **Verdict**: REJECTED
-- **Status**: SKIPPED
-- **Location**: Section: New Internal Error Type
-- **Issue**: The TypeGuideError conversion uses magic string "mutation_path_building" for the operation field, violating the type system principle of avoiding magic literals. This should be a named constant for consistency with existing error handling patterns.
-- **Reasoning**: Investigation revealed that NotMutableReason errors SHOULD NEVER be converted to Error::SchemaProcessing in practice - they are always caught internally by handle_assemble_error() and converted to successful MutationPath results with NotMutable status. However, we implement a defensive conversion to Error::InvalidState (not SchemaProcessing) to handle logic errors gracefully rather than panicking.
-- **Decision**: The plan implements defensive conversion to InvalidState for safety and debugging, not SchemaProcessing
-
-## DESIGN-2: Missing Constants Definition Location Specification - **Verdict**: REJECTED
-- **Status**: SKIPPED - REDUNDANT WITH TYPE-SYSTEM-2
-- **Location**: Section: New Internal Error Type
-- **Issue**: The plan requires a constant for the "mutation_path_building" operation string but doesn't specify where to define it.
-- **Reasoning**: This finding addresses the same dead code as TYPE-SYSTEM-2. Since the entire TypeGuideError to Error::SchemaProcessing conversion logic should be removed (as it never executes), there is no need to specify where to define constants for code that shouldn't exist.
-- **Decision**: Skip this finding as it's redundant with TYPE-SYSTEM-2 resolution
+- **Complete Encapsulation**: NotMutableReason stays entirely within mutation_path_builder
+- **Clean Public API**: No mutation path building concepts in public Error enum
+- **Simple Implementation**: Minimal code changes required
+- **Type Safety**: Compiler ensures NotMutableReason can't leak out
 
 ## Implementation
 
-### 1. New Internal Error Type
-**Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/type_guide_error.rs`
-
-```rust
-use error_stack::Report;
-use super::NotMutableReason;
-use crate::error::Error;
-
-/// Internal error type for TypeGuide operations
-pub(crate) enum TypeGuideError {
-    /// Type cannot be mutated for specific reason
-    NotMutable(NotMutableReason),
-    /// Wrapper for general errors
-    Other(Report<Error>),
-}
-
-impl From<Report<Error>> for TypeGuideError {
-    fn from(err: Report<Error>) -> Self {
-        TypeGuideError::Other(err)
-    }
-}
-
-impl From<Error> for TypeGuideError {
-    fn from(err: Error) -> Self {
-        TypeGuideError::Other(Report::new(err))
-    }
-}
-
-/// Convert internal TypeGuideError to public Error at module boundary
-///
-/// DEFENSIVE CONVERSION: Under normal operation, NotMutable errors should NEVER reach
-/// this conversion because they are caught internally by handle_assemble_error() and
-/// converted to successful MutationPath results with NotMutable status.
-///
-/// However, we implement a defensive fallback conversion to InvalidState rather than
-/// using unreachable!() for two reasons:
-/// 1. Safety - If our assumption is violated (due to bugs or future refactoring),
-///    we get a proper error instead of a panic
-/// 2. Debugging - The InvalidState error provides diagnostic information about
-///    what went wrong and where
-impl From<TypeGuideError> for Report<Error> {
-    fn from(tge: TypeGuideError) -> Self {
-        match tge {
-            TypeGuideError::NotMutable(reason) => {
-                // This indicates a logic error - NotMutable errors should be caught
-                // internally and never escape the module boundary
-                Report::new(Error::InvalidState {
-                    message: format!("NotMutable error escaped module boundary: {reason}"),
-                    context: format!("Type: {}", reason.get_deepest_failing_type()),
-                    details: Some("This indicates a logic error in mutation path building - NotMutable errors should be converted to MutationStatus::NotMutable internally".to_string()),
-                })
-            }
-            TypeGuideError::Other(err) => err,
-        }
-    }
-}
-
-impl TypeGuideError {
-    /// Helper to create NotMutable error
-    pub fn not_mutable(reason: NotMutableReason) -> Self {
-        TypeGuideError::NotMutable(reason)
-    }
-}
-```
-
-### 2. Update NotMutableReason Implementation
-**Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/not_mutable_reason.rs`
-
-No changes needed. The existing `get_deepest_failing_type()` and `Display` implementations provide all necessary functionality.
-
-### 3. Update Internal Result Type Alias
+### 1. Create Internal Error Type
 **Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`
 
 ```rust
-// Add new module
-mod type_guide_error;
+use error_stack::Context;
+use std::fmt;
 
-// Internal result type for mutation path builder operations
-// Use distinct name to avoid confusion with standard Result<T>
-pub(crate) type TypeGuideResult<T> = Result<T, TypeGuideError>;
+/// Internal error type for NotMutable conditions
+/// This is never exposed outside the mutation_path_builder module
+#[derive(Debug, Clone)]
+struct NotMutableError(NotMutableReason);
 
-// Re-export for internal use only
-pub(crate) use type_guide_error::TypeGuideError;
-
-// Remove from public exports:
-// pub use not_mutable_reason::NotMutableReason;  // DELETE THIS LINE
-```
-
-### 4. Update PathBuilder Trait
-**Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
-
-```rust
-use super::type_guide_error::TypeGuideError;
-use super::TypeGuideResult;
-
-pub trait PathBuilder {
-    // Change return types from Result<T> to TypeGuideResult<T>
-    fn build_paths(
-        &self,
-        ctx: &RecursionContext,
-        depth: RecursionDepth,
-    ) -> TypeGuideResult<Vec<MutationPathInternal>> {
-        Ok(vec![])
-    }
-
-    fn collect_children(&self, ctx: &RecursionContext) -> TypeGuideResult<Self::Iter<'_>>;
-
-    fn assemble_from_children(
-        &self,
-        ctx: &RecursionContext,
-        children: HashMap<MutationPathDescriptor, Value>,
-    ) -> TypeGuideResult<Value> {
-        Ok(json!(null))
-    }
-
-    fn check_collection_element_complexity(
-        &self,
-        element: &Value,
-        ctx: &RecursionContext,
-    ) -> TypeGuideResult<()> {
-        use crate::json_object::JsonObjectAccess;
-        if element.is_complex_type() {
-            return Err(TypeGuideError::not_mutable(
-                NotMutableReason::ComplexCollectionKey(ctx.type_name().clone())
-            ));
-        }
-        Ok(())
+impl fmt::Display for NotMutableError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Type cannot be mutated: {}", self.0)
     }
 }
+
+impl Context for NotMutableError {}
 ```
 
-### 5. Update All Builder Implementations
-
+### 2. Update Builder Error Returns
 **Files to update**:
 - `builders/array_builder.rs`
 - `builders/list_builder.rs`
@@ -190,140 +54,178 @@ pub trait PathBuilder {
 - `builders/struct_builder.rs`
 - `builders/tuple_builder.rs`
 - `builders/value_builder.rs`
+- `path_builder.rs`
+- `recursion_context.rs`
 
 **Change pattern**:
 ```rust
-// From:
-fn assemble_from_children(...) -> Result<Value> {
-    return Err(Error::NotMutable(NotMutableReason::SomeReason { ... }).into());
-}
+// OLD: Return Error::NotMutable
+return Err(Error::NotMutable(NotMutableReason::SomeReason { ... }).into());
 
-// To:
-fn assemble_from_children(...) -> TypeGuideResult<Value> {
-    return Err(TypeGuideError::not_mutable(NotMutableReason::SomeReason { ... }));
+// NEW: Return NotMutableError
+return Err(error_stack::Report::new(NotMutableError(NotMutableReason::SomeReason { ... })));
+```
+
+**Specific changes**:
+
+In `path_builder.rs`:
+```rust
+// Line ~112
+if element.is_complex_type() {
+    return Err(error_stack::Report::new(
+        NotMutableError(NotMutableReason::ComplexCollectionKey(
+            ctx.type_name().clone(),
+        ))
+    ));
 }
 ```
 
-### 6. Update Main Builder
+In `recursion_context.rs`:
+```rust
+// Line ~70
+self.registry.get(self.type_name()).ok_or_else(|| {
+    error_stack::Report::new(
+        NotMutableError(NotMutableReason::NotInRegistry(self.type_name().clone()))
+    )
+})
+```
+
+In `tuple_builder.rs`:
+```rust
+// Line ~98
+if elements.len() == 1 && elements[0].is_handle() {
+    return Err(error_stack::Report::new(
+        NotMutableError(NotMutableReason::NonMutableHandle {
+            container_type: ctx.type_name().clone(),
+            element_type: elements[0].clone(),
+        })
+    ));
+}
+```
+
+In `value_builder.rs`:
+```rust
+// Line ~39
+if !has_serialize {
+    return Err(error_stack::Report::new(
+        NotMutableError(NotMutableReason::MissingSerializationTraits(
+            ctx.type_name().clone()
+        ))
+    ));
+}
+
+// Line ~49
+Err(error_stack::Report::new(
+    NotMutableError(NotMutableReason::NoExampleAvailable(
+        ctx.type_name().clone()
+    ))
+))
+```
+
+### 3. Update Error Catching in Builder
 **Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
 
+Replace lines 152-164:
 ```rust
-use super::type_guide_error::TypeGuideError;
-use super::TypeGuideResult;
-
-// Update all function signatures from Result<T> to TypeGuideResult<T>
-// Update error creation sites
-
-// At the public API boundary (recurse_mutation_paths function):
-pub fn recurse_mutation_paths(
-    type_name: &str,
-    registry: &HashMap<String, Value>,
-    wrapper_info: Option<&HashMap<String, Value>>,
-    enum_variants: Option<&HashMap<String, String>>,
-) -> Result<HashMap<String, MutationPath>> {
-    // Internal processing uses TypeGuideResult
-    let internal_result: TypeGuideResult<HashMap<String, MutationPathInternal>> =
-        do_internal_processing()?;
-
-    // Convert at boundary
-    internal_result
-        .map(|paths| convert_to_public_paths(paths))
-        .map_err(|e| e.into()) // TypeGuideError -> Report<Error>
-}
+// Handle NotMutable errors at this single choke point
+result.or_else(|error| {
+    // Try to downcast to our internal NotMutableError type
+    error
+        .downcast_ref::<NotMutableError>()
+        .map(|not_mutable| {
+            vec![
+                MutationPathBuilder::<ValueMutationBuilder>::build_not_mutable_path(
+                    ctx,
+                    not_mutable.0.clone(),
+                ),
+            ]
+        })
+        .ok_or(error)
+})
 ```
 
-### 7. Cleanup Error.rs
+### 4. Update build_not_mutable_path Access
+Since `NotMutableError` is private to the module, `build_not_mutable_path` can access it directly:
+
+```rust
+// In builder.rs, lines 453-454
+Some(Ok(vec![Self::build_not_mutable_path(
+    ctx,
+    NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
+)]))
+
+// Lines 465-466
+Some(Ok(vec![Self::build_not_mutable_path(
+    ctx,
+    NotMutableReason::NotInRegistry(ctx.type_name().clone()),
+)]))
+```
+
+### 5. Clean Up Public Error Enum
 **Location**: `mcp/src/error.rs`
 
+Remove:
 ```rust
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    // DELETE THIS VARIANT:
-    // NotMutable(#[from] mutation_path_builder::NotMutableReason),
+// Line 4: Remove import
+use crate::brp_tools::NotMutableReason;
 
-    // Keep existing variants:
-    SchemaProcessing {
-        message: String,
-        type_name: Option<String>,
-        operation: Option<String>,
-        details: Option<String>,
-    },
-    // ... other variants
-}
-```
+// Lines 50-51: Remove variant
+#[error("Type cannot be mutated: {0}")]
+NotMutable(NotMutableReason),
 
-### 8. Update Call Sites Outside TypeGuide
+// Line 98: Remove from Debug impl
+Self::NotMutable(reason) => f.debug_tuple("NotMutable").field(reason).finish(),
 
-**Files that may reference Error::NotMutable**:
-- Search for `Error::NotMutable` usage
-- These should be internal to mutation_path_builder only
-- Any external usage should be converted to check for SchemaProcessing errors instead
-
-```bash
-# Find external references
-rg "Error::NotMutable" --glob '!**/mutation_path_builder/**'
-```
-
-**Update handle_assemble_error function**:
-**Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
-
-Since this function is internal to mutation_path_builder, update it to work with TypeGuideError:
-
-```rust
-/// Handle errors from `assemble_from_children`, creating `NotMutatable` paths when appropriate
-fn handle_assemble_error(
-    ctx: &RecursionContext,
-    error: TypeGuideError,  // Changed from Report<Error>
-) -> TypeGuideResult<Vec<MutationPathInternal>> {
-    // Check if it's a NotMutatable condition
-    match error {
-        TypeGuideError::NotMutable(reason) => {
-            // Return a single NotMutatable path for this type
-            Ok(vec![Self::build_not_mutable_path(ctx, reason)])
-        }
-        TypeGuideError::Other(err) => {
-            // Real error - propagate it
-            Err(TypeGuideError::Other(err))
-        }
+// Lines 132-138: Remove as_not_mutable method
+pub const fn as_not_mutable(&self) -> Option<&NotMutableReason> {
+    match self {
+        Self::NotMutable(reason) => Some(reason),
+        _ => None,
     }
 }
 ```
 
-Note: The `as_not_mutable()` method on Error will be removed, so all internal code must use pattern matching on TypeGuideError instead.
+### 6. Update Module Exports
+**Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`
+
+Remove public export:
+```rust
+// Remove this line:
+pub use not_mutable_reason::NotMutableReason;
+
+// Keep it internal:
+use not_mutable_reason::NotMutableReason;
+```
 
 ## Migration Steps
 
-1. **Create TypeGuideError** - Add new error type and conversion impl
-2. **Update type aliases** - Add TypeGuideResult type alias
-3. **Update trait signatures** - Change PathBuilder trait to use TypeGuideResult
-4. **Update implementations** - Change all builders to use TypeGuideError
-5. **Update boundary functions** - Add conversion at public API boundaries
-6. **Remove from public API** - Remove NotMutableReason from public exports
-7. **Clean up Error enum** - Remove Error::NotMutable variant
-8. **Test** - Ensure all tests pass with new error handling
+1. **Add NotMutableError type** to mutation_path_builder/mod.rs
+2. **Update all builders** to return NotMutableError instead of Error::NotMutable
+3. **Update error catching** in builder.rs to use downcasting
+4. **Remove NotMutable variant** from Error enum
+5. **Remove as_not_mutable method** from Error
+6. **Remove public export** of NotMutableReason
+7. **Run tests** to ensure everything works
 
 ## Testing Strategy
 
-1. **Unit tests** - Verify internal error creation and conversion
-2. **Integration tests** - Ensure TypeGuide API still returns expected errors
-3. **Boundary tests** - Verify conversions happen correctly at module boundaries
-4. **Regression tests** - Ensure no information is lost in error conversion
+1. **Existing tests should continue to pass** - the change is internal
+2. **Verify NotMutable paths are still created correctly**
+3. **Ensure no NotMutableReason types leak to public API**
+4. **Check that error messages are still meaningful**
 
-## Benefits of This Approach
+## Rollback Plan
 
-1. **Encapsulation**: Internal implementation details don't leak to public API
-2. **Maintainability**: Can refactor internal errors without breaking public API
-3. **Type Safety**: Compiler enforces proper conversions at boundaries
-4. **Clarity**: Public error enum only contains truly public error cases
-5. **Flexibility**: Internal errors can be as detailed as needed without API concerns
+If issues arise:
+1. The changes are localized to mutation_path_builder module
+2. Git history preserves the old approach
+3. Can temporarily re-add Error::NotMutable variant if needed
 
-## Potential Issues and Solutions
+## Summary
 
-**Issue**: Loss of structured error information at boundary
-**Solution**: Encode key information in SchemaProcessing fields (message, details)
-
-**Issue**: More complex error handling internally
-**Solution**: Type aliases and helper functions reduce boilerplate
-
-**Issue**: Need to update many call sites
-**Solution**: Systematic approach, compiler will catch all sites that need updating
+This approach achieves complete encapsulation with minimal changes:
+- ~10 lines to add NotMutableError type
+- ~10 error return sites to update
+- 1 error catching site to modify
+- Remove ~20 lines from Error enum
+- No complex type conversions or boundary management needed
