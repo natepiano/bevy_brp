@@ -1,5 +1,134 @@
 # NotMutableReason Error Handling Refactor Plan
 
+## EXECUTION PROTOCOL
+
+<Instructions>
+For each step in the implementation sequence:
+
+1. **DESCRIBE**: Present the changes with:
+   - Summary of what will change and why
+   - Code examples showing before/after
+   - List of files to be modified
+   - Expected impact on the system
+
+2. **AWAIT APPROVAL**: Stop and wait for user confirmation ("go ahead" or similar)
+
+3. **IMPLEMENT**: Make the changes and stop
+
+4. **BUILD & VALIDATE**: Execute the build process:
+   ```bash
+   cargo build && cargo +nightly fmt
+   ```
+
+5. **CONFIRM**: Wait for user to confirm the build succeeded
+
+6. **MARK COMPLETE**: Update this document to mark the step as ✅ COMPLETED
+
+7. **PROCEED**: Move to next step only after confirmation
+</Instructions>
+
+<ExecuteImplementation>
+    Find the next ⏳ PENDING step in the INTERACTIVE IMPLEMENTATION SEQUENCE below.
+
+    For the current step:
+    1. Follow the <Instructions/> above for executing the step
+    2. When step is complete, use Edit tool to mark it as ✅ COMPLETED
+    3. Continue to next PENDING step
+
+    If all steps are COMPLETED:
+        Display: "✅ Implementation complete! All steps have been executed."
+</ExecuteImplementation>
+
+## INTERACTIVE IMPLEMENTATION SEQUENCE
+
+### Step 1: Add Internal Type Infrastructure ⏳ PENDING
+**Objective**: Create the foundation for internal error handling with MutationResult type alias
+
+**Changes**:
+- Add `MutationResult` type alias to `mutation_path_builder/mod.rs`
+- Update `PathBuilder` trait definition in `builders/mod.rs`
+- Keep `NotMutableReason` private to the module
+
+**Files to modify**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/mod.rs`
+
+**Build Command**:
+```bash
+cargo build
+```
+
+**Expected Result**: Code compiles with new type alias available internally
+
+### Step 2: Update All Builder Implementations ⏳ PENDING
+**Objective**: Migrate all builders to use MutationResult and return NotMutableReason directly
+
+**Changes**:
+- Update all builder `build_paths` methods to return `MutationResult`
+- Change error returns from `Error::NotMutable(reason).into()` to just `Err(reason)`
+- Update `recurse_mutation_paths` to handle internal MutationResult
+- Update `enum_path_builder::process_enum` return type
+
+**Files to modify**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/array_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/list_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/set_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/struct_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/tuple_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/value_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/enum_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/recursion_context.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
+
+**Build Command**:
+```bash
+cargo build && cargo +nightly fmt
+```
+
+**Expected Result**: All internal error handling uses MutationResult
+
+### Step 3: Remove Public API Exposure ⏳ PENDING
+**Objective**: Clean up public API by removing NotMutableReason exposure
+
+**Changes**:
+- Remove `NotMutableReason` import from `error.rs`
+- Remove `Error::NotMutable` variant
+- Remove `as_not_mutable()` method
+- Remove public exports from module files
+
+**Files to modify**:
+- `mcp/src/error.rs`
+- `mcp/src/brp_tools/mod.rs`
+- `mcp/src/brp_tools/brp_type_guide/mod.rs`
+
+**Build Command**:
+```bash
+cargo build && cargo +nightly fmt
+```
+
+**Expected Result**: NotMutableReason is fully encapsulated
+
+### Step 4: Validate Complete Implementation ⏳ PENDING
+**Objective**: Ensure everything works correctly
+
+**Tests to run**:
+```bash
+cargo nextest run
+```
+
+**Validation checklist**:
+- [ ] All tests pass
+- [ ] NotMutableReason is not accessible outside mutation_path_builder
+- [ ] Error messages are still meaningful
+- [ ] No compilation warnings
+
+**Expected Result**: Full test suite passes with refactored error handling
+
+---
+
 ## Design Review Skip Notes
 *Finding tracked here were reviewed but skipped/rejected during design review.*
 
@@ -41,7 +170,7 @@ Refactor `NotMutableReason` to be completely internal to the mutation_path_build
 - **Simple Implementation**: Standard Rust Result pattern matching
 - **Zero Runtime Overhead**: Pure compile-time abstraction
 
-## Implementation
+## Implementation Details
 
 ### 1. Add Internal Type Alias
 **Location**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`
@@ -272,17 +401,10 @@ pub use not_mutable_reason::NotMutableReason;
 use not_mutable_reason::NotMutableReason;
 ```
 
-## Migration Steps
+## Migration Strategy
+**Migration Strategy: Phased**
 
-1. **Add MutationResult type alias** to mutation_path_builder/mod.rs
-2. **Update PathBuilder trait** to use MutationResult return type
-3. **Update all builder implementations** to return MutationResult (NotMutableReason directly)
-4. **Update enum_path_builder** to return MutationResult
-5. **Update recurse_mutation_paths** to handle MutationResult internally and convert at boundary
-6. **Remove NotMutable variant** from Error enum
-7. **Remove as_not_mutable method** from Error
-8. **Remove public export** of NotMutableReason
-9. **Run tests** to ensure everything works
+This collaborative plan uses phased implementation by design. The Collaborative Execution Protocol above defines the phase boundaries with validation checkpoints between each step.
 
 ## Testing Strategy
 
