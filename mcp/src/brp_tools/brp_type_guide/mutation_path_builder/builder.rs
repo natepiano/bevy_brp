@@ -17,6 +17,7 @@ use super::{
     MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathKind,
     RecursionContext, enum_path_builder,
 };
+use crate::brp_tools::brp_type_guide::mutation_path_builder::types::FullMutationPath;
 use crate::error::Result;
 
 /// Result of processing all children during mutation path building
@@ -379,7 +380,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     /// Updates `variant_path` entries in child paths with level-appropriate examples
     fn update_child_variant_paths(
         paths: &mut [MutationPathInternal],
-        current_path: &str,
+        current_path: &FullMutationPath,
         current_example: &Value,
         enum_examples: Option<&Vec<ExampleGroup>>,
     ) {
@@ -388,7 +389,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             if !child.enum_variant_path.is_empty() {
                 // Find matching entry in child's variant_path that corresponds to our level
                 for entry in &mut child.enum_variant_path {
-                    if *entry.full_mutation_path == current_path {
+                    if entry.full_mutation_path == *current_path {
                         // This entry represents our current level - update it
                         entry.instructions = format!(
                             "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",

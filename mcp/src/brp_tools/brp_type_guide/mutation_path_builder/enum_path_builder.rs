@@ -15,6 +15,7 @@ use super::types::{
 };
 use super::{MutationPathInternal, MutationStatus, PathKind};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::types::FullMutationPath;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -41,7 +42,7 @@ struct EnumFieldInfo {
     field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name:  BrpTypeName,
+    type_name: BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -144,18 +145,13 @@ pub fn process_enum(
     ctx: &RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
-    tracing::debug!("EnumPathBuilder processing type: {}", ctx.type_name());
-
-    // Enums always generate examples arrays regardless of context
-    tracing::debug!("EnumPathBuilder processing enum: {}", ctx.type_name());
-
-    // Use shared function to get variant information - same as EnumMutationBuilder
+    // Use shared function to get variant information
     let variant_groups = extract_and_group_variants(ctx)?;
 
     // Process children and collect BOTH examples AND child paths
     let (child_examples, child_paths) = process_children(&variant_groups, ctx, depth)?;
 
-    // Use shared function to build examples - same as EnumMutationBuilder
+    // Use shared function to build examples
     let (enum_examples, default_example) =
         build_enum_examples(&variant_groups, child_examples, ctx)?;
 
@@ -164,7 +160,6 @@ pub fn process_enum(
         ctx,
         enum_examples,
         default_example.clone(),
-        default_example, // Use default_example as assembled_value for non-Root contexts
         child_paths,
     ))
 }
@@ -247,10 +242,6 @@ fn group_variants_by_signature(
     }
     groups
 }
-
-// ============================================================================
-// Static methods moved from EnumMutationBuilder
-// ============================================================================
 
 #[derive(Debug, Clone, PartialEq)]
 enum TypeCategory {
@@ -504,7 +495,7 @@ fn process_children(
     let mut child_examples = HashMap::new();
     let mut all_child_paths = Vec::new();
 
-    // Process each variant group (same logic as EnumMutationBuilder::collect_children)
+    // Process each variant group
     for (signature, variants_in_group) in variant_groups {
         let applicable_variants: Vec<VariantName> = variants_in_group
             .iter()
@@ -522,9 +513,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant:            representative_variant.clone(),
-                    instructions:       String::new(),
-                    variant_example:    json!(null),
+                    variant: representative_variant.clone(),
+                    instructions: String::new(),
+                    variant_example: json!(null),
                 });
             }
             // Recursively process child and collect paths
@@ -555,7 +546,7 @@ fn process_children(
     Ok((child_examples, all_child_paths))
 }
 
-/// Create `PathKind` objects for a signature - mirrors `EnumMutationBuilder` logic
+/// Create `PathKind` objects for a signature
 fn create_paths_for_signature(
     signature: &VariantSignature,
     _applicable_variants: &[VariantName],
@@ -582,8 +573,8 @@ fn create_paths_for_signature(
             .iter()
             .map(|(field_name, type_name)| {
                 Some(PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
             })
@@ -594,7 +585,7 @@ fn create_paths_for_signature(
 /// Updates `variant_path` entries in child paths with level-appropriate examples
 fn update_child_variant_paths(
     paths: &mut [MutationPathInternal],
-    current_path: &str,
+    current_path: &FullMutationPath,
     current_example: &Value,
     enum_examples: Option<&Vec<ExampleGroup>>,
 ) {
@@ -603,8 +594,8 @@ fn update_child_variant_paths(
         if !child.enum_variant_path.is_empty() {
             // Find matching entry in child's variant_path that corresponds to our level
             for entry in &mut child.enum_variant_path {
-                if *entry.full_mutation_path == current_path {
-                    // This entry represents our current level - update it
+                if entry.full_mutation_path == *current_path {
+                    // This entry represents our current level - update its instructions
                     entry.instructions = format!(
                         "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",
                         if entry.full_mutation_path.is_empty() {
@@ -637,7 +628,6 @@ fn create_result_paths(
     ctx: &RecursionContext,
     enum_examples: Vec<ExampleGroup>,
     default_example: Value,
-    _assembled_value: Value, // No longer needed - enums always use null
     mut child_paths: Vec<MutationPathInternal>,
 ) -> Vec<MutationPathInternal> {
     // Generate enum instructions and variant paths before moving values
