@@ -3,10 +3,10 @@
 //! This module exclusively handles enum types, which require special processing due to:
 //! - Multiple variant signatures (unit, tuple, struct) that share the same mutation interface
 //! - Variant selection requirements that cascade through the type hierarchy
-//! - Generation of variant path examples showing how to reach nested mutation targets
-//!   these examples also show the signature and the qualifying applicable variants for each signature
-//!   These more sophisticated examples are necessary because the bevy remote protocol mutation paths
-//!   are the same for all variants with the same signature.
+//! - Generation of variant path examples showing how to reach nested mutation targets these
+//!   examples also show the signature and the qualifying applicable variants for each signature
+//!   These more sophisticated examples are necessary because the bevy remote protocol mutation
+//!   paths are the same for all variants with the same signature.
 //!
 //! ## Key Responsibilities
 //!
@@ -66,7 +66,7 @@ struct EnumFieldInfo {
     field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name: BrpTypeName,
+    type_name:  BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -183,7 +183,7 @@ pub fn process_enum(
     Ok(create_result_paths(
         ctx,
         enum_examples,
-        default_example.clone(),
+        default_example,
         child_paths,
     ))
 }
@@ -537,9 +537,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant: representative_variant.clone(),
-                    instructions: String::new(),
-                    variant_example: json!(null),
+                    variant:            representative_variant.clone(),
+                    instructions:       String::new(),
+                    variant_example:    json!(null),
                 });
             }
             // Recursively process child and collect paths
@@ -596,8 +596,8 @@ fn create_paths_for_signature(
             .iter()
             .map(|(field_name, type_name)| {
                 Some(PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
             })

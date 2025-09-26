@@ -263,7 +263,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     ///
     /// Generates enum variant selection instructions for any type (non-enum) that exists
     /// within an enum's variant tree. The instructions explain how many variant
-    /// selections are needed (based on variant_chain length) to reach this mutation path.
+    /// selections are needed (based on `variant_chain` length) to reach this mutation path.
     fn build_mutation_path_internal(
         ctx: &RecursionContext,
         example: Value,
@@ -280,9 +280,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             )
         };
 
-        let result = MutationPathInternal {
+        MutationPathInternal {
             full_mutation_path: ctx.full_mutation_path.clone(),
-            example: example.clone(),
+            example,
             enum_root_examples: None,
             enum_root_example_for_parent: None,
             type_name: ctx.type_name().display_name(),
@@ -291,9 +291,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             mutation_status_reason,
             enum_instructions,
             enum_variant_path,
-        };
-
-        result
+        }
     }
 
     /// Build final result based on `PathAction`
