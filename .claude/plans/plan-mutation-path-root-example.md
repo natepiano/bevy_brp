@@ -147,34 +147,38 @@ From `TestVariantChainEnum.json` in the enum_variant_path section:
 Current (BROKEN) Example Flow:
 ================================
 BottomEnum [VariantA, VariantB, VariantC]
-    ↓ (groups by signature)
-Signature1: [VariantA, VariantC] → returns ONE example
-Signature2: [VariantB] → returns ONE example
+    ↓ (returns to parent)
+HashMap {
+  "nested_enum" → {"VariantA": 123}  // Only ONE variant!
+}
     ↓ (parent receives)
-MiddleStruct gets TWO examples total (one per signature)
-    ↓ (root assembly)
-TestVariantChainEnum can only build LIMITED combinations
+MiddleStruct builds example with ONLY VariantA
+    ↓ (returns to grandparent)
+TestVariantChainEnum wraps example that only has VariantA
     ↓ (result)
-Path ".name" with chain [WithMiddleStruct, VariantB]
-→ Gets WRONG root with VariantA
+Path ".middle_struct.nested_enum.name" needs VariantB
+→ But root example has VariantA (WRONG!)
 
 
-Fixed Example Flow:
+Fixed Example Flow with Extended Descriptors:
 ================================
 BottomEnum [VariantA, VariantB, VariantC]
-    ↓ (groups by signature for HashMap keys)
-Signature1: [VariantA, VariantC] → preserve BOTH variant chains
-Signature2: [VariantB] → preserve this variant chain
-    ↓ (parent receives)
-MiddleStruct gets examples for ALL variant chains
-    ↓ (root assembly)
-TestVariantChainEnum builds ALL combinations:
-  - Chain[WithMiddleStruct, VariantA] → Root{VariantA}
-  - Chain[WithMiddleStruct, VariantB] → Root{VariantB}
-  - Chain[WithMiddleStruct, VariantC] → Root{VariantC}
+    ↓ (returns to parent with EXTENDED descriptors)
+HashMap {
+  {"nested_enum", Tuple} → {"VariantA": 123},
+  {"nested_enum", Struct} → {"VariantB": {"name": "Hello"}},
+  {"nested_enum", Unit} → "VariantC"
+}
+    ↓ (parent receives ALL variants)
+MiddleStruct can build examples with ANY variant
+    ↓ (returns to grandparent)
+TestVariantChainEnum builds complete examples:
+  - With VariantA for paths needing it
+  - With VariantB for paths needing it
+  - With VariantC for paths needing it
     ↓ (result)
-Path ".name" with chain [WithMiddleStruct, VariantB]
-→ Looks up Chain[WithMiddleStruct, VariantB] → Gets CORRECT root
+Path ".middle_struct.nested_enum.name" with chain [WithMiddleStruct, VariantB]
+→ Gets root example with VariantB (CORRECT!)
 ```
 
 ## Implementation Strategy
@@ -524,13 +528,26 @@ Add `applicable_variants` to path_info and use correct root example:
 
 ## Testing Strategy
 
-1. **Unit tests**: Verify variant chain map building and lookup
-2. **Integration tests**: Test with `extras_plugin::TestVariantChainEnum` type (which generates `TestVariantChainEnum.json`)
-3. **Verification**:
-   - Path `.middle_struct.nested_enum.name` has root with `BottomEnum::VariantB`
-   - Path `.middle_struct.nested_enum.0` has root with `BottomEnum::VariantA`
-   - Path `.middle_struct.nested_enum` shows all three variants in examples array
-4. **Deep nesting**: Validate with 3+ level enum chains
+1. **Unit tests**:
+   - Verify extended descriptor creation and equality
+   - Test `matches_field()` functionality
+   - Verify HashMap can hold multiple entries per field
+
+2. **Integration tests**: Test with `extras_plugin::TestVariantChainEnum`
+   - Before fix: `.middle_struct.nested_enum.name` has wrong root (VariantA)
+   - After fix: `.middle_struct.nested_enum.name` has correct root (VariantB)
+
+3. **Verification Points**:
+   - HashMap has multiple entries for enum fields
+   - Each variant signature preserved separately
+   - Root deduplication selects appropriate examples
+   - All paths updated with correct variant chain roots
+
+4. **Edge Cases**:
+   - Multiple variants with same signature
+   - Deep nesting (3+ enum levels)
+   - Mix of enum and non-enum fields
+   - Empty variants and unit variants
 
 ## Example: Complete Transformation
 
@@ -598,6 +615,44 @@ The `applicable_variants` field serves a critical purpose:
 - Documents the complete API surface for each path
 - Prevents field name confusion bugs
 
+## Critical Implementation Details
+
+### The HashMap Bottleneck Explained
+
+The core issue is that `HashMap<MutationPathDescriptor, Value>` enforces uniqueness by key:
+
+```rust
+// When BottomEnum returns to MiddleStruct:
+child_examples.insert("nested_enum", example_A);  // First insert
+child_examples.insert("nested_enum", example_B);  // OVERWRITES example_A!
+```
+
+With extended descriptors:
+```rust
+// Each variant gets its own entry:
+child_examples.insert({"nested_enum", SignatureA}, example_A);
+child_examples.insert({"nested_enum", SignatureB}, example_B);
+// Both preserved!
+```
+
+### Why Other Builders Don't Need Changes
+
+Other builders use `From<String>` which creates simple descriptors:
+```rust
+// struct_builder.rs - unchanged!
+let descriptor = MutationPathDescriptor::from("field_name");
+// Automatically gets variant_signature: None
+```
+
+Only enum processing explicitly uses the new constructor:
+```rust
+// enum_path_builder.rs - the only change!
+let descriptor = MutationPathDescriptor::with_variant(
+    "field_name".to_string(),
+    variant_signature
+);
+```
+
 ## Important Implementation Details
 
 ### How This Solves the HashMap Collision Problem
@@ -626,12 +681,12 @@ This provides type safety and clearer code than working with JSON values directl
 
 ## Notes
 
-- This leverages existing variant chain tracking (`enum_variant_path` contains the chain)
-- The core insight: variant chain should be the lookup key for root examples
-- Signatures must match EXACTLY including field names to group variants
-- We've confirmed the signature deduplication already includes field names (safe from Color bug)
-- Performance impact: More paths during recursion, but same output size
-- This is a surgical fix to the specific subset of paths that traverse enum variants
+- This is a surgical fix - only `MutationPathDescriptor` and enum processing change
+- The extended descriptor preserves backward compatibility perfectly
+- HashMap structure remains unchanged, just more entries for enum fields
+- Parent types naturally build correct examples without special logic
+- Root deduplication ensures clean output despite multiple internal examples
+- Performance impact: Slightly more HashMap entries during recursion, same final output size
 
 ## Design Review Skip Notes
 
