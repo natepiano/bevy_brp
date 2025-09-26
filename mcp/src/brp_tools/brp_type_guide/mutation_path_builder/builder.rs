@@ -22,11 +22,11 @@ use crate::error::Result;
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -329,15 +329,6 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             enum_instructions,
             enum_variant_path,
         };
-
-        tracing::debug!(
-            "Created MutationPathInternal for {} at path '{}': example={}, enum_root_examples={}, enum_root_example_for_parent={}",
-            ctx.type_name(),
-            ctx.full_mutation_path,
-            example,
-            enum_root_examples.is_some(),
-            enum_root_example_for_parent.is_some()
-        );
 
         result
     }
