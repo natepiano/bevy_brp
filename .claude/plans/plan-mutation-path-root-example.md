@@ -4,6 +4,58 @@
 
 Fix mutation paths within enum chains by using the variant chain as a lookup key for correct root examples, propagating all paths during recursion and only deduplicating at output time.
 
+## High-Level Implementation Plan
+
+• **Phase 1: Restructure data with `EnumPathData`**
+  - Create `EnumPathData` struct to group all enum-related fields
+  - Move `enum_variant_path`, `enum_instructions`, etc. into this struct
+  - Add `variant_chain_root_example` field for the correct root example
+  - Add `applicable_variants` to track all variants with same signature
+
+• **Phase 2: Change enum processing to return ALL variant paths**
+  - Modify `process_children` in enum_path_builder to process each variant individually within signature groups
+  - Remove early deduplication - return all paths to parent
+  - Maintain signature grouping only to prevent HashMap key collisions
+
+• **Phase 3: Build variant chain to root example mapping**
+  - Create a `VariantChainMap` type: `HashMap<Vec<VariantName>, Value>`
+  - During root assembly, map each complete variant chain to its correct root example
+  - Store this mapping for later lookup
+
+• **Phase 4: Update child variant paths with correct examples**
+  - Modify `update_child_variant_paths` to use variant chain map
+  - Lookup correct root example based on complete variant chain
+  - Ensure each path gets the right variant combination
+
+• **Phase 5: Implement late deduplication at output**
+  - Move all deduplication to `prepare_output` stage
+  - Group paths by `(full_mutation_path, signature)`
+  - Select one representative per group but preserve all variant information
+  - Use the variant chain root example from the map
+
+• **Phase 6: Update output format**
+  - Add `applicable_variants` to show which variants work for each path
+  - Replace multi-step `enum_variant_path` with single correct root example
+  - Ensure `.middle_struct.nested_enum.name` shows `VariantB` root, not `VariantA`
+
+## Design Considerations
+
+### Memory Implications
+
+Processing all variant paths without early deduplication could theoretically cause exponential memory growth. However, the existing recursion depth limit already protects against unbounded growth by capping the maximum nesting level.
+
+### Phase Ordering
+
+Data restructuring (Phase 1) is intentionally placed before logic changes (Phase 2) to avoid implementing new functionality on old data structures, reducing refactoring and technical debt.
+
+### Performance and Regression Testing
+
+The existing integration test suite is sufficient for performance and regression testing. The tests already validate complex nested enum scenarios and will catch any performance degradation or behavioral changes. See `.claude/commands/mutation_test.md` for the comprehensive validation framework.
+
+### Backwards Compatibility
+
+Backwards compatibility is not a concern for this implementation. This is a feature enhancement that fixes incorrect behavior in nested enum scenarios.
+
 ## The Core Insight
 
 The `variant_chain` that we already track (e.g., `["TestVariantChainEnum::WithMiddleStruct", "BottomEnum::VariantB"]`) should be the key to lookup the correct root example. The current system deduplicates too early, losing the ability to build all necessary variant combinations.
@@ -74,7 +126,11 @@ From `TestVariantChainEnum.json` lines 196-222:
 
 ## Implementation Strategy
 
-### Phase 1: Propagate All Paths During Recursion
+### Phase 1: Restructure Data with EnumPathData
+
+Create a dedicated struct to group all enum-related data before implementing new logic. This provides better ergonomics and cleaner separation of concerns. Move the data structure definition from later in the document to be implemented first.
+
+### Phase 2: Propagate All Paths During Recursion
 
 Change enum processing to return all paths, not deduplicated:
 
@@ -104,7 +160,7 @@ fn process_children() -> Result<(HashMap<MutationPathDescriptor, Value>, Vec<Mut
 
 **Key Insight**: We must maintain signature grouping to avoid HashMap collisions where multiple variants would create the same `MutationPathDescriptor`. But within each signature group, we process every variant individually to build all variant chains.
 
-### Phase 2: Build Variant Chain Map at Root
+### Phase 3: Build Variant Chain Map at Root
 
 At root level assembly, build a map of variant chains to complete root examples:
 
@@ -128,7 +184,7 @@ fn finalize_mutation_paths(
 }
 ```
 
-### Phase 3: Deduplicate at Output Only
+### Phase 4: Deduplicate at Output Only
 
 Move all deduplication to the output stage:
 
