@@ -1,5 +1,7 @@
 # Plan: Fix Root Examples Using Variant Chain as Lookup Key
 
+**Migration Strategy: Phased**
+
 ## Executive Summary
 
 Fix mutation paths within enum chains by using the variant chain as a lookup key for correct root examples, propagating all paths during recursion and only deduplicating at output time.
