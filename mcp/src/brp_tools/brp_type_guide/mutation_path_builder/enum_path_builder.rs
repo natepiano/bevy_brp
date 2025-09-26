@@ -41,7 +41,7 @@ use super::recursion_context::RecursionContext;
 use super::types::{
     ExampleGroup, PathAction, StructFieldName, VariantName, VariantPath, VariantSignature,
 };
-use super::{MutationPathInternal, MutationResult, MutationStatus, NotMutableReason, PathKind};
+use super::{MutationPathInternal, MutationResult, MutationStatus, PathKind};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::types::FullMutationPath;
 use crate::error::{Error, Result};
@@ -168,25 +168,16 @@ impl EnumVariantInfo {
 pub fn process_enum(ctx: &RecursionContext, depth: RecursionDepth) -> MutationResult {
     // Use shared function to get variant information
     let variant_groups =
-        extract_and_group_variants(ctx).map_err(|_e| NotMutableReason::NoMutableChildren {
-            parent_type: ctx.type_name().clone(),
-        })?;
+        extract_and_group_variants(ctx).map_err(|_e| ctx.create_no_mutable_children_error())?;
 
     // Process children and collect BOTH examples AND child paths
-    let (child_examples, child_paths) =
-        process_children(&variant_groups, ctx, depth).map_err(|_e| {
-            NotMutableReason::NoMutableChildren {
-                parent_type: ctx.type_name().clone(),
-            }
-        })?;
+    let (child_examples, child_paths) = process_children(&variant_groups, ctx, depth)
+        .map_err(|_e| ctx.create_no_mutable_children_error())?;
 
     // Use shared function to build examples
     let (enum_examples, default_example) =
-        build_enum_examples(&variant_groups, child_examples, ctx).map_err(|_e| {
-            NotMutableReason::NoMutableChildren {
-                parent_type: ctx.type_name().clone(),
-            }
-        })?;
+        build_enum_examples(&variant_groups, child_examples, ctx)
+            .map_err(|_e| ctx.create_no_mutable_children_error())?;
 
     // Create result paths including both root AND child paths
     Ok(create_result_paths(

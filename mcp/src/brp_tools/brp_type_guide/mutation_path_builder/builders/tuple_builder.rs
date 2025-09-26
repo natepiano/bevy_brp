@@ -32,26 +32,21 @@ impl PathBuilder for TupleMutationBuilder {
         let schema = ctx.require_registry_schema()?;
 
         let Some(prefix_items) = schema.get("prefixItems") else {
-            return Err(Error::SchemaProcessing {
-                message:   format!(
-                    "Missing prefixItems in tuple schema for: {}",
-                    ctx.type_name()
-                ),
-                type_name: Some(ctx.type_name().to_string()),
-                operation: Some("extract_prefix_items".to_string()),
-                details:   None,
-            }
+            return Err(Error::schema_processing_for_type(
+                ctx.type_name().as_str(),
+                "extract_prefix_items",
+                "Missing prefixItems in tuple schema",
+            )
             .into());
         };
 
         // Extract array of element schemas
         let Some(items_array) = prefix_items.as_array() else {
-            return Err(Error::SchemaProcessing {
-                message:   format!("prefixItems is not an array for tuple: {}", ctx.type_name()),
-                type_name: Some(ctx.type_name().to_string()),
-                operation: Some("parse_prefix_items".to_string()),
-                details:   None,
-            }
+            return Err(Error::schema_processing_for_type(
+                ctx.type_name().as_str(),
+                "parse_prefix_items",
+                "prefixItems is not an array",
+            )
             .into());
         };
 
@@ -60,16 +55,11 @@ impl PathBuilder for TupleMutationBuilder {
         for (index, element_schema) in items_array.iter().enumerate() {
             // Extract element type from schema
             let Some(element_type) = element_schema.extract_field_type() else {
-                return Err(Error::SchemaProcessing {
-                    message:   format!(
-                        "Failed to extract type for tuple element {} in '{}'",
-                        index,
-                        ctx.type_name()
-                    ),
-                    type_name: Some(ctx.type_name().to_string()),
-                    operation: Some("extract_element_type".to_string()),
-                    details:   Some(format!("Element index: {index}")),
-                }
+                return Err(Error::schema_processing_for_type(
+                    ctx.type_name().as_str(),
+                    "extract_element_type",
+                    format!("Failed to extract type for element {index}"),
+                )
                 .into());
             };
 
@@ -95,10 +85,11 @@ impl PathBuilder for TupleMutationBuilder {
 
         // Check if this is a single-element Handle wrapper
         if elements.len() == 1 && elements[0].is_handle() {
-            return Err(Error::General(format!(
-                "Handle wrapper not mutable for {}",
-                ctx.type_name().display_name()
-            ))
+            return Err(Error::schema_processing_for_type(
+                ctx.type_name().as_str(),
+                "validate_handle_wrapper",
+                "Handle wrapper not mutable",
+            )
             .into());
         }
 

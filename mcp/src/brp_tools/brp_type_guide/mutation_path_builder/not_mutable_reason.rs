@@ -1,4 +1,27 @@
 //! Mutation support status types for type schema analysis
+//!
+//! This module implements an internal control flow mechanism where [`NotMutableReason`] acts as
+//! structured error information that gets converted to user-facing output rather than propagated
+//! as actual errors. The pattern enables clean separation between genuine errors (registry
+//! failures, parsing errors) and expected "not mutable" conditions that are part of normal
+//! operation.
+//!
+//! ## Control Flow Pattern
+//!
+//! Internal builders return [`MutationResult`] which uses [`NotMutableReason`] as the error type:
+//! ```rust,ignore
+//! pub(super) type MutationResult = Result<Vec<MutationPathInternal>, NotMutableReason>;
+//! ```
+//!
+//! When a type cannot be mutated (missing serialization, recursion limits, etc.), builders return
+//! `Err(NotMutableReason::*)` rather than continuing processing. This gets caught at the choke
+//! point in `recurse_mutation_paths()` and converted to user output via `build_not_mutable_path()`.
+//!
+//! This design allows:
+//! - Clean early returns from deeply nested recursion
+//! - Rich diagnostic information in the final output
+//! - Clear separation between system errors and expected "not mutable" states
+//! - Consistent formatting of all "not mutable" paths
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};

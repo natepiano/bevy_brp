@@ -91,19 +91,15 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             all_paths,
             paths_to_expose,
             child_examples,
-        } = self.process_all_children(ctx, depth).map_err(|_e| {
-            NotMutableReason::NoMutableChildren {
-                parent_type: ctx.type_name().clone(),
-            }
-        })?;
+        } = self
+            .process_all_children(ctx, depth)
+            .map_err(|_e| ctx.create_no_mutable_children_error())?;
 
         // Assemble THIS level from children (post-order)
         let assembled_example = self
             .inner
             .assemble_from_children(ctx, child_examples)
-            .map_err(|_e| NotMutableReason::NoMutableChildren {
-                parent_type: ctx.type_name().clone(),
-            })?;
+            .map_err(|_e| ctx.create_no_mutable_children_error())?;
 
         // Use knowledge example if available (for Teach types), otherwise use assembled example
         let final_example = knowledge_example.map_or(assembled_example, |knowledge_example| {
@@ -432,9 +428,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                     summaries,
                 ))
             }
-            MutationStatus::NotMutable => Some(NotMutableReason::NoMutableChildren {
-                parent_type: ctx.type_name().clone(),
-            }),
+            MutationStatus::NotMutable => Some(ctx.create_no_mutable_children_error()),
             MutationStatus::Mutable => None,
         };
 

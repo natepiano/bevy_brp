@@ -9,6 +9,7 @@ use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::response_types::ReflectTrait;
+use super::NotMutableReason;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
 use super::types::{FullMutationPath, PathAction, VariantPath};
@@ -194,5 +195,12 @@ impl RecursionContext {
         BRP_MUTATION_KNOWLEDGE
             .get(&exact_key)
             .map_or_else(|| None, Some)
+    }
+
+    /// Creates a NoMutableChildren error with this context's type name
+    pub fn create_no_mutable_children_error(&self) -> NotMutableReason {
+        NotMutableReason::NoMutableChildren {
+            parent_type: self.type_name().clone(),
+        }
     }
 }
