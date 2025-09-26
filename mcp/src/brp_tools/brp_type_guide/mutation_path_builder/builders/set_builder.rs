@@ -11,6 +11,7 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::BuilderError;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
@@ -55,14 +56,16 @@ impl PathBuilder for SetMutationBuilder {
         &self,
         ctx: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Value>,
-    ) -> Result<Value> {
+    ) -> std::result::Result<Value, BuilderError> {
         // At this point, children contains a COMPLETE example for the item type
         let Some(item_example) = children.get(SchemaField::Items.as_ref()) else {
-            return Err(Error::InvalidState(format!(
-                "Protocol violation: Set type {} missing required 'items' child example",
-                ctx.type_name()
-            ))
-            .into());
+            return Err(BuilderError::SystemError(
+                Error::InvalidState(format!(
+                    "Protocol violation: Set type {} missing required 'items' child example",
+                    ctx.type_name()
+                ))
+                .into(),
+            ));
         };
 
         // Check if the element is complex (non-primitive) type

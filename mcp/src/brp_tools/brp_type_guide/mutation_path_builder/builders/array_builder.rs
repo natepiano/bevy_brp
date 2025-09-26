@@ -11,10 +11,10 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::super::MutationPathDescriptor;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
+use super::super::{BuilderError, MutationPathDescriptor};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -60,17 +60,18 @@ impl PathBuilder for ArrayMutationBuilder {
         &self,
         ctx: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Value>,
-    ) -> Result<Value> {
+    ) -> std::result::Result<Value, BuilderError> {
         // Get the single element at index 0
         // The key is just "0", not "[0]" - that's how ArrayElement converts to
         // MutationPathDescriptor
-        let element_example = children.get("0").ok_or_else(|| {
-            Error::InvalidState(format!(
+        let element_example =
+            children.get("0").ok_or_else(|| {
+                BuilderError::SystemError(Error::InvalidState(format!(
                 "Protocol violation: Array {} missing element at index 0. Available keys: {:?}",
                 ctx.type_name(),
                 children.keys().collect::<Vec<_>>()
-            ))
-        })?;
+            )).into())
+            })?;
 
         // Create array with appropriate size
         let array_size = Self::extract_array_size(ctx.type_name());

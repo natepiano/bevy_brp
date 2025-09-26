@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::types::PathAction;
-use super::{MutationPathDescriptor, MutationResult, RecursionContext};
+use super::{BuilderError, MutationPathDescriptor, RecursionContext};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
@@ -30,8 +30,12 @@ pub trait PathBuilder {
     /// parameter to track recursion depth and prevent infinite loops.
     ///
     /// Returns a `Result` containing a vector of `MutationPathInternal` representing
-    /// all possible mutation paths, or an error if path building failed.
-    fn build_paths(&self, _ctx: &RecursionContext, _depth: RecursionDepth) -> MutationResult {
+    /// all possible mutation paths, or a BuilderError if path building failed.
+    fn build_paths(
+        &self,
+        _ctx: &RecursionContext,
+        _depth: RecursionDepth,
+    ) -> std::result::Result<Vec<super::types::MutationPathInternal>, BuilderError> {
         // Implementation details here
         Ok(vec![])
     }
@@ -90,7 +94,7 @@ pub trait PathBuilder {
         &self,
         _ctx: &RecursionContext,
         _children: HashMap<MutationPathDescriptor, Value>,
-    ) -> Result<Value> {
+    ) -> std::result::Result<Value, BuilderError> {
         // Default - not implemented for MutationPathBuilder
         Ok(json!(null))
     }
@@ -101,15 +105,13 @@ pub trait PathBuilder {
         &self,
         element: &Value,
         ctx: &RecursionContext,
-    ) -> Result<()> {
-        use crate::error::Error;
+    ) -> std::result::Result<(), BuilderError> {
+        use super::NotMutableReason;
         use crate::json_object::JsonObjectAccess;
         if element.is_complex_type() {
-            return Err(Error::General(format!(
-                "Complex collection key not supported for {}",
-                ctx.type_name().display_name()
-            ))
-            .into());
+            return Err(BuilderError::NotMutable(
+                NotMutableReason::ComplexCollectionKey(ctx.type_name().clone()),
+            ));
         }
         Ok(())
     }

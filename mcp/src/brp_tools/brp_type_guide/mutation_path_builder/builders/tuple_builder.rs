@@ -11,10 +11,10 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::super::MutationPathDescriptor;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
+use super::super::{BuilderError, MutationPathDescriptor, NotMutableReason};
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 
@@ -78,19 +78,19 @@ impl PathBuilder for TupleMutationBuilder {
         &self,
         ctx: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Value>,
-    ) -> Result<Value> {
+    ) -> std::result::Result<Value, BuilderError> {
         // First extract element types to check for Handle wrapper
         let schema = ctx.require_registry_schema()?;
         let elements = RecursionContext::extract_tuple_element_types(schema).unwrap_or_default();
 
         // Check if this is a single-element Handle wrapper
         if elements.len() == 1 && elements[0].is_handle() {
-            return Err(Error::schema_processing_for_type(
-                ctx.type_name().as_str(),
-                "validate_handle_wrapper",
-                "Handle wrapper not mutable",
-            )
-            .into());
+            return Err(BuilderError::NotMutable(
+                NotMutableReason::NonMutableHandle {
+                    container_type: ctx.type_name().clone(),
+                    element_type:   elements[0].clone(),
+                },
+            ));
         }
 
         // Assemble tuple from child examples in order

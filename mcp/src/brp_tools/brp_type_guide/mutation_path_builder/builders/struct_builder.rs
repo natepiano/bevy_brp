@@ -11,11 +11,11 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::super::MutationPathDescriptor;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::StructFieldName;
+use super::super::{BuilderError, MutationPathDescriptor};
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 
@@ -80,7 +80,7 @@ impl PathBuilder for StructMutationBuilder {
         &self,
         _ctx: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Value>,
-    ) -> Result<Value> {
+    ) -> std::result::Result<Value, BuilderError> {
         if children.is_empty() {
             // Valid case: empty struct with no fields (e.g., marker structs)
             return Ok(json!({}));

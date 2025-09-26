@@ -11,6 +11,7 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::BuilderError;
 use super::super::path_builder::PathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{PathAction, StructFieldName};
@@ -86,21 +87,25 @@ impl PathBuilder for MapMutationBuilder {
         &self,
         ctx: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Value>,
-    ) -> Result<Value> {
+    ) -> std::result::Result<Value, BuilderError> {
         let Some(key_example) = children.get(SchemaField::Key.as_ref()) else {
-            return Err(Error::InvalidState(format!(
-                "Protocol violation: Map type {} missing required 'key' child example",
-                ctx.type_name()
-            ))
-            .into());
+            return Err(BuilderError::SystemError(
+                Error::InvalidState(format!(
+                    "Protocol violation: Map type {} missing required 'key' child example",
+                    ctx.type_name()
+                ))
+                .into(),
+            ));
         };
 
         let Some(value_example) = children.get(SchemaField::Value.as_ref()) else {
-            return Err(Error::InvalidState(format!(
-                "Protocol violation: Map type {} missing required 'value' child example",
-                ctx.type_name()
-            ))
-            .into());
+            return Err(BuilderError::SystemError(
+                Error::InvalidState(format!(
+                    "Protocol violation: Map type {} missing required 'value' child example",
+                    ctx.type_name()
+                ))
+                .into(),
+            ));
         };
 
         // Check if the key is complex (non-primitive) type
@@ -114,12 +119,14 @@ impl PathBuilder for MapMutationBuilder {
             Value::Null => "null".to_string(),
             other => {
                 // This should not happen since we checked for complex keys above
-                return Err(Error::schema_processing_for_type(
-                    ctx.type_name(),
-                    "serialize_map_key",
-                    format!("Unexpected complex key type after complexity check: {other:?}"),
-                )
-                .into());
+                return Err(BuilderError::SystemError(
+                    Error::schema_processing_for_type(
+                        ctx.type_name(),
+                        "serialize_map_key",
+                        format!("Unexpected complex key type after complexity check: {other:?}"),
+                    )
+                    .into(),
+                ));
             }
         };
 

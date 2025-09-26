@@ -12,7 +12,8 @@ use serde_json::Value;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
-use crate::error::{Error, Result};
+use super::super::{BuilderError, NotMutableReason};
+use crate::error::Result;
 
 pub struct ValueMutationBuilder;
 
@@ -31,24 +32,20 @@ impl PathBuilder for ValueMutationBuilder {
         &self,
         ctx: &RecursionContext,
         _children: HashMap<MutationPathDescriptor, Value>,
-    ) -> Result<Value> {
+    ) -> std::result::Result<Value, BuilderError> {
         // Check if this Value type has serialization support
         if !ctx.value_type_has_serialization(ctx.type_name()) {
-            // Return error for types without serialization
-            return Err(Error::General(format!(
-                "Type {} missing serialization traits",
-                ctx.type_name().display_name()
-            ))
-            .into());
+            // Return NotMutableReason for types without serialization
+            return Err(BuilderError::NotMutable(
+                NotMutableReason::MissingSerializationTraits(ctx.type_name().clone()),
+            ));
         }
 
-        // For leaf types with no children that have serialization, return error
+        // For leaf types with no children that have serialization, return NotMutableReason
         // This should only be reached by types that don't have knowledge entries
         // Types with knowledge entries and TreatAsValue guidance stop recursion before getting here
-        Err(Error::General(format!(
-            "No example available for {}",
-            ctx.type_name().display_name()
+        Err(BuilderError::NotMutable(
+            NotMutableReason::NoExampleAvailable(ctx.type_name().clone()),
         ))
-        .into())
     }
 }

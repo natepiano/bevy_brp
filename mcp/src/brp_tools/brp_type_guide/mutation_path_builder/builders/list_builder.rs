@@ -11,6 +11,7 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::BuilderError;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
@@ -57,17 +58,18 @@ impl PathBuilder for ListMutationBuilder {
         &self,
         ctx: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Value>,
-    ) -> Result<Value> {
+    ) -> std::result::Result<Value, BuilderError> {
         // Get the single element at index 0
         // The key is just "0", not "[0]" - that's how ArrayElement converts to
         // MutationPathDescriptor
-        let element_example = children.get("0").ok_or_else(|| {
-            Error::InvalidState(format!(
+        let element_example =
+            children.get("0").ok_or_else(|| {
+                BuilderError::SystemError(Error::InvalidState(format!(
                 "Protocol violation: List {} missing element at index 0. Available keys: {:?}",
                 ctx.type_name(),
                 children.keys().map(|k| &**k).collect::<Vec<_>>()
-            ))
-        })?;
+            )).into())
+            })?;
 
         // Create single-element array to show it's a list
         // One element is sufficient to demonstrate the pattern
