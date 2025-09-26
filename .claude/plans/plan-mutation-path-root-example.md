@@ -1,44 +1,42 @@
-# Plan: Fix Root Examples Using Variant Chain as Lookup Key
+# Plan: Fix Root Examples Using Extended Descriptors for Variant Preservation
 
-**Migration Strategy: Phased**
+**Migration Strategy: Incremental**
 
 ## Executive Summary
 
-Fix mutation paths within enum chains by using the variant chain as a lookup key for correct root examples, propagating all paths during recursion and only deduplicating at output time.
+Fix root example assembly for mutation paths within enum chains by extending `MutationPathDescriptor` to include an optional variant signature. This allows the existing HashMap structure to preserve ALL variant examples during recursion without breaking other builders. The paths already exist correctly - the problem is that enum fields can only store one example in the HashMap, losing variant diversity.
 
 ## High-Level Implementation Plan
 
-• **Phase 1: Restructure data with `EnumPathData`**
-  - Create `EnumPathData` struct to group all enum-related fields
-  - Move `enum_variant_path`, `enum_instructions`, etc. into this struct
-  - Add `variant_chain_root_example` field for the correct root example
-  - Add `applicable_variants` to track all variants with same signature
+• **Phase 1: Extend MutationPathDescriptor with optional variant signature**
+  - Add `variant_signature: Option<VariantSignature>` field to descriptor
+  - Implement `From<String>` and `From<&str>` for backwards compatibility
+  - Non-enum builders continue creating simple descriptors unchanged
+  - Enum builders create descriptors with both base and variant signature
 
-• **Phase 2: Change enum processing to return ALL variant paths**
-  - Modify `process_children` in enum_path_builder to process each variant individually within signature groups
-  - Remove early deduplication - return all paths to parent
-  - Maintain signature grouping only to prevent HashMap key collisions
+• **Phase 2: Update enum processing to create multiple HashMap entries**
+  - For each variant signature, create a descriptor with that signature
+  - Insert each variant's example with its unique descriptor
+  - Example: "nested_enum" + VariantA → `{"VariantA": 123}`
+  - Example: "nested_enum" + VariantB → `{"VariantB": {"name": "Hello"}}`
+  - This preserves ALL variant examples in the existing HashMap structure
 
-• **Phase 3: Build variant chain to root example mapping**
-  - Create a `VariantChainMap` type: `HashMap<VariantChain, Value>` where `VariantChain` is a semantic alias for `Vec<VariantName>`
-  - During root assembly, map each complete variant chain to its correct root example
-  - Store this mapping for later lookup
+• **Phase 3: Update parent enum's variant path updates**
+  - When enum gets child paths back, it updates ALL variant examples
+  - Each path's variant chain determines which descriptor to use
+  - Parent enum wraps each variant's example correctly
+  - Result: Complete root examples for all variant combinations
 
-• **Phase 4: Update child variant paths with correct examples**
-  - Modify `update_child_variant_paths` to use variant chain map
-  - Lookup correct root example based on complete variant chain
-  - Ensure each path gets the right variant combination
+• **Phase 4: Add root-level deduplication**
+  - At the root, group descriptors by base field name
+  - Select one representative example per field (prefer non-unit variants)
+  - Store the variant chain → root example mapping
+  - Update all paths with their correct root examples
 
-• **Phase 5: Implement late deduplication at output**
-  - Move all deduplication to `prepare_output` stage
-  - Group paths by `(full_mutation_path, signature)`
-  - Select one representative per group but preserve all variant information
-  - Use the variant chain root example from the map
-
-• **Phase 6: Update output format**
-  - Add `applicable_variants` to show which variants work for each path
-  - Replace multi-step `enum_variant_path` with single correct root example
-  - Ensure `.middle_struct.nested_enum.name` shows `VariantB` root, not `VariantA`
+• **Phase 5: Clean up output**
+  - Use the stored root examples for each path
+  - Add `applicable_variants` field showing variant support
+  - Single-step root example replaces multi-step array
 
 ## Design Considerations
 
@@ -77,16 +75,35 @@ The `variant_chain` that we already track (e.g., `["TestVariantChainEnum::WithMi
 - Array/Vec indexing (`.items[0]`)
 - Any path that doesn't require enum variant selection
 
-## The Problem with Current Flow
+## The Core Problem: HashMap Can Only Hold One Example Per Field
 
-Looking at the type guide output in `TestVariantChainEnum.json` (generated from the `extras_plugin::TestVariantChainEnum` type):
+**CRITICAL UNDERSTANDING**: The mutation paths already exist correctly for all signature groups. The problem is the HashMap structure `HashMap<MutationPathDescriptor, Value>` can only hold ONE value per key.
 
-### Current (Broken) Flow
-1. `BottomEnum` processes variants, groups by signature
-2. Returns ONE path per signature group to parent
-3. Parent (`MiddleStruct`) only gets one example per signature
-4. Root (`TestVariantChainEnum`) can only build one combination
-5. Result: Wrong variant in root example
+### Why Examples Get Lost
+
+**The HashMap Bottleneck**
+```
+When MiddleStruct has field "nested_enum" of type BottomEnum:
+→ BottomEnum has 3 variants with different signatures
+→ But can only return ONE example for key "nested_enum"
+→ Other variant examples are lost forever
+→ Parent builds root with only one variant available
+```
+
+**Concrete Example**
+```rust
+// Current: HashMap can only hold one entry
+HashMap {
+  "nested_enum" → {"VariantA": 123}  // Only ONE variant preserved!
+}
+
+// Needed: Multiple entries for different variants
+HashMap {
+  "nested_enum" + VariantA → {"VariantA": 123},
+  "nested_enum" + VariantB → {"VariantB": {"name": "Hello"}},
+  "nested_enum" + VariantC → "VariantC"
+}
+```
 
 ### Example of the Problem
 From `TestVariantChainEnum.json` in the enum_variant_path section:
@@ -116,15 +133,49 @@ From `TestVariantChainEnum.json` in the enum_variant_path section:
 
 **The Problem**: The `.name` field only exists in `VariantB`, but the root example shows `VariantA`. This happens because when `BottomEnum` returns to its parent, it only returns one example per signature group.
 
-## The Solution: Variant Chain as Lookup Key
+## The Solution: Preserve All Variant Chain Examples
 
-### Needed Flow
-1. `BottomEnum` processes ALL variants individually
-2. Returns ALL paths to parent (no deduplication yet)
-3. Parent gets all variant examples
-4. Root builds ALL possible variant chain combinations
-5. Store each in map: `VariantChain → RootExample`
-6. At output, deduplicate paths but lookup correct root via chain
+### What Needs to Change
+1. **NOT path creation** - paths already exist for all signature groups ✓
+2. **Example assembly** - preserve ALL variant chain examples during recursion
+3. **Root mapping** - build `VariantChain → RootExample` for ALL combinations
+4. **Path lookup** - each existing path uses its variant chain to find correct root
+
+### Visual Flow Diagram
+
+```
+Current (BROKEN) Example Flow:
+================================
+BottomEnum [VariantA, VariantB, VariantC]
+    ↓ (groups by signature)
+Signature1: [VariantA, VariantC] → returns ONE example
+Signature2: [VariantB] → returns ONE example
+    ↓ (parent receives)
+MiddleStruct gets TWO examples total (one per signature)
+    ↓ (root assembly)
+TestVariantChainEnum can only build LIMITED combinations
+    ↓ (result)
+Path ".name" with chain [WithMiddleStruct, VariantB]
+→ Gets WRONG root with VariantA
+
+
+Fixed Example Flow:
+================================
+BottomEnum [VariantA, VariantB, VariantC]
+    ↓ (groups by signature for HashMap keys)
+Signature1: [VariantA, VariantC] → preserve BOTH variant chains
+Signature2: [VariantB] → preserve this variant chain
+    ↓ (parent receives)
+MiddleStruct gets examples for ALL variant chains
+    ↓ (root assembly)
+TestVariantChainEnum builds ALL combinations:
+  - Chain[WithMiddleStruct, VariantA] → Root{VariantA}
+  - Chain[WithMiddleStruct, VariantB] → Root{VariantB}
+  - Chain[WithMiddleStruct, VariantC] → Root{VariantC}
+    ↓ (result)
+Path ".name" with chain [WithMiddleStruct, VariantB]
+→ Looks up Chain[WithMiddleStruct, VariantB] → Gets CORRECT root
+```
 
 ## Implementation Strategy
 
@@ -132,160 +183,287 @@ From `TestVariantChainEnum.json` in the enum_variant_path section:
 
 Create a dedicated struct to group all enum-related data before implementing new logic. This provides better ergonomics and cleaner separation of concerns. Move the data structure definition from later in the document to be implemented first.
 
-### Phase 2: Propagate All Paths During Recursion
+### Phase 2: Update Enum Processing to Create Multiple HashMap Entries
 
-Change enum processing to return all paths, not deduplicated:
+**THE CRITICAL CHANGE**: Create multiple HashMap entries with extended descriptors:
 
 ```rust
 // In enum_path_builder.rs
-fn process_children() -> Result<(HashMap<MutationPathDescriptor, Value>, Vec<MutationPathInternal>)> {
-    // IMPORTANT: We still need signature grouping to prevent HashMap key collisions
-    // (e.g., VariantA(i32) and VariantB(i32) both create descriptor "0")
-    // But we process ALL variants, not just representatives
-
-    let variant_groups = group_variants_by_signature(all_variants);
+fn process_children(
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
+    ctx: &RecursionContext,
+    depth: RecursionDepth,
+) -> Result<(HashMap<MutationPathDescriptor, Value>, Vec<MutationPathInternal>)> {
+    let mut child_examples = HashMap::new();
+    let mut all_child_paths = Vec::new();
 
     for (signature, variants_in_group) in variant_groups {
-        // Process EACH variant in the group, not just one representative
-        for variant in variants_in_group {
-            // Build path for THIS specific variant
-            // Add variant to chain
-            // Recurse
-            // Collect ALL paths (don't deduplicate)
+        // Create paths for this signature
+        let paths = create_paths_for_signature(signature, ctx);
+
+        for path in paths {
+            // Process with first variant for path generation
+            let representative = variants_in_group.first().unwrap();
+            let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create);
+            child_ctx.variant_chain.push(VariantPath {
+                full_mutation_path: ctx.full_mutation_path.clone(),
+                variant: representative.variant_name().clone(),
+                // ...
+            });
+
+            // Recurse to get paths and example
+            let child_type_kind = get_type_kind(&child_ctx)?;
+            let child_paths = recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
+
+            // Get the example from first path
+            let child_example = child_paths.first()
+                .map_or(json!(null), |p| p.example.clone());
+
+            // KEY CHANGE: Create descriptor WITH variant signature
+            let descriptor = MutationPathDescriptor::with_variant(
+                path.to_mutation_path_descriptor().base,
+                signature.clone()
+            );
+
+            // This preserves THIS variant's example specifically
+            child_examples.insert(descriptor, child_example);
+            all_child_paths.extend(child_paths);
         }
     }
 
-    // Return ALL paths to parent
-    return (child_examples, all_child_paths);  // No deduplication!
+    Ok((child_examples, all_child_paths))
 }
 ```
 
-**Key Insight**: We must maintain signature grouping to avoid HashMap collisions where multiple variants would create the same `MutationPathDescriptor`. But within each signature group, we process every variant individually to build all variant chains.
+**What This Achieves**:
+- Each variant signature gets its own HashMap entry
+- Field "nested_enum" now has multiple entries (one per variant)
+- All variant examples are preserved through recursion
+- Other builders don't need to change at all
 
-### Phase 3: Build Variant Chain Map at Root
+### Phase 3: Update Parent Enum Example Assembly
 
-At root level assembly, build a map of variant chains to complete root examples:
+When parent enums assemble their examples, they need to handle child enum fields:
 
 ```rust
-/// Semantic type for variant chains used as lookup keys
-type VariantChain = Vec<VariantName>;
-/// Maps variant chains to complete root examples
-type VariantChainMap = HashMap<VariantChain, Value>;
+// In enum_path_builder.rs build_variant_example()
+fn build_variant_example(
+    signature: &VariantSignature,
+    variant_name: &str,
+    children: &HashMap<MutationPathDescriptor, Value>,
+    enum_type: &BrpTypeName,
+    current_variant_chain: &[VariantName],  // NEW: Track current chain
+) -> Value {
+    match signature {
+        VariantSignature::Struct(fields) => {
+            let mut obj = serde_json::Map::new();
 
-fn finalize_mutation_paths(
+            for field in fields {
+                // NEW: Find the right variant's example for enum fields
+                let example = find_field_example(
+                    children,
+                    &field.field_name,
+                    current_variant_chain
+                );
+                obj.insert(field.field_name.to_string(), example);
+            }
+
+            json!({variant_name: Value::Object(obj)})
+        }
+        // Similar for Tuple, Unit...
+    }
+}
+
+// Helper to find the right example for a field
+fn find_field_example(
+    children: &HashMap<MutationPathDescriptor, Value>,
+    field_name: &str,
+    variant_chain: &[VariantName],
+) -> Value {
+    // Try to find entry with matching variant chain
+    // This is where we'd match based on the variant signature
+    for (descriptor, value) in children {
+        if descriptor.matches_field(field_name) {
+            // Could check variant_chain compatibility here
+            return value.clone();
+        }
+    }
+    json!(null)
+}
+```
+
+### Phase 4: Root-Level Deduplication and Example Selection
+
+At the root, after all recursion completes, deduplicate and select representatives:
+
+```rust
+fn deduplicate_enum_examples(
+    child_examples: HashMap<MutationPathDescriptor, Value>,
+) -> HashMap<MutationPathDescriptor, Value> {
+    let mut deduplicated = HashMap::new();
+
+    // Group by base field name
+    let mut field_groups: HashMap<String, Vec<(MutationPathDescriptor, Value)>> = HashMap::new();
+
+    for (descriptor, value) in child_examples {
+        field_groups
+            .entry(descriptor.base.clone())
+            .or_insert_with(Vec::new)
+            .push((descriptor, value));
+    }
+
+    // For each field, pick the "coolest" variant
+    for (field_name, variants) in field_groups {
+        let selected = select_preferred_variant(variants);
+        deduplicated.insert(selected.0, selected.1);
+    }
+
+    deduplicated
+}
+
+fn select_preferred_variant(
+    variants: Vec<(MutationPathDescriptor, Value)>,
+) -> (MutationPathDescriptor, Value) {
+    // Prefer: Struct > Tuple > Unit
+    // Or: Non-unit > Unit
+    // Or: First non-null
+    variants.into_iter()
+        .find(|(_, v)| !is_unit_variant(v))
+        .or_else(|| variants.first().cloned())
+        .unwrap_or_else(|| (MutationPathDescriptor::from("error"), json!(null)))
+}
+```
+
+**Critical**: Before deduplication, store the variant chain → example mapping so we can update paths with correct roots.
+
+### Phase 5: Update Paths with Correct Root Examples
+
+After building all examples, update paths with their correct root examples:
+
+```rust
+fn update_paths_with_root_examples(
     paths: &mut Vec<MutationPathInternal>,
-    variant_map: VariantChainMap,
+    root_examples: &HashMap<Vec<VariantName>, Value>,
 ) {
     for path in paths {
         if let Some(enum_data) = &mut path.enum_data {
-            // Use the variant chain to lookup the correct root example
             if !enum_data.variant_chain.is_empty() {
-                let chain: VariantChain = enum_data.variant_chain.clone();
+                // Look up the correct root example for this variant chain
                 enum_data.variant_chain_root_example =
-                    variant_map.get(&chain).cloned();
+                    root_examples.get(&enum_data.variant_chain).cloned();
             }
         }
     }
 }
-```
 
-### Phase 4: Deduplicate at Output Only
+// Build the root examples during enum processing
+fn build_root_examples_for_chains(
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
+    child_examples: &HashMap<MutationPathDescriptor, Value>,
+    ctx: &RecursionContext,
+) -> HashMap<Vec<VariantName>, Value> {
+    let mut root_examples = HashMap::new();
 
-Move all deduplication to the output stage:
+    // For each variant signature that has examples
+    for (signature, variants) in variant_groups {
+        for variant in variants {
+            let mut chain = ctx.variant_chain.clone();
+            chain.push(variant.variant_name().clone());
 
-```rust
-fn prepare_output(all_paths: Vec<MutationPathInternal>) -> Vec<MutationPath> {
-    // Group paths by (full_mutation_path, signature)
-    let mut groups: HashMap<(FullMutationPath, Signature), Vec<MutationPathInternal>> = HashMap::new();
+            // Build complete example for this chain
+            let example = build_variant_example(
+                signature,
+                variant.name(),
+                child_examples,
+                ctx.type_name(),
+                &chain
+            );
 
-    for path in all_paths {
-        let key = (path.full_mutation_path.clone(), path.signature());
-        groups.entry(key).or_default().push(path);
+            root_examples.insert(chain, example);
+        }
     }
 
-    // For each group, pick ONE representative but preserve ALL variant info
-    let mut output_paths = vec![];
-    for ((full_path, sig), paths_in_group) in groups {
-        let representative = paths_in_group.first().unwrap();
-
-        // The representative already has applicable_variants from enum processing
-        // It contains ALL variants with this signature, not just processed ones
-        let applicable_variants = representative.enum_data
-            .as_ref()
-            .map(|d| d.applicable_variants.clone())
-            .unwrap_or_default();
-
-        // Use the variant_chain_root_example from the representative's enum_data
-        let root_example = representative.enum_data
-            .as_ref()
-            .and_then(|d| d.variant_chain_root_example.clone());
-
-        output_paths.push(MutationPath {
-            path: full_path,
-            example: representative.example,
-            path_info: PathInfo {
-                applicable_variants,  // Shows ALL variants that work here
-                root_variant_example: root_example,  // Correct for THIS chain
-                // ... other fields ...
-            }
-        });
-    }
-
-    output_paths
+    root_examples
 }
 ```
 
 ## Key Changes from Current System
 
-1. **No Early Deduplication**: Enums return ALL paths during recursion
-2. **Variant Chain as Key**: Use complete variant chain to lookup root examples
-3. **Late Deduplication**: Only deduplicate at final output stage
-4. **Preserve Variant Info**: Track applicable_variants for each output path
+1. **Extended Descriptor**: Add optional `variant_signature` field to `MutationPathDescriptor`
+2. **Multiple HashMap Entries**: Enum fields create multiple entries (one per variant signature)
+3. **Backwards Compatible**: Other builders continue using simple descriptors unchanged
+4. **Preserve All Examples**: All variant examples survive through recursion
+5. **Root Deduplication**: Select representative examples at root, but keep variant chain mapping
+6. **Correct Root Examples**: Each path gets its specific variant chain's root example
 
 ## Data Structure Changes
 
-### Group Enum-Related Fields for Ergonomics
+### Extend MutationPathDescriptor to Preserve Variant Information
 
-Create a dedicated struct to group all enum-related data:
+**THE KEY CHANGE**: Extend the descriptor to optionally include variant signature:
 
 ```rust
-/// Semantic type for variant chains used as lookup keys
-type VariantChain = Vec<VariantName>;
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct MutationPathDescriptor {
+    /// The base descriptor (field name, index, etc.) - what it is today
+    base: String,
 
-pub struct EnumPathData {
-    /// The complete variant chain from root (e.g., ["TestVariantChainEnum::WithMiddleStruct", "BottomEnum::VariantB"])
-    pub variant_chain: VariantChain,
-
-    /// ALL variants that share the EXACT same signature at this path's level
-    /// (same field names AND types - e.g., VariantB and VariantD both have name: String, value: f32)
-    pub applicable_variants: Vec<VariantName>,
-
-    /// The correct root example for THIS specific variant chain
-    pub variant_chain_root_example: Option<Value>,
-
-    /// Instructions for setting variants (temporary during migration)
-    pub enum_instructions: Option<String>,
+    /// Optional variant signature - ONLY populated for enum fields
+    /// This allows multiple HashMap entries for the same field
+    variant_signature: Option<VariantSignature>,
 }
 
-pub struct MutationPathInternal {
-    // ... existing non-enum fields ...
-    pub example: Value,
-    pub full_mutation_path: FullMutationPath,
-    pub type_name: BrpTypeName,
-    pub path_kind: PathKind,
-    pub mutation_status: MutationStatus,
-    pub mutation_status_reason: Option<Value>,
+// Backwards compatibility - other builders use this unchanged
+impl From<String> for MutationPathDescriptor {
+    fn from(s: String) -> Self {
+        Self {
+            base: s,
+            variant_signature: None
+        }
+    }
+}
 
-    /// All enum-related data grouped together
-    /// None for paths that don't involve enums
-    pub enum_data: Option<EnumPathData>,
+impl From<&str> for MutationPathDescriptor {
+    fn from(s: &str) -> Self {
+        Self {
+            base: s.to_string(),
+            variant_signature: None
+        }
+    }
+}
+
+// For enum fields specifically
+impl MutationPathDescriptor {
+    pub fn with_variant(base: String, variant: VariantSignature) -> Self {
+        Self {
+            base,
+            variant_signature: Some(variant),
+        }
+    }
+
+    /// Get just the base for field lookups
+    pub fn base(&self) -> &str {
+        &self.base
+    }
+
+    /// Check if this descriptor matches a base field name
+    pub fn matches_field(&self, field_name: &str) -> bool {
+        self.base == field_name
+    }
 }
 ```
 
-This grouping provides better ergonomics:
-- Path builders that don't handle enums can ignore `enum_data` entirely
-- Enum-aware code can check `if let Some(enum_data) = path.enum_data`
-- All enum logic is cleanly separated
+### Keep EnumPathData for Organization (Optional)
+
+```rust
+/// Still useful for organizing enum-specific data on paths
+pub struct EnumPathData {
+    pub variant_chain: Vec<VariantName>,
+    pub applicable_variants: Vec<VariantName>,
+    pub variant_chain_root_example: Option<Value>,
+    pub enum_instructions: Option<String>,
+}
+```
 
 ### How applicable_variants Works
 
@@ -329,10 +507,12 @@ Add `applicable_variants` to path_info and use correct root example:
 
 ## Why This Works
 
-- Each mutation path carries its complete variant chain during recursion
-- We build root examples for ALL variant chains, not just signature representatives
-- The variant chain becomes the key to lookup the correct root example
-- Output deduplication preserves all necessary information while avoiding redundancy
+- **Minimal Change**: Only `MutationPathDescriptor` and enum processing change
+- **Other Builders Unchanged**: Struct, tuple, array builders continue working as-is
+- **HashMap Preserved**: Still using `HashMap<MutationPathDescriptor, Value>`
+- **All Examples Preserved**: Each variant gets its own HashMap entry
+- **Correct Assembly**: Parent enums can build complete examples for all variant combinations
+- **Clean Deduplication**: Root level picks best examples while preserving all variant chains
 
 ## Success Criteria
 
@@ -366,13 +546,35 @@ Add `applicable_variants` to path_info and use correct root example:
 - Variant chain map provides correct root
 - Single mutation operation works
 
-## Migration Path
+## Implementation Strategy
 
-1. **Add variant chain map**: Build map during recursion without breaking current flow
-2. **Parallel operation**: Populate both old and new fields
-3. **Verify correctness**: Compare variant chains produce correct roots
-4. **Switch output**: Use variant_chain_root_example instead of enum_variant_path
-5. **Remove old system**: Eventually deprecate multi-step array
+### Step 1: Extend MutationPathDescriptor
+1. Add `variant_signature: Option<VariantSignature>` field
+2. Implement `From` traits for backwards compatibility
+3. Add `with_variant()` constructor for enum use
+4. Add `matches_field()` helper for field lookups
+
+### Step 2: Update Enum Processing
+1. Modify `process_children()` to create extended descriptors
+2. Each variant signature gets its own HashMap entry
+3. No changes to path creation logic
+
+### Step 3: Update Example Assembly
+1. Modify `build_variant_example()` to find right variant's example
+2. Add helper to match descriptors by base field name
+3. Thread variant chain through for context
+
+### Step 4: Root Processing
+1. Add deduplication function to group by base field
+2. Select preferred variant per field
+3. Build variant chain → example mapping
+4. Update all paths with correct root examples
+
+### Step 5: Testing
+1. Verify with `TestVariantChainEnum`
+2. Check `.middle_struct.nested_enum.name` has VariantB root
+3. Validate all variant chains have correct examples
+4. Performance test with deep nesting
 
 ## Applicable Variants Tracking
 
@@ -398,13 +600,15 @@ The `applicable_variants` field serves a critical purpose:
 
 ## Important Implementation Details
 
-### HashMap Collision Prevention
-When processing enum variants, we must maintain signature grouping to prevent HashMap key collisions. For example:
-- `VariantA(i32)` creates `MutationPathDescriptor("0")`
-- `VariantB(i32)` also creates `MutationPathDescriptor("0")`
-- Without grouping, these would collide in the HashMap
+### How This Solves the HashMap Collision Problem
 
-Solution: Group by signature first, then process all variants within each group individually.
+The extended descriptor naturally prevents collisions:
+- `VariantA(i32)` creates `MutationPathDescriptor { base: "0", variant_signature: Some(Tuple([i32])) }`
+- `VariantB(i32)` creates `MutationPathDescriptor { base: "0", variant_signature: Some(Tuple([i32])) }`
+- If they have the same signature, we only need one example anyway
+- If they have different signatures, they get different descriptors
+
+The variant signature in the descriptor ensures uniqueness while preserving all information needed for correct example assembly.
 
 ### Structured Data Types
 Consider using structured types instead of raw JSON during processing:
