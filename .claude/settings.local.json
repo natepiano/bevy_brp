@@ -149,7 +149,8 @@
       "Bash(bash:*)",
       "Bash(git grep:*)",
       "Bash(ps:*)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh /Users/natemccoy/rust/bevy_brp/screenshot_test_1.png)"
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh /Users/natemccoy/rust/bevy_brp/screenshot_test_1.png)",
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh /Users/natemccoy/rust/bevy_brp/screenshot_test_2.png)"
     ],
     "deny": [
       "Bash(sed:*)"
