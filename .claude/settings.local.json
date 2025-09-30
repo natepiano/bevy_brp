@@ -152,7 +152,8 @@
       "Bash(.claude/scripts/extras_test_poll_screenshot.sh:*)",
       "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh:*)",
       "Bash(pkill:*)",
-      "Bash(.claude/scripts/integration_test_launch_retry.sh:*)"
+      "Bash(.claude/scripts/integration_test_launch_retry.sh:*)",
+      "Bash(kill:*)"
     ],
     "deny": [
       "Bash(sed:*)"
