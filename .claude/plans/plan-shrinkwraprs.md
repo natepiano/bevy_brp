@@ -1,5 +1,7 @@
 # Using shrinkwraprs for NewType Implementations in bevy_brp
 
+**Migration Strategy: Phased**
+
 ## Current NewType Implementations
 
 The bevy_brp workspace has several NewType wrapper structs that follow a similar pattern:
@@ -111,7 +113,7 @@ shrinkwraprs = "0.3"
 ## Types That Would Benefit Most
 
 ### High Value Targets
-- **RecursionDepth**: Simple wrapper, no custom logic
+- **RecursionDepth**: Has custom const methods (ZERO, increment, exceeds_limit) but would still benefit from auto-derived Deref
 - **MutationPathDescriptor**: Simple String wrapper
 - **FullMutationPath**: Simple String wrapper
 
@@ -156,7 +158,20 @@ Phase 3: Complex types (evaluate based on Phase 1-2)
 
 ```rust
 // Before
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RecursionDepth(usize);
+
+impl RecursionDepth {
+    pub const ZERO: Self = Self(0);
+
+    pub const fn increment(self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    pub const fn exceeds_limit(self) -> bool {
+        self.0 > MAX_TYPE_RECURSION_DEPTH
+    }
+}
 
 impl Deref for RecursionDepth {
     type Target = usize;
@@ -167,9 +182,22 @@ impl Deref for RecursionDepth {
 }
 
 // After
-#[derive(Shrinkwrap)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Shrinkwrap)]
 pub struct RecursionDepth(usize);
-// That's it! Deref, AsRef, and Borrow are now automatically implemented
+
+impl RecursionDepth {
+    pub const ZERO: Self = Self(0);
+
+    pub const fn increment(self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    pub const fn exceeds_limit(self) -> bool {
+        self.0 > MAX_TYPE_RECURSION_DEPTH
+    }
+}
+// Note: Deref implementation now provided automatically by Shrinkwrap
+// Custom methods are preserved alongside the auto-derived traits
 ```
 
 ## Conclusion

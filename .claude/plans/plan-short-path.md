@@ -135,6 +135,46 @@ impl Operation {
 }
 ```
 
+**Important**: Also update the existing extraction helper functions to use type-safe field access:
+
+```rust
+/// Extract type names from components object keys in spawn/insert operations
+fn extract_from_components_object(params: &Value) -> Vec<String> {
+    params
+        .get_field(ParameterName::Components)
+        .and_then(|v| v.as_object())
+        .map(|obj| obj.keys().cloned().collect())
+        .unwrap_or_default()
+}
+
+/// Extract type name from resource field in resource operations
+fn extract_from_resource_field(params: &Value) -> Vec<String> {
+    params
+        .get_field(ParameterName::Resource)
+        .and_then(|v| v.as_str())
+        .map(|s| vec![s.to_string()])
+        .unwrap_or_default()
+}
+
+/// Extract single component type from component field in mutation operations
+fn extract_single_component_type(params: &Value) -> Vec<String> {
+    params
+        .get_field(ParameterName::Component)
+        .and_then(|v| v.as_str())
+        .map(|s| vec![s.to_string()])
+        .unwrap_or_default()
+}
+
+/// Extract single resource type from resource field in mutation operations
+fn extract_single_resource_type(params: &Value) -> Vec<String> {
+    params
+        .get_field(ParameterName::Resource)
+        .and_then(|v| v.as_str())
+        .map(|s| vec![s.to_string()])
+        .unwrap_or_default()
+}
+```
+
 **Key improvements**:
 - Single source of truth for type extraction in `BrpMethod::extract_type_names()`
 - Operation enum delegates to the unified method for its subset of operations

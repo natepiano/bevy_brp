@@ -1,6 +1,6 @@
 # Plan: Fix Root Examples Using Extended Descriptors for Variant Preservation
 
-**Migration Strategy: Incremental**
+**Migration Strategy: Phased**
 
 ## Executive Summary
 
@@ -316,25 +316,26 @@ fn deduplicate_enum_examples(
             .push((descriptor, value));
     }
 
-    // For each field, pick the "coolest" variant
-    for (field_name, variants) in field_groups {
-        let selected = select_preferred_variant(variants);
-        deduplicated.insert(selected.0, selected.1);
+    // For each field, pick the most informative variant signature
+    for (field_name, entries) in field_groups {
+        if let Some(selected) = select_preferred_variant_signature(entries) {
+            deduplicated.insert(selected.0, selected.1);
+        }
+        // If None returned, indicates a bug in grouping logic - skip this field
     }
 
     deduplicated
 }
 
-fn select_preferred_variant(
-    variants: Vec<(MutationPathDescriptor, Value)>,
-) -> (MutationPathDescriptor, Value) {
-    // Prefer: Struct > Tuple > Unit
-    // Or: Non-unit > Unit
-    // Or: First non-null
-    variants.into_iter()
-        .find(|(_, v)| !is_unit_variant(v))
-        .or_else(|| variants.first().cloned())
-        .unwrap_or_else(|| (MutationPathDescriptor::from("error"), json!(null)))
+fn select_preferred_variant_signature(
+    entries: Vec<(MutationPathDescriptor, Value)>,
+) -> Option<(MutationPathDescriptor, Value)> {
+    // Prefer: Struct > Tuple > Unit (most informative first)
+    // This selects which variant signature to use as the representative example
+    entries.into_iter()
+        .find(|(desc, v)| !is_unit_variant(v))  // Prefer non-unit variants
+        .or_else(|| entries.first().cloned())    // Fallback to any variant
+    // Returns None if entries is empty (indicates grouping logic bug)
 }
 ```
 
@@ -689,6 +690,20 @@ This provides type safety and clearer code than working with JSON values directl
 - Performance impact: Slightly more HashMap entries during recursion, same final output size
 
 ## Design Review Skip Notes
+
+## TYPE-SYSTEM-1: Standalone Functions Should Be Methods on Owning Types - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Phase 2: Update Enum Processing
+- **Issue**: Multiple standalone functions operate on data structures they don't own, violating encapsulation principles. Functions like process_children, find_field_example, deduplicate_enum_examples, and others manipulate HashMap and variant data without clear ownership.
+- **Reasoning**: The finding incorrectly applied OOP and functional programming principles. The current in-place mutation in `update_child_variant_paths` is more efficient and appropriate for an internal helper function. The codebase correctly uses functional architecture at module boundaries while allowing efficient in-place mutation within functions. The mentioned functions `find_field_example` and `deduplicate_enum_examples` don't even exist in the codebase.
+- **Decision**: User elected to skip this recommendation
+
+## TYPE-SYSTEM-2: Builder Pattern Opportunity for Complex MutationPathDescriptor Construction - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Data Structure Changes - MutationPathDescriptor Extension
+- **Issue**: The proposed MutationPathDescriptor extension adds complexity with optional variant signatures but lacks a structured construction pattern. Multiple constructors (From<String>, From<&str>, with_variant) suggest need for a builder pattern.
+- **Reasoning**: The finding misidentifies simple, appropriate construction patterns as complex scenarios requiring a builder pattern. A struct with only 2 fields and 2 distinct construction patterns doesn't need a builder. The plan's approach is correct: From traits for the common case (backwards compatibility) and one with_variant method for the specialized case. This is exactly the right level of abstraction without unnecessary complexity.
+- **Decision**: User elected to skip this recommendation
 
 ## DESIGN-3: Standalone Functions Should Be Methods on Owning Types - **Verdict**: REJECTED
 - **Status**: REJECTED - Finding was incorrect
