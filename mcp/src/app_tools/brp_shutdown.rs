@@ -1,10 +1,10 @@
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
-use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, get_sockets_info};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
 use tracing::debug;
 
+use crate::app_tools::support::get_pid_for_port;
 use crate::brp_tools::{BrpClient, JSON_RPC_ERROR_METHOD_NOT_FOUND, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
@@ -224,24 +224,6 @@ fn is_process_running(app_name: &str) -> bool {
             || process_name == format!("{app_name}.exe")
             || process_name.strip_suffix(".exe").unwrap_or(&process_name) == app_name
     })
-}
-
-/// Get the PID for a process listening on the specified port
-fn get_pid_for_port(port: Port) -> Option<u32> {
-    let af_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
-    let proto_flags = ProtocolFlags::TCP;
-
-    get_sockets_info(af_flags, proto_flags)
-        .ok()?
-        .into_iter()
-        .find_map(|si| {
-            if let ProtocolSocketInfo::Tcp(tcp_si) = si.protocol_socket_info
-                && tcp_si.local_port == *port
-            {
-                return si.associated_pids.first().copied();
-            }
-            None
-        })
 }
 
 /// Kill the process using the system signal

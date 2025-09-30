@@ -5,7 +5,9 @@ use std::path::Path;
 use std::process::Stdio;
 
 use error_stack::{Report, ResultExt};
+use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, get_sockets_info};
 
+use crate::brp_tools::Port;
 use crate::error::{Error, Result};
 
 /// Launch a detached process with proper setup
@@ -88,4 +90,22 @@ pub fn launch_detached_process(
                 .attach(format!("Working directory: {}", working_dir.display())))?
         }
     }
+}
+
+/// Get the PID for a process listening on the specified port
+pub fn get_pid_for_port(port: Port) -> Option<u32> {
+    let af_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
+    let proto_flags = ProtocolFlags::TCP;
+
+    get_sockets_info(af_flags, proto_flags)
+        .ok()?
+        .into_iter()
+        .find_map(|si| {
+            if let ProtocolSocketInfo::Tcp(tcp_si) = si.protocol_socket_info
+                && tcp_si.local_port == *port
+            {
+                return si.associated_pids.first().copied();
+            }
+            None
+        })
 }
