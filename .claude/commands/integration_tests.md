@@ -286,15 +286,53 @@ CORRECT: One message containing 12 Task tool uses for 12 tests
 INCORRECT: 12 separate messages each with one Task tool use
 
 1. **Load Configuration**: Read ${TEST_CONFIG_FILE}
-2. **Initialize Port Pools**: Based on launched apps
-3. **Categorize Tests**:
-   - **Dedicated app tests**: Need port assignment from pool
-   - **Self-managed tests**: Handle their own apps ("various" or "N/A")
-4. **Continuous Execution Loop**:
-   - Build batches of tests to run in parallel:
-     - For each test needing an app: assign port from appropriate pool
-     - **Set Window Title**: Use `mcp__brp__brp_extras_set_window_title` with format "{test_name} test - {app_name} - port {port}"
-     - For self-managed tests: prepare with SelfManagedPrompt
+
+2. **Extract Test List**: Execute this EXACT command:
+   ```bash
+   jq -c '.[] | {test_name, test_file, app_name, app_type, test_objective}' ${TEST_CONFIG_FILE}
+   ```
+   This produces one JSON object per line, in config order, with all fields needed.
+
+3. **Process Each Test in Order**: For each line of output from step 2:
+   - Extract test_name field: this is the test identifier
+   - Extract app_name field: this determines port assignment
+   - Extract app_type field: this determines launch tool
+   - Extract test_file field: this is the test specification path
+   - Extract test_objective field: this describes what the test validates
+
+4. **Assign Ports Using This Algorithm**:
+   - Initialize: extras_plugin_next_port=20100, test_app_next_port=20108
+   - For each test in order from step 2:
+     - If app_name=="extras_plugin": assign port=extras_plugin_next_port, then extras_plugin_next_port++
+     - If app_name=="test_app": assign port=test_app_next_port, then test_app_next_port++
+     - If app_name=="various" or "N/A": assign port=null (self-managed, no port needed)
+   - Store result: create mapping of test_name → {port, app_name, app_type, test_file, test_objective}
+
+5. **Set Window Titles**: For each test where port is not null, execute:
+   ```
+   mcp__brp__brp_extras_set_window_title(
+     title="{test_name} test - {app_name} - port {port}",
+     port={port}
+   )
+   ```
+   Where {test_name}, {app_name}, {port} come from the mapping in step 4.
+   Use the EXACT test_name from the config - do not modify or substitute it.
+
+6. **Create Task Prompts**: For each test in config order from step 2:
+   - If test has a port (not null): use DedicatedAppPrompt template
+     - Set [TEST_NAME] to test_name from config
+     - Set [ASSIGNED_PORT] to port from step 4 mapping
+     - Set [APP_NAME] to app_name from config
+     - Set [TEST_FILE] to test_file from config
+     - Set [TEST_OBJECTIVE] to test_objective from config
+   - If test has no port (null): use SelfManagedPrompt template
+     - Set [TEST_NAME] to test_name from config
+     - Set [APP_NAME] to app_name from config
+     - Set [TEST_FILE] to test_file from config
+     - Set [TEST_OBJECTIVE] to test_objective from config
+
+7. **Execute All Tests in Parallel**:
+   - Build batches of tests to run in parallel using prompts from step 6
    - **CRITICAL PARALLEL EXECUTION**:
      - Create a SINGLE message with multiple Task tool invocations
      - Each Task call represents one test to run in parallel
