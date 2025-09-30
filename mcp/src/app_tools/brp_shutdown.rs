@@ -297,32 +297,9 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
         .attach("Failed to send SIGTERM signal"));
     }
 
-    // Fallback: Use name-only lookup (original behavior)
-    debug!("Falling back to name-only process lookup for '{app_name}'");
-    let running_process = system.processes().values().find(|process| {
-        let process_name = process.name().to_string_lossy();
-        // Match exact name or with common variations (.exe suffix, etc.)
-        process_name == app_name
-            || process_name == format!("{app_name}.exe")
-            || process_name.strip_suffix(".exe").unwrap_or(&process_name) == app_name
-    });
-
-    running_process.map_or(Ok(None), |process| {
-        let pid = process.pid().as_u32();
-
-        // Try to kill the process
-        if process.kill_with(Signal::Term).unwrap_or(false) {
-            debug!("Successfully killed process {app_name} (PID {pid}) via name-only lookup");
-            Ok(Some(pid))
-        } else {
-            Err(error_stack::Report::new(Error::ProcessManagement(
-                "Failed to terminate process".to_string(),
-            ))
-            .attach(format!("Process name: {app_name}"))
-            .attach(format!("PID: {pid}"))
-            .attach("Failed to send SIGTERM signal"))
-        }
-    })
+    // No process found on the specified port
+    debug!("No process found listening on port {port} with name '{app_name}'");
+    Ok(None)
 }
 
 /// Error when process is not running
