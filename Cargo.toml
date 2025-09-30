@@ -16,7 +16,7 @@ bevy_winit = { version = "0.16.1" }
 anyhow = "1.0"
 async-trait = "0.1.89"
 bevy_brp_mcp_macros = { path = "./mcp_macros", version = "0.3.0" }
-cargo_metadata = "0.22"
+cargo_metadata = "0.23"
 chrono = "0.4"
 either = "1.15"
 error-stack = { version = "0.6.0", features = ["spantrace"] }
@@ -24,11 +24,12 @@ futures = "0.3"
 heck = "0.5.0"
 itertools = "0.14.0"
 json-pretty-compact = "0.1.2"
+netstat2 = "0.11"
 nom = "8.0.0"
 once_cell = "1.21.3"
 paste = "1.0"
 proc-macro2 = "1.0.101"
-quote = "1.0.40"
+quote = "1.0.41"
 regex = "1.11.3"
 reqwest = { version = "0.12", features = ["blocking", "json", "stream"] }
 rmcp = { version = "0.7.0", features = ["server", "transport-io"] }
@@ -38,7 +39,7 @@ serde_json = "1.0.145"
 strum = "0.27.2"
 strum_macros = "0.27.2"
 syn = { version = "2.0.106", features = ["extra-traits", "full"] }
-sysinfo = "0.37.0"
+sysinfo = "0.37.1"
 tempfile = "3.23.0"
 thiserror = "2.0"
 tokio = { version = "1.47.1", features = ["full", "signal"] }

@@ -1,4 +1,5 @@
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
+use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, get_sockets_info};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
@@ -88,19 +89,23 @@ async fn shutdown_app(app_name: &str, port: Port) -> ShutdownOutcome {
         Ok(None) => {
             debug!("Graceful shutdown failed, falling back to process kill");
             // BRP responded but bevy_brp_extras not available - fall back to kill
-            handle_kill_process_fallback(app_name, None)
+            handle_kill_process_fallback(app_name, port, None)
         }
         Err(e) => {
             debug!("BRP communication error, falling back to process kill: {e}");
             // BRP not responsive - fall back to kill
-            handle_kill_process_fallback(app_name, Some(e.to_string()))
+            handle_kill_process_fallback(app_name, port, Some(e.to_string()))
         }
     }
 }
 
 /// Handle the fallback to kill process when graceful shutdown fails
-fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> ShutdownOutcome {
-    match kill_process(app_name) {
+fn handle_kill_process_fallback(
+    app_name: &str,
+    port: Port,
+    brp_error: Option<String>,
+) -> ShutdownOutcome {
+    match kill_process(app_name, port) {
         Ok(Some(pid)) => {
             debug!("Successfully killed process {app_name} with PID {pid}");
             ShutdownOutcome::ProcessKilled { pid }
@@ -221,11 +226,76 @@ fn is_process_running(app_name: &str) -> bool {
     })
 }
 
+/// Get the PID for a process listening on the specified port
+fn get_pid_for_port(port: Port) -> Option<u32> {
+    let af_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
+    let proto_flags = ProtocolFlags::TCP;
+
+    get_sockets_info(af_flags, proto_flags)
+        .ok()?
+        .into_iter()
+        .find_map(|si| {
+            if let ProtocolSocketInfo::Tcp(tcp_si) = si.protocol_socket_info {
+                if tcp_si.local_port == *port {
+                    return si.associated_pids.first().copied();
+                }
+            }
+            None
+        })
+}
+
 /// Kill the process using the system signal
-fn kill_process(app_name: &str) -> Result<Option<u32>> {
+fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
     let mut system = System::new_all();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
+    // First try: Get PID from port for more reliable process identification
+    let target_pid = if let Some(pid) = get_pid_for_port(port) {
+        debug!("Found PID {pid} listening on port {port}");
+        // Verify the process name matches to ensure we're killing the right process
+        if let Some(process) = system.process(sysinfo::Pid::from_u32(pid)) {
+            let process_name = process.name().to_string_lossy();
+            if process_name == app_name
+                || process_name == format!("{app_name}.exe")
+                || process_name.strip_suffix(".exe").unwrap_or(&process_name) == app_name
+            {
+                debug!("Verified process name matches: {process_name}");
+                Some(pid)
+            } else {
+                debug!(
+                    "Process name mismatch: expected '{app_name}', found '{process_name}' for PID \
+                     {pid}"
+                );
+                None
+            }
+        } else {
+            debug!("PID {pid} not found in process list");
+            None
+        }
+    } else {
+        debug!("No process found listening on port {port}, falling back to name-only lookup");
+        None
+    };
+
+    // If port-based lookup succeeded, kill that specific PID
+    if let Some(pid) = target_pid {
+        if let Some(process) = system.process(sysinfo::Pid::from_u32(pid)) {
+            if process.kill_with(Signal::Term).unwrap_or(false) {
+                debug!("Successfully killed process {app_name} (PID {pid}) via port lookup");
+                return Ok(Some(pid));
+            }
+            return Err(error_stack::Report::new(Error::ProcessManagement(
+                "Failed to terminate process".to_string(),
+            ))
+            .attach(format!("Process name: {app_name}"))
+            .attach(format!("PID: {pid}"))
+            .attach(format!("Port: {port}"))
+            .attach("Failed to send SIGTERM signal"));
+        }
+    }
+
+    // Fallback: Use name-only lookup (original behavior)
+    debug!("Falling back to name-only process lookup for '{app_name}'");
     let running_process = system.processes().values().find(|process| {
         let process_name = process.name().to_string_lossy();
         // Match exact name or with common variations (.exe suffix, etc.)
@@ -239,6 +309,7 @@ fn kill_process(app_name: &str) -> Result<Option<u32>> {
 
         // Try to kill the process
         if process.kill_with(Signal::Term).unwrap_or(false) {
+            debug!("Successfully killed process {app_name} (PID {pid}) via name-only lookup");
             Ok(Some(pid))
         } else {
             Err(error_stack::Report::new(Error::ProcessManagement(
