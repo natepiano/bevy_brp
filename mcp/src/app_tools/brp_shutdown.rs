@@ -235,10 +235,10 @@ fn get_pid_for_port(port: Port) -> Option<u32> {
         .ok()?
         .into_iter()
         .find_map(|si| {
-            if let ProtocolSocketInfo::Tcp(tcp_si) = si.protocol_socket_info {
-                if tcp_si.local_port == *port {
-                    return si.associated_pids.first().copied();
-                }
+            if let ProtocolSocketInfo::Tcp(tcp_si) = si.protocol_socket_info
+                && tcp_si.local_port == *port
+            {
+                return si.associated_pids.first().copied();
             }
             None
         })
@@ -250,10 +250,18 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
     // First try: Get PID from port for more reliable process identification
-    let target_pid = if let Some(pid) = get_pid_for_port(port) {
-        debug!("Found PID {pid} listening on port {port}");
-        // Verify the process name matches to ensure we're killing the right process
-        if let Some(process) = system.process(sysinfo::Pid::from_u32(pid)) {
+    let target_pid = get_pid_for_port(port).map_or_else(
+        || {
+            debug!("No process found listening on port {port}, falling back to name-only lookup");
+            None
+        },
+        |pid| {
+            debug!("Found PID {pid} listening on port {port}");
+            // Verify the process name matches to ensure we're killing the right process
+            system.process(sysinfo::Pid::from_u32(pid)).map_or_else(|| {
+            debug!("PID {pid} not found in process list");
+            None
+        }, |process| {
             let process_name = process.name().to_string_lossy();
             if process_name == app_name
                 || process_name == format!("{app_name}.exe")
@@ -268,30 +276,25 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
                 );
                 None
             }
-        } else {
-            debug!("PID {pid} not found in process list");
-            None
-        }
-    } else {
-        debug!("No process found listening on port {port}, falling back to name-only lookup");
-        None
-    };
+        })
+        },
+    );
 
     // If port-based lookup succeeded, kill that specific PID
-    if let Some(pid) = target_pid {
-        if let Some(process) = system.process(sysinfo::Pid::from_u32(pid)) {
-            if process.kill_with(Signal::Term).unwrap_or(false) {
-                debug!("Successfully killed process {app_name} (PID {pid}) via port lookup");
-                return Ok(Some(pid));
-            }
-            return Err(error_stack::Report::new(Error::ProcessManagement(
-                "Failed to terminate process".to_string(),
-            ))
-            .attach(format!("Process name: {app_name}"))
-            .attach(format!("PID: {pid}"))
-            .attach(format!("Port: {port}"))
-            .attach("Failed to send SIGTERM signal"));
+    if let Some(pid) = target_pid
+        && let Some(process) = system.process(sysinfo::Pid::from_u32(pid))
+    {
+        if process.kill_with(Signal::Term).unwrap_or(false) {
+            debug!("Successfully killed process {app_name} (PID {pid}) via port lookup");
+            return Ok(Some(pid));
         }
+        return Err(error_stack::Report::new(Error::ProcessManagement(
+            "Failed to terminate process".to_string(),
+        ))
+        .attach(format!("Process name: {app_name}"))
+        .attach(format!("PID: {pid}"))
+        .attach(format!("Port: {port}"))
+        .attach("Failed to send SIGTERM signal"));
     }
 
     // Fallback: Use name-only lookup (original behavior)

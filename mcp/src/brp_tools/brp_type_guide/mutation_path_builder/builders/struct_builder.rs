@@ -1,4 +1,4 @@
-//! `PathBuilder` for Struct types
+//! `PathBuilder` for `Struct` types
 //!
 //! Handles the most complex case - struct mutations with one-level recursion.
 //! For field contexts, adds both the struct field itself and nested field paths.

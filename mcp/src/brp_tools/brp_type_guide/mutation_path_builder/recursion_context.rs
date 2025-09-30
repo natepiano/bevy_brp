@@ -197,7 +197,7 @@ impl RecursionContext {
             .map_or_else(|| None, Some)
     }
 
-    /// Creates a NoMutableChildren error with this context's type name
+    /// Creates a `NoMutableChildren` error with this context's type name
     pub fn create_no_mutable_children_error(&self) -> NotMutableReason {
         NotMutableReason::NoMutableChildren {
             parent_type: self.type_name().clone(),

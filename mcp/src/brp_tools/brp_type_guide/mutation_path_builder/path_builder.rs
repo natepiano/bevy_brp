@@ -30,7 +30,7 @@ pub trait PathBuilder {
     /// parameter to track recursion depth and prevent infinite loops.
     ///
     /// Returns a `Result` containing a vector of `MutationPathInternal` representing
-    /// all possible mutation paths, or a BuilderError if path building failed.
+    /// all possible mutation paths, or a `BuilderError` if path building failed.
     fn build_paths(
         &self,
         _ctx: &RecursionContext,

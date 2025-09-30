@@ -26,6 +26,7 @@
 
 use std::collections::HashMap;
 
+use error_stack::Report;
 use serde_json::{Value, json};
 
 use super::super::constants::RecursionDepth;
@@ -41,7 +42,7 @@ use super::{
     BuilderError, MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason,
     PathKind, RecursionContext, enum_path_builder,
 };
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
@@ -97,7 +98,7 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             child_examples,
         } = self
             .process_all_children(ctx, depth)
-            .map_err(|e| BuilderError::SystemError(e))?;
+            .map_err(BuilderError::SystemError)?;
 
         // Assemble THIS level from children (post-order)
         let assembled_example = self.inner.assemble_from_children(ctx, child_examples)?;
@@ -125,7 +126,14 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
 
         // Return error only for NotMutable, success for Mutable and PartiallyMutable
         match parent_status {
-            MutationStatus::NotMutable => Err(BuilderError::NotMutable(reason_enum.unwrap())),
+            MutationStatus::NotMutable => {
+                let reason = reason_enum.ok_or_else(|| {
+                    BuilderError::SystemError(Report::new(Error::InvalidState(
+                        "NotMutable status must have a reason".to_string(),
+                    )))
+                })?;
+                Err(BuilderError::NotMutable(reason))
+            }
             MutationStatus::Mutable | MutationStatus::PartiallyMutable => {
                 Ok(Self::build_final_result(
                     ctx,
@@ -238,16 +246,13 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
         // Check if child type is in registry first
         // If not, return NotMutable path directly without recursing
-        let child_schema = match child_ctx.require_registry_schema() {
-            Ok(schema) => schema,
-            Err(_) => {
-                // Type not in registry - return NotMutable path directly
-                let not_mutable_path = Self::build_not_mutable_path(
-                    child_ctx,
-                    NotMutableReason::NotInRegistry(child_ctx.type_name().clone()),
-                );
-                return Ok((vec![not_mutable_path], json!(null)));
-            }
+        let Ok(child_schema) = child_ctx.require_registry_schema() else {
+            // Type not in registry - return NotMutable path directly
+            let not_mutable_path = Self::build_not_mutable_path(
+                child_ctx,
+                NotMutableReason::NotInRegistry(child_ctx.type_name().clone()),
+            );
+            return Ok((vec![not_mutable_path], json!(null)));
         };
 
         let child_type = child_ctx.type_name().clone();
