@@ -61,15 +61,8 @@ pub struct Shutdown;
 /// Attempt to shutdown a Bevy app, first trying graceful shutdown then falling back to kill
 async fn shutdown_app(app_name: &str, port: Port) -> ShutdownOutcome {
     debug!("Starting shutdown process for app '{app_name}' on port {port}");
-    // First, check if the process is actually running
-    if !is_process_running(app_name) {
-        debug!("Process '{app_name}' not found in system process list");
-        return ShutdownOutcome::NotRunning;
-    }
 
-    debug!("Process '{app_name}' found, attempting graceful shutdown");
-
-    // Process is running, try graceful shutdown via bevy_brp_extras
+    // Try graceful shutdown via bevy_brp_extras
     // Extraction shouldn't return 0 with the udpated data extras but it's possible we could be
     // running against an older version
     match try_graceful_shutdown(port).await {
@@ -210,20 +203,6 @@ async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> 
             .attach(format!("Port: {port}")))
         }
     }
-}
-
-/// Check if a process with the given name is currently running
-fn is_process_running(app_name: &str) -> bool {
-    let mut system = System::new_all();
-    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
-
-    system.processes().values().any(|process| {
-        let process_name = process.name().to_string_lossy();
-        // Match exact name or with common variations (.exe suffix, etc.)
-        process_name == app_name
-            || process_name == format!("{app_name}.exe")
-            || process_name.strip_suffix(".exe").unwrap_or(&process_name) == app_name
-    })
 }
 
 /// Kill the process using the system signal

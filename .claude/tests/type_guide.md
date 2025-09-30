@@ -35,17 +35,18 @@ Store the response as `schema_response`.
 
 ### 3. Validate Response Structure
 
-**Note**: If response is saved to file due to size, use the extraction script:
+**CRITICAL**: If response is saved to file due to size, you MUST use the extraction script.
+**DO NOT use jq, cat, or any other bash commands directly on the file.**
+
+Extraction script usage:
 `.claude/scripts/type_guide_test_extract.sh <file_path> <operation> [type_name] [field_path]`
 
 #### 3a. Check Top-Level Fields
-Use extraction script to verify:
+Use extraction script ONLY (no direct jq/bash commands):
 ```bash
-# Check discovered count
 .claude/scripts/type_guide_test_extract.sh <file_path> discovered_count
 # Expected: 8
 
-# Check summary
 .claude/scripts/type_guide_test_extract.sh <file_path> summary
 # Expected: {"successful_discoveries": 8, "failed_discoveries": 0, "total_requested": 8}
 ```

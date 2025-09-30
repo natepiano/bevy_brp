@@ -17,6 +17,9 @@ Validate all error variants for `brp_status` and `brp_shutdown` commands, ensuri
 
 ### 2. ProcessNotFoundError with BRP on Different App
 - Launch extras_plugin example on port 20113
+- Wait for app to be ready: Execute `mcp__brp__brp_status` with app_name: "extras_plugin", port: 20113
+  - Retry up to 5 times with 1-second delays if needed (app may take time to start under load)
+  - Verify status: "success" before proceeding
 - Execute `mcp__brp__brp_status` with app_name: "wrong_app_name", port: 20113
 - Verify response has status: "error"
 - Verify error_info contains:
@@ -66,6 +69,9 @@ Validate all error variants for `brp_status` and `brp_shutdown` commands, ensuri
 
 ### 6. Clean Shutdown Success (for comparison)
 - Launch extras_plugin example on port 20113
+- Wait for app to be ready: Execute `mcp__brp__brp_status` with app_name: "extras_plugin", port: 20113
+  - Retry up to 5 times with 1-second delays if needed (app may take time to start under load)
+  - Verify status: "success" before proceeding
 - Execute `mcp__brp__brp_shutdown` with app_name: "extras_plugin", port: 20113
 - Verify response has status: "success"
 - Verify metadata contains:
@@ -78,7 +84,8 @@ Validate all error variants for `brp_status` and `brp_shutdown` commands, ensuri
 
 ### 7. Status Success (for comparison)
 - Launch extras_plugin example on port 20113
-- Execute `mcp__brp__brp_status` with app_name: "extras_plugin", port: 20113
+- Wait for app to be ready: Execute `mcp__brp__brp_status` with app_name: "extras_plugin", port: 20113
+  - Retry up to 5 times with 1-second delays if needed (app may take time to start under load)
 - Verify response has status: "success"
 - Verify metadata contains:
   - app_name: "extras_plugin"

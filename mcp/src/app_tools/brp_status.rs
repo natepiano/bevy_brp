@@ -192,28 +192,76 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
     let mut system = System::new_all();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
-    // If we have a PID from the port, verify it matches the app name
-    if let Some(pid) = pid_from_port
-        && let Some(process) = system.process(sysinfo::Pid::from_u32(pid))
-    {
-        let process_name = process.name().to_string_lossy();
-        let normalized_process_name = normalize_process_name(&process_name);
-        let normalized_target = normalize_process_name(app_name);
+    // If we have a PID from the port, always report about THAT PID
+    // Never fall through to searching for other processes by name
+    if let Some(pid) = pid_from_port {
+        // We found a process on this port - verify the name if possible
+        if let Some(process) = system.process(sysinfo::Pid::from_u32(pid)) {
+            let process_name = process.name().to_string_lossy();
+            let normalized_process_name = normalize_process_name(&process_name);
+            let normalized_target = normalize_process_name(app_name);
 
-        if normalized_process_name == normalized_target {
-            // SUCCESS: Found process on port with matching name
-            if brp_responsive {
-                return Ok(StatusResult::new(app_name.to_string(), pid, port.0));
+            if normalized_process_name == normalized_target {
+                // SUCCESS: Found process on port with matching name
+                if brp_responsive {
+                    return Ok(StatusResult::new(app_name.to_string(), pid, port.0));
+                }
+                // Process running but BRP not responding
+                return Err(Error::Structured {
+                    result: Box::new(BrpNotRespondingError::new(
+                        app_name.to_string(),
+                        pid,
+                        port.0,
+                    )),
+                })?;
             }
-            // Process running but BRP not responding
-            return Err(Error::Structured {
-                result: Box::new(BrpNotRespondingError::new(
-                    app_name.to_string(),
-                    pid,
-                    port.0,
-                )),
-            })?;
         }
+
+        // We found a PID on the port, but either:
+        // - couldn't look it up in sysinfo, OR
+        // - the name doesn't match
+        // This means the wrong app is on this port
+        let message = if brp_responsive {
+            format!(
+                "Process '{app_name}' not found. BRP is responding on port {} - another process may be using it.",
+                port.0
+            )
+        } else {
+            format!(
+                "Process '{app_name}' not found and BRP is not responding on port {}.",
+                port.0
+            )
+        };
+
+        return Err(Error::Structured {
+            result: Box::new(
+                ProcessNotFoundError::new(app_name.to_string(), None, brp_responsive, port.0)
+                    .with_message_template(message),
+            ),
+        })?;
+    }
+
+    // Fallback: ONLY runs when NO PID found on the port at all
+    // Check if process exists by exact name match (running on different port)
+    let exact_match_by_name = system.processes().values().find(|process| {
+        !matches!(process.status(), sysinfo::ProcessStatus::Zombie) && {
+            let process_name = process.name().to_string_lossy();
+            let normalized_process_name = normalize_process_name(&process_name);
+            let normalized_target = normalize_process_name(app_name);
+            normalized_process_name == normalized_target
+        }
+    });
+
+    if let Some(process) = exact_match_by_name {
+        let pid = process.pid().as_u32();
+        // Process exists but not on the queried port
+        return Err(Error::Structured {
+            result: Box::new(BrpNotRespondingError::new(
+                app_name.to_string(),
+                pid,
+                port.0,
+            )),
+        })?;
     }
 
     // No process found on port with matching name - look for suggestions
