@@ -81,9 +81,13 @@ Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_app"):
 </AllocatePortFromPool>
 
 <VerifyBrpConnectivity>
-1. **Status Check**: Use `brp_status(app_name=[APP_NAME], port=[ASSIGNED_PORT])`
+1. **Status Check with Retry**: For each app, retry up to 5 times with exponential backoff:
+   - Attempt 1: Check `brp_status(app_name=[APP_NAME], port=[ASSIGNED_PORT])` immediately
+   - If fails: Wait using `.claude/scripts/integration_test_launch_retry.sh [attempt_number]`
+   - Attempt 2-5: Retry with increasing delays (0.5s, 1s, 2s, 4s)
+   - This handles Cargo lock contention during concurrent launches
 2. **Validation**: Confirm status is "running_with_brp"
-3. **Error Handling**: If verification fails, stop and report
+3. **Error Handling**: If verification fails after all retries, stop and report
 4. **Window Title**: Set title using `brp_extras_set_window_title` with format "{test_name} test - {app_name} - port {port}"
 </VerifyBrpConnectivity>
 
@@ -210,11 +214,17 @@ Configuration: App [APP_NAME]
 ### Single Test Execution
 
 **For tests where app_name is a specific app (not "various" or "N/A"):**
-1. Execute <AllocatePortFromPool/> for single port
-2. Execute <LaunchDedicatedApp/> with instance_count=1
-3. Execute <VerifyBrpConnectivity/> for assigned port
-4. **Execute Test**: Use DedicatedAppPrompt template with assigned port
-5. Execute <CleanupApps/> for single app
+1. **Clean up stale processes** from previous test runs:
+   ```bash
+   pkill -9 extras_plugin || true
+   pkill -9 no_extras_plugin || true
+   pkill -9 test_app || true
+   ```
+2. Execute <AllocatePortFromPool/> for single port
+3. Execute <LaunchDedicatedApp/> with instance_count=1
+4. Execute <VerifyBrpConnectivity/> for assigned port
+5. **Execute Test**: Use DedicatedAppPrompt template with assigned port
+6. Execute <CleanupApps/> for single app
 
 **For self-managed tests (app_name is "various" or "N/A"):**
 1. **Execute Test**: Use SelfManagedPrompt template directly
@@ -237,23 +247,31 @@ Example: /test extras
 
 **Before running tests:**
 
-1. **Analyze app requirements** using this command:
+1. **Clean up stale processes** from previous test runs:
+   ```bash
+   pkill -9 extras_plugin || true
+   pkill -9 no_extras_plugin || true
+   pkill -9 test_app || true
+   ```
+   Note: The `|| true` ensures the command succeeds even if no processes are found
+
+2. **Analyze app requirements** using this command:
    ```bash
    jq '[.[] | select(.app_name == "extras_plugin" or .app_name == "test_app")] | group_by(.app_name) | map({app_name: .[0].app_name, app_type: .[0].app_type, count: length})' ${TEST_CONFIG_FILE}
    ```
    Note: Replace ${TEST_CONFIG_FILE} with the actual path from the configuration section.
    This will show you exactly how many instances of each app type you need.
 
-2. **Launch apps using instance_count** based on the counts from step 1:
+3. **Launch apps using instance_count** based on the counts from step 2:
    - Execute <LaunchDedicatedApp/> with appropriate instance_count for each app type
    - Start at BASE_PORT=20100 and increment by the count for each app group
 
-3. **Track port assignments**:
+4. **Track port assignments**:
    - Execute <AllocatePortFromPool/> to manage port pools for test assignment
 
-4. **Verify all apps**: Execute <VerifyBrpConnectivity/> on each port in PARALLEL (single message, multiple tool uses)
+5. **Verify all apps**: Execute <VerifyBrpConnectivity/> on each port in PARALLEL (single message, multiple tool uses)
 
-5. **Track launched apps** for cleanup
+6. **Track launched apps** for cleanup
 
 **If any app launch fails, STOP immediately and report failure.**
 

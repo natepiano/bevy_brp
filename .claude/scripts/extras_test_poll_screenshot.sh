@@ -10,7 +10,7 @@ if [ $# -ne 1 ]; then
 fi
 
 path="$1"
-timeout=10
+timeout=20
 
 for i in $(seq 1 $timeout); do
     if [ -f "$path" ] && [ -s "$path" ]; then
