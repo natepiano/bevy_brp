@@ -47,6 +47,31 @@ pub struct EnumPathData {
 }
 ```
 
+## Complete Site Analysis
+
+Before implementation, here are ALL the sites that touch `enum_instructions` and `enum_variant_path`:
+
+**Field Definitions (Phase 2):**
+- types.rs:198 - `enum_instructions: Option<String>` in MutationPathInternal → REMOVE
+- types.rs:200 - `enum_variant_path: Vec<VariantPath>` in MutationPathInternal → REMOVE
+- types.rs:247 - `enum_instructions: Option<String>` in PathInfo (output struct) → KEEP (no change)
+- types.rs:250 - `enum_variant_path: Vec<VariantPath>` in PathInfo (output struct) → KEEP (no change)
+
+**Creation Sites (Phase 3):**
+- builder.rs:290-309 - `build_mutation_path_internal()` function
+- enum_path_builder.rs:653-668 - `create_result_paths()` function
+
+**Read/Access Sites (Phase 4):**
+- enum_path_builder.rs:617-641 - `update_child_variant_paths()` function
+
+**Serialization Sites (Phase 5):**
+- types.rs:343-344 - `MutationPath::from_mutation_path_internal()` function
+
+**String Literals (informational only - no code change needed):**
+- enum_path_builder.rs:469 - error message text contains "enum_variant_path" string
+
+Total sites requiring code changes: **6 locations**
+
 ## Implementation Plan
 
 ### Phase 1: Create EnumPathData Structure
@@ -125,17 +150,71 @@ impl MutationPathInternal {
 
 **Files**: All builders that currently populate `enum_variant_path`
 
-1. Identify all locations that create or modify `enum_variant_path`
-2. Update to use `enum_data` instead:
+1. **Two main creation sites to update:**
 
-```rust
-// OLD:
-path.enum_variant_path = variant_path_vec;
-path.enum_instructions = Some(instructions);
+   a. **builder.rs:288-311** - `build_mutation_path_internal()` function:
+   ```rust
+   // OLD (lines 290-309):
+   let (enum_instructions, enum_variant_path) = if ctx.variant_chain.is_empty() {
+       (None, vec![])
+   } else {
+       (
+           enum_path_builder::generate_enum_instructions(ctx),
+           ctx.variant_chain.clone(),
+       )
+   };
+   MutationPathInternal {
+       // ... other fields ...
+       enum_instructions,
+       enum_variant_path,
+   }
 
-// NEW:
-path.enum_data = Some(EnumPathData::new(variant_chain, instructions));
-```
+   // NEW:
+   let enum_data = if ctx.variant_chain.is_empty() {
+       None
+   } else {
+       Some(EnumPathData {
+           variant_chain: ctx.variant_chain.clone(),
+           applicable_variants: Vec::new(),  // Migrated from ExampleGroup
+           variant_chain_root_example: None,
+           enum_instructions: enum_path_builder::generate_enum_instructions(ctx)
+               .expect("generate_enum_instructions should return Some when variant_chain is non-empty"),
+       })
+   };
+   MutationPathInternal {
+       // ... other fields ...
+       enum_data,
+   }
+   ```
+
+   b. **enum_path_builder.rs:646-669** - `create_result_paths()` function:
+   ```rust
+   // OLD (lines 653-668):
+   let enum_instructions = generate_enum_instructions(ctx);
+   let enum_variant_path = populate_variant_path(ctx, &enum_examples, &default_example);
+   let root_mutation_path = MutationPathInternal {
+       // ... other fields ...
+       enum_instructions,
+       enum_variant_path,
+   };
+
+   // NEW:
+   let enum_data = Some(EnumPathData {
+       variant_chain: populate_variant_path(ctx, &enum_examples, &default_example),
+       applicable_variants: Vec::new(),  // Migrated from ExampleGroup
+       variant_chain_root_example: None,
+       enum_instructions: generate_enum_instructions(ctx)
+           .expect("generate_enum_instructions should return Some for enum paths"),
+   });
+   let root_mutation_path = MutationPathInternal {
+       // ... other fields ...
+       enum_data,
+   };
+   ```
+
+2. **Search for any other creation sites:**
+   - Run: `rg "enum_variant_path.*=" mcp/src/brp_tools/brp_type_guide`
+   - Update any additional sites following the pattern above
 
 3. Map existing `VariantPath` data to new `EnumPathData` fields:
    - Move the entire `Vec<VariantPath>` directly into `variant_chain` (preserves all metadata)
@@ -146,27 +225,44 @@ path.enum_data = Some(EnumPathData::new(variant_chain, instructions));
 
 **Files**: All code that reads `enum_variant_path`
 
-1. Search for all usages: `rg "enum_variant_path"`
-2. Update each access pattern:
+1. **Main read site to update:**
 
-```rust
-// OLD:
-if !path.enum_variant_path.is_empty() {
-    // ...
-}
+   **enum_path_builder.rs:617-641** - `update_child_variant_paths()` function:
+   ```rust
+   // OLD (lines 617-641):
+   if !child.enum_variant_path.is_empty() {
+       // Check for matching entries
+       for entry in &mut child.enum_variant_path {
+           if entry.full_mutation_path == *current_path {
+               entry.instructions = format!(/* ... */);
+               entry.variant_example = examples.iter().find(/* ... */);
+           }
+       }
+   }
 
-// NEW:
-if let Some(enum_data) = &path.enum_data {
-    if !enum_data.is_empty() {
-        // ...
-    }
-}
-```
+   // NEW:
+   if let Some(enum_data) = &mut child.enum_data {
+       if !enum_data.is_empty() {
+           // Check for matching entries
+           for entry in &mut enum_data.variant_chain {
+               if entry.full_mutation_path == *current_path {
+                   entry.instructions = format!(/* ... */);
+                   entry.variant_example = examples.iter().find(/* ... */);
+               }
+           }
+       }
+   }
+   ```
 
-3. Common patterns to update:
-   - Checking if path has enum variants
-   - Iterating over variant chain
-   - Building output structures
+2. **Search for any other read sites:**
+   - Run: `rg "\.enum_variant_path" mcp/src/brp_tools/brp_type_guide`
+   - Update any additional access patterns following the examples above
+
+3. Common patterns to handle:
+   - Checking if path has enum variants: `path.enum_data.is_some()`
+   - Checking if non-empty: `path.enum_data.as_ref().map_or(false, |ed| !ed.is_empty())`
+   - Iterating over variant chain: `enum_data.variant_chain.iter()`
+   - Mutable iteration: `enum_data.variant_chain.iter_mut()`
 
 ### Phase 5: Update Serialization/Output
 
