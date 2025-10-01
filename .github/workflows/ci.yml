@@ -46,6 +46,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
+          components: clippy
 
       - name: Install mold linker
         uses: rui314/setup-mold@v1
