@@ -6,16 +6,15 @@
 
 Fix root example assembly for mutation paths within enum chains by creating a separate `EnumFieldDescriptor` type that includes variant signature information. This allows enum processing to preserve ALL variant examples during recursion without breaking other builders that rely on `Borrow<str>` trait. The paths already exist correctly - the problem is that enum fields can only store one example in the HashMap, losing variant diversity.
 
-## Prerequisites
+## Current State
 
-**IMPORTANT**: This plan requires the `EnumPathData` refactoring to be completed first.
+The codebase has the `EnumPathData` struct with the following fields:
+- `variant_chain`: Vec<VariantPath> - Chain of enum variants from root to this path
+- `applicable_variants`: Vec<VariantName> - All variants that share the same signature
+- `variant_chain_root_example`: Option<Value> - Will be populated by this plan
+- `enum_instructions`: Option<String> - Instructions for variant selection
 
-See `enum-field-plan.md` for the prerequisite implementation plan that:
-- Creates the `EnumPathData` struct with fields: `variant_chain`, `applicable_variants`, `variant_chain_root_example: Option<Value>`, `enum_instructions: String`
-- Adds `enum_data: Option<EnumPathData>` field to `MutationPathInternal`
-- Consolidates all enum-related fields into this structure
-
-This prerequisite must be fully implemented before starting the changes described in this document.
+The `MutationPathInternal` struct has an `enum_data: Option<EnumPathData>` field that consolidates all enum-related data.
 
 ## High-Level Implementation Plan
 
@@ -547,14 +546,14 @@ impl EnumFieldDescriptor {
 
 ### EnumPathData Structure
 
-This plan assumes `EnumPathData` exists (see `enum-field-plan.md` prerequisite) with the following structure:
+The existing `EnumPathData` struct has the following structure:
 
 ```rust
 pub struct EnumPathData {
-    pub variant_chain: Vec<VariantName>,
+    pub variant_chain: Vec<VariantPath>,
     pub applicable_variants: Vec<VariantName>,
     pub variant_chain_root_example: Option<Value>,
-    pub enum_instructions: String,
+    pub enum_instructions: Option<String>,
 }
 ```
 
@@ -813,14 +812,6 @@ This provides type safety and clearer code than working with JSON values directl
 - **Reasoning**: Empty variant groups are mathematically impossible by construction - the grouping logic ensures every field_group entry is non-empty. The real issue was a compilation error (line 361 used moved value `entries`). Fixed by using `.iter().find(...).cloned()` pattern followed by `.or_else(|| entries.into_iter().next())`. Adding error logging would be dead code that misleads maintainers. The comment was updated to clarify that None is impossible due to construction invariant.
 - **Decision**: User elected to fix compilation error but skip error logging proposal
 
-## DESIGN-8: Inconsistent Terminology: 'enum_data' vs 'EnumPathData' vs Actual Path Field Name - **Verdict**: CONFIRMED (prerequisite extracted)
-- **Status**: RESOLVED - Prerequisite extracted into separate plan
-- **Location**: Section: Phase 5: Update Paths with Correct Root Examples
-- **Issue**: The plan uses inconsistent terminology and Phase 5 assumes `enum_data` field exists on `MutationPathInternal`, but this struct doesn't exist in the current codebase
-- **Reasoning**: Investigation confirmed that `EnumPathData` struct doesn't exist and `MutationPathInternal` has `enum_variant_path: Vec<VariantPath>` instead of `enum_data: Option<EnumPathData>`. This is a fundamental structural mismatch that blocks implementation.
-- **Resolution**: Extracted `EnumPathData` refactoring into separate prerequisite plan (`enum-field-plan.md`). Updated this plan to clearly reference the prerequisite and assume it exists. The `EnumPathData` consolidation will be implemented first, then this plan can proceed.
-- **Decision**: User elected to extract prerequisite into separate plan and document dependency clearly
-
 ## IMPLEMENTATION-1: Missing Implementation: Variant Chain to Root Example Mapping Storage - **Verdict**: CONFIRMED
 - **Status**: APPROVED - Integration point specification added
 - **Location**: Section: Phase 5: Update Paths with Correct Root Examples
@@ -833,14 +824,13 @@ This provides type safety and clearer code than working with JSON values directl
   - Critical data flow documentation explaining the connection between phases
 - **Decision**: User agreed to add integration point specification
 
-## IMPLEMENTATION-2: Missing Specification: How EnumPathData Gets variant_chain_root_example Field - **Verdict**: REDUNDANT
-- **Status**: REDUNDANT - Already addressed in plan
-- **Location**: Section: Keep EnumPathData for Organization (Optional)
-- **Issue**: Phase 5 code references `enum_data.variant_chain_root_example` but the optional section doesn't confirm it will be modified
-- **Existing Implementation**: The `EnumPathData` structure has been extracted into separate prerequisite plan `enum-field-plan.md` (resolved in DESIGN-8). That prerequisite plan explicitly creates the `EnumPathData` struct with all required fields including `variant_chain_root_example`. The Prerequisites section at the top of this plan documents the dependency.
-- **Plan Section**: See "Prerequisites" section (lines 9-18) and "EnumPathData Structure" section (lines 506-517)
-- **Critical Note**: This functionality/design already exists in the plan via the prerequisite extraction - future reviewers should check for existing coverage before suggesting. The issue raised by this finding (unclear whether the field will be added) has been comprehensively addressed by the prerequisite plan approach.
-- **Decision**: User elected to skip this recommendation as redundant
+## IMPLEMENTATION-2: Missing Specification: How EnumPathData Gets variant_chain_root_example Field - **Verdict**: RESOLVED
+- **Status**: RESOLVED - EnumPathData structure exists in codebase
+- **Location**: Section: Phase 5: Update Paths with Correct Root Examples
+- **Issue**: Phase 5 code references `enum_data.variant_chain_root_example` but it was unclear if the field existed
+- **Resolution**: The `EnumPathData` struct exists in the codebase with the `variant_chain_root_example: Option<Value>` field. This plan will populate that field with the correct root examples for each variant chain.
+- **Plan Section**: See "Current State" section and "EnumPathData Structure" section
+- **Decision**: Plan updated to reflect current codebase state
 
 ## TYPE-SYSTEM-1: Standalone Functions Should Be Methods on Owning Types - **Verdict**: REJECTED
 - **Status**: SKIPPED
