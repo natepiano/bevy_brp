@@ -545,7 +545,41 @@ The merge script automatically loads `.claude/config/mutation_test_known_issues.
 - Booleans: ✅ true, ✅ false
 - NEVER: ❌ "3.14", ❌ "42", ❌ "true", ❌ "false"
 - If you get "invalid type: string" error, you quoted a number or boolean
-- **VALIDATE**: Before sending ANY mutation, verify primitives are unquoted
+
+**COMMON MISTAKES THAT CAUSE STRING CONVERSION**:
+❌ Converting example to string: `str(example)` or `f"{example}"`
+❌ String interpolation in values: treating numbers as text
+❌ Copy-pasting example values as strings instead of raw values
+❌ Using string formatting functions on numeric values
+
+✅ CORRECT: Use the example value DIRECTLY from the type guide without any string conversion
+✅ When constructing mutation params: assign the value AS-IS from the example
+✅ Keep numeric types as numbers, boolean types as booleans throughout your code
+
+**MANDATORY PRE-SEND VERIFICATION**:
+Before EVERY mutation request with a numeric or boolean value:
+1. **CHECK**: Look at the value you're about to send in `params["value"]`
+2. **VERIFY**: If it's a number like `42`, ensure you're sending the NUMBER 42, not the STRING "42"
+3. **TEST**: In your JSON structure, it should appear as `"value": 42` NOT `"value": "42"`
+4. **CONFIRM**: No quotes around numbers or booleans in the actual value field
+
+**VERIFICATION EXAMPLES**:
+- ❌ WRONG: `{"value": "42"}` - This is a STRING "42"
+- ✅ CORRECT: `{"value": 42}` - This is a NUMBER 42
+- ❌ WRONG: `{"value": "true"}` - This is a STRING "true"
+- ✅ CORRECT: `{"value": true}` - This is a BOOLEAN true
+- ❌ WRONG: `{"value": "3.14"}` - This is a STRING "3.14"
+- ✅ CORRECT: `{"value": 3.14}` - This is a NUMBER 3.14
+
+**ERROR RECOVERY PROTOCOL**:
+If you receive error: `invalid type: string "X", expected [numeric/boolean type]`:
+1. **RECOGNIZE**: This means you DEFINITELY sent "X" as a quoted string
+2. **DO NOT** report this as a test failure - this is YOUR bug, not a BRP bug
+3. **FIX IMMEDIATELY**: Retry the SAME mutation with the value as an unquoted primitive
+4. **VERIFY**: Before retry, confirm your value is a number/boolean, NOT a string
+5. **ONLY FAIL**: If the retry also fails with a DIFFERENT error message
+
+**VALIDATION**: Before sending ANY mutation, verify primitives are unquoted
 </JsonPrimitiveRules>
 
 ## TYPE NAME VALIDATION
@@ -646,6 +680,13 @@ This returns your specific assignment with complete type data.
         * `"mutable"` or missing → TEST normally
       - Apply Entity ID substitution BEFORE sending any mutation request
       - If a mutation uses Entity IDs and you don't have real ones, query for them first
+      - **CRITICAL VALUE HANDLING**:
+        * Extract the `example` value from mutation_paths
+        * Use it DIRECTLY - do NOT convert to string with str() or f-strings
+        * If the example is a number like `42`, keep it as the NUMBER 42
+        * If the example is a boolean like `true`, keep it as the BOOLEAN true
+        * When building the mutation request, assign: `value = example` (not `value = str(example)`)
+        * Verify your JSON shows `"value": 42` NOT `"value": "42"` before sending
       - **IMPORTANT**: Follow <JsonPrimitiveRules/> before EVERY mutation request
       - **ENUM TESTING REQUIREMENT**: When a mutation path contains an "examples" array (indicating enum variants), you MUST test each example individually:
         * For each entry in the "examples" array, perform a separate mutation using that specific "example" value
@@ -660,6 +701,7 @@ This returns your specific assignment with complete type data.
 
 **IMPORTANT**: Follow <JsonPrimitiveRules/> - validate every `"value"` field before sending mutations.
 **ERROR SIGNAL**: "invalid type: string" means you quoted a primitive.
+**IF YOU GET THIS ERROR**: Follow the ERROR RECOVERY PROTOCOL in <JsonPrimitiveRules/> - retry immediately with the unquoted value, do NOT report as test failure unless retry fails with a different error.
 
 **Return EXACTLY this format (nothing else)**:
 ```json
@@ -706,6 +748,8 @@ This returns your specific assignment with complete type data.
 
 **PRE-OUTPUT VALIDATION**: Before generating your final JSON, follow <JsonPrimitiveRules/> and pay special attention to `"value"` fields in failure_details.
 
+**CRITICAL REMINDER**: If you encountered "invalid type: string" errors during testing, you MUST have followed the ERROR RECOVERY PROTOCOL and retried with proper unquoted values. Only report failures if the retry also failed.
+
 **FINAL INSTRUCTION**: Output ONLY the JSON array above. Nothing before. Nothing after.
 </SubagentPrompt>
 
@@ -730,7 +774,9 @@ This returns your specific assignment with complete type data.
 **JSON Primitive Requirements**: Follow <JsonPrimitiveRules/> for all JSON values.
 - This includes: u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64
 - Large numbers like 18446744073709551615 are STILL JSON numbers
-- "invalid type: string" = primitive serialization error, fix and retry
+- "invalid type: string" = primitive serialization error - you sent a quoted value
+- **ERROR RECOVERY**: If you get this error, follow the ERROR RECOVERY PROTOCOL in <JsonPrimitiveRules/>
+- Retry immediately with unquoted value, only report failure if retry also fails
 </PrimitiveHandling>
 
 <PathHandling>
