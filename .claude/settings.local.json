@@ -157,9 +157,7 @@
       "WebFetch(domain:www.anthropic.com)",
       "Bash(do)"
     ],
-    "deny": [
-      "Bash(sed:*)"
-    ],
+    "deny": ["Bash(sed:*)", "Bash(cat:*)"],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
