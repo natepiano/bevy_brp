@@ -530,10 +530,11 @@ fn update_paths_with_root_examples(
     Ok(())
 }
 
-// Build the root examples during enum processing
+// Build root examples for all variant chains present in child paths
 fn build_root_examples_for_chains(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     child_examples: &HashMap<EnumFieldDescriptor, Value>,
+    child_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
 ) -> HashMap<Vec<VariantName>, Value> {
     let mut root_examples = HashMap::new();
@@ -556,6 +557,23 @@ fn build_root_examples_for_chains(
         }
     }
 
+    // CRITICAL: Also extract all unique variant chains from child paths
+    // This handles deeply nested enum chains from recursive enum processing
+    for path in child_paths {
+        if let Some(enum_data) = &path.enum_data {
+            if !enum_data.variant_chain.is_empty() {
+                let chain = enum_data.variant_names();
+                // Only build if we don't already have this chain
+                if !root_examples.contains_key(&chain) {
+                    // For nested chains, use default example as fallback
+                    if let Some(first_example) = root_examples.values().next() {
+                        root_examples.insert(chain, first_example.clone());
+                    }
+                }
+            }
+        }
+    }
+
     root_examples
 }
 
@@ -572,14 +590,22 @@ pub fn process_enum(
     let (enum_examples, default_example) =
         build_enum_examples(&variant_groups, child_examples.clone(), ctx)?;
 
-    // NEW: Build the variant chain → root example mapping using all variant examples
-    let variant_chain_mapping = build_root_examples_for_chains(
-        &variant_groups,
-        &child_examples,  // Use all variants to build complete mapping
-        ctx,
-    );
+    // CRITICAL: Only build root examples at the actual root level (empty variant chain)
+    // Nested enums pass their paths up, and the root enum handles all variant chains
+    let variant_chain_mapping = if ctx.variant_chain.is_empty() {
+        // Build BEFORE consuming child_paths in create_result_paths
+        // Pass child_paths as reference to build examples for ALL nested chains
+        Some(build_root_examples_for_chains(
+            &variant_groups,
+            &child_examples,
+            &child_paths,  // NEW: Pass child_paths to handle nested chains
+            ctx,
+        ))
+    } else {
+        None
+    };
 
-    // Create result paths
+    // Create result paths (consumes child_paths)
     let mut result = create_result_paths(
         ctx,
         enum_examples,
@@ -587,19 +613,21 @@ pub fn process_enum(
         child_paths,
     );
 
-    // NEW: Update paths with correct root examples using the mapping
-    update_paths_with_root_examples(&mut result, &variant_chain_mapping)?;
+    // Update paths with root examples if we're at the root level
+    if let Some(mapping) = variant_chain_mapping {
+        update_paths_with_root_examples(&mut result, &mapping)?;
+    }
 
     Ok(result)
 }
 ```
 
 **Key Changes from Original `process_enum()`**:
-1. **Clone `child_examples`** when passing to `build_enum_examples()` (line 522) because we need to use it again for `build_root_examples_for_chains()`
-2. **Add call to `build_root_examples_for_chains()`** (lines 525-529) to create the variant chain → root example mapping
-3. **Change return pattern**: Instead of `Ok(create_result_paths(...))` direct return, bind result as `let mut result = create_result_paths(...)` (line 532)
-4. **Add call to `update_paths_with_root_examples()`** (line 540) to populate the `variant_chain_root_example` field for all paths
-5. **Return the modified result**: `Ok(result)` (line 542)
+1. **Clone `child_examples`** when passing to `build_enum_examples()` because we need to use it again for `build_root_examples_for_chains()`
+2. **CRITICAL: Only process at root level** - Check `ctx.variant_chain.is_empty()` to only build/update at the actual root enum
+3. **Build mapping BEFORE consuming child_paths** - Call `build_root_examples_for_chains()` before `create_result_paths()` consumes `child_paths`
+4. **Pass `child_paths` reference** to `build_root_examples_for_chains()` so it can build examples for ALL nested variant chains
+5. **Conditionally update paths** - Only call `update_paths_with_root_examples()` if we built a mapping (at root level)
 
 **Critical Data Flow**:
 1. `child_examples` (before deduplication) is passed to `build_root_examples_for_chains()`
