@@ -610,7 +610,47 @@ Assignment script says: "bevy_ecs::hierarchy::Children"
 <SubagentPrompt>
 **CRITICAL RESPONSE LIMIT**: Return ONLY the JSON array result. NO explanations, NO commentary, NO test steps, NO summaries.
 
-**IMPORTANT**: Follow <JsonPrimitiveRules/> for all JSON values
+═══════════════════════════════════════════════════════════════════════════════
+🚨 MANDATORY ERROR RECOVERY PROTOCOL - READ THIS FIRST 🚨
+═══════════════════════════════════════════════════════════════════════════════
+
+**BEFORE YOU REPORT ANY FAILURE, YOU MUST CHECK IF IT'S A PRIMITIVE QUOTING ERROR**
+
+**IF YOU SEE THIS ERROR**: `invalid type: string "X", expected [number/boolean type]`
+
+**THIS MEANS**:
+- ❌ YOU sent "X" as a quoted string (YOUR BUG, not BRP bug)
+- ❌ This is NOT a test failure - it's YOUR serialization error
+- ✅ You MUST retry immediately with unquoted primitive
+- ✅ ONLY report as failure if retry fails with DIFFERENT error
+
+**CONCRETE EXAMPLE - FOLLOW THESE EXACT STEPS**:
+
+1. **You send**: `{"method": "bevy/mutate_component", "params": {"value": "true"}}`
+   - ⚠️ ERROR: You quoted the boolean!
+
+2. **You receive**: `invalid type: string "true", expected a boolean`
+   - 🔍 RECOGNIZE: This error means YOU sent "true" (string) instead of true (boolean)
+
+3. **YOU MUST DO THIS IMMEDIATELY**:
+   ```
+   Step 1: DO NOT report this as a test failure
+   Step 2: Verify your value: true is a BOOLEAN, not a STRING
+   Step 3: Retry the SAME mutation with: {"value": true}  (no quotes!)
+   Step 4: If retry succeeds → mark mutation as PASSED
+   Step 5: If retry fails with DIFFERENT error → then report as failure
+   ```
+
+4. **ONLY REPORT FAILURE IF**:
+   - The retry ALSO fails AND the error is NOT about string quoting
+
+**VERIFICATION CHECKLIST - COMPLETE BEFORE EVERY MUTATION**:
+□ My value is a number (like 42)? → Ensure params shows `"value": 42` NOT `"value": "42"`
+□ My value is a boolean (like true)? → Ensure params shows `"value": true` NOT `"value": "true"`
+□ I see quotes around my number/boolean? → STOP! Remove the quotes!
+□ I received "invalid type: string" error? → Follow ERROR RECOVERY PROTOCOL above!
+
+═══════════════════════════════════════════════════════════════════════════════
 
 You are subagent with index [INDEX] (0-based) assigned to port [PORT].
 
@@ -703,6 +743,28 @@ This returns your specific assignment with complete type data.
 **ERROR SIGNAL**: "invalid type: string" means you quoted a primitive.
 **IF YOU GET THIS ERROR**: Follow the ERROR RECOVERY PROTOCOL in <JsonPrimitiveRules/> - retry immediately with the unquoted value, do NOT report as test failure unless retry fails with a different error.
 
+═══════════════════════════════════════════════════════════════════════════════
+🛑 MANDATORY PRE-FAILURE-REPORT CHECK 🛑
+═══════════════════════════════════════════════════════════════════════════════
+
+**BEFORE YOU REPORT status: "FAIL" FOR ANY TYPE, ANSWER THESE QUESTIONS**:
+
+1. ❓ Did ANY mutation fail with error: `invalid type: string "X", expected [type]`?
+   - ✅ YES → Did you retry with unquoted primitive? If NO, you MUST retry now!
+   - ✅ NO → Proceed to report failure
+
+2. ❓ After retrying with unquoted primitive, did the mutation succeed?
+   - ✅ YES → Mark mutation as PASSED, DO NOT report as failure
+   - ✅ NO → Proceed to report failure (only if retry also failed)
+
+3. ❓ Are you 100% certain this is NOT a primitive quoting error on your part?
+   - ✅ YES → Proceed to report failure
+   - ✅ NO → Review ERROR RECOVERY PROTOCOL at top of this prompt
+
+**IF YOU SKIP THESE CHECKS, YOUR RESULTS WILL BE INVALID**
+
+═══════════════════════════════════════════════════════════════════════════════
+
 **Return EXACTLY this format (nothing else)**:
 ```json
 [{
@@ -748,7 +810,24 @@ This returns your specific assignment with complete type data.
 
 **PRE-OUTPUT VALIDATION**: Before generating your final JSON, follow <JsonPrimitiveRules/> and pay special attention to `"value"` fields in failure_details.
 
-**CRITICAL REMINDER**: If you encountered "invalid type: string" errors during testing, you MUST have followed the ERROR RECOVERY PROTOCOL and retried with proper unquoted values. Only report failures if the retry also failed.
+═══════════════════════════════════════════════════════════════════════════════
+🚨 FINAL VALIDATION BEFORE OUTPUT 🚨
+═══════════════════════════════════════════════════════════════════════════════
+
+**STOP! Before you output your JSON, answer YES/NO to each**:
+
+1. ❓ Did I follow ERROR RECOVERY PROTOCOL for ANY "invalid type: string" errors?
+   - If you got this error and did NOT retry with unquoted primitive, YOUR RESULTS ARE INVALID
+
+2. ❓ Did I complete the MANDATORY PRE-FAILURE-REPORT CHECK above?
+   - If you reported ANY failure without completing the check, YOUR RESULTS ARE INVALID
+
+3. ❓ Are ALL my failure reports legitimate (not primitive quoting errors)?
+   - If ANY failure is actually a primitive quoting error, YOUR RESULTS ARE INVALID
+
+**IF YOU CANNOT ANSWER YES TO ALL THREE, DO NOT OUTPUT YOUR JSON - GO BACK AND FIX IT**
+
+═══════════════════════════════════════════════════════════════════════════════
 
 **FINAL INSTRUCTION**: Output ONLY the JSON array above. Nothing before. Nothing after.
 </SubagentPrompt>
