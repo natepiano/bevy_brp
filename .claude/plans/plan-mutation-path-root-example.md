@@ -607,6 +607,55 @@ pub fn process_enum(
 3. `variant_chain_mapping` is then passed to `update_paths_with_root_examples()`
 4. This ensures all paths get their correct variant-specific root examples
 
+### Wire Up `applicable_variants` to JSON Output
+
+**Location**: `types.rs`
+
+The `applicable_variants` field exists in `EnumPathData` but needs to be exposed in the serialized JSON output through the `PathInfo` struct.
+
+**Step 1**: Add `applicable_variants` field to `PathInfo` struct:
+
+```rust
+pub struct PathInfo {
+    // ... existing fields ...
+    pub enum_variant_path:      Vec<VariantPath>,
+    /// All enum variants that share the same signature and support this mutation path (optional)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub applicable_variants:    Vec<VariantName>,
+}
+```
+
+**Step 2**: Populate it in `MutationPath::from()` conversion:
+
+```rust
+impl From<&MutationPathInternal> for MutationPath {
+    fn from(path: &MutationPathInternal) -> Self {
+        // ... existing code ...
+
+        Self {
+            description,
+            path_info: PathInfo {
+                // ... existing fields ...
+                enum_variant_path: path
+                    .enum_data
+                    .as_ref()
+                    .map(|ed| ed.variant_chain.clone())
+                    .unwrap_or_default(),
+                applicable_variants: path
+                    .enum_data
+                    .as_ref()
+                    .map(|ed| ed.applicable_variants.clone())
+                    .unwrap_or_default(),
+            },
+            examples,
+            example,
+        }
+    }
+}
+```
+
+This ensures that AI agents can see which enum variants support each mutation path in the JSON response.
+
 ## Key Changes from Current System
 
 1. **Extended Descriptor**: Add optional `variant_signature` field to `MutationPathDescriptor`
@@ -748,7 +797,6 @@ Add `applicable_variants` to path_info and use correct root example:
 
 1. **Unit tests**:
    - Verify extended descriptor creation and equality
-   - Test `matches_field()` functionality
    - Verify HashMap can hold multiple entries per field
 
 2. **Integration tests**: Test with `extras_plugin::TestVariantChainEnum`
@@ -758,8 +806,8 @@ Add `applicable_variants` to path_info and use correct root example:
 3. **Verification Points**:
    - HashMap has multiple entries for enum fields
    - Each variant signature preserved separately
-   - Root deduplication selects appropriate examples
    - All paths updated with correct variant chain roots
+   - `applicable_variants` appears in JSON output for enum paths
 
 4. **Edge Cases**:
    - Multiple variants with same signature
@@ -786,10 +834,11 @@ Add `applicable_variants` to path_info and use correct root example:
 ### Step 1: Add EnumFieldDescriptor Type
 **File**: `path_kind.rs`
 1. Add `EnumFieldDescriptor` struct with `field_name: MutationPathDescriptor` and `variant_signature: VariantSignature` fields
-2. Implement `new()` constructor accepting `MutationPathDescriptor` and accessor methods
+2. Implement `new()` constructor accepting `MutationPathDescriptor` and `VariantSignature`
 3. Derive `Debug, Clone, PartialEq, Eq, Hash` for HashMap compatibility
-4. No changes to existing `MutationPathDescriptor` - preserves `Borrow<str>`
-5. Note: Using `MutationPathDescriptor` instead of `String` maintains type safety and eliminates unnecessary conversions at call sites
+4. No accessor methods needed - type is only used as HashMap key
+5. No changes to existing `MutationPathDescriptor` - preserves `Borrow<str>`
+6. Note: Using `MutationPathDescriptor` instead of `String` maintains type safety and eliminates unnecessary conversions at call sites
 
 ### Step 2: Change HashMap Type Throughout Enum Processing (Atomic)
 **File**: `enum_path_builder.rs`
@@ -809,19 +858,23 @@ Add `applicable_variants` to path_info and use correct root example:
 
 **Verification**: After this step, code compiles and tests pass. This provides a clean checkpoint.
 
-### Step 3: Update Paths with Root Examples
-**File**: `enum_path_builder.rs`
+### Step 3: Update Paths with Root Examples and Wire Output
+**Files**: `enum_path_builder.rs`, `types.rs`
 1. Add `build_root_examples_for_chains()` function
 2. Add `update_paths_with_root_examples()` function
-3. Add helper methods to `RecursionContext` and `EnumPathData` for variant name extraction
-4. Populate `variant_chain_root_example` field for all paths
-5. Integrate into `process_enum()` workflow
+3. Add helper method `variant_names_with()` to `RecursionContext` for variant name extraction
+4. Add helper method `variant_names()` to `EnumPathData` for HashMap lookups
+5. Populate `variant_chain_root_example` field for all paths
+6. Integrate into `process_enum()` workflow
+7. Add `applicable_variants` field to `PathInfo` struct in `types.rs`
+8. Populate `applicable_variants` from `enum_data` in `MutationPath::from()` conversion
 
 ### Step 4: Testing
 1. Verify with `TestVariantChainEnum`
 2. Check `.middle_struct.nested_enum.name` has VariantB root
 3. Validate all variant chains have correct examples
-4. Performance test with deep nesting
+4. Verify `applicable_variants` appears in JSON output for enum paths
+5. Performance test with deep nesting
 
 ## Applicable Variants Tracking
 
