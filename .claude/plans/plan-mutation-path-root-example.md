@@ -43,10 +43,12 @@ The `MutationPathInternal` struct has an `enum_data: Option<EnumPathData>` field
   - Add `build_root_examples_for_chains()` function
   - Add `update_paths_with_root_examples()` function
   - Populate `variant_chain_root_example` field for all paths
-  - Add `applicable_variants` field showing variant support
+  - Wire up `applicable_variants` to JSON output by adding it to `PathInfo` struct
+  - Populate `applicable_variants` from `enum_data` in `MutationPath::from()`
   - Single-step root example replaces multi-step array
   - Tests: Verify all variant chains have correct root examples
   - Tests: Verify paths receive correct variant-specific root examples
+  - Tests: Verify `applicable_variants` appears in JSON output for enum paths
 
 ## Design Considerations
 
@@ -215,19 +217,12 @@ impl EnumFieldDescriptor {
 
 **Location 2**: `recursion_context.rs`
 
-Add helper methods to `RecursionContext` for extracting variant names from the variant chain. This enables clean type conversion from `Vec<VariantPath>` to `Vec<VariantName>` for HashMap keys.
+Add helper method to `RecursionContext` for building variant name chains. This enables clean type conversion from `Vec<VariantPath>` to `Vec<VariantName>` for HashMap keys.
 
-**Placement**: Add these methods at the end of the existing `impl RecursionContext` block.
+**Placement**: Add this method at the end of the existing `impl RecursionContext` block.
 
 ```rust
 impl RecursionContext {
-    /// Extract just the variant names from the variant chain
-    pub fn variant_names(&self) -> Vec<VariantName> {
-        self.variant_chain.iter()
-            .map(|vp| vp.variant.clone())
-            .collect()
-    }
-
     /// Extract variant names with an additional variant appended
     /// Used when building root examples for nested variant chains
     pub fn variant_names_with(&self, additional: VariantName) -> Vec<VariantName> {
@@ -238,6 +233,8 @@ impl RecursionContext {
     }
 }
 ```
+
+**Note**: We only need `variant_names_with()` because it's used in `build_root_examples_for_chains()`. A simpler `variant_names()` method is not needed on `RecursionContext` since `EnumPathData` has its own.
 
 **Location 3**: `types.rs`
 
@@ -656,18 +653,11 @@ impl EnumFieldDescriptor {
     pub fn new(field_name: MutationPathDescriptor, variant_signature: VariantSignature) -> Self {
         Self { field_name, variant_signature }
     }
-
-    pub fn field_name(&self) -> &str {
-        &self.field_name  // Deref coercion to &str
-    }
-
-    pub fn variant_signature(&self) -> &VariantSignature {
-        &self.variant_signature
-    }
 }
 
 // Note: EnumFieldDescriptor does NOT implement Borrow<str> - it doesn't need to!
-// Enum processing never uses string slice lookups (see build_variant_example lines 344, 360)
+// Enum processing never uses string slice lookups.
+// Accessor methods are not needed since this type is only used as a HashMap key.
 ```
 
 **Scope Impact**: This change is isolated to only 2 files:
