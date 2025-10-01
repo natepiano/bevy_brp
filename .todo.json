@@ -1,0 +1,26 @@
+[
+  {
+    "sequence_number": 1,
+    "content": "Add Helper Types and Methods - EnumFieldDescriptor in path_kind.rs, variant_names methods in recursion_context.rs and types.rs",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 2,
+    "content": "Change HashMap Type Throughout Enum Processing (ATOMIC) - Update process_children, build_variant_example, build_enum_examples to use HashMap<EnumFieldDescriptor, Value>",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 3,
+    "content": "Add Root Example Building and Integration - Add build_root_examples_for_chains and update_paths_with_root_examples functions, modify process_enum",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 4,
+    "content": "Validation and Testing - Run cargo nextest run and verify TestVariantChainEnum has correct root examples",
+    "status": "pending",
+    "notes": ""
+  }
+]
