@@ -154,7 +154,8 @@
       "Bash(pkill:*)",
       "Bash(.claude/scripts/integration_test_launch_retry.sh:*)",
       "Bash(kill:*)",
-      "WebFetch(domain:www.anthropic.com)"
+      "WebFetch(domain:www.anthropic.com)",
+      "Bash(do)"
     ],
     "deny": [
       "Bash(sed:*)"
