@@ -37,7 +37,7 @@ use super::builders::{
 };
 use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::PathBuilder;
-use super::types::{PathAction, PathSummary};
+use super::types::{EnumPathData, PathAction, PathSummary};
 use super::{
     BuilderError, MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason,
     PathKind, RecursionContext, enum_path_builder,
@@ -255,8 +255,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             return Ok((vec![not_mutable_path], json!(null)));
         };
 
-        let child_type = child_ctx.type_name().clone();
-        let child_kind = TypeKind::from_schema(child_schema, &child_type);
+        let child_kind = TypeKind::from_schema(child_schema);
 
         let child_paths = recurse_mutation_paths(child_kind, child_ctx, depth.increment())?;
 
@@ -286,14 +285,16 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         status: MutationStatus,
         mutation_status_reason: Option<Value>,
     ) -> MutationPathInternal {
-        // Build enum fields if variant chain exists
-        let (enum_instructions, enum_variant_path) = if ctx.variant_chain.is_empty() {
-            (None, vec![])
+        // Build enum data if variant chain exists
+        let enum_data = if ctx.variant_chain.is_empty() {
+            None
         } else {
-            (
-                enum_path_builder::generate_enum_instructions(ctx),
-                ctx.variant_chain.clone(),
-            )
+            Some(EnumPathData {
+                variant_chain:              ctx.variant_chain.clone(),
+                applicable_variants:        Vec::new(),
+                variant_chain_root_example: None,
+                enum_instructions:          enum_path_builder::generate_enum_instructions(ctx),
+            })
         };
 
         MutationPathInternal {
@@ -305,8 +306,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             path_kind: ctx.path_kind.clone(),
             mutation_status: status,
             mutation_status_reason,
-            enum_instructions,
-            enum_variant_path,
+            enum_data,
         }
     }
 

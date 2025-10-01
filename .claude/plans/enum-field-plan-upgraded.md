@@ -65,7 +65,7 @@ cargo build
 
 ---
 
-### Step 2: Add enum_data Field to MutationPathInternal ⏳ PENDING
+### Step 2: Add enum_data Field to MutationPathInternal ✅ COMPLETED
 
 **Objective**: Add `enum_data: Option<EnumPathData>` field alongside existing enum fields
 
@@ -88,7 +88,7 @@ cargo build
 
 ---
 
-### Step 3: Update All Creation Sites ⏳ PENDING
+### Step 3: Update All Creation Sites ✅ COMPLETED
 
 **Objective**: Migrate both builder functions to populate `enum_data` instead of old fields
 
@@ -125,15 +125,12 @@ let enum_data = if ctx.variant_chain.is_empty() {
         variant_chain: ctx.variant_chain.clone(),
         applicable_variants: Vec::new(),
         variant_chain_root_example: None,
-        enum_instructions: enum_path_builder::generate_enum_instructions(ctx)
-            .expect("generate_enum_instructions should return Some when variant_chain is non-empty"),
+        enum_instructions: enum_path_builder::generate_enum_instructions(ctx),
     })
 };
 MutationPathInternal {
     // ... other fields ...
     enum_data,
-    enum_instructions: enum_data.as_ref().map(|ed| ed.enum_instructions.clone()),
-    enum_variant_path: enum_data.as_ref().map(|ed| ed.variant_chain.clone()).unwrap_or_default(),
 }
 ```
 
@@ -149,18 +146,19 @@ let root_mutation_path = MutationPathInternal {
 };
 
 // NEW:
-let enum_data = Some(EnumPathData {
-    variant_chain: populate_variant_path(ctx, &enum_examples, &default_example),
-    applicable_variants: Vec::new(),
-    variant_chain_root_example: None,
-    enum_instructions: generate_enum_instructions(ctx)
-        .expect("generate_enum_instructions should return Some for enum paths"),
-});
+let enum_data = if ctx.variant_chain.is_empty() {
+    None
+} else {
+    Some(EnumPathData {
+        variant_chain: populate_variant_path(ctx, &enum_examples, &default_example),
+        applicable_variants: Vec::new(),
+        variant_chain_root_example: None,
+        enum_instructions: generate_enum_instructions(ctx),
+    })
+};
 let root_mutation_path = MutationPathInternal {
     // ... other fields ...
-    enum_data: enum_data.clone(),
-    enum_instructions: enum_data.as_ref().map(|ed| ed.enum_instructions.clone()),
-    enum_variant_path: enum_data.as_ref().map(|ed| ed.variant_chain.clone()).unwrap_or_default(),
+    enum_data,
 };
 ```
 
@@ -175,7 +173,7 @@ cargo build
 
 ---
 
-### Step 4: Update All Access Sites ⏳ PENDING
+### Step 4: Update All Access Sites ✅ COMPLETED
 
 **Objective**: Change all read access from old fields to new `enum_data` field
 
@@ -222,7 +220,7 @@ cargo build
 
 ---
 
-### Step 5: Update Serialization/Output ⏳ PENDING
+### Step 5: Update Serialization/Output ✅ COMPLETED
 
 **Objective**: Extract enum data from `enum_data` field in conversion function
 
@@ -257,7 +255,7 @@ cargo build
 
 ---
 
-### Step 6: Remove Old Fields ⏳ PENDING
+### Step 6: Remove Old Fields ✅ COMPLETED
 
 **Objective**: Delete deprecated `enum_instructions` and `enum_variant_path` fields from `MutationPathInternal`
 
@@ -282,7 +280,7 @@ cargo build
 
 ---
 
-### Step 7: Complete Validation ⏳ PENDING
+### Step 7: Complete Validation ✅ COMPLETED
 
 **Objective**: Run full test suite and verify behavior is unchanged
 
@@ -356,7 +354,7 @@ pub struct EnumPathData {
     pub variant_chain: Vec<VariantPath>,
     pub applicable_variants: Vec<VariantName>,
     pub variant_chain_root_example: Option<Value>,
-    pub enum_instructions: String,
+    pub enum_instructions: Option<String>,
 }
 ```
 
@@ -405,14 +403,14 @@ pub struct EnumPathData {
     pub variant_chain_root_example: Option<Value>,
 
     /// Human-readable instructions for using this enum path
-    pub enum_instructions: String,
+    pub enum_instructions: Option<String>,
 }
 ```
 
 2. Add constructor and helper methods:
 ```rust
 impl EnumPathData {
-    pub fn new(variant_chain: Vec<VariantPath>, enum_instructions: String) -> Self {
+    pub fn new(variant_chain: Vec<VariantPath>, enum_instructions: Option<String>) -> Self {
         Self {
             variant_chain,
             applicable_variants: Vec::new(),
@@ -546,7 +544,7 @@ Note: This field is currently populated in `ExampleGroup` structure (see enum_pa
 The complete root-level example that correctly demonstrates this specific variant chain. This will be populated by the root example fix plan (plan-mutation-path-root-example.md).
 
 ### enum_instructions
-Human-readable text explaining how to use this enum path, which variants to select, etc. Always populated when `EnumPathData` exists, generated based on the variant chain by `generate_enum_instructions()`. Note: This is a required `String` field (not `Option<String>`) because the optionality is handled at the `Option<EnumPathData>` level - if you have enum data, you always have instructions.
+Human-readable text explaining how to use this enum path, which variants to select, etc. This is an `Option<String>` field that is populated by `generate_enum_instructions()` when the mutation path requires variant selection (i.e., when the `variant_chain` is non-empty). When `variant_chain` is empty (enum root paths that are not nested within other enums), this field is `None`.
 
 ## Success Criteria
 

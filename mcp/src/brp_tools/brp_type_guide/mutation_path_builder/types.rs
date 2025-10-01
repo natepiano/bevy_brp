@@ -194,10 +194,8 @@ pub struct MutationPathInternal {
     pub mutation_status:              MutationStatus,
     /// Reason if mutation is not possible
     pub mutation_status_reason:       Option<Value>,
-    /// Instructions for setting variants required for this mutation path (optional)
-    pub enum_instructions:            Option<String>,
-    /// Ordered list of variant requirements from root to this path (optional)
-    pub enum_variant_path:            Vec<VariantPath>,
+    /// Consolidated enum-specific data (new approach)
+    pub enum_data:                    Option<EnumPathData>,
 }
 
 impl MutationPathInternal {
@@ -277,6 +275,42 @@ pub struct VariantPath {
     pub variant_example:    Value,
 }
 
+/// Consolidated enum-specific data for mutation paths
+#[derive(Debug, Clone)]
+pub struct EnumPathData {
+    /// Chain of enum variants from root to this path with full metadata
+    pub variant_chain: Vec<VariantPath>,
+
+    /// All variants that share the same signature and support this path
+    pub applicable_variants: Vec<VariantName>,
+
+    /// Complete root example for this specific variant chain
+    pub variant_chain_root_example: Option<Value>,
+
+    /// Human-readable instructions for using this enum path
+    pub enum_instructions: Option<String>,
+}
+
+impl EnumPathData {
+    pub fn new(variant_chain: Vec<VariantPath>, enum_instructions: Option<String>) -> Self {
+        Self {
+            variant_chain,
+            applicable_variants: Vec::new(),
+            variant_chain_root_example: None,
+            enum_instructions,
+        }
+    }
+
+    pub fn with_applicable_variants(mut self, variants: Vec<VariantName>) -> Self {
+        self.applicable_variants = variants;
+        self
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.variant_chain.is_empty()
+    }
+}
+
 /// Information about a mutation path that we serialize to our response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPath {
@@ -300,7 +334,7 @@ impl MutationPath {
     ) -> Self {
         // Get TypeKind for the field type
         let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
-        let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
+        let type_kind = TypeKind::from_schema(field_schema);
 
         // Generate description - override for partially_mutable paths
         let description = match path.mutation_status {
@@ -340,8 +374,15 @@ impl MutationPath {
                 type_kind,
                 mutation_status: path.mutation_status,
                 mutation_status_reason: path.mutation_status_reason.clone(),
-                enum_instructions: path.enum_instructions.clone(),
-                enum_variant_path: path.enum_variant_path.clone(),
+                enum_instructions: path
+                    .enum_data
+                    .as_ref()
+                    .and_then(|ed| ed.enum_instructions.clone()),
+                enum_variant_path: path
+                    .enum_data
+                    .as_ref()
+                    .map(|ed| ed.variant_chain.clone())
+                    .unwrap_or_default(),
             },
             examples,
             example,

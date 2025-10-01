@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
-use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
@@ -37,17 +36,19 @@ pub enum TypeKind {
 
 impl TypeKind {
     /// Extract `TypeKind` from a registry schema with fallback to `Value`
-    pub fn from_schema(schema: &Value, type_name: &BrpTypeName) -> Self {
+    ///
+    /// Some types don't have a `kind` field in their schema because Bevy's reflection
+    /// system doesn't provide full schema information for them. This includes:
+    /// - External opaque types like `Uuid`, `Entity`
+    /// - Standard library types like `String` that are referenced but not fully introspected
+    /// - `NonZero*` types and other primitives without complete reflection data
+    ///
+    /// These types are safely treated as `TypeKind::Value` (leaf/primitive types).
+    pub fn from_schema(schema: &Value) -> Self {
         schema
             .get_field(SchemaField::Kind)
             .and_then(Value::as_str)
             .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| {
-                tracing::warn!(
-                    "Type '{}' has missing or invalid 'kind' field in registry schema, defaulting to TypeKind::Value",
-                    type_name
-                );
-                Self::Value
-            })
+            .unwrap_or(Self::Value)
     }
 }

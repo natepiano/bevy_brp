@@ -189,7 +189,7 @@ impl TypeGuide {
         registry_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Result<Vec<MutationPathInternal>> {
-        let type_kind = TypeKind::from_schema(registry_schema, brp_type_name);
+        let type_kind = TypeKind::from_schema(registry_schema);
 
         tracing::debug!(
             "build_mutation_paths: {} determined as TypeKind::{:?}",
