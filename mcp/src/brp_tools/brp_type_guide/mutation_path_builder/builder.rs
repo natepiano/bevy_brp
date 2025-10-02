@@ -47,11 +47,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -261,7 +261,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
         // Extract child's example - handle both simple and enum root cases
         let child_example = child_paths.first().map_or(json!(null), |p| {
-            p.enum_root_example_for_parent
+            p.enum_example_for_parent
                 .as_ref()
                 .map_or_else(|| p.example.clone(), Clone::clone)
         });
@@ -290,18 +290,18 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain:              ctx.variant_chain.clone(),
-                applicable_variants:        Vec::new(),
+                variant_chain: ctx.variant_chain.clone(),
+                applicable_variants: Vec::new(),
                 variant_chain_root_example: None,
-                enum_instructions:          enum_path_builder::generate_enum_instructions(ctx),
+                enum_instructions: enum_path_builder::generate_enum_instructions(ctx),
             })
         };
 
         MutationPathInternal {
             full_mutation_path: ctx.full_mutation_path.clone(),
             example,
-            enum_root_examples: None,
-            enum_root_example_for_parent: None,
+            enum_example_groups: None,
+            enum_example_for_parent: None,
             type_name: ctx.type_name().display_name(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: status,

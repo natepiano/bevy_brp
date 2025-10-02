@@ -62,21 +62,21 @@ pub enum PathKind {
     RootValue { type_name: BrpTypeName },
     /// Mutate a field in a struct
     StructField {
-        field_name:  StructFieldName,
-        type_name:   BrpTypeName,
+        field_name: StructFieldName,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in a tuple by index
     /// Applies to tuple elements, enums variants, including generics such as Option<T>
     IndexedElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in an array
     ArrayElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
 }
@@ -169,7 +169,6 @@ impl PathKind {
     }
 
     /// Convert this `PathKind` to a `PathSignature` for grouping purposes
-    #[allow(dead_code)] // Will be used in Plan 1 implementation
     pub fn to_signature(&self) -> PathSignature {
         match self {
             Self::RootValue { type_name, .. } => PathSignature::Root {
