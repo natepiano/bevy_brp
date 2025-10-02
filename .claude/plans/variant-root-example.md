@@ -127,7 +127,18 @@ use tracing; // For warning/debug logging
 
 **Location:** `types.rs` - Update `MutationPathInternal` and `EnumData`
 
-**1a. Add `partial_root_examples` field to `MutationPathInternal`:**
+**1a. Update `VariantName` to support BTreeMap keys:**
+
+The plan uses `BTreeMap<Vec<VariantName>, Value>` for partial root examples. For `Vec<VariantName>` to be a valid BTreeMap key, `VariantName` must implement `Ord`.
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+pub struct VariantName(String);
+```
+
+**Why:** `BTreeMap` requires keys to implement `Ord`. The plan uses BTreeMap for deterministic ordering in tests. This follows the same pattern as `StructFieldName` in the codebase, which is also a newtype wrapper around `String` and derives `Ord`.
+
+**1b. Add `partial_root_examples` field to `MutationPathInternal`:**
 
 ```rust
 pub struct MutationPathInternal {
@@ -151,7 +162,7 @@ pub struct MutationPathInternal {
 
 **Why:** Each enum needs to store partial root examples indexed by the FULL variant chain (no prefix stripping - keeps code simple and readable). Parent enums look up child's partial roots using the same full chain keys.
 
-**1b. Add `applicable_variants` and `variant_chain_root_example` fields to `EnumData`:**
+**1c. Add `applicable_variants` and `variant_chain_root_example` fields to `EnumData`:**
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
