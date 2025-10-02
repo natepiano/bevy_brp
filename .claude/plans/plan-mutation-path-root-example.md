@@ -501,6 +501,18 @@ After Phase 2 is complete, the code compiles and works with the new descriptor t
 After building all examples, update paths with their correct root examples:
 
 ```rust
+/// Update the first variant_path step to use the correct root example
+fn update_variant_path_with_root_example(enum_data: &mut EnumPathData) {
+    if let Some(root_example) = &enum_data.variant_chain_root_example {
+        if let Some(first_step) = enum_data.variant_chain.first_mut() {
+            // Only update if this is the root step (empty mutation path)
+            if first_step.full_mutation_path.is_empty() {
+                first_step.variant_example = root_example.clone();
+            }
+        }
+    }
+}
+
 fn update_paths_with_root_examples(
     paths: &mut Vec<MutationPathInternal>,
     root_examples: &HashMap<Vec<VariantName>, Value>,
@@ -524,6 +536,10 @@ fn update_paths_with_root_examples(
                         ))
                     })?;
                 enum_data.variant_chain_root_example = Some(root_example.clone());
+
+                // CRITICAL: Update the first variant_path step to use this correct root example
+                // This ensures the JSON output shows the right variant in the root example
+                update_variant_path_with_root_example(enum_data);
             }
         }
     }
@@ -889,13 +905,15 @@ Add `applicable_variants` to path_info and use correct root example:
 ### Step 3: Update Paths with Root Examples and Wire Output
 **Files**: `enum_path_builder.rs`, `types.rs`
 1. Add `build_root_examples_for_chains()` function
-2. Add `update_paths_with_root_examples()` function
-3. Add helper method `variant_names_with()` to `RecursionContext` for variant name extraction
-4. Add helper method `variant_names()` to `EnumPathData` for HashMap lookups
-5. Populate `variant_chain_root_example` field for all paths
-6. Integrate into `process_enum()` workflow
-7. Add `applicable_variants` field to `PathInfo` struct in `types.rs`
-8. Populate `applicable_variants` from `enum_data` in `MutationPath::from()` conversion
+2. Add `update_variant_path_with_root_example()` helper function
+3. Add `update_paths_with_root_examples()` function that calls the helper
+4. Add helper method `variant_names_with()` to `RecursionContext` for variant name extraction
+5. Add helper method `variant_names()` to `EnumPathData` for HashMap lookups
+6. Populate `variant_chain_root_example` field for all paths
+7. Update first variant_path step to use correct root example (fixes JSON output)
+8. Integrate into `process_enum()` workflow with root-level-only check
+9. Add `applicable_variants` field to `PathInfo` struct in `types.rs`
+10. Populate `applicable_variants` from `enum_data` in `MutationPath::from()` conversion
 
 ### Step 4: Testing
 1. Verify with `TestVariantChainEnum`
