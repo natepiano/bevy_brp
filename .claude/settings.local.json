@@ -155,9 +155,13 @@
       "Bash(.claude/scripts/integration_test_launch_retry.sh:*)",
       "Bash(kill:*)",
       "WebFetch(domain:www.anthropic.com)",
-      "Bash(do)"
+      "Bash(do)",
+      "WebFetch(domain:status.claude.com)"
     ],
-    "deny": ["Bash(sed:*)", "Bash(cat:*)"],
+    "deny": [
+      "Bash(sed:*)",
+      "Bash(cat:*)"
+    ],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
