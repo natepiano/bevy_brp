@@ -392,17 +392,17 @@ fn wrap_nested_example(
     // Extract the field name from the child path's PathKind
     let field_name = match &child_path.path_kind {
         PathKind::StructField { field_name, .. } => field_name.as_str(),
-        PathKind::EnumRoot { .. } => {
-            // Enum root paths don't have a field name to wrap into
+        PathKind::RootValue { .. } => {
+            // Root value paths don't have a field name to wrap into
             tracing::debug!(
-                "Cannot wrap into EnumRoot path - no field name available"
+                "Cannot wrap into RootValue path - no field name available"
             );
             return None;
         }
-        other => {
+        PathKind::IndexedElement { .. } | PathKind::ArrayElement { .. } => {
+            // Indexed/array paths need special handling or may not be valid wrapping targets
             tracing::warn!(
-                "Unexpected path kind for wrapping: {:?}. Expected StructField.",
-                other
+                "Wrapping into indexed/array paths not currently supported"
             );
             return None;
         }
@@ -590,44 +590,24 @@ impl MutationPath {
 3. **Update `generate_enum_instructions()` for single-step guidance**
 
 ```rust
-fn generate_enum_instructions(enum_data: &EnumData) -> String {
-    if enum_data.variant_chain_root_example.is_some() {
-        // We have a complete root example - provide single-step instructions
-        format!(
-            "This field is nested within enum variants. \
-             Use the 'root_variant_example' for single-step mutation: \
-             First set root to 'root_variant_example', then mutate this path. \
-             Applicable variants: {}",
-            if !enum_data.applicable_variants.is_empty() {
-                // Get the parent enum name from variant_chain (last entry)
-                let enum_name = enum_data.variant_chain
-                    .last()
-                    .map(|vp| vp.enum_name.as_str())
-                    .unwrap_or("Unknown");
-
-                enum_data.applicable_variants
-                    .iter()
-                    .map(|v| format!("{enum_name}::{v}"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            } else {
-                "unknown".to_string()
-            }
-        )
-    } else if !enum_data.variant_chain.is_empty() {
-        // Fallback: multi-step instructions for backward compatibility
-        format!(
-            "This field requires setting parent enum variants. \
-             Variant chain: {}",
-            enum_data.variant_chain
-                .iter()
-                .map(|vp| format!("{}::{}", vp.enum_name, vp.variant))
-                .collect::<Vec<_>>()
-                .join(" → ")
-        )
+fn generate_enum_instructions(enum_data: &EnumPathData) -> String {
+    let applicable_str = if !enum_data.applicable_variants.is_empty() {
+        // VariantName already contains fully qualified names - just convert to strings
+        enum_data.applicable_variants
+            .iter()
+            .map(|v| v.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
     } else {
-        "This field is in an enum variant".to_string()
-    }
+        "unknown".to_string()
+    };
+
+    format!(
+        "This field is nested within enum variants. \
+         Use the 'root_variant_example' for single-step mutation: \
+         First set root to 'root_variant_example', then mutate this path. \
+         Applicable variants: {applicable_str}"
+    )
 }
 ```
 
@@ -863,3 +843,12 @@ Implement phases in order to maintain working code at each step:
 **Current handling**: Logs warning and uses base example without nesting (lines 248-254).
 
 **Why acceptable**: This indicates a bug in the building process (child should have built roots). The warning makes it visible during testing.
+
+## Design Review Skip Notes
+
+### DESIGN-1: Missing explanation for handling IndexedElement and ArrayElement in wrapping logic - **Verdict**: REJECTED
+- **Status**: REJECTED - Finding was incorrect
+- **Location**: Phase 3: Build Partial Roots by Wrapping Children - wrap_nested_example function
+- **Issue**: Original finding claimed the plan doesn't explain whether wrapping should work for IndexedElement paths (created by tuple variants)
+- **Reasoning**: Investigation revealed the plan correctly implements two separate complementary mechanisms: (1) Field-based wrapping for struct variants (wrap_nested_example), and (2) Index-based assembly for tuple variants (build_variant_example). IndexedElement paths are intentionally excluded from wrapping because they participate in a different construction mechanism. The match arm that rejects IndexedElement in wrap_nested_example is not a gap - it's defensive programming that catches architectural violations. The code is self-documenting through its structure.
+- **Decision**: User agreed with rejection - plan correctly handles both struct and tuple variants through appropriate separate mechanisms
