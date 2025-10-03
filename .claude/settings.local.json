@@ -150,18 +150,17 @@
       "Bash(git grep:*)",
       "Bash(ps:*)",
       "Bash(.claude/scripts/extras_test_poll_screenshot.sh:*)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh:*)",
       "Bash(pkill:*)",
       "Bash(.claude/scripts/integration_test_launch_retry.sh:*)",
       "Bash(kill:*)",
       "WebFetch(domain:www.anthropic.com)",
-      "Bash(do)",
-      "WebFetch(domain:status.claude.com)"
+      "WebFetch(domain:status.claude.com)",
+      "Bash(~/.claude/scripts/bevy_migration_ensure_repo.sh:*)",
+      "Bash(~/.claude/scripts/bevy_migration_get_tranche.py:*)",
+      "Bash(~/.claude/scripts/bevy_migration_verify_guides.sh:*)",
+      "Bash(~/.claude/scripts/bevy_migration_dependency_check.py:*)"
     ],
-    "deny": [
-      "Bash(sed:*)",
-      "Bash(cat:*)"
-    ],
+    "deny": ["Bash(sed:*)", "Bash(cat:*)"],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
