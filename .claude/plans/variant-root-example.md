@@ -1,13 +1,36 @@
 # Plan: Build Root Examples Bottom-Up During Enum Recursion
 
-## Problem
+## Goal
 
-Currently, mutation paths for deeply nested enum fields require multi-step mutations. For example, to mutate `.middle_struct.nested_enum.name`, the agent must:
+**Replace multi-step `enum_variant_path` arrays with single-step `root_variant_example` fields.**
+
+Currently, the type guide output (see `TestVariantChainEnum.json`) provides multi-step mutation instructions via `enum_variant_path` arrays. For deeply nested enum fields like `.middle_struct.nested_enum.name`, the agent must:
 
 1. First mutate root to `{"WithMiddleStruct": {"middle_struct": {"nested_enum": {"VariantA": ...}}}}`
 2. Then mutate `.middle_struct.nested_enum` to `{"VariantB": {...}}`
 
 **The Issue:** Step 1 uses the wrong variant (VariantA) because we only build one example per enum level during recursion. The field `.name` only exists in VariantB, not VariantA.
+
+**The Solution:** Build complete root examples during recursion that show the CORRECT variant chain for each path. For `.middle_struct.nested_enum.name`, provide a single `root_variant_example`:
+
+```json
+{
+  "WithMiddleStruct": {
+    "middle_struct": {
+      "nested_enum": {
+        "VariantB": {
+          "name": "Hello, World!",
+          "value": 3.14
+        }
+      }
+    }
+  }
+}
+```
+
+This enables single-step mutations instead of error-prone multi-step processes.
+
+## Problem Detail
 
 ## Summary of Changes
 
@@ -72,27 +95,32 @@ Enable **single-step mutations** by providing the correct complete root structur
 
 ### Data Flow (Bottom-Up)
 
-```
-[Depth 3] String ".name" field
-  → Returns with variant_chain=[WithMiddleStruct, VariantB]
-  ↑ No partial roots to build (not an enum)
+**Key terminology:**
+- "Enum root path at each level" = Any path that is the root of an enum type (has `enum_example_groups`)
+- For TestVariantChainEnum: Path `""` is the enum root path
+- For BottomEnum: Path `".middle_struct.nested_enum"` is the enum root path
 
-[Depth 2] BottomEnum
+```
+[Depth 3] String ".name" field (path ".middle_struct.nested_enum.name")
+  → Returns with variant_chain=[WithMiddleStruct, VariantB]
+  ↑ No partial roots to build (not an enum root path)
+
+[Depth 2] BottomEnum (path ".middle_struct.nested_enum" - enum root path at this level)
   → Sees child variant_chains: [WithMiddleStruct, VariantB], [WithMiddleStruct, VariantA], etc.
   → Children are primitives (no partial roots to wrap)
-  → Builds partial roots:
+  → Builds partial roots for its own root path:
       [WithMiddleStruct, VariantB] → {"VariantB": {"name": "...", "value": ...}}
       [WithMiddleStruct, VariantA] → {"VariantA": 123}
-  → Stores these in a HashMap on its root path
+  → Stores these in partial_root_examples on path ".middle_struct.nested_enum"
   ↑ Returns to parent
 
-[Depth 1] MiddleStruct (struct, not enum)
+[Depth 1] MiddleStruct (struct, not enum - no enum root path here)
   → Just passes paths through unchanged
   ↑ Returns to parent
 
-[Depth 0] TestVariantChainEnum (ROOT)
+[Depth 0] TestVariantChainEnum (path "" - enum root path at top level)
   → Sees child variant_chains: [WithMiddleStruct, VariantB], [WithMiddleStruct], etc.
-  → Finds BottomEnum root path with partial roots already built
+  → Searches child_paths for paths with partial_root_examples (finds BottomEnum at ".middle_struct.nested_enum")
   → Builds complete root examples by wrapping (ONE level):
       [WithMiddleStruct, VariantB]:
         Start: {"WithMiddleStruct": {"middle_struct": {"nested_enum": <default>, ...}}}
@@ -104,8 +132,8 @@ Enable **single-step mutations** by providing the correct complete root structur
         Start: {"WithMiddleStruct": {"middle_struct": {...}}}
         No more nesting needed
         Result: {"WithMiddleStruct": {"middle_struct": {...}}}
-  → Stores complete roots
-  → Populates variant_chain_root_example on all matching paths
+  → Stores complete roots in partial_root_examples on path ""
+  → Populates variant_chain_root_example on all matching descendant paths
 ```
 
 ## Implementation
@@ -127,16 +155,16 @@ use tracing; // For warning/debug logging
 
 **Location:** `types.rs` - Update `MutationPathInternal` and `EnumData`
 
-**1a. Update `VariantName` to support BTreeMap keys:**
+**1a. Update `VariantName` to support BTreeMap and HashSet usage:**
 
-The plan uses `BTreeMap<Vec<VariantName>, Value>` for partial root examples. For `Vec<VariantName>` to be a valid BTreeMap key, `VariantName` must implement `Ord`.
+The plan uses `BTreeMap<Vec<VariantName>, Value>` for partial root examples and `HashSet<Vec<VariantName>>` for collecting unique chains. For these to work, `VariantName` must implement both `Ord` (for BTreeMap) and `Hash` (for HashSet).
 
 ```rust
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Serialize, Deserialize)]
 pub struct VariantName(String);
 ```
 
-**Why:** `BTreeMap` requires keys to implement `Ord`. The plan uses BTreeMap for deterministic ordering in tests. This follows the same pattern as `StructFieldName` in the codebase, which is also a newtype wrapper around `String` and derives `Ord`.
+**Why:** `BTreeMap` requires keys to implement `Ord`, and `HashSet` requires `Hash`. The plan uses BTreeMap for deterministic ordering in tests and HashSet for collecting unique variant chains (Phase 3, line 303). This matches the pattern for `StructFieldName` in the codebase, which is also a newtype wrapper around `String` and derives both `Hash` and `Ord`.
 
 **1b. Add `partial_root_examples` field to `MutationPathInternal`:**
 
@@ -144,23 +172,31 @@ pub struct VariantName(String);
 pub struct MutationPathInternal {
     // ... existing fields ...
 
-    /// For enum root paths only: Maps FULL variant chains to partial root examples
-    /// built from this enum level down through all descendants.
+    /// For enum root paths at each nesting level: Maps FULL variant chains to partial
+    /// root examples built from this enum level down through all descendants.
     ///
-    /// Example at BottomEnum with ctx.variant_chain=[WithMiddleStruct]:
+    /// **Populated for paths where `enum_example_groups.is_some()`** - meaning any path that
+    /// is the root of an enum type at ANY nesting level:
+    /// - Path "" (TestVariantChainEnum) has this field
+    /// - Path ".middle_struct.nested_enum" (BottomEnum) has this field
+    /// - Leaf paths like ".middle_struct.nested_enum.name" have None
+    ///
+    /// Example at BottomEnum (path ".middle_struct.nested_enum"):
     ///   [WithMiddleStruct, VariantB] => {"VariantB": {"name": "...", "value": ...}}
     ///   [WithMiddleStruct, VariantA] => {"VariantA": 123}
     ///
-    /// Example at TestVariantChainEnum (root):
+    /// Example at TestVariantChainEnum (path ""):
     ///   [WithMiddleStruct, VariantB] => {"WithMiddleStruct": {"middle_struct": {"nested_enum": {"VariantB": {...}}}}}
     ///   [WithMiddleStruct] => {"WithMiddleStruct": {"middle_struct": {...}}}
     ///
-    /// None for non-enum paths.
+    /// None for non-enum paths (structs, primitives) and enum leaf paths.
     pub partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
 }
 ```
 
-**Why:** Each enum needs to store partial root examples indexed by the FULL variant chain (no prefix stripping - keeps code simple and readable). Parent enums look up child's partial roots using the same full chain keys.
+**Why:** Each enum at each nesting level needs to store partial root examples indexed by the FULL variant chain (no prefix stripping - keeps code simple and readable). Parent enums look up child's partial roots by searching child_paths for paths with `partial_root_examples.is_some()` and matching variant chains.
+
+**Important:** This field is on `MutationPathInternal` (not in `EnumPathData`) because the top-level enum root path (path "") has `enum_data = None` (since `variant_chain` is empty at the root), yet it still needs to build and store partial roots for its descendants.
 
 **1c. Add `applicable_variants` and `variant_chain_root_example` fields to `EnumData`:**
 
@@ -170,11 +206,12 @@ pub struct EnumData {
     /// The chain of variant selections from root to this point
     pub variant_chain: Vec<VariantPath>,
 
-    /// NEW: Set of variant full names where this path is valid
-    /// Example: {"BottomEnum::VariantB", "BottomEnum::VariantA"}
+    /// NEW: Variant names where this path is valid
+    /// Example: [VariantName("VariantB"), VariantName("VariantA")]
     /// Populated during path processing in Phase 5
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub applicable_variants: HashSet<String>,
+    /// Converted to fully-qualified names during serialization in Phase 4
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub applicable_variants: Vec<VariantName>,
 
     /// NEW: Complete root example for single-step mutation
     /// Only populated at root level (when ctx.variant_chain is empty)
@@ -188,7 +225,7 @@ pub struct EnumData {
 ```rust
 EnumData {
     variant_chain: ctx.variant_chain.clone(),
-    applicable_variants: HashSet::new(),  // NEW
+    applicable_variants: Vec::new(),  // NEW
     variant_chain_root_example: None,      // NEW
 }
 ```
@@ -214,14 +251,17 @@ fn create_result_paths(
 
     // ==================== NEW CODE ====================
     // Build partial root examples for all unique variant chains in children
-    // This happens at EVERY enum level (not just root)
+    // This happens at EVERY enum root path (paths where enum_example_groups exists)
+    // - For path "" (TestVariantChainEnum): builds roots for all descendants
+    // - For path ".middle_struct.nested_enum" (BottomEnum): builds roots for its children
     let partial_roots = build_partial_root_examples(
         &enum_examples,
         &child_paths,
         ctx,
     );
 
-    // Store partial roots on the enum root path so parent can access them
+    // Store partial roots on this enum's root path so parent enums can access them
+    // Parent finds these by searching child_paths for paths with partial_root_examples.is_some()
     let mut root_mutation_path = root_mutation_path;
     root_mutation_path.partial_root_examples = Some(partial_roots.clone());
 
@@ -465,12 +505,18 @@ impl MutationPath {
                 enum_instructions: Some(generate_enum_instructions(&enum_data)),
                 variant_path: Some(enum_data.variant_chain.clone()),
 
-                // NEW: Populate applicable_variants
+                // NEW: Populate applicable_variants with fully-qualified names
                 applicable_variants: if !enum_data.applicable_variants.is_empty() {
+                    // Get the parent enum name from variant_chain (last entry)
+                    let enum_name = enum_data.variant_chain
+                        .last()
+                        .map(|vp| vp.enum_name.as_str())
+                        .unwrap_or("Unknown");
+
                     Some(
                         enum_data.applicable_variants
                             .iter()
-                            .map(|v| (*v).to_string())
+                            .map(|v| format!("{enum_name}::{v}"))
                             .collect()
                     )
                 } else {
@@ -505,9 +551,15 @@ fn generate_enum_instructions(enum_data: &EnumData) -> String {
              First set root to 'root_variant_example', then mutate this path. \
              Applicable variants: {}",
             if !enum_data.applicable_variants.is_empty() {
+                // Get the parent enum name from variant_chain (last entry)
+                let enum_name = enum_data.variant_chain
+                    .last()
+                    .map(|vp| vp.enum_name.as_str())
+                    .unwrap_or("Unknown");
+
                 enum_data.applicable_variants
                     .iter()
-                    .map(|v| (*v).to_string())
+                    .map(|v| format!("{enum_name}::{v}"))
                     .collect::<Vec<_>>()
                     .join(", ")
             } else {
@@ -537,80 +589,86 @@ fn generate_enum_instructions(enum_data: &EnumData) -> String {
 
 The `applicable_variants` field needs to be populated during path processing. This tells the user which variants make a particular path valid.
 
+**Important:** The current `process_children` signature already has access to `variant_groups`, which contains the variant information we need. We do NOT need to add `enum_examples` as a parameter (which wouldn't work anyway since `enum_examples` is created AFTER `process_children` returns).
+
 ```rust
-/// Process children for each variant and collect all child paths
 fn process_children(
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     ctx: &RecursionContext,
-    type_info: &TypeInfo,
-    enum_examples: &[ExampleGroup],
-) -> Vec<MutationPathInternal> {
+    depth: RecursionDepth,
+) -> Result<(
+    HashMap<MutationPathDescriptor, Value>,
+    Vec<MutationPathInternal>,
+)> {
+    let mut child_examples = HashMap::new();
     let mut all_child_paths = Vec::new();
 
-    for example_group in enum_examples {
-        for variant_name in &example_group.applicable_variants {
-            // Get the variant value from the example
-            if let Some(variant_value) = example_group.example.get(variant_name) {
-                // Create new recursion context with this variant
-                let mut new_ctx = ctx.clone();
-                new_ctx.variant_chain.push(VariantPath {
-                    enum_name: type_info.short_name.clone(),
-                    variant: variant_name.clone(),
+    // Process each variant group
+    for (signature, variants_in_group) in variant_groups {
+        let applicable_variants: Vec<VariantName> = variants_in_group
+            .iter()
+            .map(|v| v.variant_name().clone())
+            .collect();
+
+        // Create paths for this signature group
+        let paths = create_paths_for_signature(signature, ctx);
+
+        // Process each path
+        for path in paths.into_iter().flatten() {
+            let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create);
+
+            // Set up enum context for children
+            if let Some(representative_variant) = applicable_variants.first() {
+                child_ctx.variant_chain.push(VariantPath {
+                    full_mutation_path: ctx.full_mutation_path.clone(),
+                    variant: representative_variant.clone(),
+                    instructions: String::new(),
+                    variant_example: json!(null),
                 });
+            }
 
-                // Recurse into the variant's value
-                let mut child_paths = crate::builder::build_mutation_paths_internal(
-                    variant_value,
-                    type_info,
-                    &new_ctx,
-                );
+            // Recursively process child and collect paths
+            let child_descriptor = path.to_mutation_path_descriptor();
+            let child_schema = child_ctx.require_registry_schema()?;
+            let child_type_kind = TypeKind::from_schema(child_schema);
 
-                // POPULATE applicable_variants: Track which variant made these paths valid
-                for child_path in &mut child_paths {
-                    if let Some(enum_data) = &mut child_path.enum_data {
-                        // Add this variant to the list of variants that make this path valid
-                        let variant_full_name = format!(
-                            "{}::{}",
-                            type_info.short_name,
-                            variant_name
-                        );
-                        enum_data.applicable_variants.insert(variant_full_name);
+            let mut child_paths =
+                builder::recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
+
+            // ==================== NEW: POPULATE applicable_variants ====================
+            // Track which variants make these child paths valid
+            for child_path in &mut child_paths {
+                if let Some(enum_data) = &mut child_path.enum_data {
+                    // Add all variants from this signature group
+                    // (all variants in a group share the same signature/structure)
+                    for variant_name in &applicable_variants {
+                        enum_data.applicable_variants.push(variant_name.clone());
                     }
                 }
-
-                all_child_paths.extend(child_paths);
             }
+            // ==================== END NEW CODE ====================
+
+            // Extract example from first path
+            let child_example = child_paths
+                .first()
+                .map_or(json!(null), |p| p.example.clone());
+
+            child_examples.insert(child_descriptor, child_example);
+            all_child_paths.extend(child_paths);
         }
     }
 
-    // Deduplicate paths with the same path string
-    // When paths appear in multiple variants, merge their applicable_variants
-    let mut path_map: BTreeMap<String, MutationPathInternal> = BTreeMap::new();
-
-    for path in all_child_paths {
-        path_map
-            .entry(path.path.clone())
-            .and_modify(|existing| {
-                // Merge applicable_variants from duplicate paths
-                if let (Some(existing_data), Some(new_data)) =
-                    (&mut existing.enum_data, &path.enum_data)
-                {
-                    existing_data.applicable_variants.extend(
-                        new_data.applicable_variants.iter().cloned()
-                    );
-                }
-            })
-            .or_insert(path);
-    }
-
-    path_map.into_values().collect()
+    Ok((child_examples, all_child_paths))
 }
 ```
 
 **Key points:**
 
-1. As we process each variant, we add its full name (`EnumName::VariantName`) to `applicable_variants` on all child paths
-2. When deduplicating paths, we merge the `applicable_variants` sets
-3. This ensures paths that appear in multiple variants show all applicable variants in the output
+1. We use the existing `variant_groups` structure that `process_children` already receives
+2. For each variant group (variants with the same signature), we extract the list of `VariantName` values
+3. After recursing into child paths, we populate each child's `enum_data.applicable_variants` with all variants from the group
+4. This happens during the existing recursion flow - no signature changes needed
+5. Paths that appear in multiple variant groups will accumulate variants from each group they appear in
 
 ## Key Advantages of Bottom-Up Approach
 
