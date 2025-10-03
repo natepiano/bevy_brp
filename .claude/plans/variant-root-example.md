@@ -38,8 +38,8 @@ This plan fixes the multi-step mutation requirement for deeply nested enum field
 
 **New Fields:**
 - `MutationPathInternal.partial_root_examples`: Stores partial roots at each enum level
-- `EnumData.applicable_variants`: Tracks which variants make a path valid
-- `EnumData.variant_chain_root_example`: Complete root example for the path
+- `EnumPathData.applicable_variants`: Tracks which variants make a path valid
+- `EnumPathData.variant_chain_root_example`: Complete root example for the path
 - `PathInfo.applicable_variants`: Exposed to user
 - `PathInfo.root_variant_example`: Exposed to user
 
@@ -198,11 +198,11 @@ pub struct MutationPathInternal {
 
 **Important:** This field is on `MutationPathInternal` (not in `EnumPathData`) because the top-level enum root path (path "") has `enum_data = None` (since `variant_chain` is empty at the root), yet it still needs to build and store partial roots for its descendants.
 
-**1c. Add `applicable_variants` and `variant_chain_root_example` fields to `EnumData`:**
+**1c. Add `applicable_variants` and `variant_chain_root_example` fields to `EnumPathData`:**
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnumData {
+pub struct EnumPathData {
     /// The chain of variant selections from root to this point
     pub variant_chain: Vec<VariantPath>,
 
@@ -221,9 +221,9 @@ pub struct EnumData {
 }
 ```
 
-**Note:** Ensure `EnumData` initialization in `enum_path_builder.rs` includes:
+**Note:** Ensure `EnumPathData` initialization in `enum_path_builder.rs` includes:
 ```rust
-EnumData {
+EnumPathData {
     variant_chain: ctx.variant_chain.clone(),
     applicable_variants: Vec::new(),  // NEW
     variant_chain_root_example: None,      // NEW
@@ -472,19 +472,30 @@ fn extract_variant_names(variant_chain: &[VariantPath]) -> Vec<VariantName> {
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathInfo {
-    pub path_type: String,
-    pub is_optional: bool,
-
+    /// Context describing what kind of mutation this is (how to navigate to this path)
+    pub path_kind: PathKind,
+    /// Fully-qualified type name of the field
+    #[serde(rename = "type")]
+    pub type_name: BrpTypeName,
+    /// The kind of type this field contains (Struct, Enum, Array, etc.)
+    pub type_kind: TypeKind,
+    /// Status of whether this path can be mutated
+    pub mutation_status: MutationStatus,
+    /// Reason if mutation is not possible
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mutation_status_reason: Option<Value>,
+    /// Instructions for setting variants required for this mutation path (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enum_instructions: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub variant_path: Option<Vec<VariantPath>>,
+    /// Ordered list of variant requirements from root to this path (optional)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub enum_variant_path: Vec<VariantPath>,
 
     /// NEW: List of variants where this path is valid
-    /// Example: ["BottomEnum::VariantB"]
+    /// Example: [VariantName("BottomEnum::VariantB")]
+    /// VariantName serializes as a string in JSON output
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub applicable_variants: Option<Vec<String>>,
+    pub applicable_variants: Option<Vec<VariantName>>,
 
     /// NEW: Complete root example for single-step mutation
     /// Only present for paths nested in enums
@@ -497,43 +508,80 @@ pub struct PathInfo {
 
 ```rust
 impl MutationPath {
-    pub fn from_mutation_path_internal(internal: MutationPathInternal) -> Self {
-        let path_info = if let Some(enum_data) = &internal.enum_data {
-            Some(PathInfo {
-                path_type: "enum_variant".to_string(),
-                is_optional: internal.is_optional,
-                enum_instructions: Some(generate_enum_instructions(&enum_data)),
-                variant_path: Some(enum_data.variant_chain.clone()),
+    /// Create from `MutationPathInternal` with proper formatting logic
+    pub fn from_mutation_path_internal(
+        path: &MutationPathInternal,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Self {
+        // Get TypeKind for the field type
+        let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
+        let type_kind = TypeKind::from_schema(field_schema);
 
-                // NEW: Populate applicable_variants with fully-qualified names
-                applicable_variants: if !enum_data.applicable_variants.is_empty() {
-                    // Get the parent enum name from variant_chain (last entry)
-                    let enum_name = enum_data.variant_chain
-                        .last()
-                        .map(|vp| vp.enum_name.as_str())
-                        .unwrap_or("Unknown");
-
-                    Some(
-                        enum_data.applicable_variants
-                            .iter()
-                            .map(|v| format!("{enum_name}::{v}"))
-                            .collect()
-                    )
-                } else {
-                    None
-                },
-
-                // NEW: Populate root_variant_example
-                root_variant_example: enum_data.variant_chain_root_example.clone(),
-            })
-        } else {
-            None
+        // Generate description - override for partially_mutable paths
+        let description = match path.mutation_status {
+            MutationStatus::PartiallyMutable => {
+                "This path is not mutable due to some of its descendants not being mutable"
+                    .to_string()
+            }
+            _ => path.path_kind.description(&type_kind),
         };
 
-        MutationPath {
-            path: internal.path,
-            example: internal.example,
-            path_info,
+        let (examples, example) = match path.mutation_status {
+            MutationStatus::PartiallyMutable | MutationStatus::NotMutable => {
+                // PartiallyMutable and NotMutable: no example at all (not even null)
+                (vec![], None)
+            }
+            MutationStatus::Mutable => {
+                path.enum_example_groups.as_ref().map_or_else(
+                    || {
+                        // Mutable paths: use the example value
+                        (vec![], Some(path.example.clone()))
+                    }
+                    |enum_examples| {
+                        // Enum root: use the examples array
+                        (enum_examples.clone(), None)
+                    },
+                )
+            }
+        };
+
+        // NEW: Extract applicable_variants and root_variant_example from enum_data
+        let (applicable_variants, root_variant_example) = path
+            .enum_data
+            .as_ref()
+            .map(|enum_data| {
+                let variants = if !enum_data.applicable_variants.is_empty() {
+                    Some(enum_data.applicable_variants.clone())
+                } else {
+                    None
+                };
+                (variants, enum_data.variant_chain_root_example.clone())
+            })
+            .unwrap_or((None, None));
+
+        Self {
+            description,
+            path_info: PathInfo {
+                path_kind: path.path_kind.clone(),
+                type_name: path.type_name.clone(),
+                type_kind,
+                mutation_status: path.mutation_status,
+                mutation_status_reason: path.mutation_status_reason.clone(),
+                enum_instructions: path
+                    .enum_data
+                    .as_ref()
+                    .and_then(|ed| ed.enum_instructions.clone()),
+                enum_variant_path: path
+                    .enum_data
+                    .as_ref()
+                    .map(|ed| ed.variant_chain.clone())
+                    .unwrap_or_default(),
+                // NEW: Add the two new fields
+                applicable_variants,
+                root_variant_example,
+            },
+            examples,
+            example,
         }
     }
 }
