@@ -47,11 +47,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -290,10 +290,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain: ctx.variant_chain.clone(),
+                variant_chain:       ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                variant_chain_root_example: None,
-                enum_instructions: enum_path_builder::generate_enum_instructions(ctx),
+                root_example:        None,
             })
         };
 
@@ -307,6 +306,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             mutation_status: status,
             mutation_status_reason,
             enum_data,
+            partial_root_examples: None,
         }
     }
 

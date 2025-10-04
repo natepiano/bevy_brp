@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
-use super::types::{PathSignature, StructFieldName};
+use super::types::StructFieldName;
 
 /// A semantic identifier for mutation paths in the builder system
 ///
@@ -62,21 +62,21 @@ pub enum PathKind {
     RootValue { type_name: BrpTypeName },
     /// Mutate a field in a struct
     StructField {
-        field_name: StructFieldName,
-        type_name: BrpTypeName,
+        field_name:  StructFieldName,
+        type_name:   BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in a tuple by index
     /// Applies to tuple elements, enums variants, including generics such as Option<T>
     IndexedElement {
-        index: usize,
-        type_name: BrpTypeName,
+        index:       usize,
+        type_name:   BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in an array
     ArrayElement {
-        index: usize,
-        type_name: BrpTypeName,
+        index:       usize,
+        type_name:   BrpTypeName,
         parent_type: BrpTypeName,
     },
 }
@@ -165,24 +165,6 @@ impl PathKind {
             Self::StructField { .. } => "StructField",
             Self::IndexedElement { .. } => "IndexedElement",
             Self::ArrayElement { .. } => "ArrayElement",
-        }
-    }
-
-    /// Convert this `PathKind` to a `PathSignature` for grouping purposes
-    pub fn to_signature(&self) -> PathSignature {
-        match self {
-            Self::RootValue { type_name, .. } => PathSignature::Root {
-                type_name: type_name.clone(),
-            },
-            Self::StructField { type_name, .. } => PathSignature::Field {
-                type_name: type_name.clone(),
-            },
-            Self::IndexedElement { type_name, .. } => PathSignature::Index {
-                type_name: type_name.clone(),
-            },
-            Self::ArrayElement { type_name, .. } => PathSignature::Array {
-                type_name: type_name.clone(),
-            },
         }
     }
 }
