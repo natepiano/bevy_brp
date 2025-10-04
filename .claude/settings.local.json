@@ -166,11 +166,12 @@
       "Bash(~/.claude/scripts/bevy_migration_count_pattern.sh \"EventWriter\" \"/Users/natemccoy/rust/bevy_brp\" rust)",
       "Bash(~/.claude/scripts/bevy_migration_count_pattern.sh \"TemporalAntiAliasPlugin\" \"/Users/natemccoy/rust/bevy_brp\" rust)",
       "Bash(\"/Users/natemccoy/rust/bevy_brp\" rust)",
-      "Bash(/Users/natemccoy/.claude/scripts/bevy_migration_count_pattern.sh:*)"
+      "Bash(/Users/natemccoy/.claude/scripts/bevy_migration_count_pattern.sh:*)",
+      "Bash(tail:*)"
     ],
     "deny": [
       "Bash(sed:*)",
-      "Bash(cat:*)"
+      "Bash(cat >:*)"
     ],
     "ask": [],
     "additionalDirectories": [
