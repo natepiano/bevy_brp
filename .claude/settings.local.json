@@ -159,7 +159,8 @@
       "Bash(~/.claude/scripts/bevy_migration_get_tranche.py:*)",
       "Bash(~/.claude/scripts/bevy_migration_verify_guides.sh:*)",
       "Bash(~/.claude/scripts/bevy_migration_dependency_check.py:*)",
-      "Bash(mcp__brp__brp_list_brp_apps:*)"
+      "Bash(mcp__brp__brp_list_brp_apps:*)",
+      "Bash(sort:*)"
     ],
     "deny": [
       "Bash(sed:*)",
