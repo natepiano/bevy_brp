@@ -160,7 +160,13 @@
       "Bash(~/.claude/scripts/bevy_migration_verify_guides.sh:*)",
       "Bash(~/.claude/scripts/bevy_migration_dependency_check.py:*)",
       "Bash(mcp__brp__brp_list_brp_apps:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(~/.claude/scripts/bevy_migration_count_pattern.sh:*)",
+      "Bash(~/.claude/scripts/bevy_migration_count_pattern.sh \"Relationship\" \"/Users/natemccoy/rust/bevy_brp\" rust)",
+      "Bash(~/.claude/scripts/bevy_migration_count_pattern.sh \"EventWriter\" \"/Users/natemccoy/rust/bevy_brp\" rust)",
+      "Bash(~/.claude/scripts/bevy_migration_count_pattern.sh \"TemporalAntiAliasPlugin\" \"/Users/natemccoy/rust/bevy_brp\" rust)",
+      "Bash(\"/Users/natemccoy/rust/bevy_brp\" rust)",
+      "Bash(/Users/natemccoy/.claude/scripts/bevy_migration_count_pattern.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",
