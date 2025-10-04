@@ -30,6 +30,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use error_stack::Report;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -66,7 +67,7 @@ struct EnumFieldInfo {
     field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name:  BrpTypeName,
+    type_name: BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -172,12 +173,11 @@ pub fn process_enum(
     // Use shared function to get variant information
     let variant_groups = extract_and_group_variants(ctx)?;
 
-    // Process children and collect BOTH examples AND child paths
-    let (child_examples, child_paths) = process_children(&variant_groups, ctx, depth)?;
+    // Process children - now builds examples immediately to avoid HashMap overwrites
+    let (enum_examples, child_paths) = process_children(&variant_groups, ctx, depth)?;
 
-    // Use shared function to build examples
-    let (enum_examples, default_example) =
-        build_enum_examples(&variant_groups, child_examples, ctx)?;
+    // Select default example from the generated examples
+    let default_example = select_preferred_example(&enum_examples).unwrap_or(json!(null));
 
     // Create result paths including both root AND child paths
     create_result_paths(ctx, enum_examples, default_example, child_paths)
@@ -344,7 +344,7 @@ fn build_variant_example(
             // Fix: Single-element tuples should not be wrapped in arrays
             // Vec<Value> always serializes as JSON array, but BRP expects single-element
             // tuples to use direct value format for mutations, not array format
-            if tuple_values.len() == 1 {
+            let result = if tuple_values.len() == 1 {
                 json!({ variant_name: tuple_values[0] })
             } else {
                 json!({ variant_name: tuple_values })
@@ -393,59 +393,6 @@ fn extract_and_group_variants(
     let schema = ctx.require_registry_schema()?;
     let variants = extract_enum_variants(schema, &ctx.registry, ctx.type_name());
     Ok(group_variants_by_signature(variants))
-}
-
-/// Build enum examples from variant groups and child examples
-/// This handles all enum context logic in one place
-fn build_enum_examples(
-    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
-    child_examples: HashMap<MutationPathDescriptor, Value>,
-    ctx: &RecursionContext,
-) -> Result<(Vec<ExampleGroup>, Value)> {
-    use error_stack::Report;
-
-    // Build internal MutationExample to organize the enum logic
-    tracing::debug!("build_enum_examples for {}", ctx.type_name());
-
-    // Always build examples array for enums - no context check needed
-    let mut examples = Vec::new();
-
-    for (signature, variants_in_group) in variant_groups {
-        let representative = variants_in_group
-            .first()
-            .ok_or_else(|| Report::new(Error::InvalidState("Empty variant group".to_string())))?;
-
-        let example = build_variant_example(
-            signature,
-            representative.name(),
-            &child_examples,
-            ctx.type_name(),
-        );
-
-        let applicable_variants: Vec<VariantName> = variants_in_group
-            .iter()
-            .map(|v| v.variant_name().clone())
-            .collect();
-
-        examples.push(ExampleGroup {
-            applicable_variants,
-            signature: signature.to_string(),
-            example,
-        });
-    }
-
-    let mutation_example = examples;
-
-    // For enum roots, return both examples array and a default concrete value
-    // Use the shared utility to prefer non-unit variants
-    let default_example = select_preferred_example(&mutation_example).unwrap_or(json!(null));
-
-    tracing::debug!(
-        "build_enum_examples returning EnumRoot with {} examples",
-        mutation_example.len()
-    );
-
-    Ok((mutation_example, default_example))
 }
 
 /// Generate single-step mutation instructions for enum paths
@@ -499,19 +446,22 @@ fn populate_variant_path(
 }
 
 /// Process child paths - simplified version of `MutationPathBuilder`'s child processing
+///
+/// Now builds examples immediately for each variant group to avoid HashMap collision issues
+/// where multiple variant groups with the same signature would overwrite each other's examples.
 fn process_children(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     ctx: &RecursionContext,
     depth: RecursionDepth,
-) -> Result<(
-    HashMap<MutationPathDescriptor, Value>,
-    Vec<MutationPathInternal>,
-)> {
-    let mut child_examples = HashMap::new();
+) -> Result<(Vec<ExampleGroup>, Vec<MutationPathInternal>)> {
+    let mut all_examples = Vec::new();
     let mut all_child_paths = Vec::new();
 
     // Process each variant group
     for (signature, variants_in_group) in variant_groups {
+        // Create FRESH child_examples HashMap for each variant group to avoid overwrites
+        let mut child_examples = HashMap::new();
+
         let applicable_variants: Vec<VariantName> = variants_in_group
             .iter()
             .map(|v| v.variant_name().clone())
@@ -528,9 +478,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant:            representative_variant.clone(),
-                    instructions:       String::new(),
-                    variant_example:    json!(null),
+                    variant: representative_variant.clone(),
+                    instructions: String::new(),
+                    variant_example: json!(null),
                 });
             }
             // Recursively process child and collect paths
@@ -563,20 +513,74 @@ fn process_children(
             // ==================== END NEW CODE ====================
 
             // Extract example from first path
-            // When a child enum is processed with EnumContext::Child, it returns
-            // a concrete example directly (not wrapped with enum_root_data)
+            // For enum children: use enum_example_for_parent (the concrete variant example)
+            // For non-enum children: use example (works for structs/values)
+            tracing::debug!(
+                "process_children: about to extract example for descriptor={child_descriptor:?}, child_paths.len()={}",
+                child_paths.len()
+            );
+
             let child_example = child_paths
                 .first()
-                .map_or(json!(null), |p| p.example.clone());
+                .ok_or_else(|| {
+                    tracing::error!("Empty child_paths for descriptor {child_descriptor:?}");
+                    Report::new(Error::InvalidState(format!(
+                        "Empty child_paths returned for descriptor {child_descriptor:?}"
+                    )))
+                })
+                .and_then(|p| {
+                    tracing::debug!(
+                        "First path: full_mutation_path={}, has_enum_example_for_parent={}, example={:?}",
+                        p.full_mutation_path,
+                        p.enum_example_for_parent.is_some(),
+                        p.example
+                    );
+                    // For enum children, use enum_example_for_parent
+                    if let Some(enum_example) = &p.enum_example_for_parent {
+                        tracing::debug!("Using enum_example_for_parent: {enum_example:?}");
+                        Ok(enum_example.clone())
+                    } else {
+                        // For non-enum children, use example
+                        tracing::debug!("Using example (no enum_example_for_parent)");
+                        Ok(p.example.clone())
+                    }
+                })?;
 
+            tracing::debug!(
+                "process_children: inserting child_descriptor={child_descriptor:?}, child_example={child_example:?}"
+            );
             child_examples.insert(child_descriptor, child_example);
 
             // Collect ALL child paths for the final result
             all_child_paths.extend(child_paths);
         }
+
+        // Build example immediately for this variant group
+        let representative = variants_in_group
+            .first()
+            .ok_or_else(|| Report::new(Error::InvalidState("Empty variant group".to_string())))?;
+
+        let example = build_variant_example(
+            signature,
+            representative.name(),
+            &child_examples,
+            ctx.type_name(),
+        );
+
+        tracing::debug!(
+            "process_children: built example for signature={:?}, example={:?}",
+            signature,
+            example
+        );
+
+        all_examples.push(ExampleGroup {
+            applicable_variants,
+            signature: signature.to_string(),
+            example,
+        });
     }
 
-    Ok((child_examples, all_child_paths))
+    Ok((all_examples, all_child_paths))
 }
 
 /// Create `PathKind` objects for a signature
@@ -588,23 +592,33 @@ fn create_paths_for_signature(
 
     match signature {
         VariantSignature::Unit => None, // Unit variants have no paths
-        VariantSignature::Tuple(types) => Some(
-            types
+        VariantSignature::Tuple(types) => {
+            let paths: Vec<PathKind> = types
                 .iter()
                 .enumerate()
-                .map(|(index, type_name)| PathKind::IndexedElement {
-                    index,
-                    type_name: type_name.clone(),
-                    parent_type: ctx.type_name().clone(),
+                .map(|(index, type_name)| {
+                    let path = PathKind::IndexedElement {
+                        index,
+                        type_name: type_name.clone(),
+                        parent_type: ctx.type_name().clone(),
+                    };
+                    tracing::debug!(
+                        "create_paths_for_signature TUPLE: index={}, type_name={}, path_descriptor={:?}",
+                        index,
+                        type_name,
+                        path.to_mutation_path_descriptor()
+                    );
+                    path
                 })
-                .collect(),
-        ),
+                .collect();
+            Some(paths)
+        }
         VariantSignature::Struct(fields) => Some(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -752,12 +766,8 @@ fn build_partial_root_for_chain(
                 if let Some(nested_partial_root) = child_partial_roots.get(chain) {
                     // Wrap the nested partial root into our base example
                     // This is ONE level of wrapping
-                    if let Some(wrapped) =
-                        wrap_nested_example(&base_example, nested_partial_root, child)
-                    {
-                        return Ok(wrapped);
-                    }
-                    // If wrapping failed, continue searching other children
+                    let wrapped = wrap_nested_example(&base_example, nested_partial_root, child)?;
+                    return Ok(wrapped);
                 }
             }
         }
@@ -790,58 +800,135 @@ fn wrap_nested_example(
     parent_example: &Value,
     nested_partial_root: &Value,
     child_path: &MutationPathInternal,
-) -> Option<Value> {
-    // Extract the field name from the child path's PathKind
-    let field_name = match &child_path.path_kind {
-        PathKind::StructField { field_name, .. } => field_name.as_str(),
-        PathKind::RootValue { .. } => {
-            tracing::debug!("Cannot wrap into RootValue path - no field name available");
-            return None;
-        }
-        PathKind::IndexedElement { .. } | PathKind::ArrayElement { .. } => {
-            tracing::warn!("Wrapping into indexed/array paths not currently supported");
-            return None;
-        }
-    };
+) -> Result<Value> {
+    use error_stack::Report;
+
+    tracing::debug!(
+        "wrap_nested_example called:\n  child_path.full_mutation_path: {}\n  child_path.path_kind: {:?}\n  parent_example: {}\n  nested_partial_root: {}",
+        child_path.full_mutation_path,
+        child_path.path_kind,
+        serde_json::to_string_pretty(parent_example)
+            .unwrap_or_else(|_| format!("{parent_example:?}")),
+        serde_json::to_string_pretty(nested_partial_root)
+            .unwrap_or_else(|_| format!("{nested_partial_root:?}"))
+    );
 
     // Step 1: Unwrap the variant wrapper from parent example
     // Parent structure: {"VariantName": <variant_content>}
-    let parent_obj = parent_example.as_object()?;
-    let (variant_name, variant_content) = parent_obj.iter().next()?;
+    let parent_obj = parent_example.as_object().ok_or_else(|| {
+        Report::new(Error::InvalidState(
+            "Parent example is not a JSON object in wrap_nested_example".to_string(),
+        ))
+    })?;
+
+    let (variant_name, variant_content) = parent_obj.iter().next().ok_or_else(|| {
+        Report::new(Error::InvalidState(
+            "Parent example object is empty in wrap_nested_example".to_string(),
+        ))
+    })?;
 
     // Step 2: Parse the child's full mutation path into navigation segments
     // Example: ".middle_struct.nested_enum" -> ["middle_struct", "nested_enum"]
+    // Example: ".0" -> ["0"]
     let path_str = child_path.full_mutation_path.trim_start_matches('.');
     if path_str.is_empty() {
-        tracing::warn!("Empty mutation path in wrap_nested_example");
-        return None;
+        return Err(Report::new(Error::InvalidState(
+            "Empty mutation path in wrap_nested_example".to_string(),
+        )));
     }
 
     let segments: Vec<&str> = path_str.split('.').collect();
-    let field_to_replace = segments.last()?;
+    let last_segment = segments.last().ok_or_else(|| {
+        Report::new(Error::InvalidState(
+            "No segments in mutation path".to_string(),
+        ))
+    })?;
     let path_to_parent = &segments[..segments.len() - 1];
 
-    // Verify field name matches
-    if *field_to_replace != field_name {
-        tracing::warn!(
-            "Field name mismatch: PathKind has '{field_name}' but path has '{field_to_replace}'"
-        );
-        return None;
-    }
+    tracing::debug!(
+        "  segments: {:?}, last_segment: {}, path_to_parent: {:?}",
+        segments,
+        last_segment,
+        path_to_parent
+    );
 
-    // Step 3: Navigate through the JSON tree and replace the target field
-    let new_content = navigate_and_replace(
-        variant_content,
-        path_to_parent,
-        field_name,
-        nested_partial_root,
-    )?;
+    // Step 3: Navigate and replace based on PathKind
+    let new_content = match &child_path.path_kind {
+        PathKind::StructField { field_name, .. } => {
+            // Verify field name matches the last segment
+            if *last_segment != field_name.as_str() {
+                return Err(Report::new(Error::InvalidState(format!(
+                    "Field name mismatch: PathKind has '{field_name}' but path has '{last_segment}'"
+                ))));
+            }
+
+            // Navigate and replace field
+            navigate_and_replace_field(
+                variant_content,
+                path_to_parent,
+                field_name.as_str(),
+                nested_partial_root,
+            )?
+        }
+
+        PathKind::IndexedElement { index, .. } | PathKind::ArrayElement { index, .. } => {
+            // Verify index matches the last segment
+            if *last_segment != index.to_string() {
+                return Err(Report::new(Error::InvalidState(format!(
+                    "Index mismatch: PathKind has index {index} but path has '{last_segment}'"
+                ))));
+            }
+
+            // CRITICAL CONTEXT: This function wraps nested enum partial roots into parent enum
+            // examples. The `full_mutation_path` includes PARENT STRUCT field names, but we're
+            // operating INSIDE the enum variant content, which doesn't have those fields.
+            //
+            // For single-element tuple variants (newtype pattern), the variant_content after
+            // unwrapping IS the tuple element value itself. We should replace it directly
+            // with the nested_partial_root, regardless of path depth.
+            //
+            // Examples:
+            //   - ChromaticAberration: `.color_lut.0` → ["color_lut", "0"]
+            //   - Gamepad: `.analog.axis_data.key.0` → ["analog", "axis_data", "key", "0"]
+            //
+            // Both should replace directly because:
+            //   - parent_example = {"VariantName": <current_value>}
+            //   - We want: {"VariantName": <nested_partial_root>}
+            //   - The struct field names in the path don't exist in variant_content
+            //
+            // NOTE: Arrays use bracket notation (`.field[0]` → ["field[0]"]), so they have
+            // segments.len() == 1 and go through the navigation path which works correctly.
+            if *index == 0 && path_to_parent.len() > 0 {
+                // Single-element tuple (index 0) with parent struct fields in path
+                // Just replace the variant content directly
+                nested_partial_root.clone()
+            } else if path_to_parent.is_empty() {
+                // No navigation path - direct replacement at index
+                // This handles both array elements and tuple elements without parent structs
+                navigate_and_replace_index(variant_content, &[], *index, nested_partial_root)?
+            } else {
+                // Multi-element tuple or deeper nesting - navigate to find replacement location
+                navigate_and_replace_index(
+                    variant_content,
+                    path_to_parent,
+                    *index,
+                    nested_partial_root,
+                )?
+            }
+        }
+
+        PathKind::RootValue { .. } => {
+            return Err(Report::new(Error::InvalidState(
+                "Cannot wrap into RootValue path - no field name available".to_string(),
+            )));
+        }
+    };
 
     // Step 4: Re-wrap with the variant name
-    Some(json!({ variant_name: new_content }))
+    Ok(json!({ variant_name: new_content }))
 }
 
-/// Recursively navigate through a JSON structure and replace a field at the target location
+/// Navigate through JSON structure and replace a field at the target location
 ///
 /// **Parameters:**
 /// - `current`: The current JSON value being traversed
@@ -849,32 +936,105 @@ fn wrap_nested_example(
 /// - `field`: The field name to replace at the target location (e.g., `"nested_enum"`)
 /// - `new_value`: The value to insert at the target field
 ///
-/// **Returns:** A new JSON value with the field replaced, or None if navigation fails
-fn navigate_and_replace(
+/// **Returns:** A new JSON value with the field replaced
+fn navigate_and_replace_field(
     current: &Value,
     path: &[&str],
     field: &str,
     new_value: &Value,
-) -> Option<Value> {
-    let current_obj = current.as_object()?;
+) -> Result<Value> {
+    use error_stack::Report;
+
+    let current_obj = current.as_object().ok_or_else(|| {
+        Report::new(Error::InvalidState(format!(
+            "Expected object while navigating to field '{field}', found {current:?}"
+        )))
+    })?;
 
     if path.is_empty() {
-        // We've reached the target parent - replace the field here
+        // Reached target parent - replace the field here
         let mut result = current_obj.clone();
         result.insert(field.to_string(), new_value.clone());
-        return Some(Value::Object(result));
+        return Ok(Value::Object(result));
     }
 
     // Navigate deeper - get next segment and recurse
     let next_key = path[0];
-    let next_val = current_obj.get(next_key)?;
+    let next_val = current_obj.get(next_key).ok_or_else(|| {
+        Report::new(Error::InvalidState(format!(
+            "Field '{next_key}' not found while navigating path"
+        )))
+    })?;
 
-    let replaced = navigate_and_replace(next_val, &path[1..], field, new_value)?;
+    let replaced = navigate_and_replace_field(next_val, &path[1..], field, new_value)?;
 
-    // Clone current object and update the navigated path
     let mut result = current_obj.clone();
     result.insert(next_key.to_string(), replaced);
-    Some(Value::Object(result))
+    Ok(Value::Object(result))
+}
+
+/// Navigate through JSON structure and replace an element at an index
+///
+/// **Parameters:**
+/// - `current`: The current JSON value being traversed
+/// - `path`: Remaining path segments to navigate through objects (e.g., `["middle_struct"]`)
+/// - `index`: The index to replace at the target location
+/// - `new_value`: The value to insert at the target index
+///
+/// **Returns:** A new JSON value with the indexed element replaced
+fn navigate_and_replace_index(
+    current: &Value,
+    path: &[&str],
+    index: usize,
+    new_value: &Value,
+) -> Result<Value> {
+    use error_stack::Report;
+
+    if path.is_empty() {
+        // Reached target parent
+        // For single-element tuples (index 0, current is not an array), return value directly
+        if index == 0 && !current.is_array() {
+            return Ok(new_value.clone());
+        }
+
+        // For multi-element tuples, current should be an array
+        let current_array = current.as_array().ok_or_else(|| {
+            Report::new(Error::InvalidState(format!(
+                "Expected array while replacing at index {index}, found {current:?}"
+            )))
+        })?;
+
+        if index >= current_array.len() {
+            return Err(Report::new(Error::InvalidState(format!(
+                "Index {index} out of bounds for array of length {}",
+                current_array.len()
+            ))));
+        }
+
+        let mut result = current_array.clone();
+        result[index] = new_value.clone();
+        return Ok(Value::Array(result));
+    }
+
+    // Navigate deeper through object fields
+    let current_obj = current.as_object().ok_or_else(|| {
+        Report::new(Error::InvalidState(format!(
+            "Expected object while navigating to index {index}, found {current:?}"
+        )))
+    })?;
+
+    let next_key = path[0];
+    let next_val = current_obj.get(next_key).ok_or_else(|| {
+        Report::new(Error::InvalidState(format!(
+            "Field '{next_key}' not found while navigating to index {index}"
+        )))
+    })?;
+
+    let replaced = navigate_and_replace_index(next_val, &path[1..], index, new_value)?;
+
+    let mut result = current_obj.clone();
+    result.insert(next_key.to_string(), replaced);
+    Ok(Value::Object(result))
 }
 
 /// Populate `root_example` on all paths (root level only)
@@ -913,9 +1073,9 @@ fn create_result_paths(
         None
     } else {
         Some(EnumPathData {
-            variant_chain:       populate_variant_path(ctx, &enum_examples, &default_example),
+            variant_chain: populate_variant_path(ctx, &enum_examples, &default_example),
             applicable_variants: Vec::new(),
-            root_example:        None,
+            root_example: None,
         })
     };
 
