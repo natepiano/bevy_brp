@@ -907,3 +907,10 @@ Implement phases in order to maintain working code at each step:
 - **Issue**: Plan didn't document how `Vec<VariantName>` serializes to JSON - concern that newtype wrapper might serialize as objects instead of plain strings
 - **Resolution**: Added "Serialization Verification" section documenting that serde's default behavior for single-field tuple structs is transparent serialization. `VariantName(String)` automatically serializes as a plain string without needing `#[serde(transparent)]`. This is already validated by `ExampleGroup.applicable_variants` in the existing codebase which produces correct JSON output.
 - **Decision**: User requested documentation to prevent confusion about serialization behavior
+
+### TYPE-SYSTEM-3: Missing Hash and Ord derives on VariantName - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Phase 1: Add Storage for Partial Root Examples - Section 1a
+- **Issue**: The plan proposes adding Hash, PartialOrd, and Ord derives to VariantName to support BTreeMap and HashSet usage. Current code only has Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize.
+- **Reasoning**: This is a REDUNDANT finding. The plan document we're reviewing is a FUTURE plan that hasn't been implemented yet, so it's expected that the current code doesn't have these derives. What matters is whether the PLAN addresses this issue - and it does, identically. The redundancy_check correctly identified this as "REDUNDANT" with "plan_addresses_this: YES_IDENTICAL".
+- **Decision**: User elected to skip this recommendation
