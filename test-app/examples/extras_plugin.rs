@@ -275,6 +275,20 @@ enum TestEnumNoSerDe {
     Special(String, u32),
 }
 
+/// Test enum with array field for testing array wrapping in enum variants
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+enum TestEnumWithArray {
+    #[default]
+    Empty,
+    /// Variant with array of Vec2
+    WithVec2Array([Vec2; 3]),
+    /// Variant with array of f32
+    WithFloatArray([f32; 4]),
+    /// Struct variant with array field
+    WithStructArray { points: [Vec3; 2], scale: f32 },
+}
+
 /// Test component with array field
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
@@ -520,6 +534,7 @@ fn main() {
         .register_type::<MiddleStruct>()
         .register_type::<BottomEnum>()
         .register_type::<TestEnumNoSerDe>()
+        .register_type::<TestEnumWithArray>()
         .register_type::<TestArrayField>()
         .register_type::<TestArrayTransforms>()
         .register_type::<TestTupleField>()
@@ -916,6 +931,16 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     commands.spawn((
         TestEnumNoSerDe::Inactive,
         Name::new("TestEnumNoSerDeEntity"),
+    ));
+
+    // Entity with TestEnumWithArray for testing array wrapping
+    commands.spawn((
+        TestEnumWithArray::WithVec2Array([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(2.0, 2.0),
+        ]),
+        Name::new("TestEnumWithArrayEntity"),
     ));
 
     // Entity with TestStructNoSerDe
