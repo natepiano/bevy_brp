@@ -214,7 +214,7 @@ pub struct MutationPathInternal {
     ///   `[WithMiddleStruct, VariantB]` => `{"VariantB": {"name": "...", "value": ...}}`
     ///   `[WithMiddleStruct, VariantA]` => `{"VariantA": 123}`
     ///
-    /// Example for TestVariantChainEnum with chain `["WithMiddleStruct", "VariantA"]`:
+    /// Example for `TestVariantChainEnum` with chain `["WithMiddleStruct", "VariantA"]`:
     ///   `{"WithMiddleStruct": {"middle_struct": {"nested_enum": {"VariantA": 1000000}, ...}}}`
     ///
     /// Partial roots built during ascent using assembly approach by wrapping child partial roots
@@ -236,7 +236,7 @@ impl MutationPathInternal {
     }
 
     /// Check if this path is a direct child at the given parent depth
-    pub fn is_direct_child_at_depth(&self, parent_depth: usize) -> bool {
+    pub const fn is_direct_child_at_depth(&self, parent_depth: usize) -> bool {
         self.depth == parent_depth + 1
     }
 }

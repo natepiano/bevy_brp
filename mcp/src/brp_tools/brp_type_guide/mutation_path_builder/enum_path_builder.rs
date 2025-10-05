@@ -28,6 +28,13 @@
 //! Unlike other types that use `MutationPathBuilder`, enums bypass the trait system for
 //! their specialized processing, then calls back into `recurse_mutation_paths` for its children.
 
+/// Result type for `process_children` containing example groups, child paths, and partial roots
+type ProcessChildrenResult = (
+    Vec<ExampleGroup>,
+    Vec<MutationPathInternal>,
+    BTreeMap<Vec<VariantName>, Value>,
+);
+
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use error_stack::Report;
@@ -181,15 +188,14 @@ pub fn process_enum(
     let default_example = select_preferred_example(&enum_examples).unwrap_or(json!(null));
 
     // Create result paths including both root AND child paths
-    create_result_paths(
+    Ok(create_result_paths(
         ctx,
         enum_examples,
         default_example,
         child_paths,
         partial_roots,
         depth,
-    )
-    .map_err(BuilderError::from)
+    ))
 }
 
 // Helper functions for variant processing
@@ -455,17 +461,13 @@ fn populate_variant_path(
 
 /// Process child paths - simplified version of `MutationPathBuilder`'s child processing
 ///
-/// Now builds examples immediately for each variant group to avoid HashMap collision issues
+/// Now builds examples immediately for each variant group to avoid `HashMap` collision issues
 /// where multiple variant groups with the same signature would overwrite each other's examples.
 fn process_children(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     ctx: &RecursionContext,
     depth: RecursionDepth,
-) -> Result<(
-    Vec<ExampleGroup>,
-    Vec<MutationPathInternal>,
-    BTreeMap<Vec<VariantName>, Value>,
-)> {
+) -> Result<ProcessChildrenResult> {
     let mut all_examples = Vec::new();
     let mut all_child_paths = Vec::new();
 
@@ -540,7 +542,7 @@ fn process_children(
                         "Empty child_paths returned for descriptor {child_descriptor:?}"
                     )))
                 })
-                .and_then(|p| {
+                .map(|p| {
                     tracing::debug!(
                         "First path: full_mutation_path={}, has_enum_example_for_parent={}, example={:?}",
                         p.full_mutation_path,
@@ -548,14 +550,17 @@ fn process_children(
                         p.example
                     );
                     // For enum children, use enum_example_for_parent
-                    if let Some(enum_example) = &p.enum_example_for_parent {
-                        tracing::debug!("Using enum_example_for_parent: {enum_example:?}");
-                        Ok(enum_example.clone())
-                    } else {
-                        // For non-enum children, use example
-                        tracing::debug!("Using example (no enum_example_for_parent)");
-                        Ok(p.example.clone())
-                    }
+                    p.enum_example_for_parent.as_ref().map_or_else(
+                        || {
+                            // For non-enum children, use example
+                            tracing::debug!("Using example (no enum_example_for_parent)");
+                            p.example.clone()
+                        },
+                        |enum_example| {
+                            tracing::debug!("Using enum_example_for_parent: {enum_example:?}");
+                            enum_example.clone()
+                        },
+                    )
                 })?;
 
             tracing::debug!(
@@ -685,6 +690,7 @@ fn update_child_variant_paths(
 ///
 /// Builds partial roots IMMEDIATELY during recursion by wrapping child partial roots
 /// as we receive them during the ascent phase.
+#[allow(clippy::too_many_lines)]
 fn build_partial_roots(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     enum_examples: &[ExampleGroup],
@@ -751,7 +757,10 @@ fn build_partial_roots(
                             "[ENUM] Child {} has {} partial roots, looking for chain {:?}",
                             child.full_mutation_path,
                             child_partials.len(),
-                            child_chain.iter().map(|v| v.as_str()).collect::<Vec<_>>()
+                            child_chain
+                                .iter()
+                                .map(super::types::VariantName::as_str)
+                                .collect::<Vec<_>>()
                         );
                         if child_partials.get(&child_chain).is_some() {
                             tracing::debug!("[ENUM]   -> FOUND variant-specific value");
@@ -760,7 +769,10 @@ fn build_partial_roots(
                                 "[ENUM]   -> NOT FOUND, keys available: {:?}",
                                 child_partials
                                     .keys()
-                                    .map(|k| k.iter().map(|v| v.as_str()).collect::<Vec<_>>())
+                                    .map(|k| k
+                                        .iter()
+                                        .map(super::types::VariantName::as_str)
+                                        .collect::<Vec<_>>())
                                     .collect::<Vec<_>>()
                             );
                         }
@@ -812,7 +824,10 @@ fn build_partial_roots(
                 partial_roots.insert(our_chain.clone(), wrapped);
                 tracing::debug!(
                     "[ENUM] Added n-variant chain entry for {:?}",
-                    our_chain.iter().map(|v| v.as_str()).collect::<Vec<_>>()
+                    our_chain
+                        .iter()
+                        .map(super::types::VariantName::as_str)
+                        .collect::<Vec<_>>()
                 );
             } else {
                 // No child chains found, this is a leaf variant - store base example
@@ -824,7 +839,7 @@ fn build_partial_roots(
     partial_roots
 }
 
-/// Populate root_example field using assembly approach
+/// Populate `root_example` field using assembly approach
 ///
 /// Uses the `partial_root_examples` already propagated to each path from its wrapping parent.
 fn populate_root_example(paths: &mut [MutationPathInternal]) {
@@ -859,7 +874,7 @@ fn create_result_paths(
     mut child_paths: Vec<MutationPathInternal>,
     partial_roots: BTreeMap<Vec<VariantName>, Value>,
     depth: RecursionDepth,
-) -> Result<Vec<MutationPathInternal>> {
+) -> Vec<MutationPathInternal> {
     // Generate enum data only if we have a variant chain (nested in another enum)
     let enum_data = if ctx.variant_chain.is_empty() {
         None
@@ -877,7 +892,7 @@ fn create_result_paths(
         example:                 json!(null), /* Enums always use null for the example field -
                                                * they use
                                                * Vec<ExampleGroup> */
-        enum_example_groups:     Some(enum_examples.clone()),
+        enum_example_groups:     Some(enum_examples),
         enum_example_for_parent: Some(default_example.clone()),
         type_name:               ctx.type_name().display_name(),
         path_kind:               ctx.path_kind.clone(),
@@ -899,7 +914,10 @@ fn create_result_paths(
     for (chain, value) in &partial_roots {
         tracing::debug!(
             "[ENUM]   Chain {:?} -> {}",
-            chain.iter().map(|v| v.as_str()).collect::<Vec<_>>(),
+            chain
+                .iter()
+                .map(super::types::VariantName::as_str)
+                .collect::<Vec<_>>(),
             serde_json::to_string(value).unwrap_or_else(|_| "???".to_string())
         );
     }
@@ -933,5 +951,5 @@ fn create_result_paths(
     // Return root path plus all child paths (like MutationPathBuilder does)
     let mut result = vec![root_mutation_path];
     result.extend(child_paths);
-    Ok(result)
+    result
 }

@@ -346,7 +346,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
     }
 
-    /// NEW: Assemble partial_root_examples from children using same bottom-up approach
+    /// NEW: Assemble `partial_root_examples` from children using same bottom-up approach
     ///
     /// For each variant chain present in any child:
     /// 1. Collect each child's value for that chain
@@ -400,23 +400,29 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 let descriptor = child.path_kind.to_mutation_path_descriptor();
 
                 // Try to get variant-specific value first
-                if let Some(child_partials) = &child.partial_root_examples {
-                    if let Some(child_value) = child_partials.get(&chain) {
-                        examples_for_chain.insert(descriptor, child_value.clone());
-                        tracing::debug!(
-                            "[BUILDER]   Got VARIANT-SPECIFIC value for chain {:?} from child {}",
-                            chain.iter().map(|v| v.as_str()).collect::<Vec<_>>(),
-                            child.full_mutation_path
-                        );
-                        continue;
-                    }
+                if let Some(child_partials) = &child.partial_root_examples
+                    && let Some(child_value) = child_partials.get(&chain)
+                {
+                    examples_for_chain.insert(descriptor, child_value.clone());
+                    tracing::debug!(
+                        "[BUILDER]   Got VARIANT-SPECIFIC value for chain {:?} from child {}",
+                        chain
+                            .iter()
+                            .map(super::types::VariantName::as_str)
+                            .collect::<Vec<_>>(),
+                        child.full_mutation_path
+                    );
+                    continue;
                 }
 
                 // No variant-specific value, use regular example
                 examples_for_chain.insert(descriptor, child.example.clone());
                 tracing::debug!(
                     "[BUILDER]   Got REGULAR value for chain {:?} from child {}",
-                    chain.iter().map(|v| v.as_str()).collect::<Vec<_>>(),
+                    chain
+                        .iter()
+                        .map(super::types::VariantName::as_str)
+                        .collect::<Vec<_>>(),
                     child.full_mutation_path
                 );
             }
@@ -425,7 +431,10 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             let assembled = builder.assemble_from_children(ctx, examples_for_chain)?;
             tracing::debug!(
                 "[BUILDER]   Assembled for chain {:?} -> {}",
-                chain.iter().map(|v| v.as_str()).collect::<Vec<_>>(),
+                chain
+                    .iter()
+                    .map(super::types::VariantName::as_str)
+                    .collect::<Vec<_>>(),
                 serde_json::to_string(&assembled).unwrap_or_else(|_| "???".to_string())
             );
             assembled_partials.insert(chain, assembled);
@@ -471,7 +480,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                         example_to_use,
                         parent_status,
                         mutation_status_reason,
-                        partial_root_examples.clone(),
+                        partial_root_examples,
                         depth,
                     ),
                 );
