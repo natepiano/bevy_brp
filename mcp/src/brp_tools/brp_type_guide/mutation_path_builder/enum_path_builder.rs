@@ -853,6 +853,33 @@ fn build_partial_roots_new(
                 // Collect ALL children with variant-specific or regular values
                 for child in child_paths {
                     let descriptor = child.path_kind.to_mutation_path_descriptor();
+
+                    // Debug: Check child's partial_root_examples_new
+                    if let Some(child_partials) = &child.partial_root_examples_new {
+                        tracing::debug!(
+                            "[ENUM] Child {} has {} partial roots, looking for chain {:?}",
+                            child.full_mutation_path,
+                            child_partials.len(),
+                            child_chain.iter().map(|v| v.as_str()).collect::<Vec<_>>()
+                        );
+                        if child_partials.get(&child_chain).is_some() {
+                            tracing::debug!("[ENUM]   -> FOUND variant-specific value");
+                        } else {
+                            tracing::debug!(
+                                "[ENUM]   -> NOT FOUND, keys available: {:?}",
+                                child_partials
+                                    .keys()
+                                    .map(|k| k.iter().map(|v| v.as_str()).collect::<Vec<_>>())
+                                    .collect::<Vec<_>>()
+                            );
+                        }
+                    } else {
+                        tracing::debug!(
+                            "[ENUM] Child {} has NO partial_root_examples_new, using regular example",
+                            child.full_mutation_path
+                        );
+                    }
+
                     let value = child
                         .partial_root_examples_new
                         .as_ref()
@@ -873,17 +900,24 @@ fn build_partial_roots_new(
             // After processing all child chains, also create entry for n-variant chain
             // This handles paths that only specify the outer variant(s)
             if found_child_chains {
-                // Use a representative value from the wrapped children
-                // All child chains should produce equivalent wrapping at this level
-                if let Some((_, representative_value)) = partial_roots.iter().find(|(chain, _)| {
-                    chain.starts_with(&our_chain) && chain.len() > our_chain.len()
-                }) {
-                    partial_roots.insert(our_chain.clone(), representative_value.clone());
-                    tracing::debug!(
-                        "[ENUM] Added n-variant chain entry for {:?}",
-                        our_chain.iter().map(|v| v.as_str()).collect::<Vec<_>>()
-                    );
+                // Build n-variant entry using SAME approach as child chains:
+                // Assemble from ALL children with their REGULAR (non-variant-specific) examples
+                // This gives us a representative nested structure without tying to specific inner
+                // variants
+                let mut children = HashMap::new();
+                for child in child_paths {
+                    let descriptor = child.path_kind.to_mutation_path_descriptor();
+                    children.insert(descriptor, child.example.clone());
                 }
+
+                // Wrap with this variant using regular child examples
+                let wrapped =
+                    build_variant_example(signature, variant.name(), &children, ctx.type_name());
+                partial_roots.insert(our_chain.clone(), wrapped);
+                tracing::debug!(
+                    "[ENUM] Added n-variant chain entry for {:?}",
+                    our_chain.iter().map(|v| v.as_str()).collect::<Vec<_>>()
+                );
             } else {
                 // No child chains found, this is a leaf variant - store base example
                 partial_roots.insert(our_chain, base_example);

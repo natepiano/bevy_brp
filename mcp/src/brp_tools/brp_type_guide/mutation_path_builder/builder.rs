@@ -129,9 +129,28 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
         // Convert NotMutableReason to Value if present
         let mutation_status_reason = reason_enum.as_ref().and_then(Option::<Value>::from);
 
-        // Fix: PartiallyMutable paths should not provide misleading examples
+        // Build examples appropriately based on mutation status
         let example_to_use = match parent_status {
-            MutationStatus::PartiallyMutable | MutationStatus::NotMutable => json!(null),
+            MutationStatus::NotMutable => json!(null),
+            MutationStatus::PartiallyMutable => {
+                // Build partial example with only mutable children
+                let mutable_child_examples: HashMap<_, _> = child_examples
+                    .iter()
+                    .filter(|(descriptor, _)| {
+                        // Find the child path and check if it's mutable
+                        all_paths.iter().any(|p| {
+                            p.path_kind.to_mutation_path_descriptor() == **descriptor
+                                && matches!(p.mutation_status, MutationStatus::Mutable)
+                        })
+                    })
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect();
+
+                // Assemble from only mutable children
+                self.inner
+                    .assemble_from_children(ctx, mutable_child_examples)
+                    .unwrap_or(json!(null))
+            }
             MutationStatus::Mutable => final_example,
         };
 
