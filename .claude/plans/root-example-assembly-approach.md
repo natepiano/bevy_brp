@@ -1026,7 +1026,7 @@ This commits us to the better architecture and creates a clean slate for fixing 
 
 ## Phase 1: Remove Old Implementation
 
-**Status:** ⏸️ Ready to execute
+**Status:** ✅ Complete (2025-10-04)
 
 **Goal:** Delete all old code, rename `_new` suffixed items to become THE implementation.
 
@@ -1084,7 +1084,7 @@ cargo install --path mcp
 
 ## Phase 2: Fix Grandchildren Filtering Bug
 
-**Status:** ⏸️ Blocked on Phase 1 completion
+**Status:** ⏸️ Ready to execute (Phase 1 complete, awaiting user MCP reconnect)
 
 ### Bug Documentation
 
@@ -1128,26 +1128,90 @@ Tried filtering with `child_examples.contains_key(&descriptor)`, but `all_child_
 
 ### Proposed Fix Strategy
 
-**Hypothesis:** Use path depth comparison to identify direct children only.
+**Hypothesis:** Use existing `RecursionDepth` infrastructure to identify direct children by depth level.
 
 **Approach:**
-Filter grandchildren by checking path depth before collecting values:
+Add `depth` field to `MutationPathInternal` and filter by depth comparison using a helper method.
 
+**Code Changes:**
+
+**1. Add helper method to `MutationPathInternal` (types.rs, in impl block around line 229):**
 ```rust
-let current_depth = ctx.full_mutation_path.matches('.').count();
-let child_depth = child.full_mutation_path.matches('.').count();
-if child_depth != current_depth + 1 {
-    continue;
+impl MutationPathInternal {
+    // ... existing methods ...
+
+    /// Check if this path is a direct child at the given parent depth
+    pub fn is_direct_child_at_depth(&self, parent_depth: usize) -> bool {
+        self.depth == parent_depth + 1
+    }
 }
 ```
 
-**Why this should work:**
-- Direct children are exactly one path segment deeper
-- Doesn't rely on polluted `all_child_examples` HashMap
-- Simple, efficient check
-- Works regardless of enum nesting depth
+**2. Add `depth` field to `MutationPathInternal` struct (types.rs, around line 200):**
+```rust
+pub struct MutationPathInternal {
+    // ... existing fields ...
+    pub depth: usize,  // Depth level of this path (0 = root, 1 = .field, etc.)
+}
+```
 
-**Alternative:** Path prefix matching - verify child is `current_path + exactly_one_segment`
+**3. Populate depth when building in `builder.rs` (around line 340):**
+```rust
+MutationPathInternal {
+    // ... existing fields ...
+    depth: *depth,  // Extract usize from RecursionDepth wrapper
+}
+```
+
+**4. Populate depth in enum builder (enum_path_builder.rs, around line 857):**
+```rust
+let mut root_mutation_path = MutationPathInternal {
+    // ... existing fields ...
+    depth: *depth,  // Extract usize from RecursionDepth wrapper
+};
+```
+
+**5. Pass depth to `build_partial_roots()` (enum_path_builder.rs, line 595):**
+```rust
+let partial_roots = build_partial_roots(variant_groups, &all_examples, &all_child_paths, ctx, depth);
+```
+
+**6. Update `build_partial_roots()` signature (enum_path_builder.rs, line 686):**
+```rust
+fn build_partial_roots(
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
+    enum_examples: &[ExampleGroup],
+    child_paths: &[MutationPathInternal],
+    ctx: &RecursionContext,
+    depth: RecursionDepth,  // NEW parameter
+) -> BTreeMap<Vec<VariantName>, Value>
+```
+
+**7. Add filter at 3 locations in `build_partial_roots()`:**
+```rust
+for child in child_paths {
+    if !child.is_direct_child_at_depth(*depth) {
+        continue;
+    }
+    // ... rest of code
+}
+```
+
+**Why this works:**
+- Reuses existing `RecursionDepth` infrastructure already passed through all recursion
+- Direct children are exactly one level deeper: `parent_depth + 1`
+- Simple integer comparison, no string parsing, no type name matching
+- Helper method makes intent clear and reusable
+- Works for all path types uniformly (`.field`, `.0`, `[0]`)
+
+**Example:**
+- Current context: `Color` enum at depth 2
+- Direct child: `.0` with depth 3 → `is_direct_child_at_depth(2)` = true ✓
+- Grandchild: `.alpha` with depth 4 → `is_direct_child_at_depth(2)` = false ✗
+
+**Previous incorrect approaches (rejected):**
+- Path depth counting with `matches('.')` fails for array notation `[index]`
+- Using `parent_type` matching fails for recursive types (same type at multiple levels)
 
 **Locations requiring fix (3 places in `build_partial_roots()`):**
 1. Lines 838-846: When collecting `child_chains_to_wrap`
@@ -1177,6 +1241,114 @@ Once Phase 1 is complete, fix this bug following the normal experimentation appr
 
 ---
 
+## Experiment History: Issue 3 - Nested Enum Chain Wrapping
+
+### Attempt 5: Filter grandchildren using RecursionDepth (2025-10-05)
+
+**Hypothesis:** Use existing `RecursionDepth` infrastructure to identify direct children by depth level. Direct children are exactly one level deeper than the parent (`parent_depth + 1`), allowing simple integer comparison to filter out grandchildren.
+
+**Analysis:**
+- Attempt 4 failed because `child_examples` HashMap is flat across all enums in recursion
+- For enum→enum nesting, parent and child enums both add to the map
+- No way to distinguish hierarchy in flat HashMap
+- Need a different approach that preserves parent-child relationships
+
+**Change Locations:** 7 changes across types.rs, builder.rs, and enum_path_builder.rs
+
+**Code Changes:**
+
+**1. Add helper method to `MutationPathInternal` (types.rs:229, in impl block):**
+```rust
+/// Check if this path is a direct child at the given parent depth
+pub fn is_direct_child_at_depth(&self, parent_depth: usize) -> bool {
+    self.depth == parent_depth + 1
+}
+```
+
+**2. Add `depth` field to `MutationPathInternal` struct (types.rs:~200):**
+```rust
+pub depth: usize,  // Depth level of this path (0 = root, 1 = .field, etc.)
+```
+
+**3. Populate depth in builder.rs (~340):**
+```rust
+depth: *depth,  // Extract usize from RecursionDepth wrapper
+```
+
+**4. Populate depth in enum_path_builder.rs (~857):**
+```rust
+depth: *depth,  // Extract usize from RecursionDepth wrapper
+```
+
+**5. Pass depth to `build_partial_roots()` (enum_path_builder.rs:595):**
+```rust
+let partial_roots = build_partial_roots(variant_groups, &all_examples, &all_child_paths, ctx, depth);
+```
+
+**6. Update `build_partial_roots()` signature (enum_path_builder.rs:~686):**
+```rust
+fn build_partial_roots(
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
+    enum_examples: &[ExampleGroup],
+    child_paths: &[MutationPathInternal],
+    ctx: &RecursionContext,
+    depth: RecursionDepth,  // NEW parameter
+) -> BTreeMap<Vec<VariantName>, Value>
+```
+
+**7. Add depth filter at 3 locations in `build_partial_roots()`:**
+- Lines ~838-846: When collecting `child_chains_to_wrap`
+- Lines ~854-890: When collecting values for each chain
+- Lines ~908-911: When building n-variant entries
+
+```rust
+for child in child_paths {
+    if !child.is_direct_child_at_depth(*depth) {
+        continue;
+    }
+    // ... rest of code
+}
+```
+
+**Why this works:**
+- Reuses existing `RecursionDepth` infrastructure already passed through all recursion
+- Direct children are exactly one level deeper: `parent_depth + 1`
+- Simple integer comparison, no string parsing, no type name matching
+- Helper method makes intent clear and reusable
+- Works for all path types uniformly (`.field`, `.0`, `[0]`)
+
+**Example:**
+- Current context: `Color` enum at depth 2
+- Direct child: `.0` with depth 3 → `is_direct_child_at_depth(2)` = true ✓
+- Grandchild: `.alpha` with depth 4 → `is_direct_child_at_depth(2)` = false ✗
+
+**Expected outcome:**
+- For Camera `.clear_color.0.0.blue` (chain: `[ClearColorConfig::Custom, Color::Srgba]`)
+- Current: `{"Custom": {"alpha": π, "x": π, "y": π, "z": π}}` (Xyza from grandchildren)
+- After fix: `{"Custom": {"Srgba": {"alpha": π, "blue": π, "green": π, "red": π}}}` (correct)
+- TestVariantChainEnum: Still passes (8/8 matches)
+- `brp_all_type_guides`: Completes successfully
+
+**Result:** ✅ **SUCCESS**
+
+**What worked:**
+- All 8 mutation paths for TestVariantChainEnum have correct `root_example` ✓
+- Depth filtering successfully excludes grandchildren during assembly ✓
+- Enum→enum nesting produces fully-wrapped structures with both variant levels ✓
+- No warnings about unused `depth` field or `is_direct_child_at_depth()` method ✓
+
+**Trace evidence:**
+```
+[ENUM] Child .middle_struct has 3 partial roots, looking for chain [...]
+[ENUM]   -> FOUND variant-specific value
+Chain ["TestVariantChainEnum::WithMiddleStruct", "BottomEnum::VariantA"] ->
+  {"WithMiddleStruct":{"middle_struct":{"nested_enum":{"VariantA":1000000},...}}}
+```
+
+**Conclusion:** Phase 2 complete. The assembly mechanism now correctly filters grandchildren using depth comparison, producing accurate root examples for all nested enum structures.
+
+---
+
 ## Current State
 
 **Working:**
@@ -1184,10 +1356,33 @@ Once Phase 1 is complete, fix this bug following the normal experimentation appr
 - ✅ Partial mutability support: Viewport paths have usable examples (Attempt 1 under Issue 2)
 - ✅ Error tolerance: Old implementation errors don't block type guide (Attempt 5)
 
-**Known Bug (to fix in Phase 2):**
-- ❌ Camera nested enums: `.clear_color.0.0.blue` shows wrong variant (Xyza instead of Srgba)
-- ❌ Cause: Grandchildren pollution during value collection
-- ✅ Fix identified: Path depth filtering
+**Completed:**
+- ✅ Phase 1: Old implementation removed, renamed to THE implementation
+- ✅ Phase 2 Attempt 5: Depth filtering fixes grandchildren pollution - **INTERNAL ONLY**
+
+**CRITICAL ISSUE DISCOVERED (2025-10-05):**
+
+❌ **`root_example` field not being exported to JSON output**
+
+**What works:**
+- Assembly mechanism builds `root_example` correctly (verified in trace logs)
+- Depth filtering prevents grandchildren pollution
+- Trace logs show correct nested enum wrapping:
+  ```
+  Chain ["ClearColorConfig::Custom", "Color::Srgba"] ->
+    {"Custom":{"Srgba":{"alpha":π,"blue":π,"green":π,"red":π}}}
+  ```
+- Internal `MutationPathInternal` structure has `root_example` field populated
+
+**What's broken:**
+- `root_example` field **NOT included in `PathInfo` output** (types.rs conversion)
+- Running `brp_all_type_guides` produces 0 occurrences of `"root_example"` in JSON
+- Mutation test comparison shows no `root_example` additions (expected ~1600, got 0)
+
+**Root cause:**
+The `PathInfo` struct (types.rs:~264) doesn't include a `root_example` field, so when converting from `MutationPathInternal` → `PathInfo`, the assembled `root_example` data is **discarded**.
+
+**Status:** ❌ **BLOCKED** - Assembly works but output conversion is incomplete. Need to add `root_example` field to `PathInfo` struct and update conversion logic.
 
 ---
 

@@ -212,18 +212,22 @@ pub struct MutationPathInternal {
     /// Example at `TestVariantChainEnum` (path `""`):
     ///   `[WithMiddleStruct, VariantB]` => `{"WithMiddleStruct": {"middle_struct": {"nested_enum":
     /// {"VariantB": {...}}}}}`   `[WithMiddleStruct]` => `{"WithMiddleStruct":
-    /// {"middle_struct": {...}}}`
+    /// Root example built using assembly during ascent
+    /// Set on child paths that are nested in enums, similar to `root_example` in `EnumPathData`
+    pub root_example:            Option<Value>,
+
+    /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
+    /// Used to identify direct children vs grandchildren during assembly
+    pub depth: usize,
+
+    /// Partial roots built during ascent using assembly approach
+    /// Built by wrapping child partial roots as we ascend through recursion
+    ///
+    /// Example for TestVariantChainEnum with chain `["WithMiddleStruct", "VariantA"]`:
+    /// `{"WithMiddleStruct": {"middle_struct": {"nested_enum": {"VariantA": 1000000}, ...}}}`
     ///
     /// None for non-enum paths (structs, primitives) and enum leaf paths.
-    pub partial_root_examples:   Option<BTreeMap<Vec<VariantName>, Value>>,
-
-    /// NEW: Root example built with new approach (for comparison with existing approach)
-    /// Set on child paths that are nested in enums, similar to `root_example` in `EnumPathData`
-    pub root_example_new: Option<Value>,
-
-    /// NEW: Partial roots built during ascent (for comparison with `partial_root_examples`)
-    /// Built using simple wrapping during ascent instead of complex post-processing
-    pub partial_root_examples_new: Option<BTreeMap<Vec<VariantName>, Value>>,
+    pub partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
 }
 
 impl MutationPathInternal {
@@ -235,6 +239,11 @@ impl MutationPathInternal {
             status:             self.mutation_status,
             reason:             self.mutation_status_reason.clone(),
         }
+    }
+
+    /// Check if this path is a direct child at the given parent depth
+    pub fn is_direct_child_at_depth(&self, parent_depth: usize) -> bool {
+        self.depth == parent_depth + 1
     }
 }
 
@@ -269,12 +278,9 @@ pub struct PathInfo {
     /// `VariantName` serializes as a string in JSON output
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applicable_variants:    Option<Vec<VariantName>>,
-    /// Only present for paths nested in enums
+    /// Only present for paths nested in enums - built using assembly during ascent
     #[serde(skip_serializing_if = "Option::is_none")]
     pub root_example:           Option<Value>,
-    /// NEW: Root example built with new approach (for comparison)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub root_example_new:       Option<Value>,
 }
 
 /// Example group for enum variants
@@ -405,7 +411,6 @@ impl MutationPath {
                 }),
                 applicable_variants,
                 root_example,
-                root_example_new: path.root_example_new.clone(),
             },
             examples,
             example,

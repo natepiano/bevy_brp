@@ -86,7 +86,7 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
         }
 
         // Check knowledge - might return early or provide example
-        let (knowledge_result, knowledge_example) = Self::check_knowledge(ctx);
+        let (knowledge_result, knowledge_example) = Self::check_knowledge(ctx, depth);
         if let Some(result) = knowledge_result {
             return result;
         }
@@ -105,7 +105,7 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             .inner
             .assemble_from_children(ctx, child_examples.clone())?;
 
-        // NEW: Assemble partial_root_examples_new from children (same bottom-up approach)
+        // NEW: Assemble partial_root_examples from children (same bottom-up approach)
         // Filter to only direct children by matching against child_examples keys
         let direct_children: Vec<&MutationPathInternal> = all_paths
             .iter()
@@ -172,6 +172,7 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
                     parent_status,
                     mutation_status_reason,
                     assembled_partial_roots_new,
+                    depth,
                 ))
             }
         }
@@ -210,11 +211,11 @@ pub fn recurse_mutation_paths(
     // This is the choke point where NotMutableReason becomes a success with NotMutable path
     match mutation_result {
         Ok(paths) => Ok(paths),
-        Err(BuilderError::NotMutable(reason)) => {
-            Ok(vec![
-                MutationPathBuilder::<ValueMutationBuilder>::build_not_mutable_path(ctx, reason),
-            ])
-        }
+        Err(BuilderError::NotMutable(reason)) => Ok(vec![MutationPathBuilder::<
+            ValueMutationBuilder,
+        >::build_not_mutable_path(
+            ctx, reason, depth
+        )]),
         Err(BuilderError::SystemError(e)) => Err(e),
     }
 }
@@ -282,6 +283,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             let not_mutable_path = Self::build_not_mutable_path(
                 child_ctx,
                 NotMutableReason::NotInRegistry(child_ctx.type_name().clone()),
+                depth,
             );
             return Ok((vec![not_mutable_path], json!(null)));
         };
@@ -315,7 +317,8 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         example: Value,
         status: MutationStatus,
         mutation_status_reason: Option<Value>,
-        partial_root_examples_new: Option<BTreeMap<Vec<VariantName>, Value>>,
+        partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
+        depth: RecursionDepth,
     ) -> MutationPathInternal {
         // Build enum data if variant chain exists
         let enum_data = if ctx.variant_chain.is_empty() {
@@ -338,13 +341,13 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             mutation_status: status,
             mutation_status_reason,
             enum_data,
-            partial_root_examples: None,
-            root_example_new: None,
-            partial_root_examples_new,
+            root_example: None,
+            depth: *depth,
+            partial_root_examples,
         }
     }
 
-    /// NEW: Assemble partial_root_examples_new from children using same bottom-up approach
+    /// NEW: Assemble partial_root_examples from children using same bottom-up approach
     ///
     /// For each variant chain present in any child:
     /// 1. Collect each child's value for that chain
@@ -360,7 +363,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         // Collect all unique variant chains from all children
         let mut all_chains = BTreeSet::new();
         for child in child_paths {
-            if let Some(child_partials) = &child.partial_root_examples_new {
+            if let Some(child_partials) = &child.partial_root_examples {
                 tracing::debug!(
                     "[BUILDER] Child {} has partial_roots_new with {} chains",
                     child.full_mutation_path,
@@ -398,7 +401,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 let descriptor = child.path_kind.to_mutation_path_descriptor();
 
                 // Try to get variant-specific value first
-                if let Some(child_partials) = &child.partial_root_examples_new {
+                if let Some(child_partials) = &child.partial_root_examples {
                     if let Some(child_value) = child_partials.get(&chain) {
                         examples_for_chain.insert(descriptor, child_value.clone());
                         tracing::debug!(
@@ -439,18 +442,19 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         example_to_use: Value,
         parent_status: MutationStatus,
         mutation_status_reason: Option<Value>,
-        partial_root_examples_new: Option<BTreeMap<Vec<VariantName>, Value>>,
+        partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
+        depth: RecursionDepth,
     ) -> Vec<MutationPathInternal> {
-        if let Some(ref partials) = partial_root_examples_new {
+        if let Some(ref partials) = partial_root_examples {
             tracing::debug!(
                 "[BUILDER] Storing {} partial_roots_new chains in path {}",
                 partials.len(),
                 ctx.full_mutation_path
             );
 
-            // Propagate assembled partial_root_examples_new to all children
+            // Propagate assembled partial_root_examples to all children
             for child in &mut paths_to_expose {
-                child.partial_root_examples_new = Some(partials.clone());
+                child.partial_root_examples = Some(partials.clone());
                 tracing::debug!(
                     "[BUILDER] Propagated assembled partial_roots_new to child {}",
                     child.full_mutation_path
@@ -468,7 +472,8 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                         example_to_use,
                         parent_status,
                         mutation_status_reason,
-                        partial_root_examples_new.clone(),
+                        partial_root_examples.clone(),
+                        depth,
                     ),
                 );
                 paths_to_expose
@@ -482,7 +487,8 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                     example_to_use,
                     parent_status,
                     mutation_status_reason,
-                    partial_root_examples_new,
+                    partial_root_examples,
+                    depth,
                 )]
             }
         }
@@ -495,6 +501,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     fn build_not_mutable_path(
         ctx: &RecursionContext,
         reason: NotMutableReason,
+        depth: RecursionDepth,
     ) -> MutationPathInternal {
         Self::build_mutation_path_internal(
             ctx,
@@ -502,6 +509,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             MutationStatus::NotMutable,
             Option::<Value>::from(&reason),
             None, // No partial roots for NotMutable paths
+            depth,
         )
     }
 
@@ -535,6 +543,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     /// Check knowledge base and handle based on guidance type
     fn check_knowledge(
         ctx: &RecursionContext,
+        depth: RecursionDepth,
     ) -> (
         Option<std::result::Result<Vec<MutationPathInternal>, BuilderError>>,
         Option<Value>,
@@ -552,6 +561,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                         MutationStatus::Mutable,
                         None,
                         None, // No partial roots for knowledge-based paths
+                        depth,
                     )])),
                     None,
                 );
