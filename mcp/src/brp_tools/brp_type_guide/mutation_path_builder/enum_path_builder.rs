@@ -67,7 +67,7 @@ struct EnumFieldInfo {
     field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name:  BrpTypeName,
+    type_name: BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -490,9 +490,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant:            representative_variant.clone(),
-                    instructions:       String::new(),
-                    variant_example:    json!(null),
+                    variant: representative_variant.clone(),
+                    instructions: String::new(),
+                    variant_example: json!(null),
                 });
             }
             // Recursively process child and collect paths
@@ -510,7 +510,7 @@ fn process_children(
             // Track which variants make these child paths valid
             // Only populate for DIRECT children (not grandchildren nested deeper)
             for child_path in &mut child_paths {
-                if let Some(enum_data) = &mut child_path.enum_data {
+                if let Some(enum_data) = &mut child_path.enum_path_data {
                     // Check if this path is a direct child of the current enum level
                     // Direct children have variant_chain.len() == ctx.variant_chain.len() + 1
                     if enum_data.variant_chain.len() == ctx.variant_chain.len() + 1 {
@@ -633,8 +633,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -651,7 +651,7 @@ fn update_child_variant_paths(
 ) {
     // For each child path that has enum variant requirements
     for child in paths.iter_mut() {
-        if let Some(enum_data) = &mut child.enum_data
+        if let Some(enum_data) = &mut child.enum_path_data
             && !enum_data.is_empty()
         {
             // Find matching entry in child's variant_chain that corresponds to our level
@@ -829,7 +829,7 @@ fn build_partial_roots(
 /// Uses the `partial_root_examples` already propagated to each path from its wrapping parent.
 fn populate_root_example(paths: &mut [MutationPathInternal]) {
     for path in paths {
-        if let Some(enum_data) = &path.enum_data
+        if let Some(enum_data) = &mut path.enum_path_data
             && !enum_data.variant_chain.is_empty()
         {
             let chain = extract_variant_names(&enum_data.variant_chain);
@@ -837,7 +837,7 @@ fn populate_root_example(paths: &mut [MutationPathInternal]) {
             // Use the partial_root_examples that was propagated to this path
             if let Some(ref partials) = path.partial_root_examples {
                 if let Some(root_example) = partials.get(&chain) {
-                    path.root_example = Some(root_example.clone());
+                    enum_data.root_example = Some(root_example.clone());
                 } else {
                     tracing::debug!("No root_example found for variant chain: {chain:?}");
                 }
@@ -865,9 +865,9 @@ fn create_result_paths(
         None
     } else {
         Some(EnumPathData {
-            variant_chain:       populate_variant_path(ctx, &enum_examples, &default_example),
+            variant_chain: populate_variant_path(ctx, &enum_examples, &default_example),
             applicable_variants: Vec::new(),
-            root_example:        None,
+            root_example: None,
         })
     };
 
@@ -882,8 +882,7 @@ fn create_result_paths(
         path_kind: ctx.path_kind.clone(),
         mutation_status: MutationStatus::Mutable, // Simplified for now
         mutation_status_reason: None,
-        enum_data,
-        root_example: None,
+        enum_path_data: enum_data,
         depth: *depth,
         partial_root_examples: None,
     };

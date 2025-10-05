@@ -1349,6 +1349,72 @@ Chain ["TestVariantChainEnum::WithMiddleStruct", "BottomEnum::VariantA"] ->
 
 ---
 
+### Attempt 6: Fix `populate_root_example()` to write to correct nested field (2025-10-05)
+
+**Hypothesis:** The conversion logic at types.rs:395 reads `enum_data.root_example`, but `populate_root_example()` writes to `path.root_example` (top-level field). This mismatch causes assembled values to be discarded during conversion. Changing to write to the correct nested field will make `root_example` appear in JSON output.
+
+**Analysis:**
+- Old implementation (Attempt 5 line 541) wrote to `enum_data.root_example` ✓
+- New implementation wrote to `path.root_example` ✗ (introduced from the beginning)
+- Conversion logic expects `enum_data.root_example` (types.rs:395)
+- Internal assembly works (verified in trace logs) but output is empty
+
+**Change Location:** `enum_path_builder.rs::populate_root_example()` line 840
+
+**What we're changing:**
+Change from writing to top-level `path.root_example` to nested `enum_data.root_example`.
+
+**Code:**
+```rust
+// BEFORE (line 830-846):
+fn populate_root_example(paths: &mut [MutationPathInternal]) {
+    for path in paths {
+        if let Some(enum_data) = &path.enum_data
+            && !enum_data.variant_chain.is_empty()
+        {
+            let chain = extract_variant_names(&enum_data.variant_chain);
+
+            if let Some(ref partials) = path.partial_root_examples {
+                if let Some(root_example) = partials.get(&chain) {
+                    path.root_example = Some(root_example.clone());  // ❌ WRONG
+                } else {
+                    tracing::debug!("No root_example found for variant chain: {chain:?}");
+                }
+            }
+        }
+    }
+}
+
+// AFTER:
+fn populate_root_example(paths: &mut [MutationPathInternal]) {
+    for path in paths {
+        if let Some(enum_data) = &mut path.enum_data  // ✓ mut to modify
+            && !enum_data.variant_chain.is_empty()
+        {
+            let chain = extract_variant_names(&enum_data.variant_chain);
+
+            if let Some(ref partials) = path.partial_root_examples {
+                if let Some(root_example) = partials.get(&chain) {
+                    enum_data.root_example = Some(root_example.clone());  // ✓ CORRECT
+                } else {
+                    tracing::debug!("No root_example found for variant chain: {chain:?}");
+                }
+            }
+        }
+    }
+}
+```
+
+**Expected outcome:**
+- TestVariantChainEnum: All 8 paths have `root_example` in JSON output ✓
+- Camera nested enums: Correct fully-wrapped structures appear in JSON ✓
+- `brp_all_type_guides`: Produces ~1600 `"root_example"` entries (not 0) ✓
+- Mutation test shows additions matching expectations ✓
+
+**Result:** ⏸️ Awaiting approval to proceed
+
+---
+
 ## Current State
 
 **Working:**
