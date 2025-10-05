@@ -216,6 +216,14 @@ pub struct MutationPathInternal {
     ///
     /// None for non-enum paths (structs, primitives) and enum leaf paths.
     pub partial_root_examples:   Option<BTreeMap<Vec<VariantName>, Value>>,
+
+    /// NEW: Root example built with new approach (for comparison with existing approach)
+    /// Set on child paths that are nested in enums, similar to `root_example` in `EnumPathData`
+    pub root_example_new: Option<Value>,
+
+    /// NEW: Partial roots built during ascent (for comparison with `partial_root_examples`)
+    /// Built using simple wrapping during ascent instead of complex post-processing
+    pub partial_root_examples_new: Option<BTreeMap<Vec<VariantName>, Value>>,
 }
 
 impl MutationPathInternal {
@@ -264,6 +272,9 @@ pub struct PathInfo {
     /// Only present for paths nested in enums
     #[serde(skip_serializing_if = "Option::is_none")]
     pub root_example:           Option<Value>,
+    /// NEW: Root example built with new approach (for comparison)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub root_example_new:       Option<Value>,
 }
 
 /// Example group for enum variants
@@ -394,6 +405,7 @@ impl MutationPath {
                 }),
                 applicable_variants,
                 root_example,
+                root_example_new: path.root_example_new.clone(),
             },
             examples,
             example,
