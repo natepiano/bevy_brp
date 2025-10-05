@@ -67,7 +67,7 @@ struct EnumFieldInfo {
     field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name: BrpTypeName,
+    type_name:  BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -490,9 +490,9 @@ fn process_children(
             if let Some(representative_variant) = applicable_variants.first() {
                 child_ctx.variant_chain.push(VariantPath {
                     full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant: representative_variant.clone(),
-                    instructions: String::new(),
-                    variant_example: json!(null),
+                    variant:            representative_variant.clone(),
+                    instructions:       String::new(),
+                    variant_example:    json!(null),
                 });
             }
             // Recursively process child and collect paths
@@ -633,8 +633,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -865,26 +865,27 @@ fn create_result_paths(
         None
     } else {
         Some(EnumPathData {
-            variant_chain: populate_variant_path(ctx, &enum_examples, &default_example),
+            variant_chain:       populate_variant_path(ctx, &enum_examples, &default_example),
             applicable_variants: Vec::new(),
-            root_example: None,
+            root_example:        None,
         })
     };
 
     // Direct field assignment - enums ALWAYS generate examples arrays
     let mut root_mutation_path = MutationPathInternal {
-        full_mutation_path: ctx.full_mutation_path.clone(),
-        example: json!(null), /* Enums always use null for the example field - they use
-                               * Vec<ExampleGroup> */
-        enum_example_groups: Some(enum_examples.clone()),
+        full_mutation_path:      ctx.full_mutation_path.clone(),
+        example:                 json!(null), /* Enums always use null for the example field -
+                                               * they use
+                                               * Vec<ExampleGroup> */
+        enum_example_groups:     Some(enum_examples.clone()),
         enum_example_for_parent: Some(default_example.clone()),
-        type_name: ctx.type_name().display_name(),
-        path_kind: ctx.path_kind.clone(),
-        mutation_status: MutationStatus::Mutable, // Simplified for now
-        mutation_status_reason: None,
-        enum_path_data: enum_data,
-        depth: *depth,
-        partial_root_examples: None,
+        type_name:               ctx.type_name().display_name(),
+        path_kind:               ctx.path_kind.clone(),
+        mutation_status:         MutationStatus::Mutable, // Simplified for now
+        mutation_status_reason:  None,
+        enum_path_data:          enum_data,
+        depth:                   *depth,
+        partial_root_examples:   None,
     };
 
     // Build partial root examples using assembly during ascent

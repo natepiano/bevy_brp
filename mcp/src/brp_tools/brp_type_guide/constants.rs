@@ -86,6 +86,7 @@ pub const TYPE_GLAM_UVEC4: &str = "glam::UVec4";
 pub const TYPE_GLAM_QUAT: &str = "glam::Quat";
 pub const TYPE_GLAM_MAT2: &str = "glam::Mat2";
 pub const TYPE_GLAM_MAT3: &str = "glam::Mat3";
+pub const TYPE_GLAM_MAT3A: &str = "glam::Mat3A";
 pub const TYPE_GLAM_MAT4: &str = "glam::Mat4";
 
 // Bevy component types

@@ -263,12 +263,19 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
        - Subagent index = loop index (0-based)
        - Port = ${BASE_PORT} + index
        - Task description = "Test [TYPE_NAMES] ([INDEX+1] of [ACTUAL_SUBAGENTS])" where TYPE_NAMES is comma-separated list of last segments after "::" from assignment data and INDEX is 0-based
-       - Provide minimal information in prompt:
-         * Batch number
-         * Subagent index (0-based)
-         * Port number
-         * Max subagents
-         * Types per subagent
+       - Task prompt = Reference to instructions file with variable substitution
+
+    **TASK PROMPT TEMPLATE**:
+    ```
+    Read your instructions: @.claude/instructions/mutation_test_subagent.md
+
+    Replace these template variables in the instructions:
+    - SUBAGENT_INDEX = [index]
+    - PORT = [port]
+    - BATCH_NUMBER = [batch]
+    - MAX_SUBAGENTS = ${MAX_SUBAGENTS}
+    - TYPES_PER_SUBAGENT = ${TYPES_PER_SUBAGENT}
+    ```
 
     **DEFENSIVE VALIDATION**:
     - Main agent verifies assignment count before launching subagents
@@ -285,10 +292,6 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     2. **VALIDATING** the fetched data contains expected number of types
     3. **USING** the exact type data as fetched - NO MODIFICATIONS
     4. **REMEMBER**: This prevents corruption during prompt construction
-
-    **CRITICAL**: Follow <TypeNameValidation/> requirements exactly.
-
-    **ENFORCEMENT**: If you detect yourself trying to modify type names, STOP and report the validation failure.
 
     **Example for MAX_SUBAGENTS=3, TYPES_PER_SUBAGENT=1**:
     ```
@@ -406,32 +409,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **Detailed failure log saved to**: [PATH]
     ```
 
-    2. **COMPONENT_NOT_FOUND Debugging Protocol**:
-
-    **CRITICAL**: Before presenting any `COMPONENT_NOT_FOUND` failure, execute this mandatory debugging step:
-
-    1. **Always run `mcp__brp__bevy_list` first** to get the complete list of registered components
-    2. **Search the list** for similar type names to the failed type
-    3. **Follow <TypeNameValidation/>** - verify the exact type name from original test data
-    4. **Re-test with the correct name** if a match is found
-
-    **Purpose**: This prevents false `COMPONENT_NOT_FOUND` failures caused by:
-    - Agent incorrectly modifying type names during testing
-    - Typos or path errors in the agent's query attempts
-    - Using wrong module paths due to agent assumptions
-
-    **Only mark as legitimate `COMPONENT_NOT_FOUND`** after:
-    1. Running `mcp__brp__bevy_list`
-    2. Confirming the exact type name is not in the registered components list
-    3. Following <TypeNameValidation/> verification requirements
-
-    **Example**:
-    - Failure: `bevy_render::mesh::skinning::SkinnedMesh` not found
-    - Run `mcp__brp__bevy_list`, find `bevy_mesh::skinning::SkinnedMesh` exists
-    - Re-test with correct name from original data
-    - Only report as missing if still not found after correction
-
-    3. **Present Each Failure One by One**:
+    2. **Present Each Failure One by One**:
 
     For each failure, present it with this format:
 
@@ -478,7 +456,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     3. **Wait for User Response** after each failure presentation
 
     4. **Handle User Choice**:
-    - **Investigate**: Launch Task tool with specific investigation prompt
+    - **Investigate**: Execute <InvestigateFailure/>
     - **Known Issue**: Add to `.claude/transient/mutation_test_known_issues.json` with full details and continue
     - **Skip**: Continue to next failure without marking as known
     - **Stop**: Exit failure review
@@ -504,7 +482,7 @@ Please select one of the keywords above.
 ```
 
 **Keyword Actions**:
-- **Investigate**: Launch detailed investigation Task for the current failure
+- **Investigate**: Execute <InvestigateFailure/>
 - **Known Issue**:
   1. Add type to `.claude/transient/mutation_test_known_issues.json`
   2. Include a brief description of the issue
@@ -530,6 +508,16 @@ The merge script automatically loads `.claude/config/mutation_test_known_issues.
 - Summary should note: "X known issues skipped (see `.claude/config/mutation_test_known_issues.json`)"
 - Known issues are persistent across test runs
 </KeywordHandling>
+
+<InvestigateFailure>
+**Investigate the current failure using the type guide:**
+
+1. Run: `.claude/scripts/get_type_guide.sh <failed_type_name> .claude/transient/all_types.json`
+2. Examine the returned type guide focusing on the failed mutation path
+3. Check `path_info` for the failed path (look for `applicable_variants`, `root_example`, `mutation_status`)
+4. Present findings to user with specific recommendations
+5. Do NOT launch Task agents - handle investigation directly
+</InvestigateFailure>
 
 ## JSON PRIMITIVE RULES
 
@@ -582,255 +570,11 @@ If you receive error: `invalid type: string "X", expected [numeric/boolean type]
 **VALIDATION**: Before sending ANY mutation, verify primitives are unquoted
 </JsonPrimitiveRules>
 
-## TYPE NAME VALIDATION
+## SUBAGENT INSTRUCTIONS
 
-<TypeNameValidation>
-**CRITICAL TYPE NAME REQUIREMENTS**:
-- **NEVER modify type names** - use EXACT strings from assignment data
-- **NEVER substitute** types based on Bevy knowledge or assumptions
-- **NEVER "fix"** type paths you think are incorrect
-- **FAIL IMMEDIATELY** if you detect yourself modifying any type name
+Subagent instructions have been moved to `.claude/instructions/mutation_test_subagent.md` for performance optimization.
 
-**VALIDATION EXAMPLES**:
-```
-Assignment script says: "bevy_core_pipeline::tonemapping::ColorGrading"
-✅ CORRECT: Use exactly "bevy_core_pipeline::tonemapping::ColorGrading"
-❌ WRONG: Change to "bevy_render::view::ColorGrading" because you "know better"
-
-Assignment script says: "bevy_ecs::hierarchy::Children"
-✅ CORRECT: Use exactly "bevy_ecs::hierarchy::Children"
-❌ WRONG: Change to "bevy_hierarchy::components::children::Children"
-```
-
-**ENFORCEMENT**: The test system controls type names completely. Use the EXACT `type_name` field from assignment data without any modifications.
-</TypeNameValidation>
-
-## SUBAGENT PROMPT TEMPLATE
-
-<SubagentPrompt>
-**CRITICAL RESPONSE LIMIT**: Return ONLY the JSON array result. NO explanations, NO commentary, NO test steps, NO summaries.
-
-═══════════════════════════════════════════════════════════════════════════════
-🚨 MANDATORY ERROR RECOVERY PROTOCOL - READ THIS FIRST 🚨
-═══════════════════════════════════════════════════════════════════════════════
-
-**BEFORE YOU REPORT ANY FAILURE, YOU MUST CHECK IF IT'S A PRIMITIVE QUOTING ERROR**
-
-**IF YOU SEE THIS ERROR**: `invalid type: string "X", expected [number/boolean type]`
-
-**THIS MEANS**:
-- ❌ YOU sent "X" as a quoted string (YOUR BUG, not BRP bug)
-- ❌ This is NOT a test failure - it's YOUR serialization error
-- ✅ You MUST retry immediately with unquoted primitive
-- ✅ ONLY report as failure if retry fails with DIFFERENT error
-
-**CONCRETE EXAMPLE - FOLLOW THESE EXACT STEPS**:
-
-1. **You send**: `{"method": "bevy/mutate_component", "params": {"value": "true"}}`
-   - ⚠️ ERROR: You quoted the boolean!
-
-2. **You receive**: `invalid type: string "true", expected a boolean`
-   - 🔍 RECOGNIZE: This error means YOU sent "true" (string) instead of true (boolean)
-
-3. **YOU MUST DO THIS IMMEDIATELY**:
-   ```
-   Step 1: DO NOT report this as a test failure
-   Step 2: Verify your value: true is a BOOLEAN, not a STRING
-   Step 3: Retry the SAME mutation with: {"value": true}  (no quotes!)
-   Step 4: If retry succeeds → mark mutation as PASSED
-   Step 5: If retry fails with DIFFERENT error → then report as failure
-   ```
-
-4. **ONLY REPORT FAILURE IF**:
-   - The retry ALSO fails AND the error is NOT about string quoting
-
-**VERIFICATION CHECKLIST - COMPLETE BEFORE EVERY MUTATION**:
-□ My value is a number (like 42)? → Ensure params shows `"value": 42` NOT `"value": "42"`
-□ My value is a boolean (like true)? → Ensure params shows `"value": true` NOT `"value": "true"`
-□ I see quotes around my number/boolean? → STOP! Remove the quotes!
-□ I received "invalid type: string" error? → Follow ERROR RECOVERY PROTOCOL above!
-
-═══════════════════════════════════════════════════════════════════════════════
-
-You are subagent with index [INDEX] (0-based) assigned to port [PORT].
-
-**YOUR ASSIGNED PORT**: [PORT]
-**YOUR BATCH**: [BATCH_NUMBER]
-**YOUR SUBAGENT INDEX**: [INDEX] (0-based)
-**MAX SUBAGENTS**: ${MAX_SUBAGENTS}
-**TYPES PER SUBAGENT**: ${TYPES_PER_SUBAGENT}
-
-**DO NOT**:
-- Launch any apps (use EXISTING app on your port)
-- Update JSON files
-- Provide explanations or commentary
-- Test any type other than those provided in your assignment data
-- Make up or substitute different types
-- Use your Bevy knowledge to "fix" or "improve" type names
-- Test related types (like bundles when given components)
-- MODIFY TYPE NAMES IN ANY WAY - use the exact strings provided
-
-**CRITICAL CONSTRAINT**: You MUST test ONLY the exact types provided in your assignment data. The test system controls type names completely.
-
-**Follow <TypeNameValidation/> requirements exactly** before testing each type.
-
-**Fetching Your Assignment Data**:
-You MUST fetch your own assignment data as your FIRST action:
-```bash
-python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
-    --batch [BATCH_NUMBER] \
-    --max-subagents ${MAX_SUBAGENTS} \
-    --types-per-subagent ${TYPES_PER_SUBAGENT} \
-    --subagent-index [YOUR_INDEX]
-```
-
-This returns your specific assignment with complete type data.
-
-**Testing Protocol**:
-1. FIRST: Fetch your assignment using the script with --subagent-index parameter
-2. VALIDATE: Ensure you received exactly ${TYPES_PER_SUBAGENT} types
-3. For each type in your fetched assignment:
-   a. **SPAWN/INSERT TESTING**:
-      - **CHECK FIRST**: If `spawn_format` is `null` OR `supported_operations` does NOT include "spawn" or "insert", SKIP spawn/insert testing entirely
-      - **ONLY IF** spawn_format exists AND supported_operations includes "spawn"/"insert": attempt spawn/insert operations
-      - **NEVER** attempt spawn/insert on types that don't support it - this will cause massive error responses
-   b. **ENTITY QUERY**: Query for entities with component using EXACT syntax:
-   ```json
-   {
-     "filter": {"with": ["EXACT_TYPE_NAME_FROM_GUIDE"]},
-     "data": {"components": []}
-   }
-   ```
-   CRITICAL: Follow <TypeNameValidation/> - use the exact `type_name` field from the guide
-   c. **ENTITY ID SUBSTITUTION FOR MUTATIONS**:
-      - **CRITICAL**: If any mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
-      - **YOU MUST**: Replace ALL instances of `8589934670` with REAL entity IDs from the running app
-      - **HOW TO GET REAL ENTITY IDs**:
-        1. First query for existing entities: `bevy_query` with appropriate filter
-        2. Use the entity IDs from query results
-        3. If testing EntityHashMap types, use the queried entity ID as the map key
-      - **EXAMPLE**: If mutation example shows `{"8589934670": [...]}` for an EntityHashMap:
-        - Query for an entity with the component first
-        - Replace `8589934670` with the actual entity ID from the query
-        - Then perform the mutation with the real entity ID
-   d. **MUTATION TESTING**: Test ONLY mutable paths from the mutation_paths object
-      - **SKIP NON-MUTABLE PATHS**: Check `path_info.mutation_status` before attempting ANY mutation:
-        * `"not_mutable"` → SKIP (don't count in total)
-        * `"partially_mutable"` → SKIP unless `example` or `examples` exists
-        * `"mutable"` or missing → TEST normally
-      - Apply Entity ID substitution BEFORE sending any mutation request
-      - If a mutation uses Entity IDs and you don't have real ones, query for them first
-      - **CRITICAL VALUE HANDLING**:
-        * Extract the `example` value from mutation_paths
-        * Use it DIRECTLY - do NOT convert to string with str() or f-strings
-        * If the example is a number like `42`, keep it as the NUMBER 42
-        * If the example is a boolean like `true`, keep it as the BOOLEAN true
-        * When building the mutation request, assign: `value = example` (not `value = str(example)`)
-        * Verify your JSON shows `"value": 42` NOT `"value": "42"` before sending
-      - **IMPORTANT**: Follow <JsonPrimitiveRules/> before EVERY mutation request
-      - **ENUM TESTING REQUIREMENT**: When a mutation path contains an "examples" array (indicating enum variants), you MUST test each example individually:
-        * For each entry in the "examples" array, perform a separate mutation using that specific "example" value
-        * Example: If `.depth_load_op` has examples `[{"example": {"Clear": 3.14}}, {"example": "Load"}]`, test BOTH:
-          1. Mutate `.depth_load_op` with `{"Clear": 3.14}`
-          2. Mutate `.depth_load_op` with `"Load"`
-        * Count each example test as a separate mutation attempt in your totals
-      - **IMPORTANT**: Only count actually attempted mutations in `total_mutations_attempted`
-3. **CAPTURE ALL ERROR DETAILS**: When ANY operation fails, record the COMPLETE request and response
-4. Return ONLY JSON result array for ALL tested types
-5. NEVER test types not provided in your assignment data
-
-**IMPORTANT**: Follow <JsonPrimitiveRules/> - validate every `"value"` field before sending mutations.
-**ERROR SIGNAL**: "invalid type: string" means you quoted a primitive.
-**IF YOU GET THIS ERROR**: Follow the ERROR RECOVERY PROTOCOL in <JsonPrimitiveRules/> - retry immediately with the unquoted value, do NOT report as test failure unless retry fails with a different error.
-
-═══════════════════════════════════════════════════════════════════════════════
-🛑 MANDATORY PRE-FAILURE-REPORT CHECK 🛑
-═══════════════════════════════════════════════════════════════════════════════
-
-**BEFORE YOU REPORT status: "FAIL" FOR ANY TYPE, ANSWER THESE QUESTIONS**:
-
-1. ❓ Did ANY mutation fail with error: `invalid type: string "X", expected [type]`?
-   - ✅ YES → Did you retry with unquoted primitive? If NO, you MUST retry now!
-   - ✅ NO → Proceed to report failure
-
-2. ❓ After retrying with unquoted primitive, did the mutation succeed?
-   - ✅ YES → Mark mutation as PASSED, DO NOT report as failure
-   - ✅ NO → Proceed to report failure (only if retry also failed)
-
-3. ❓ Are you 100% certain this is NOT a primitive quoting error on your part?
-   - ✅ YES → Proceed to report failure
-   - ✅ NO → Review ERROR RECOVERY PROTOCOL at top of this prompt
-
-**IF YOU SKIP THESE CHECKS, YOUR RESULTS WILL BE INVALID**
-
-═══════════════════════════════════════════════════════════════════════════════
-
-**Return EXACTLY this format (nothing else)**:
-```json
-[{
-  "type": "[full::qualified::type::name]",
-  "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
-  "entity_id": 123,  // Entity ID if created, null otherwise
-  "operations_completed": {
-    "spawn_insert": true|false,  // Did spawn/insert succeed?
-    "entity_query": true|false,   // Did query find entity?
-    "mutations_passed": [".path1", ".path2"],  // Which mutations succeeded
-    "total_mutations_attempted": 5  // How many mutation paths were tested
-  },
-  "failure_details": {
-    // ONLY PRESENT IF status is FAIL or COMPONENT_NOT_FOUND
-    "failed_operation": "spawn|insert|query|mutation",
-    "failed_mutation_path": ".specific.path.that.failed",
-    "error_message": "Complete error message from BRP",
-    "request_sent": {
-      // EXACT parameters sent that caused the failure
-      "method": "bevy/mutate_component",
-      "params": {
-        "entity": 123,
-        "component": "full::type::name",
-        "path": ".failed.path",
-        "value": 3.14159  // ⚠️ MUST be JSON primitive (number/boolean), NOT string
-      }
-    },
-    "response_received": {
-      // COMPLETE response from BRP including error details
-      "error": "Full error response",
-      "code": -32000,
-      "data": "any additional error data"
-    }
-  },
-  "query_details": {
-    // ONLY PRESENT IF status is COMPONENT_NOT_FOUND
-    "filter": {"with": ["exact::type::used"]},
-    "data": {"components": []},
-    "entities_found": 0
-  }
-}]
-```
-
-**PRE-OUTPUT VALIDATION**: Before generating your final JSON, follow <JsonPrimitiveRules/> and pay special attention to `"value"` fields in failure_details.
-
-═══════════════════════════════════════════════════════════════════════════════
-🚨 FINAL VALIDATION BEFORE OUTPUT 🚨
-═══════════════════════════════════════════════════════════════════════════════
-
-**STOP! Before you output your JSON, answer YES/NO to each**:
-
-1. ❓ Did I follow ERROR RECOVERY PROTOCOL for ANY "invalid type: string" errors?
-   - If you got this error and did NOT retry with unquoted primitive, YOUR RESULTS ARE INVALID
-
-2. ❓ Did I complete the MANDATORY PRE-FAILURE-REPORT CHECK above?
-   - If you reported ANY failure without completing the check, YOUR RESULTS ARE INVALID
-
-3. ❓ Are ALL my failure reports legitimate (not primitive quoting errors)?
-   - If ANY failure is actually a primitive quoting error, YOUR RESULTS ARE INVALID
-
-**IF YOU CANNOT ANSWER YES TO ALL THREE, DO NOT OUTPUT YOUR JSON - GO BACK AND FIX IT**
-
-═══════════════════════════════════════════════════════════════════════════════
-
-**FINAL INSTRUCTION**: Output ONLY the JSON array above. Nothing before. Nothing after.
-</SubagentPrompt>
+The main agent references this file when launching subagents (see <LaunchSubagents/> section).
 
 ## CRITICAL RULES AND CONSTRAINTS
 

@@ -15,10 +15,10 @@ use crate::brp_tools::brp_type_guide::constants::{
     TYPE_BEVY_MAT3, TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2,
     TYPE_BEVY_VEC3, TYPE_BEVY_VEC3A, TYPE_BEVY_VEC4, TYPE_BOOL, TYPE_CHAR, TYPE_F32, TYPE_F64,
     TYPE_GLAM_IVEC2, TYPE_GLAM_IVEC3, TYPE_GLAM_IVEC4, TYPE_GLAM_MAT2, TYPE_GLAM_MAT3,
-    TYPE_GLAM_MAT4, TYPE_GLAM_QUAT, TYPE_GLAM_UVEC2, TYPE_GLAM_UVEC3, TYPE_GLAM_UVEC4,
-    TYPE_GLAM_VEC2, TYPE_GLAM_VEC3, TYPE_GLAM_VEC3A, TYPE_GLAM_VEC4, TYPE_I8, TYPE_I16, TYPE_I32,
-    TYPE_I64, TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8,
-    TYPE_U16, TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
+    TYPE_GLAM_MAT3A, TYPE_GLAM_MAT4, TYPE_GLAM_QUAT, TYPE_GLAM_UVEC2, TYPE_GLAM_UVEC3,
+    TYPE_GLAM_UVEC4, TYPE_GLAM_VEC2, TYPE_GLAM_VEC3, TYPE_GLAM_VEC3A, TYPE_GLAM_VEC4, TYPE_I8,
+    TYPE_I16, TYPE_I32, TYPE_I64, TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF,
+    TYPE_STRING, TYPE_U8, TYPE_U16, TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
 };
 
 /// Format knowledge key for matching types
@@ -307,6 +307,12 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             KnowledgeKey::exact(TYPE_GLAM_MAT3),
             MutationKnowledge::new(json!([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])),
         );
+        // Mat3A - Used in GlobalTransform.0.matrix3, expects flat array not nested object
+        // The error was: "invalid type: map, expected a sequence of 9 f32values"
+        map.insert(
+            KnowledgeKey::exact(TYPE_GLAM_MAT3A),
+            MutationKnowledge::new(json!([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])),
+        );
         // Mat4 - BRP expects flat array of 16 values, not nested 2D array
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_MAT4),
@@ -401,6 +407,13 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_height"),
             MutationKnowledge::as_root_value(json!(600), "u32".to_string()), /* Reasonable
                                                                               * window height */
+        );
+
+        // ===== GlyphAtlasLocation field-specific values =====
+        // Provide safe glyph index to prevent crashes from out-of-bounds atlas access
+        map.insert(
+            KnowledgeKey::struct_field("bevy_text::glyph::GlyphAtlasLocation", "glyph_index"),
+            MutationKnowledge::as_root_value(json!(5), "usize".to_string()),
         );
 
         // ===== NonZero types =====
