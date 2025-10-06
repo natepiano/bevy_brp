@@ -73,13 +73,7 @@ if [ $? -eq 0 ]; then
 
     # Calculate comprehensive statistics about the augmented file
     STATS_JSON=$(jq -r '
-        if .type_guide then
-            .type_guide as $types
-        elif .result.type_guide then
-            .result.type_guide as $types
-        else
-            . as $types
-        end |
+        (.type_guide // .result.type_guide // .) as $types |
         {
             "total_types": ($types | length),
             "spawn_supported": [
