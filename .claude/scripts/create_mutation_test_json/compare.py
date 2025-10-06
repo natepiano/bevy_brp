@@ -264,7 +264,15 @@ def deep_compare_values(path: str, baseline_val: JsonValue, current_val: JsonVal
     # Compare based on type
     if isinstance(baseline_val, dict) and isinstance(current_val, dict):
         all_keys = set(baseline_val.keys()) | set(current_val.keys())
+
+        # Test metadata fields to ignore during comparison
+        test_metadata_fields = {"batch_number", "test_status", "fail_reason"}
+
         for key in sorted(all_keys):
+            # Skip test metadata fields at root level (when path is empty)
+            if not path and key in test_metadata_fields:
+                continue
+
             new_path = f"{path}.{key}" if path else str(key)
             base_item = baseline_val.get(key)
             curr_item = current_val.get(key)

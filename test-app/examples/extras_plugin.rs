@@ -47,7 +47,7 @@ use bevy::render::view::visibility::NoFrustumCulling;
 use bevy::render::view::window::screenshot::Screenshot;
 use bevy::scene::{Scene, SceneRoot};
 use bevy::ui::widget::{Button, Label};
-use bevy::ui::{BoxShadowSamples, CalculatedClip};
+use bevy::ui::{BoxShadowSamples, CalculatedClip, Outline};
 use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
@@ -567,6 +567,7 @@ fn main() {
         .register_type::<Button>()
         .register_type::<Label>()
         .register_type::<BorderRadius>()
+        .register_type::<Outline>()
         .add_systems(
             Startup,
             (setup_test_entities, setup_ui, minimize_window_on_start),
@@ -1388,6 +1389,8 @@ fn spawn_button_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
         },
         BackgroundColor(Color::srgb(0.4, 0.6, 0.8)),
         Button,
+        Outline::new(Val::Px(2.0), Val::Px(0.0), Color::srgb(1.0, 1.0, 0.0)), /* Yellow outline
+                                                                               * for testing */
         Name::new("ButtonTestEntity"),
     ));
 }

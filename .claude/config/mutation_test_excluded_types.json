@@ -11,6 +11,10 @@
     {
       "type_name": "bevy_scene::components::DynamicSceneRoot",
       "reason": "Component not present in extras_plugin test app - only added when spawning dynamic scenes."
+    },
+    {
+      "type_name": "bevy_ui::ui_node::CalculatedClip",
+      "reason": "Auto-generated internal component. Only created by Bevy's UI clipping system on child nodes when parent has overflow clipping enabled. Cannot be spawned/inserted (no Serialize/Deserialize traits). Requires specific UI hierarchy not present in test scene."
     }
   ]
 }
