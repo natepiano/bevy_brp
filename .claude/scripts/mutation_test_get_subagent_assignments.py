@@ -47,7 +47,7 @@ class SingleSubagentOutput(TypedDict):
     subagent_index: int
     subagent_number: int
     port: int
-    types: list[TypeData]
+    type_names: list[str]
 
 class AllAssignmentsOutput(TypedDict):
     batch_number: int
@@ -186,13 +186,16 @@ if subagent_index is not None:
     # Find the assignment for this subagent
     for assignment in assignments:
         if assignment['subagent'] == subagent_num:
+            # Extract just the type names from the assignment
+            type_names: list[str] = [t['type_name'] for t in assignment['types']]
+
             # Output format for single subagent
             single_output: SingleSubagentOutput = {
                 'batch_number': batch_num,
                 'subagent_index': subagent_index,
                 'subagent_number': subagent_num,
                 'port': assignment['port'],
-                'types': assignment['types']
+                'type_names': type_names
             }
             print(json.dumps(single_output, indent=2))
             sys.exit(0)

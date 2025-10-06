@@ -1,25 +1,40 @@
 #!/bin/bash
 
-# Script to get type guide for a specific type from baseline file
+# Script to get type guide for a specific type from a type guide JSON file
 # Usage:
-#   ./get_type_guide.sh                - List all types (no argument)
-#   ./get_type_guide.sh Transform      - Get type guide for Transform (case-insensitive)
-#   ./get_type_guide.sh 2              - Select option 2 from multiple matches
-#   ./get_type_guide.sh bevy_transform::components::transform::Transform - Full path
+#   ./get_type_guide.sh --file <path>                                    - List all types
+#   ./get_type_guide.sh Transform --file <path>                          - Get type guide for Transform (case-insensitive)
+#   ./get_type_guide.sh 2 --file <path>                                  - Select option 2 from multiple matches
+#   ./get_type_guide.sh bevy_transform::components::transform::Transform --file <path> - Full path
 
-BASELINE_FILE=".claude/transient/all_types_baseline.json"
+# Parse arguments
+SEARCH_TERM=""
+TYPE_GUIDE_FILE=""
 
-# Check if baseline file exists
-if [ ! -f "$BASELINE_FILE" ]; then
-    echo "Error: Baseline file not found at $BASELINE_FILE"
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --file)
+            TYPE_GUIDE_FILE="$2"
+            shift 2
+            ;;
+        *)
+            SEARCH_TERM="$1"
+            shift
+            ;;
+    esac
+done
+
+# Validate required --file parameter
+if [ -z "$TYPE_GUIDE_FILE" ]; then
+    echo "Error: --file parameter is required"
+    echo "Usage: $0 [type_name] --file <path_to_type_guide.json>"
     exit 1
 fi
 
-# If no arguments, list all types
-if [ $# -eq 0 ]; then
-    SEARCH_TERM=""
-else
-    SEARCH_TERM="$1"
+# Check if file exists
+if [ ! -f "$TYPE_GUIDE_FILE" ]; then
+    echo "Error: Type guide file not found at $TYPE_GUIDE_FILE"
+    exit 1
 fi
 
 # Use Python for complex JSON processing and interaction
@@ -30,7 +45,7 @@ import re
 
 search_term = '$SEARCH_TERM'
 
-with open('$BASELINE_FILE', 'r') as f:
+with open('$TYPE_GUIDE_FILE', 'r') as f:
     data = json.load(f)
 
 type_guides = data.get('type_guide', {})

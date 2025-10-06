@@ -133,7 +133,7 @@ You are subagent with index ${SUBAGENT_INDEX} (0-based) assigned to port ${PORT}
 </SubagentContext>
 
 <FetchAssignment>
-**Execute the assignment script - output goes to stdout, parse it directly from Bash result**:
+**Execute the assignment script to get your assigned type names**:
 
 ```bash
 python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
@@ -141,6 +141,20 @@ python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
     --max-subagents ${MAX_SUBAGENTS} \
     --types-per-subagent ${TYPES_PER_SUBAGENT} \
     --subagent-index ${SUBAGENT_INDEX}
+```
+
+**This returns a JSON object with a `type_names` array containing ONLY the literal type name strings**:
+```json
+{
+  "batch_number": 1,
+  "subagent_index": 3,
+  "subagent_number": 4,
+  "port": 30004,
+  "type_names": [
+    "bevy_pbr::cluster::ClusterConfig",
+    "bevy_input::gamepad::GamepadSettings"
+  ]
+}
 ```
 
 **CRITICAL**:
@@ -153,61 +167,78 @@ python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
 </FetchAssignment>
 
 <ParseAssignmentData>
-**Understand the assignment JSON structure:**
+**Parse the type_names array from assignment and fetch each type guide:**
 
-The assignment script returns a `types` array. Each type object contains complete test data:
+The assignment gives you a simple array of type names. For EACH type name, you MUST:
 
+1. **Extract the literal type name string** from the `type_names` array
+2. **Fetch its type guide** using the script:
+   ```bash
+   ./.claude/scripts/get_type_guide.sh <EXACT_TYPE_NAME> --file .claude/transient/all_types.json
+   ```
+
+**CRITICAL - TYPE NAME HANDLING:**
+- The type name from `type_names` is a LITERAL STRING
+- COPY it EXACTLY when calling get_type_guide.sh
+- NEVER retype or reconstruct the type name from memory
+- Use the SAME EXACT STRING in all BRP operations
+
+**Example workflow:**
+```bash
+# Assignment returned: {"type_names": ["bevy_pbr::cluster::ClusterConfig"]}
+
+# For each type name in the array:
+./.claude/scripts/get_type_guide.sh bevy_pbr::cluster::ClusterConfig --file .claude/transient/all_types.json
+```
+
+**The get_type_guide.sh script returns:**
 ```json
 {
-  "types": [
-    {
-      "type_name": "bevy_ecs::name::Name",
-      "spawn_format": "Entity Name",
-      "mutation_paths": {
-        "": {"example": "Entity Name", "path_info": {...}},
-        ".field": {"example": "value", "path_info": {...}}
-      },
-      "supported_operations": ["query", "get", "spawn", "insert", "mutate"]
-    }
-  ]
+  "status": "found",
+  "type_name": "bevy_pbr::cluster::ClusterConfig",
+  "guide": {
+    "spawn_format": null,
+    "mutation_paths": {...},
+    "supported_operations": ["query", "get", "mutate"],
+    ...
+  }
 }
 ```
 
-**FIELD USAGE - How to use each field in BRP operations:**
+**FIELD USAGE - How to use the type guide:**
 
-- **`type_name`**: The AUTHORITATIVE type identifier
-  - Use EXACTLY as-is in BRP tool calls
-  - Example: `mcp__brp__bevy_query(filter={"with": [type_name]})`
-  - NEVER modify, "fix", or substitute this string
-  - If you use a different string, it will be detected as hallucination
+- **`type_name`** (from script output): The AUTHORITATIVE type identifier
+  - Use EXACTLY as-is in all BRP tool calls
+  - This MUST match the string from your assignment
 
-- **`spawn_format`**: Example value for entity creation (may be `null`)
-  - If not `null` AND "spawn" in `supported_operations`: Use in `mcp__brp__bevy_spawn(components={type_name: spawn_format})`
+- **`guide.spawn_format`**: Example value for entity creation (may be `null`)
+  - If not `null` AND "spawn" in `supported_operations`: Use in spawn/insert
   - If `null` OR "spawn" not supported: Skip spawn/insert testing
 
-- **`mutation_paths`**: Dictionary of testable mutation paths
+- **`guide.mutation_paths`**: Dictionary of testable mutation paths
   - Keys are path strings (e.g., `""`, `".field"`, `".nested.value"`)
   - Each path has an `example` value to use in mutations
-  - Use directly: `mcp__brp__bevy_mutate_component(path=path_string, value=example)`
   - Check `path_info.mutation_status` before testing (skip if `"not_mutable"`)
 
-- **`supported_operations`**: Which BRP methods work with this type
+- **`guide.supported_operations`**: Which BRP methods work with this type
   - Check before calling: If "spawn" not in list, don't call bevy_spawn
   - If "mutate" not in list, don't call bevy_mutate_component
-
-**Test each type in the `types` array using these field values directly in BRP tool calls.**
 </ParseAssignmentData>
 
 <TestAllTypes>
 **Testing Protocol**:
 
-For each type in your parsed assignment data:
+For each type name string in your `type_names` array:
+   1. **FETCH TYPE GUIDE**: Call `get_type_guide.sh <type_name> --file .claude/transient/all_types.json`
+   2. **EXTRACT TYPE NAME**: Get the `type_name` field from the script output - this is your AUTHORITATIVE string
+   3. **TEST THE TYPE**:
+
    a. **COMPONENT_NOT_FOUND VALIDATION**:
       - **IF** entity query returns 0 entities for a type:
         1. **STOP IMMEDIATELY** - do NOT report COMPONENT_NOT_FOUND yet
-        2. **RE-FETCH** your assignment using the script again
-        3. **COMPARE** the type name you tested against the assignment data
-        4. **VERIFY** you used the EXACT type_name from the assignment (character-by-character match)
+        2. **RE-FETCH** your assignment using the assignment script again
+        3. **COMPARE** the type name you tested against the assignment's `type_names` array
+        4. **VERIFY** you used the EXACT string from the array (character-by-character match)
         5. **IF MISMATCH DETECTED**:
            - ERROR: You modified the type name - this is a CRITICAL BUG
            - In your result JSON:
@@ -218,17 +249,17 @@ For each type in your parsed assignment data:
            - Report status as COMPONENT_NOT_FOUND
            - Set both `type` and `tested_type` to the assignment's type_name
    b. **SPAWN/INSERT TESTING**:
-      - **CHECK FIRST**: If `spawn_format` is `null` OR `supported_operations` does NOT include "spawn" or "insert", SKIP spawn/insert testing entirely
+      - **CHECK FIRST**: If `guide.spawn_format` is `null` OR `guide.supported_operations` does NOT include "spawn" or "insert", SKIP spawn/insert testing entirely
       - **ONLY IF** spawn_format exists AND supported_operations includes "spawn"/"insert": attempt spawn/insert operations
       - **NEVER** attempt spawn/insert on types that don't support it - this will cause massive error responses
    c. **ENTITY QUERY**: Query for entities with component using EXACT syntax:
    ```json
    {
-     "filter": {"with": ["USE_EXACT_TYPE_NAME_FROM_PARSED_DATA"]},
+     "filter": {"with": ["USE_EXACT_TYPE_NAME_FROM_TYPE_GUIDE"]},
      "data": {}
    }
    ```
-   CRITICAL: Follow <TypeNameValidation/> - use the exact `type_name` field from your parsed assignment data (e.g., `current_type.type_name`)
+   CRITICAL: Use the EXACT `type_name` string from the type guide script output
    d. **ENTITY ID SUBSTITUTION FOR MUTATIONS**:
       - **CRITICAL**: If any mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
       - **YOU MUST**: Replace ALL instances of `8589934670` with REAL entity IDs from the running app
@@ -320,9 +351,10 @@ For each type in your parsed assignment data:
 
 <ReturnResults>
 **CRITICAL FIELD REQUIREMENTS**:
-- `type`: Extract from `types[].type_name` in your assignment JSON - this is the AUTHORITATIVE type name
+- `type`: Extract from the `type_name` field returned by `get_type_guide.sh` - this is the AUTHORITATIVE type name
 - `tested_type`: The exact type name string you passed to BRP queries - MUST be identical to `type`
 - Purpose: Detects if you hallucinated or modified a type name (CRITICAL BUG if they differ)
+- **BOTH MUST MATCH**: The string from assignment's `type_names` array = type guide's `type_name` = what you used in BRP calls
 
 **Return EXACTLY this format (nothing else)**:
 ```json

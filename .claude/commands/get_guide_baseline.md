@@ -14,7 +14,7 @@ Parse the type name from ${ARGUMENTS}:
 </ParseArguments>
 
 <ExecuteScript>
-Inform the user "Loading type guide from baseline..." then run the script at .claude/scripts/get_type_guide.sh or .claude/scripts/get_mutation_path.sh to retrieve the type guide data from the baseline file at .claude/transient/all_types_baseline.json
+Inform the user "Loading type guide from baseline..." then run the script at .claude/scripts/get_type_guide.sh or .claude/scripts/get_mutation_path.sh with --file .claude/transient/all_types_baseline.json to retrieve the type guide data from the baseline file
 </ExecuteScript>
 
 <FormatOutput>
