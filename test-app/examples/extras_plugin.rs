@@ -28,16 +28,17 @@ use bevy::core_pipeline::prepass::MotionVectorPrepass;
 use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
+use bevy::pbr::decal::ForwardDecalMaterialExt;
 use bevy::pbr::decal::clustered::ClusteredDecal;
 use bevy::pbr::irradiance_volume::IrradianceVolume;
 use bevy::pbr::prelude::EnvironmentMapLight;
 use bevy::pbr::{
-    AmbientLight, LightProbe, NotShadowCaster, NotShadowReceiver, ScreenSpaceAmbientOcclusion,
-    ScreenSpaceReflections, VolumetricFog, VolumetricLight,
+    AmbientLight, ExtendedMaterial, LightProbe, NotShadowCaster, NotShadowReceiver,
+    ScreenSpaceAmbientOcclusion, ScreenSpaceReflections, VolumetricFog, VolumetricLight,
 };
 use bevy::prelude::{ChildOf, *};
 // Bevy 0.16
-use bevy::render::camera::{MipBias, TemporalJitter};
+use bevy::render::camera::{ManualTextureViewHandle, MipBias, TemporalJitter};
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
@@ -816,6 +817,16 @@ fn spawn_visual_entities(commands: &mut Commands) {
         NotShadowReceiver, // For testing mutations
         Name::new("NotShadowReceiverTestEntity"),
     ));
+
+    // Entity with ExtendedMaterial<StandardMaterial, ForwardDecalMaterialExt> for testing mutations
+    commands.spawn((
+        Mesh3d(Handle::default()), // Dummy mesh handle
+        MeshMaterial3d::<ExtendedMaterial<StandardMaterial, ForwardDecalMaterialExt>>(
+            Handle::default(),
+        ), // Dummy material handle
+        Transform::from_xyz(0.0, 2.0, 0.0),
+        Name::new("ExtendedDecalMaterialTestEntity"),
+    ));
 }
 
 #[allow(clippy::too_many_lines)]
@@ -1155,8 +1166,9 @@ fn spawn_render_entities(commands: &mut Commands) {
     // Entity with SkinnedMesh for testing mutations
     commands.spawn((SkinnedMesh::default(), Name::new("SkinnedMeshTestEntity")));
 
-    // Entity with MeshMaterial2d<ColorMaterial> for testing mutations
+    // Entity with MeshMaterial2d<ColorMaterial> and Mesh2d for testing mutations
     commands.spawn((
+        Mesh2d(Handle::default()),
         bevy::prelude::MeshMaterial2d::<bevy::prelude::ColorMaterial>(Handle::default()),
         Name::new("MeshMaterial2dTestEntity"),
     ));
@@ -1231,6 +1243,12 @@ fn spawn_render_entities(commands: &mut Commands) {
         NoFrustumCulling,
         Transform::from_xyz(0.0, 0.0, 0.0),
         Name::new("NoFrustumCullingTestEntity"),
+    ));
+
+    // Entity with ManualTextureViewHandle for testing mutations
+    commands.spawn((
+        ManualTextureViewHandle(42),
+        Name::new("ManualTextureViewHandleTestEntity"),
     ));
 }
 

@@ -60,52 +60,88 @@
 </ErrorRecoveryProtocol>
 
 <JsonPrimitiveRules>
-**CRITICAL JSON PRIMITIVE REQUIREMENTS**:
+**CRITICAL JSON VALUE REQUIREMENTS**:
+
+**PRIMITIVES (numbers and booleans):**
 - ALL numeric values MUST be JSON numbers, NOT strings
 - NEVER quote numbers: ❌ "3.1415927410125732" → ✅ 3.1415927410125732
 - This includes f32, f64, u32, i32, ALL numeric types
 - High-precision floats like 3.1415927410125732 are STILL JSON numbers
 - ALL boolean values MUST be JSON booleans, NOT strings
 - NEVER quote booleans: ❌ "true" → ✅ true, ❌ "false" → ✅ false
-- Numbers: ✅ 3.14, ✅ 42, ✅ 3.1415927410125732
-- Booleans: ✅ true, ✅ false
-- NEVER: ❌ "3.14", ❌ "42", ❌ "true", ❌ "false"
-- If you get "invalid type: string" error, you quoted a number or boolean
+
+**ARRAYS AND LISTS:**
+- ALL arrays MUST be JSON arrays, NOT strings
+- NEVER quote arrays: ❌ "[1, 2, 3]" → ✅ [1, 2, 3]
+- NEVER quote array syntax: ❌ "[4294967297]" → ✅ [4294967297]
+- This applies to Vec, lists, and all array-like structures
+
+**OBJECTS AND STRUCTS:**
+- ALL objects MUST be JSON objects, NOT strings
+- NEVER quote objects: ❌ "{\"key\": \"value\"}" → ✅ {"key": "value"}
+- NEVER quote struct syntax: ❌ "{\"x\": 1.0, \"y\": 2.0}" → ✅ {"x": 1.0, "y": 2.0}
+- This applies to structs, maps, and all object-like structures
 
 **COMMON MISTAKES THAT CAUSE STRING CONVERSION**:
 ❌ Converting example to string: `str(example)` or `f"{example}"`
-❌ String interpolation in values: treating numbers as text
+❌ String interpolation in values: treating complex types as text
 ❌ Copy-pasting example values as strings instead of raw values
-❌ Using string formatting functions on numeric values
+❌ Using string formatting functions on any values
+❌ JSON.stringify or similar that wraps in quotes
 
 ✅ CORRECT: Use the example value DIRECTLY from the type guide without any string conversion
 ✅ When constructing mutation params: assign the value AS-IS from the example
-✅ Keep numeric types as numbers, boolean types as booleans throughout your code
+✅ Keep ALL types in their native JSON form throughout your code
 
 **MANDATORY PRE-SEND VERIFICATION**:
-Before EVERY mutation request with a numeric or boolean value:
+Before EVERY mutation request:
 1. **CHECK**: Look at the value you're about to send in `params["value"]`
-2. **VERIFY**: If it's a number like `42`, ensure you're sending the NUMBER 42, not the STRING "42"
-3. **TEST**: In your JSON structure, it should appear as `"value": 42` NOT `"value": "42"`
-4. **CONFIRM**: No quotes around numbers or booleans in the actual value field
+2. **VERIFY TYPE**:
+   - Number like `42`? → Must be NUMBER 42, not STRING "42"
+   - Boolean like `true`? → Must be BOOLEAN true, not STRING "true"
+   - Array like `[1, 2, 3]`? → Must be ARRAY [1, 2, 3], not STRING "[1, 2, 3]"
+   - Object like `{"x": 1}`? → Must be OBJECT {"x": 1}, not STRING "{\"x\": 1}"
+3. **TEST**: In your JSON structure:
+   - `"value": 42` NOT `"value": "42"`
+   - `"value": [1, 2]` NOT `"value": "[1, 2]"`
+   - `"value": {"x": 1}` NOT `"value": "{\"x\": 1}"`
+4. **CONFIRM**: No quotes around the entire value structure
 
 **VERIFICATION EXAMPLES**:
+
+**Primitives:**
 - ❌ WRONG: `{"value": "42"}` - This is a STRING "42"
 - ✅ CORRECT: `{"value": 42}` - This is a NUMBER 42
 - ❌ WRONG: `{"value": "true"}` - This is a STRING "true"
 - ✅ CORRECT: `{"value": true}` - This is a BOOLEAN true
-- ❌ WRONG: `{"value": "3.14"}` - This is a STRING "3.14"
-- ✅ CORRECT: `{"value": 3.14}` - This is a NUMBER 3.14
+
+**Arrays:**
+- ❌ WRONG: `{"value": "[4294967297]"}` - This is a STRING "[4294967297]"
+- ✅ CORRECT: `{"value": [4294967297]}` - This is an ARRAY [4294967297]
+- ❌ WRONG: `{"value": "[1.0, 2.0, 3.0]"}` - This is a STRING
+- ✅ CORRECT: `{"value": [1.0, 2.0, 3.0]}` - This is an ARRAY
+
+**Objects:**
+- ❌ WRONG: `{"value": "{\"x\": 1.0, \"y\": 2.0}"}` - This is a STRING
+- ✅ CORRECT: `{"value": {"x": 1.0, "y": 2.0}}` - This is an OBJECT
 
 **ERROR RECOVERY PROTOCOL**:
-If you receive error: `invalid type: string "X", expected [numeric/boolean type]`:
-1. **RECOGNIZE**: This means you DEFINITELY sent "X" as a quoted string
+If you receive error containing: `invalid type: string "X", expected [any type]`:
+1. **RECOGNIZE**: This means you DEFINITELY sent the value as a quoted string
 2. **DO NOT** report this as a test failure - this is YOUR bug, not a BRP bug
-3. **FIX IMMEDIATELY**: Retry the SAME mutation with the value as an unquoted primitive
-4. **VERIFY**: Before retry, confirm your value is a number/boolean, NOT a string
-5. **ONLY FAIL**: If the retry also fails with a DIFFERENT error message
+3. **IDENTIFY THE TYPE**:
+   - "expected reflected list value" → You stringified an array
+   - "expected a boolean" → You stringified a boolean
+   - "expected f32" → You stringified a number
+   - "expected reflected struct" → You stringified an object
+4. **FIX IMMEDIATELY**: Retry the SAME mutation with the value in proper JSON form:
+   - Arrays: Remove outer quotes, send as native JSON array
+   - Objects: Remove outer quotes, send as native JSON object
+   - Primitives: Remove quotes, send as native JSON number/boolean
+5. **VERIFY**: Before retry, inspect your params structure - ensure NO outer quotes
+6. **ONLY FAIL**: If the retry also fails with a DIFFERENT error message
 
-**VALIDATION**: Before sending ANY mutation, verify primitives are unquoted
+**VALIDATION**: Before sending ANY mutation, verify the entire value is in native JSON form (not a string representation)
 </JsonPrimitiveRules>
 
 <SubagentContext>

@@ -737,51 +737,65 @@ fn build_partial_roots(
                 }
             }
 
-            // For each chain, build wrapped example with ALL children
+            // Build wrapped examples for each child variant chain
+            //
+            // VARIANT CHAIN COMPATIBILITY RULE:
+            // When building partial roots for a specific `child_chain`, we must only include
+            // child paths whose `variant_chain` is compatible with that `child_chain`.
+            //
+            // Compatibility means: the child's `variant_chain` must be a prefix of `child_chain`.
+            //
+            // Example: Given `Handle<Image>` enum with two variants (Weak, Strong):
+            //   - Weak variant: `.image.0` → `AssetId<Image>` (another enum with Uuid, Index)
+            //   - Strong variant: `.image.0` → `Arc<StrongHandle>` (not an enum)
+            //
+            // When building for `child_chain = ["Handle<Image>::Weak", "AssetId<Image>::Uuid"]`:
+            //   - Child with variant_chain `["Handle<Image>::Weak"]` IS compatible ✅ (prefix of
+            //     target chain)
+            //   - Child with variant_chain `["Handle<Image>::Strong"]` is NOT compatible ❌
+            //     (different variant path)
+            //
+            // Without this filtering, both children share the same descriptor ("0" for tuple
+            // index), causing HashMap collisions where the last insert overwrites correct values
+            // with incompatible ones (e.g., Strong's null overwrites Weak's nested structure).
+            //
+            // This ensures deeply nested enum paths like `.image.0.uuid` get correct
+            // `root_example` values: `{"Weak": {"Uuid": {"uuid": "..."}}}` rather than
+            // `{"Weak": null}`.
             let mut found_child_chains = false;
             for child_chain in child_chains_to_wrap {
                 let mut children = HashMap::new();
 
-                // Collect ALL children with variant-specific or regular values
+                // Collect children with variant-specific or regular values
                 for child in child_paths {
                     // Skip grandchildren - only process direct children
                     if !child.is_direct_child_at_depth(*depth) {
                         continue;
                     }
 
-                    let descriptor = child.path_kind.to_mutation_path_descriptor();
+                    // Filter by variant_chain compatibility: child's variant_chain must be a
+                    // prefix of the child_chain we're building for
+                    if let Some(child_enum_data) = &child.enum_path_data {
+                        let child_variant_chain =
+                            extract_variant_names(&child_enum_data.variant_chain);
 
-                    // Debug: Check child's partial_root_examples
-                    if let Some(child_partials) = &child.partial_root_examples {
-                        tracing::debug!(
-                            "[ENUM] Child {} has {} partial roots, looking for chain {:?}",
-                            child.full_mutation_path,
-                            child_partials.len(),
-                            child_chain
-                                .iter()
-                                .map(super::types::VariantName::as_str)
-                                .collect::<Vec<_>>()
-                        );
-                        if child_partials.get(&child_chain).is_some() {
-                            tracing::debug!("[ENUM]   -> FOUND variant-specific value");
-                        } else {
-                            tracing::debug!(
-                                "[ENUM]   -> NOT FOUND, keys available: {:?}",
-                                child_partials
-                                    .keys()
-                                    .map(|k| k
-                                        .iter()
-                                        .map(super::types::VariantName::as_str)
-                                        .collect::<Vec<_>>())
-                                    .collect::<Vec<_>>()
-                            );
+                        // Child's variant_chain cannot be longer than target chain
+                        if child_variant_chain.len() > child_chain.len() {
+                            continue;
                         }
-                    } else {
-                        tracing::debug!(
-                            "[ENUM] Child {} has NO partial_root_examples, using regular example",
-                            child.full_mutation_path
-                        );
+
+                        // Check prefix compatibility: all elements must match
+                        let is_compatible = child_variant_chain
+                            .iter()
+                            .zip(child_chain.iter())
+                            .all(|(child_v, chain_v)| child_v == chain_v);
+
+                        if !is_compatible {
+                            continue;
+                        }
                     }
+
+                    let descriptor = child.path_kind.to_mutation_path_descriptor();
 
                     let value = child
                         .partial_root_examples
@@ -789,6 +803,7 @@ fn build_partial_roots(
                         .and_then(|partials| partials.get(&child_chain))
                         .cloned()
                         .unwrap_or_else(|| child.example.clone());
+
                     children.insert(descriptor, value);
                 }
 
