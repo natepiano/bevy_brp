@@ -18,7 +18,7 @@ if [ ! -f "$FILEPATH" ]; then
 fi
 
 # Read excluded types list from JSON file
-EXCLUSION_FILE=".claude/scripts/mutation_test_excluded_types.json"
+EXCLUSION_FILE=".claude/config/mutation_test_excluded_types.json"
 EXCLUDED_TYPES=""
 if [ -f "$EXCLUSION_FILE" ]; then
     # Extract type_name values from JSON and create pipe-separated regex

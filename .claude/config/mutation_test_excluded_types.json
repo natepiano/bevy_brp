@@ -7,6 +7,10 @@
     {
       "type_name": "bevy_render::view::window::screenshot::Screenshot",
       "reason": "Ephemeral component - only exists during screenshot operations. Not suitable for mutation testing as it's immediately consumed."
+    },
+    {
+      "type_name": "bevy_scene::components::DynamicSceneRoot",
+      "reason": "Component not present in extras_plugin test app - only added when spawning dynamic scenes."
     }
   ]
 }
