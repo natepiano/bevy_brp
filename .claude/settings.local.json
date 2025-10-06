@@ -167,7 +167,8 @@
       "Bash(~/.claude/scripts/bevy_migration_count_pattern.sh \"TemporalAntiAliasPlugin\" \"/Users/natemccoy/rust/bevy_brp\" rust)",
       "Bash(\"/Users/natemccoy/rust/bevy_brp\" rust)",
       "Bash(/Users/natemccoy/.claude/scripts/bevy_migration_count_pattern.sh:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(./.claude/scripts/get_type_guide.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",
