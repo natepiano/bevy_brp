@@ -170,7 +170,10 @@
       "Bash(tail:*)",
       "Bash(./.claude/scripts/get_type_guide.sh:*)",
       "Bash(python:*)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/get_type_guide.sh:*)"
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/get_type_guide.sh:*)",
+      "Bash(~/.claude/scripts/orphans.py)",
+      "SlashCommand(/get_kind_baseline)",
+      "Bash(.claude/scripts/get_type_kind.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",

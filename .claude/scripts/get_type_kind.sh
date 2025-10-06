@@ -26,13 +26,13 @@ from collections import Counter
 with open('$BASELINE_FILE', 'r') as f:
     data = json.load(f)
 
-type_guides = data.get('type_guide', [])
+type_guides = data.get('type_guide', {})
 
 # Count types by type_kind
 type_kind_counts = Counter()
 types_by_kind = {}
 
-for guide in type_guides:
+for type_name, guide in type_guides.items():
     if 'mutation_paths' in guide and guide['mutation_paths']:
         type_kinds_found = set()
         for path, path_data in guide['mutation_paths'].items():
@@ -41,7 +41,7 @@ for guide in type_guides:
                 type_kinds_found.add(kind)
                 if kind not in types_by_kind:
                     types_by_kind[kind] = set()
-                types_by_kind[kind].add(guide['type_name'])
+                types_by_kind[kind].add(type_name)
 
 # Count unique types per kind
 for kind, types in types_by_kind.items():
@@ -65,15 +65,15 @@ import json
 with open('$BASELINE_FILE', 'r') as f:
     data = json.load(f)
 
-type_guides = data.get('type_guide', [])
+type_guides = data.get('type_guide', {})
 target_kind = '$TYPE_KIND'
 matching_types = set()
 
-for guide in type_guides:
+for type_name, guide in type_guides.items():
     if 'mutation_paths' in guide and guide['mutation_paths']:
         for path, path_data in guide['mutation_paths'].items():
             if 'path_info' in path_data and path_data['path_info'].get('type_kind') == target_kind:
-                matching_types.add(guide['type_name'])
+                matching_types.add(type_name)
                 break  # Found at least one, no need to check other paths
 
 if matching_types:

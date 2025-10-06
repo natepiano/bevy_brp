@@ -250,6 +250,20 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             MutationKnowledge::new(json!([1.0, 2.0, 3.0, 4.0])),
         );
 
+        // Double-precision vectors (f64)
+        map.insert(
+            KnowledgeKey::exact("glam::DVec2"),
+            MutationKnowledge::new(json!([1.0, 2.0])),
+        );
+        map.insert(
+            KnowledgeKey::exact("glam::DVec3"),
+            MutationKnowledge::new(json!([1.0, 2.0, 3.0])),
+        );
+        map.insert(
+            KnowledgeKey::exact("glam::DVec4"),
+            MutationKnowledge::new(json!([1.0, 2.0, 3.0, 4.0])),
+        );
+
         // Integer vectors
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_IVEC2),
@@ -384,6 +398,16 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             MutationKnowledge::new(json!([
                 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0
             ])), // Affine matrices don't have simple component access
+        );
+
+        // Affine3A - Used as GlobalTransform.0, serializes as flat array of 12 f32 values
+        // Format: [matrix_row1(3), matrix_row2(3), matrix_row3(3), translation(3)]
+        // Has matrix3 and translation fields but doesn't serialize with field names
+        map.insert(
+            KnowledgeKey::exact("glam::Affine3A"),
+            MutationKnowledge::new(json!([
+                1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0
+            ])),
         );
 
         // ===== Asset Handle types =====

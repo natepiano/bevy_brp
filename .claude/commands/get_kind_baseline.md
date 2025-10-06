@@ -2,34 +2,25 @@
 
 Analyzes type_kind values in mutation paths from the baseline file.
 
-## Command Execution
+<ExecutionSteps>
+**EXECUTE THESE STEPS IN ORDER:**
 
-When you request type kind analysis, I will:
+**STEP 1:** Execute <ArgumentProcessing/>
+**STEP 2:** Execute <ScriptExecution/>
+**STEP 3:** Display the script output to the user
+</ExecutionSteps>
 
-1. Verify that the baseline file exists at `.claude/transient/all_types_baseline.json`
-2. Execute the appropriate script mode based on arguments provided
-3. Process the JSON data using Python to extract type_kind information
-4. Present results in a clear, readable format
+<ArgumentProcessing>
+if $ARGUMENTS is empty: set MODE="summary"
+if $ARGUMENTS contains one argument: set MODE="query" and TYPE_KIND="$1"
+if $ARGUMENTS contains more than one argument: display error "Too many arguments" and usage, then exit
+</ArgumentProcessing>
 
-<UserOutput>
-## For summary mode:
-## Type Kind Summary
-
-```
-Type kind summary (types containing at least one mutation path of each kind):
-
-${TYPE_KIND_COUNTS}
-```
-
-## For query mode:
-## Types with type_kind '${TYPE_KIND}'
-
-```
-Types containing mutation paths with type_kind '${TYPE_KIND}':
-
-${TYPE_NAME_LIST}
-```
-</UserOutput>
+<ScriptExecution>
+if MODE="summary": Use Bash tool to execute ".claude/scripts/get_type_kind.sh"
+if MODE="query": Use Bash tool to execute ".claude/scripts/get_type_kind.sh "$TYPE_KIND""
+Capture and display the script output
+</ScriptExecution>
 
 ## Usage
 
@@ -41,13 +32,16 @@ Shows a count of how many top-level types contain at least one mutation path of 
 ```
 
 ### Query Mode (with type_kind argument)
-Shows all top-level type names that contain at least one mutation path with the specified type_kind:
+Shows all top-level type names that contain at least one mutation path with the specified type_kind.
 
+Examples:
 ```bash
 /get_kind_baseline List
 /get_kind_baseline Struct
 /get_kind_baseline Value
 ```
+
+**Available type_kinds:** Array, Enum, List, Map, Set, Struct, Tuple, TupleStruct, Value
 
 ## Prerequisites
 
