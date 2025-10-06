@@ -849,13 +849,27 @@ fn populate_root_example(paths: &mut [MutationPathInternal]) {
         {
             let chain = extract_variant_names(&enum_data.variant_chain);
 
+            tracing::debug!(
+                "[POPULATE_ROOT] Path: {}, variant_chain: {:?}",
+                path.full_mutation_path,
+                chain.iter().map(|v| v.as_str()).collect::<Vec<_>>()
+            );
+
             // Use the partial_root_examples that was propagated to this path
             if let Some(ref partials) = path.partial_root_examples {
+                tracing::debug!(
+                    "[POPULATE_ROOT]   Available keys in partial_root_examples: {:?}",
+                    partials.keys().map(|k| k.iter().map(|v| v.as_str()).collect::<Vec<_>>()).collect::<Vec<_>>()
+                );
+
                 if let Some(root_example) = partials.get(&chain) {
+                    tracing::debug!("[POPULATE_ROOT]   FOUND root_example: {root_example:?}");
                     enum_data.root_example = Some(root_example.clone());
                 } else {
-                    tracing::debug!("No root_example found for variant chain: {chain:?}");
+                    tracing::debug!("[POPULATE_ROOT]   NOT FOUND - no entry for chain {:?}", chain.iter().map(|v| v.as_str()).collect::<Vec<_>>());
                 }
+            } else {
+                tracing::debug!("[POPULATE_ROOT]   NO partial_root_examples on path");
             }
         }
     }
