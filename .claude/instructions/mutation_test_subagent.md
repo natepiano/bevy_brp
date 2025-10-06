@@ -240,6 +240,14 @@ For each type in your parsed assignment data:
         - Query for an entity with the component first
         - Replace `8589934670` with the actual entity ID from the query
         - Then perform the mutation with the real entity ID
+      - **FOR HIERARCHY COMPONENTS** (Children, Parent):
+        - **CRITICAL**: Query for ALL entities in the scene using `bevy_query` with no filter
+        - Use a DIFFERENT entity ID than the one being mutated
+        - **NEVER** create circular relationships (entity as its own parent/child)
+        - Example: When testing entity 4294967390's `Children` component:
+          - ❌ WRONG: Use [4294967390] as the child value (circular reference → CRASH)
+          - ✅ CORRECT: Query all entities, select a different ID like 4294967297
+        - If only one entity exists with the component, query for other entities without that component to use as children
    e. **ROOT EXAMPLE SETUP FOR VARIANT-DEPENDENT PATHS**:
       - **BEFORE testing each mutation path**, check if `path_info.root_example` exists
       - **IF `root_example` EXISTS**:
