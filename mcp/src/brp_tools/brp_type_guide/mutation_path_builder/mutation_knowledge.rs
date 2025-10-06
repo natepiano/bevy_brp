@@ -440,6 +440,28 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             MutationKnowledge::as_root_value(json!(5), "usize".to_string()),
         );
 
+        // ===== VideoMode field-specific values =====
+        // Provide realistic video mode values to prevent window system crashes
+        map.insert(
+            KnowledgeKey::struct_field("bevy_window::monitor::VideoMode", "bit_depth"),
+            MutationKnowledge::as_root_value(json!(32), "u16".to_string()), /* Standard 32-bit
+                                                                             * color */
+        );
+        map.insert(
+            KnowledgeKey::struct_field("bevy_window::monitor::VideoMode", "physical_size"),
+            MutationKnowledge::as_root_value(json!([1920, 1080]), "UVec2".to_string()), /* Standard
+                                                                                          * Full HD
+                                                                                          * resolution */
+        );
+        map.insert(
+            KnowledgeKey::struct_field(
+                "bevy_window::monitor::VideoMode",
+                "refresh_rate_millihertz",
+            ),
+            MutationKnowledge::as_root_value(json!(60000), "u32".to_string()), /* 60 Hz in
+                                                                                * millihertz */
+        );
+
         // ===== NonZero types =====
         // These types guarantee the value is never zero
         map.insert(
