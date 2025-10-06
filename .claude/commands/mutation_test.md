@@ -12,7 +12,7 @@
 </TestContext>
 
 <TestConfiguration>
-TYPES_PER_SUBAGENT = 6                                  # Types each subagent tests
+TYPES_PER_SUBAGENT = 7                                  # Types each subagent tests
 MAX_SUBAGENTS = 10                                      # Parallel subagents per batch
 BATCH_SIZE = ${TYPES_PER_SUBAGENT * MAX_SUBAGENTS}      # Types per batch
 BASE_PORT = 30001                                       # Starting port for subagents
@@ -267,14 +267,16 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     **TASK PROMPT TEMPLATE**:
     ```
-    Read your instructions: @.claude/instructions/mutation_test_subagent.md
+    EXECUTE the mutation test workflow defined in @.claude/instructions/mutation_test_subagent.md
 
-    Replace these template variables in the instructions:
+    Your configuration:
     - SUBAGENT_INDEX = [index]
     - PORT = [port]
     - BATCH_NUMBER = [batch]
     - MAX_SUBAGENTS = ${MAX_SUBAGENTS}
     - TYPES_PER_SUBAGENT = ${TYPES_PER_SUBAGENT}
+
+    CRITICAL: You MUST return ONLY the JSON array result. NO explanations, NO commentary, NO test steps.
     ```
 
     **DEFENSIVE VALIDATION**:
@@ -322,6 +324,11 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
          - ERROR: "Expected {total_types_in_batch} total type results, got {actual_count}"
        - Each subagent result should contain 1-${TYPES_PER_SUBAGENT} type results
          - **STOP IF** any subagent has wrong count: "Subagent {N} returned {actual} type results, expected {expected_for_this_subagent}"
+       - **HALLUCINATION CHECK**: For each type result, validate `type` == `tested_type`
+         - **STOP IF** any mismatch found:
+           - ERROR: "Subagent hallucinated type name"
+           - Show: "Assigned: {type}, Tested: {tested_type}"
+           - This indicates the subagent modified/invented the type name instead of using the exact assignment
 
     3. **Write results to temp file** using Write tool:
     ```python
@@ -623,7 +630,8 @@ The main agent references this file when launching subagents (see <LaunchSubagen
 **Subagent Result Schema**:
 ```json
 {
-  "type": "string (full type name)",
+  "type": "string (type_name from assignment - authoritative)",
+  "tested_type": "string (actual type used in queries - must match 'type')",
   "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
   "entity_id": "number|null (entity ID if created)",
   "operations_completed": {
