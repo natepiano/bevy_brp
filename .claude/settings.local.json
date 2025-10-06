@@ -168,7 +168,9 @@
       "Bash(\"/Users/natemccoy/rust/bevy_brp\" rust)",
       "Bash(/Users/natemccoy/.claude/scripts/bevy_migration_count_pattern.sh:*)",
       "Bash(tail:*)",
-      "Bash(./.claude/scripts/get_type_guide.sh:*)"
+      "Bash(./.claude/scripts/get_type_guide.sh:*)",
+      "Bash(python:*)",
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/get_type_guide.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",
