@@ -17,7 +17,7 @@ Systematically validates ALL mutation paths for ALL registered component types.
 
 **Step 1**: `/create_mutation_test_json` - discovers types, determines spawn support and mutation paths, creates `.claude/transient/all_types.json`
 
-**Step 2**: `/mutation_test` - tests spawn/insert and every mutation path in parallel batches (70 types per batch, 10 subagents), stops on first failure
+**Step 2**: `/mutation_test` - tests spawn/insert and every mutation path in parallel batches, stops on first failure
 
 ## Configuration
 - `.claude/config/test_config.json` - integration test config
