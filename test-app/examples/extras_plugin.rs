@@ -44,6 +44,7 @@ use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension}
 use bevy::render::view::ColorGrading;
 use bevy::render::view::visibility::NoFrustumCulling;
 use bevy::render::view::window::screenshot::Screenshot;
+use bevy::scene::{Scene, SceneRoot};
 use bevy::ui::widget::{Button, Label};
 use bevy::ui::{BoxShadowSamples, CalculatedClip};
 use bevy::window::PrimaryWindow;
@@ -569,7 +570,7 @@ fn main() {
             Startup,
             (setup_test_entities, setup_ui, minimize_window_on_start),
         )
-        .add_systems(PostStartup, setup_skybox_test)
+        .add_systems(PostStartup, (setup_skybox_test, setup_scene_test))
         .add_systems(Update, (track_keyboard_input, update_keyboard_display))
         .run();
 }
@@ -628,6 +629,31 @@ fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) 
     ));
 
     info!("Skybox test entity created with cube texture");
+}
+
+/// Setup a simple scene with SceneRoot for testing
+fn setup_scene_test(mut commands: Commands, mut scenes: ResMut<Assets<Scene>>) {
+    // Create a simple scene with a few test entities
+    let mut scene_world = World::new();
+
+    // Add some simple entities to the scene
+    scene_world.spawn((
+        Transform::from_xyz(1.0, 2.0, 3.0),
+        Name::new("SceneEntity1"),
+    ));
+
+    scene_world.spawn((
+        Transform::from_xyz(4.0, 5.0, 6.0),
+        Name::new("SceneEntity2"),
+    ));
+
+    let scene = Scene::new(scene_world);
+    let scene_handle = scenes.add(scene);
+
+    // Spawn entity with SceneRoot for testing
+    commands.spawn((SceneRoot(scene_handle), Name::new("SceneRootTestEntity")));
+
+    info!("SceneRoot test entity created");
 }
 
 /// Setup test entities for format discovery
