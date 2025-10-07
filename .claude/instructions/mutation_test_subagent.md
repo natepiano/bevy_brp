@@ -57,6 +57,18 @@
 □ I received "invalid type: string" error? → Follow ERROR RECOVERY PROTOCOL above!
 
 ═══════════════════════════════════════════════════════════════════════════════
+
+**IF YOU GET STUCK IN A LOOP CALLING TOOLS WITH EMPTY PARAMETERS**:
+
+**SYMPTOM**: You find yourself repeatedly calling MCP tools (like `mcp__brp__bevy_mutate_component`) with empty or incomplete parameter lists, unable to construct the full parameters.
+
+**SOLUTION**: **REORDER THE PARAMETERS** in your tool call and try again. This will break you out of the mental loop.
+ Parameter order doesn't matter for the MCP tool - reordering just helps you break the loop
+
+**EXAMPLE**:
+- ❌ STUCK: Calling `mcp__brp__bevy_mutate_component(entity=123, component="type", path=".field", value=42)`
+- ✅ UNSTUCK: Reorder to `mcp__brp__bevy_mutate_component(component="type", entity=123, value=42, path=".field")`
+
 </ErrorRecoveryProtocol>
 
 <JsonPrimitiveRules>

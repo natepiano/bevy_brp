@@ -317,7 +317,27 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     1. **Collect all subagent results** into single JSON array
 
-    2. **CRITICAL VALIDATION** of collected results:
+    2. **Write results to temp file** using Write tool (save partial progress even if validation fails):
+    ```python
+    Write(
+        file_path=".claude/transient/batch_results_[BATCH_NUMBER].json",
+        content=[collected_results_json]
+    )
+    ```
+
+    3. **Execute merge script** to save progress:
+    ```bash
+    ./.claude/scripts/mutation_test_merge_batch_results.sh \
+        .claude/transient/batch_results_[BATCH_NUMBER].json \
+        .claude/transient/all_types.json
+    ```
+
+    4. **Cleanup temp file**:
+    ```bash
+    rm -f .claude/transient/batch_results_[BATCH_NUMBER].json
+    ```
+
+    5. **CRITICAL VALIDATION** of collected results:
        - **STOP IF** number of subagent results != actual_assignments_count
          - ERROR: "Expected {actual_assignments_count} subagent results, got {actual_count}"
        - **STOP IF** total number of type results != total_types_in_batch
@@ -329,26 +349,6 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
            - ERROR: "Subagent hallucinated type name"
            - Show: "Assigned: {type}, Tested: {tested_type}"
            - This indicates the subagent modified/invented the type name instead of using the exact assignment
-
-    3. **Write results to temp file** using Write tool:
-    ```python
-    Write(
-        file_path=".claude/transient/batch_results_[BATCH_NUMBER].json",
-        content=[collected_results_json]
-    )
-    ```
-
-    4. **Execute merge script**:
-    ```bash
-    ./.claude/scripts/mutation_test_merge_batch_results.sh \
-        .claude/transient/batch_results_[BATCH_NUMBER].json \
-        .claude/transient/all_types.json
-    ```
-
-    5. **Cleanup temp file**:
-    ```bash
-    rm -f .claude/transient/batch_results_[BATCH_NUMBER].json
-    ```
 </ProcessBatchResults>
 
 <CheckForFailures>
@@ -721,7 +721,6 @@ When failures occur, the system automatically:
 
     - **Operation**: The BRP operation to execute (e.g., mcp__brp__brp_shutdown, mcp__brp__brp_status)
     - **Parameters**: Operation-specific parameters (e.g., app_name)
-    - **Mode**: Optional - SILENT for no output, otherwise show status
 
     This pattern ensures consistent parallel execution across the port range.
 </ParallelPortOperation>
