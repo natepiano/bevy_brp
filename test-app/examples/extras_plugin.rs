@@ -59,21 +59,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Resource, Default)]
 struct KeyboardInputHistory {
     /// Currently pressed keys
-    active_keys: Vec<String>,
+    active_keys:          Vec<String>,
     /// Last pressed keys (for display after release)
-    last_keys: Vec<String>,
+    last_keys:            Vec<String>,
     /// Active modifier keys
-    modifiers: Vec<String>,
+    modifiers:            Vec<String>,
     /// Complete key combination (all keys that were pressed together)
     complete_combination: Vec<String>,
     /// Complete modifiers from the last combination
-    complete_modifiers: Vec<String>,
+    complete_modifiers:   Vec<String>,
     /// Time when the last key was pressed
-    press_time: Option<Instant>,
+    press_time:           Option<Instant>,
     /// Duration between press and release in milliseconds
-    last_duration_ms: Option<u64>,
+    last_duration_ms:     Option<u64>,
     /// Whether the last key press has completed
-    completed: bool,
+    completed:            bool,
 }
 
 /// Marker component for the keyboard input display text
@@ -86,7 +86,7 @@ struct KeyboardDisplayText;
 struct TestConfigResource {
     pub setting_a: f32,
     pub setting_b: String,
-    pub enabled: bool,
+    pub enabled:   bool,
 }
 
 /// Test resource WITHOUT Serialize/Deserialize support (only Reflect)
@@ -94,16 +94,16 @@ struct TestConfigResource {
 #[reflect(Resource)]
 struct RuntimeStatsResource {
     pub frame_count: u32,
-    pub total_time: f32,
-    pub debug_mode: bool,
+    pub total_time:  f32,
+    pub debug_mode:  bool,
 }
 
 /// Test component struct WITH Serialize/Deserialize
 #[derive(Component, Default, Reflect, Serialize, Deserialize, Hash, Eq, PartialEq)]
 #[reflect(Component, Serialize, Deserialize, Hash)]
 struct TestStructWithSerDe {
-    pub value: i32,
-    pub name: String,
+    pub value:   i32,
+    pub name:    String,
     pub enabled: bool,
 }
 
@@ -119,9 +119,9 @@ struct SimpleSetComponent {
 #[reflect(Component, Serialize, Deserialize)]
 struct TestMapComponent {
     /// String to String map
-    pub strings: HashMap<String, String>,
+    pub strings:    HashMap<String, String>,
     /// String to f32 map
-    pub values: HashMap<String, f32>,
+    pub values:     HashMap<String, f32>,
     /// String to Transform map (complex nested type)
     pub transforms: HashMap<String, Transform>,
 }
@@ -152,8 +152,8 @@ impl Default for SimpleTestEnum {
 #[derive(Component, Default, Reflect)]
 #[reflect(Component, FromReflect)]
 struct TestStructNoSerDe {
-    pub value: f32,
-    pub name: String,
+    pub value:   f32,
+    pub name:    String,
     pub enabled: bool,
 }
 
@@ -172,14 +172,14 @@ enum TestEnumWithSerDe {
     AlsoSpecial(String, u32),
     /// Struct variant with named fields
     Custom {
-        name: String,
-        value: f32,
+        name:    String,
+        value:   f32,
         enabled: bool,
     },
     /// basic nested example
     Nested {
         nested_config: NestedConfigEnum,
-        other_field: String,
+        other_field:   String,
     },
 }
 
@@ -248,9 +248,9 @@ enum TestVariantChainEnum {
 #[derive(Default, Reflect, Serialize, Deserialize)]
 struct MiddleStruct {
     /// Regular field with no special requirements
-    some_field: String,
+    some_field:  String,
     /// Another regular field
-    some_value: f32,
+    some_value:  f32,
     /// Nested enum that will require variant selection
     nested_enum: BottomEnum,
 }
@@ -261,7 +261,7 @@ enum BottomEnum {
     VariantA(u32),
     VariantB {
         value: f32,
-        name: String,
+        name:  String,
     },
     #[default]
     VariantC,
@@ -298,7 +298,7 @@ struct TestArrayField {
     /// Fixed-size array field
     pub vertices: [Vec2; 3],
     /// Another array field
-    pub values: [f32; 4],
+    pub values:   [f32; 4],
 }
 
 /// Test component with array of Transforms
@@ -314,7 +314,7 @@ struct TestArrayTransforms {
 #[reflect(Component, Serialize, Deserialize)]
 struct TestTupleField {
     /// Tuple field with two elements
-    pub coords: (f32, f32),
+    pub coords:    (f32, f32),
     /// Tuple field with three elements
     pub color_rgb: (u8, u8, u8),
 }
@@ -331,7 +331,7 @@ struct TestComplexTuple {
     /// Tuple with complex types that should recurse
     pub complex_tuple: (Transform, Vec3),
     /// Nested tuple with both simple and complex types
-    pub nested_tuple: (Vec2, (f32, String)),
+    pub nested_tuple:  (Vec2, (f32, String)),
 }
 
 /// Core type with mixed mutability for `mutation_status_reason` testing
@@ -391,7 +391,7 @@ enum TestMixedMutabilityEnum {
     WithMixed(TestMixedMutabilityCore),
     /// Variant with multiple fields including mixed
     Multiple {
-        name: String,
+        name:  String,
         mixed: TestMixedMutabilityCore,
         value: f32,
     },
@@ -434,7 +434,7 @@ impl Default for TestComplexTuple {
     fn default() -> Self {
         Self {
             complex_tuple: (Transform::default(), Vec3::ZERO),
-            nested_tuple: (Vec2::ZERO, (0.0, String::new())),
+            nested_tuple:  (Vec2::ZERO, (0.0, String::new())),
         }
     }
 }
@@ -444,13 +444,13 @@ impl Default for TestComplexTuple {
 #[reflect(Component, Serialize, Deserialize)]
 struct TestComplexComponent {
     /// Nested struct field (will have .transform.translation.x paths)
-    pub transform: Transform,
+    pub transform:      Transform,
     /// Enum field
-    pub mode: TestEnumWithSerDe,
+    pub mode:           TestEnumWithSerDe,
     /// Array field
-    pub points: [Vec3; 2],
+    pub points:         [Vec3; 2],
     /// Tuple field
-    pub range: (f32, f32),
+    pub range:          (f32, f32),
     /// Option field
     pub optional_value: Option<f32>,
 }
@@ -462,25 +462,25 @@ struct TestCollectionComponent {
     /// Vec<Transform> - should trigger `ListMutationBuilder` with complex recursion
     pub transform_list: Vec<Transform>,
     /// `HashSet`<TestStructWithSerDe> - should trigger `SetMutationBuilder` with complex recursion
-    pub struct_set: HashSet<TestStructWithSerDe>,
+    pub struct_set:     HashSet<TestStructWithSerDe>,
 }
 
 impl Default for TestCollectionComponent {
     fn default() -> Self {
         let mut struct_set = HashSet::new();
         struct_set.insert(TestStructWithSerDe {
-            value: 42,
-            name: "first_struct".to_string(),
+            value:   42,
+            name:    "first_struct".to_string(),
             enabled: true,
         });
         struct_set.insert(TestStructWithSerDe {
-            value: 99,
-            name: "second_struct".to_string(),
+            value:   99,
+            name:    "second_struct".to_string(),
             enabled: false,
         });
         struct_set.insert(TestStructWithSerDe {
-            value: 123,
-            name: "third_struct".to_string(),
+            value:   123,
+            name:    "third_struct".to_string(),
             enabled: true,
         });
 
@@ -601,8 +601,8 @@ fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) 
 
     let mut image = Image::new_fill(
         bevy::render::render_resource::Extent3d {
-            width: size,
-            height: size * 6, // Stack 6 faces vertically
+            width:                 size,
+            height:                size * 6, // Stack 6 faces vertically
             depth_or_array_layers: 1,
         },
         bevy::render::render_resource::TextureDimension::D2,
@@ -623,9 +623,9 @@ fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) 
     // Spawn an entity with Skybox for testing mutations
     commands.spawn((
         Skybox {
-            image: image_handle,
+            image:      image_handle,
             brightness: 1000.0,
-            rotation: Quat::IDENTITY,
+            rotation:   Quat::IDENTITY,
         },
         Name::new("SkyboxTestEntity"),
     ));
@@ -687,8 +687,8 @@ fn spawn_transform_entities(commands: &mut Commands) {
     commands.spawn((
         Transform {
             translation: Vec3::new(10.0, 20.0, 30.0),
-            rotation: Quat::from_rotation_y(std::f32::consts::PI / 4.0),
-            scale: Vec3::new(0.5, 1.5, 2.0),
+            rotation:    Quat::from_rotation_y(std::f32::consts::PI / 4.0),
+            scale:       Vec3::new(0.5, 1.5, 2.0),
         },
         Name::new("ComplexTransformEntity"),
     ));
@@ -700,8 +700,8 @@ fn spawn_transform_entities(commands: &mut Commands) {
         Visibility::default(),
         bevy::render::view::visibility::VisibilityRange {
             start_margin: 0.0..10.0,
-            end_margin: 90.0..100.0,
-            use_aabb: false,
+            end_margin:   90.0..100.0,
+            use_aabb:     false,
         },
     ));
 }
@@ -790,12 +790,12 @@ fn spawn_visual_entities(commands: &mut Commands) {
     // Entity with DistanceFog for testing mutations
     commands.spawn((
         bevy::pbr::DistanceFog {
-            color: Color::srgba(0.35, 0.48, 0.66, 1.0),
-            directional_light_color: Color::srgba(1.0, 0.95, 0.85, 0.5),
+            color:                      Color::srgba(0.35, 0.48, 0.66, 1.0),
+            directional_light_color:    Color::srgba(1.0, 0.95, 0.85, 0.5),
             directional_light_exponent: 8.0,
-            falloff: bevy::pbr::FogFalloff::Linear {
+            falloff:                    bevy::pbr::FogFalloff::Linear {
                 start: 5.0,
-                end: 20.0,
+                end:   20.0,
             },
         },
         Name::new("DistanceFogTestEntity"),
@@ -840,7 +840,7 @@ fn spawn_test_component_entities(commands: &mut Commands) {
                 Vec2::new(1.0, 0.0),
                 Vec2::new(0.5, 1.0),
             ],
-            values: [1.0, 2.0, 3.0, 4.0],
+            values:   [1.0, 2.0, 3.0, 4.0],
         },
         Name::new("TestArrayFieldEntity"),
     ));
@@ -848,7 +848,7 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     // Entity with TestTupleField component
     commands.spawn((
         TestTupleField {
-            coords: (10.0, 20.0),
+            coords:    (10.0, 20.0),
             color_rgb: (255, 128, 64),
         },
         Name::new("TestTupleFieldEntity"),
@@ -867,7 +867,7 @@ fn spawn_test_component_entities(commands: &mut Commands) {
                 Transform::from_xyz(10.0, 20.0, 30.0),
                 Vec3::new(1.0, 2.0, 3.0),
             ),
-            nested_tuple: (Vec2::new(5.0, 10.0), (3.0, "nested".to_string())),
+            nested_tuple:  (Vec2::new(5.0, 10.0), (3.0, "nested".to_string())),
         },
         Name::new("TestComplexTupleEntity"),
     ));
@@ -925,14 +925,14 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     // Entity with TestComplexComponent using the struct variant
     commands.spawn((
         TestComplexComponent {
-            transform: Transform::from_xyz(5.0, 10.0, 15.0),
-            mode: TestEnumWithSerDe::Custom {
-                name: "test_custom".to_string(),
-                value: 42.5,
+            transform:      Transform::from_xyz(5.0, 10.0, 15.0),
+            mode:           TestEnumWithSerDe::Custom {
+                name:    "test_custom".to_string(),
+                value:   42.5,
                 enabled: true,
             },
-            points: [Vec3::new(1.0, 2.0, 3.0), Vec3::new(4.0, 5.0, 6.0)],
-            range: (0.0, 100.0),
+            points:         [Vec3::new(1.0, 2.0, 3.0), Vec3::new(4.0, 5.0, 6.0)],
+            range:          (0.0, 100.0),
             optional_value: Some(50.0),
         },
         Name::new("TestComplexEntity"),
@@ -951,8 +951,8 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     commands.spawn((
         TestVariantChainEnum::WithMiddleStruct {
             middle_struct: MiddleStruct {
-                some_field: "test_field".to_string(),
-                some_value: 42.5,
+                some_field:  "test_field".to_string(),
+                some_value:  42.5,
                 nested_enum: BottomEnum::VariantA(999),
             },
         },
@@ -984,8 +984,8 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     // Entity with TestStructNoSerDe
     commands.spawn((
         TestStructNoSerDe {
-            value: 123.45,
-            name: "test_struct".to_string(),
+            value:   123.45,
+            name:    "test_struct".to_string(),
             enabled: true,
         },
         Name::new("TestStructNoSerDeEntity"),
@@ -1054,7 +1054,7 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     commands.spawn((
         SimpleNestedEnum::WithStruct {
             position: Vec3::new(1.0, 2.0, 3.0),
-            scale: 2.5,
+            scale:    2.5,
         },
         Name::new("SimpleNestedEnumStructEntity"),
     ));
@@ -1089,17 +1089,17 @@ fn spawn_test_component_entities(commands: &mut Commands) {
 
     // Helper function to create a TestMixedMutabilityCore instance
     let create_mixed_core = |suffix: &str| TestMixedMutabilityCore {
-        mutable_string: format!("test_string_{suffix}"),
-        mutable_float: 42.5,
-        not_mutable_arc: Arc::new(format!("arc_string_{suffix}")),
+        mutable_string:           format!("test_string_{suffix}"),
+        mutable_float:            42.5,
+        not_mutable_arc:          Arc::new(format!("arc_string_{suffix}")),
         partially_mutable_nested: TestPartiallyMutableNested {
-            nested_mutable_value: 100.0,
-            nested_mutable_name: format!("nested_name_{suffix}"),
+            nested_mutable_value:   100.0,
+            nested_mutable_name:    format!("nested_name_{suffix}"),
             nested_not_mutable_arc: Arc::new(vec![1, 2, 3, 4, 5]),
-            deeply_nested: TestDeeplyNested {
-                integer_value: 999,
-                vec_f32_list: vec![1.0, 2.0, 3.0],
-                arc_string: Arc::new(format!("deep_string_{suffix}")),
+            deeply_nested:          TestDeeplyNested {
+                integer_value:  999,
+                vec_f32_list:   vec![1.0, 2.0, 3.0],
+                arc_string:     Arc::new(format!("deep_string_{suffix}")),
                 map_string_f32: {
                     let mut map = HashMap::new();
                     map.insert("key1".to_string(), 10.5);
@@ -1108,10 +1108,10 @@ fn spawn_test_component_entities(commands: &mut Commands) {
                 },
             },
         },
-        mutable_transform: Transform::from_xyz(1.0, 2.0, 3.0),
-        not_mutable_struct: TestStructNoSerDe {
-            value: 77.7,
-            name: format!("not_mutable_{suffix}"),
+        mutable_transform:        Transform::from_xyz(1.0, 2.0, 3.0),
+        not_mutable_struct:       TestStructNoSerDe {
+            value:   77.7,
+            name:    format!("not_mutable_{suffix}"),
             enabled: false,
         },
     };
@@ -1145,7 +1145,7 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     // Entity with TestMixedMutabilityEnum (Enum parent)
     commands.spawn((
         TestMixedMutabilityEnum::Multiple {
-            name: "enum_multiple".to_string(),
+            name:  "enum_multiple".to_string(),
             mixed: create_mixed_core("enum"),
             value: 123.45,
         },
@@ -1191,7 +1191,7 @@ fn spawn_render_entities(commands: &mut Commands) {
     commands.spawn((
         ClusteredDecal {
             image: Handle::default(),
-            tag: 1,
+            tag:   1,
         },
         Name::new("ClusteredDecalTestEntity"),
     ));
