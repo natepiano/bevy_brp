@@ -54,7 +54,7 @@ jobs:
       - name: Install and cache Linux dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: libudev-dev libasound2-dev pkg-config clang
+          packages: libudev-dev libasound2-dev pkg-config clang libwayland-dev libxkbcommon-dev
           version: 1.0
 
       - name: Cache Rust dependencies
@@ -91,7 +91,7 @@ jobs:
       - name: Install and cache Linux dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: libudev-dev libasound2-dev pkg-config clang
+          packages: libudev-dev libasound2-dev pkg-config clang libwayland-dev libxkbcommon-dev
           version: 1.0
 
       - name: Cache Rust dependencies
@@ -131,7 +131,7 @@ jobs:
       - name: Install and cache Linux dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: libudev-dev libasound2-dev pkg-config clang
+          packages: libudev-dev libasound2-dev pkg-config clang libwayland-dev libxkbcommon-dev
           version: 1.0
 
       - name: Cache Rust dependencies
