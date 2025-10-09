@@ -207,7 +207,7 @@ mcp__brp__bevy_insert with parameters:
 
 **STEP 1**: Attempt spawn with multiple incorrect formats:
 ```json
-mcp__brp__bevy_spawn with parameters:
+mcp__brp__world_spawn_entity with parameters:
 {
   "components": {
     "bevy_transform::components::transform::Transform": {
@@ -277,7 +277,7 @@ mcp__brp__bevy_insert with parameters:
 
 **STEP 1**: Attempt to spawn Visibility (lacks Serialize/Deserialize):
 ```json
-mcp__brp__bevy_spawn with parameters:
+mcp__brp__world_spawn_entity with parameters:
 {
   "components": {
     "bevy_render::view::visibility::Visibility": "Visible"

@@ -49,7 +49,7 @@
       "mcp__brp__bevy_remove",
       "mcp__brp__bevy_remove_resource",
       "mcp__brp__bevy_rpc_discover",
-      "mcp__brp__bevy_spawn",
+      "mcp__brp__world_spawn_entity",
       "mcp__brp__brp_delete_logs",
       "mcp__brp__brp_execute",
       "mcp__brp__brp_extras_screenshot",

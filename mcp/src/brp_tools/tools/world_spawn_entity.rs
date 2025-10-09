@@ -1,4 +1,4 @@
-//! `bevy/spawn` tool - Spawn entities with components
+//! `world.spawn_entity` tool - Spawn entities with components
 
 use std::collections::HashMap;
 
@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/spawn` tool
+/// Parameters for the `world.spawn_entity` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct SpawnParams {
     /// Object containing component data to spawn with. Keys are component types, values are
@@ -22,7 +22,7 @@ pub struct SpawnParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/spawn` tool
+/// Result for the `world.spawn_entity` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result(enhanced_errors = true)]
 pub struct SpawnResult {

@@ -20,7 +20,7 @@ Validate that the `test_app` binary works correctly with BRP operations, testing
 - Confirm bevy_brp_extras methods ARE listed (since app has extras plugin)
 
 ### 3. Basic Spawn Operation
-- Execute `mcp__brp__bevy_spawn` with simple Transform component:
+- Execute `mcp__brp__world_spawn_entity` with simple Transform component:
   ```json
   {
     "components": {

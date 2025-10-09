@@ -14,18 +14,6 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 
 ## Entity/Component Methods
 
-### 2. `bevy/spawn` → `world.spawn_entity`
-
-- [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevySpawn` → `WorldSpawnEntity`
-- [ ] `mcp/src/tool/tool_name.rs` - Update `#[brp_tool(brp_method = "world.spawn_entity")]`
-- [ ] Rename `mcp/src/brp_tools/tools/bevy_spawn.rs` → `world_spawn_entity.rs`
-- [ ] Update file header comment and struct docs in `world_spawn_entity.rs`
-- [ ] Update `mcp/src/brp_tools/tools/mod.rs` imports
-- [ ] Rename `mcp/help_text/bevy_spawn.txt` → `world_spawn_entity.txt`
-- [ ] Update description text in `world_spawn_entity.txt`
-- [ ] `mcp/help_text/brp_type_guide.txt` - Update cross-references
-- [ ] `mcp/help_text/brp_all_type_guides.txt` - Update cross-references
-
 ### 3. `bevy/destroy` → `world.despawn_entity`
 
 - [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyDestroy` → `WorldDespawnEntity`

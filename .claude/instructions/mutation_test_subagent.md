@@ -269,7 +269,7 @@ The assignment gives you a simple array of type names. For EACH type name, you M
   - Check `path_info.mutation_status` before testing (skip if `"not_mutable"`)
 
 - **`guide.supported_operations`**: Which BRP methods work with this type
-  - Check before calling: If "spawn" not in list, don't call bevy_spawn
+  - Check before calling: If "spawn" not in list, don't call world_spawn_entity
   - If "mutate" not in list, don't call bevy_mutate_component
 </ParseAssignmentData>
 

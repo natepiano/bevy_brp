@@ -8,8 +8,8 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
 ## Test Steps
 
 ### 1. Setup - Spawn Test Entity
-- Execute `mcp__brp__bevy_spawn` with Transform and Name components
-- Use format: 
+- Execute `mcp__brp__world_spawn_entity` with Transform and Name components
+- Use format:
   ```json
   {
     "bevy_transform::components::transform::Transform": {
@@ -29,7 +29,7 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
   - strict: `false` (or omit for default)
   - port: 20115
 - **Expected**: Success response with errors object containing the invalid component
-- **Verify**: 
+- **Verify**:
   - Response has `errors` field with entry for "NonExistentComponent"
   - Message shows "Retrieved 0 components" (component_count: 0)
 
@@ -40,7 +40,7 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
   - strict: `false`
   - port: 20115
 - **Expected**: Success response with Transform data and error for invalid component
-- **Verify**: 
+- **Verify**:
   - Response contains Transform component data
   - Response has `errors` field with entry for "InvalidComponent::DoesNotExist"
   - Message shows "Retrieved 1 components" (component_count: 1)
@@ -70,7 +70,7 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
   - strict: `true`
   - port: 20115
 - **Expected**: Success response with both components
-- **Verify**: 
+- **Verify**:
   - Response contains Transform component data matching spawned values
   - Response contains Name component with "StrictTestEntity"
   - No errors field in response

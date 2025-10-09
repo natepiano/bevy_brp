@@ -33,11 +33,11 @@ pub use tools::bevy_remove::{RemoveParams, RemoveResult};
 pub use tools::bevy_remove_resource::{RemoveResourceParams, RemoveResourceResult};
 pub use tools::bevy_reparent::{ReparentParams, ReparentResult};
 pub use tools::bevy_rpc_discover::{RpcDiscoverParams, RpcDiscoverResult};
-pub use tools::bevy_spawn::{SpawnParams, SpawnResult};
 pub use tools::world_get_resources::{GetResourceParams, GetResourceResult};
 pub use tools::world_list_components::{ListParams, ListResult};
 pub use tools::world_list_resources::{ListResourcesParams, ListResourcesResult};
 pub use tools::world_query::{QueryParams, QueryResult};
+pub use tools::world_spawn_entity::{SpawnParams, SpawnResult};
 //
 // Export special case tools that don't follow the standard pattern
 pub use tools::brp_execute::{BrpExecute, ExecuteParams};

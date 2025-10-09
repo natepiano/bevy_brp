@@ -47,9 +47,9 @@ pub enum CallInfo {
     },
     /// BRP tool execution (calls Bevy Remote Protocol)
     Brp {
-        /// The MCP tool name (e.g., "`bevy_spawn`")
+        /// The MCP tool name (e.g., "`world_spawn_entity`")
         mcp_tool: String,
-        /// The BRP method name (e.g., "bevy/spawn")
+        /// The BRP method name (e.g., "world.spawn_entity")
         brp_method: String,
     },
 }
@@ -175,13 +175,13 @@ pub enum ToolName {
         result = "QueryResult"
     )]
     WorldQuery,
-    /// `bevy_spawn` - Spawn entities with components
+    /// `world_spawn_entity` - Spawn entities with components
     #[brp_tool(
-        brp_method = "bevy/spawn",
+        brp_method = "world.spawn_entity",
         params = "SpawnParams",
         result = "SpawnResult"
     )]
-    BevySpawn,
+    WorldSpawnEntity,
     /// `bevy_registry_schema` - Get type schemas
     #[brp_tool(
         brp_method = "bevy/registry/schema",
@@ -375,7 +375,7 @@ impl ToolName {
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
-            Self::BevySpawn => Annotation::new(
+            Self::WorldSpawnEntity => Annotation::new(
                 "Spawn Entity",
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
@@ -529,7 +529,7 @@ impl ToolName {
             }
             Self::BevyReparent => Some(parameters::build_parameters_from::<ReparentParams>),
             Self::BevyRpcDiscover => Some(parameters::build_parameters_from::<RpcDiscoverParams>),
-            Self::BevySpawn => Some(parameters::build_parameters_from::<SpawnParams>),
+            Self::WorldSpawnEntity => Some(parameters::build_parameters_from::<SpawnParams>),
             Self::BrpExecute => Some(parameters::build_parameters_from::<ExecuteParams>),
             Self::BrpExtrasScreenshot => {
                 Some(parameters::build_parameters_from::<ScreenshotParams>)
@@ -590,7 +590,7 @@ impl ToolName {
             Self::BevyRemoveResource => Arc::new(BevyRemoveResource),
             Self::BevyReparent => Arc::new(BevyReparent),
             Self::BevyRpcDiscover => Arc::new(BevyRpcDiscover),
-            Self::BevySpawn => Arc::new(BevySpawn),
+            Self::WorldSpawnEntity => Arc::new(WorldSpawnEntity),
             Self::BrpExtrasScreenshot => Arc::new(BrpExtrasScreenshot),
             Self::BrpExtrasSendKeys => Arc::new(BrpExtrasSendKeys),
             Self::BrpExtrasSetWindowTitle => Arc::new(BrpExtrasSetWindowTitle),

@@ -8,7 +8,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 ## Test Steps
 
 ### 1. Entity Spawning
-- Execute `mcp__brp__bevy_spawn` with Transform component
+- Execute `mcp__brp__world_spawn_entity` with Transform component
 - Verify new entity ID is returned
 - Use simple Transform format: `{"translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1]}`
 

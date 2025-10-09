@@ -1,4 +1,4 @@
-Spawns entities with components via bevy/spawn BRP method. Useful for creating game objects, testing configurations, and building editors.
+Spawns entities with components via world.spawn_entity BRP method. Useful for creating game objects, testing configurations, and building editors.
 
 Example:
 ```json
