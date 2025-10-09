@@ -18,17 +18,17 @@ use bevy_brp_extras::BrpExtrasPlugin;
 #[derive(Resource, Default)]
 struct KeyboardInputHistory {
     /// Currently pressed keys
-    active_keys:      Vec<String>,
+    active_keys: Vec<String>,
     /// Last pressed keys (for display after release)
-    last_keys:        Vec<String>,
+    last_keys: Vec<String>,
     /// Active modifier keys
-    modifiers:        Vec<String>,
+    modifiers: Vec<String>,
     /// Time when the last key was pressed
-    press_time:       Option<Instant>,
+    press_time: Option<Instant>,
     /// Duration between press and release in milliseconds
     last_duration_ms: Option<u64>,
     /// Whether the last key press has completed
-    completed:        bool,
+    completed: bool,
 }
 
 /// Marker component for the keyboard input display text
@@ -45,7 +45,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
             primary_window: Some(bevy::window::Window {
                 title: format!("BRP Extras Test - Port {port}"),
-                resolution: (800.0, 600.0).into(),
+                resolution: (800, 600).into(),
                 ..default()
             }),
             ..default()
@@ -79,8 +79,8 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
     commands.spawn((
         Transform {
             translation: Vec3::new(10.0, 20.0, 30.0),
-            rotation:    Quat::from_rotation_y(std::f32::consts::PI / 4.0),
-            scale:       Vec3::new(0.5, 1.5, 2.0),
+            rotation: Quat::from_rotation_y(std::f32::consts::PI / 4.0),
+            scale: Vec3::new(0.5, 1.5, 2.0),
         },
         Name::new("ComplexTransformEntity"),
     ));
@@ -146,7 +146,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
 /// Track keyboard input events
 #[allow(clippy::assigning_clones)] // clone_from doesn't work due to borrow checker
 fn track_keyboard_input(
-    mut events: EventReader<KeyboardInput>,
+    mut events: MessageReader<KeyboardInput>,
     mut history: ResMut<KeyboardInputHistory>,
 ) {
     for event in events.read() {

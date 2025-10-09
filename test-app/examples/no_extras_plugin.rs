@@ -20,7 +20,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
             primary_window: Some(bevy::window::Window {
                 title: format!("BRP No Plugin Test - Port {FIXED_PORT}"),
-                resolution: (800.0, 600.0).into(),
+                resolution: (800, 600).into(),
                 focused: false,
                 position: bevy::window::WindowPosition::Centered(
                     bevy::window::MonitorSelection::Primary,

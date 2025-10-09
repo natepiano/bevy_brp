@@ -14,7 +14,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: format!("Test Extras Plugin App - BRP Port {port}"),
-                resolution: (400.0, 300.0).into(),
+                resolution: (400, 300).into(),
                 focused: false,
                 position: bevy::window::WindowPosition::Centered(
                     bevy::window::MonitorSelection::Primary,

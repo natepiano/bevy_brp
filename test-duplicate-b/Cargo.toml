@@ -3,7 +3,7 @@
 [package]
 edition = "2024"
 name    = "test-app-b"
-version = "0.1.0"
+version = "0.3.0"
 
 [[bin]]
 name = "test_duplicate_app"
@@ -14,7 +14,7 @@ name = "extras_plugin_duplicate"
 path = "examples/extras_plugin_duplicate.rs"
 
 [dependencies]
-bevy = { version = "0.16.1", default-features = false, features = [
+bevy = { workspace = true, default-features = false, features = [
   "bevy_remote",
 ] }
 bevy_brp_extras = { path = "../extras" }

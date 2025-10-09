@@ -16,7 +16,7 @@ version = "0.3.0"
 
 [dependencies]
 # Extras needs many Bevy features
-bevy = { workspace = true, features = [
+bevy = { version = "0.17.2", features = [
   "bevy_core_pipeline",
   "bevy_log",
   "bevy_remote",

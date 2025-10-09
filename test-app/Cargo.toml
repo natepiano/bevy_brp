@@ -2,7 +2,7 @@
 edition = "2024"
 name    = "bevy_brp_test_apps"
 publish = false                # Never publish test apps
-version = "0.1.0"
+version = "0.3.0"
 
 # Disable automatic discovery to ensure explicit control
 autobins     = false
@@ -23,12 +23,12 @@ name = "no_extras_plugin"
 path = "examples/no_extras_plugin.rs"
 
 
-
 [dependencies]
 bevy_brp_extras = { path = "../extras" }
 bevy_mesh       = { workspace = true }
 bevy_winit      = { workspace = true }
 serde           = { workspace = true }
+
 # Test apps use same features as extras
 bevy = { workspace = true, features = [
   "bevy_core_pipeline",

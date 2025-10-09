@@ -35,7 +35,7 @@ pub fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult {
 /// System to handle deferred shutdown
 pub fn deferred_shutdown_system(
     pending: Option<ResMut<PendingShutdown>>,
-    mut exit: EventWriter<bevy::app::AppExit>,
+    mut exit: MessageWriter<bevy::app::AppExit>,
 ) {
     if let Some(mut shutdown) = pending {
         shutdown.frames_remaining = shutdown.frames_remaining.saturating_sub(1);
