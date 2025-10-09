@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implements "do no harm" principle - no trace log files created until explicitly enabled via `brp_set_tracing_level` tool
 - `brp_type_guide` tool for type discovery using registry schema introspection
 - Optional `port` parameter to `brp_launch_bevy_app` and `brp_launch_bevy_example` for custom BRP port support (requires bevy_brp_extras)
-- Configurable timeouts for watch operations (`bevy_get_watch` and `bevy_list_watch`) with `timeout_seconds` parameter
+- Configurable timeouts for watch operations (`bevy_get_watch` and `world_list_components_watch`) with `timeout_seconds` parameter
 - Trace logging integration for watch operations controlled by tracing level
 - Timeout status tracking in `brp_list_active_watches` output
 - Optional `verbose` parameter to `brp_list_logs` (default: false) for minimal output

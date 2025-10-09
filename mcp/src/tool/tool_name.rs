@@ -200,9 +200,9 @@ pub enum ToolName {
     /// `bevy_get_watch` - Watch entity component changes
     #[brp_tool(brp_method = "bevy/get+watch")]
     BevyGetWatch,
-    /// `bevy_list_watch` - Watch entity component list changes
-    #[brp_tool(brp_method = "bevy/list+watch")]
-    BevyListWatch,
+    /// `world_list_components_watch` - Watch entity component list changes
+    #[brp_tool(brp_method = "world.list_components+watch")]
+    WorldListComponentsWatch,
 
     // BRP Execute Tool
     /// `brp_execute` - Execute arbitrary BRP method
@@ -405,7 +405,7 @@ impl ToolName {
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            Self::BevyListWatch => Annotation::new(
+            Self::WorldListComponentsWatch => Annotation::new(
                 "Watch Component List",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
@@ -539,7 +539,9 @@ impl ToolName {
                 Some(parameters::build_parameters_from::<SetWindowTitleParams>)
             }
             Self::BevyGetWatch => Some(parameters::build_parameters_from::<GetWatchParams>),
-            Self::BevyListWatch => Some(parameters::build_parameters_from::<ListWatchParams>),
+            Self::WorldListComponentsWatch => {
+                Some(parameters::build_parameters_from::<ListWatchParams>)
+            }
             Self::BrpDeleteLogs => Some(parameters::build_parameters_from::<DeleteLogsParams>),
 
             // this lot has no parametrers
@@ -596,7 +598,7 @@ impl ToolName {
             // Special tools with their own implementations
             Self::BrpExecute => Arc::new(BrpExecute),
             Self::BevyGetWatch => Arc::new(BevyGetWatch),
-            Self::BevyListWatch => Arc::new(BevyListWatch),
+            Self::WorldListComponentsWatch => Arc::new(BevyListWatch),
             Self::BrpListActiveWatches => Arc::new(BrpListActiveWatches),
             Self::BrpStopWatch => Arc::new(BrpStopWatch),
             Self::BrpTypeGuide => Arc::new(BrpTypeGuide),

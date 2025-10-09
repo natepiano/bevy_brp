@@ -19,9 +19,9 @@ Validate entity watch functionality including component monitoring, list watchin
 - Verify log captures component updates
 
 ### 2. Test List Watch Component Changes
-- Execute `mcp__brp__bevy_list_watch` on the same entity from step 1
+- Execute `mcp__brp__world_list_components_watch` on the same entity from step 1
 - Remove Transform component using `mcp__brp__bevy_remove` with components array `["bevy_transform::components::transform::Transform"]`
-- Read list watch log file and verify COMPONENT_UPDATE shows Transform in removed array
+- Read list watch log file and verify COMPONENT_UPDATE shows Transform in removed arrayevy
 - Add Transform component back using `mcp__brp__bevy_insert` with Transform data
 - Read list watch log file again and verify COMPONENT_UPDATE shows Transform in added array
 - Stop this watch using `mcp__brp__brp_stop_watch`

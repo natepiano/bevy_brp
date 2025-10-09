@@ -8,22 +8,11 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 |----------|---------------|---------------|-------------|
 | Entity/Component | `bevy/*` | `world.*` | Pluralization, `destroy`→`despawn` |
 | Resource | `bevy/*_resource` | `world.*_resources` | Pluralization |
-| Watch | `bevy/*+watch` | `world.*+watch` | Follows component naming |
 | Registry | `registry/schema` | `registry.schema` | Separator change `/`→`.` |
 
 ---
 
 ## Entity/Component Methods
-
-### 1. `bevy/query` → `world.query`
-
-- [x] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyQuery` → `WorldQuery`
-- [x] `mcp/src/tool/tool_name.rs` - Update `#[brp_tool(brp_method = "world.query")]`
-- [x] Rename `mcp/src/brp_tools/tools/bevy_query.rs` → `world_query.rs`
-- [x] Update file header comment and struct docs in `world_query.rs`
-- [x] Update `mcp/src/brp_tools/tools/mod.rs` imports
-- [x] Rename `mcp/help_text/bevy_query.txt` → `world_query.txt`
-- [x] Update description text in `world_query.txt`
 
 ### 2. `bevy/spawn` → `world.spawn_entity`
 
@@ -90,18 +79,6 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 - [ ] Rename `mcp/help_text/bevy_remove.txt` → `world_remove_components.txt`
 - [ ] Update description text in `world_remove_components.txt`
 
-### 8. `bevy/list` → `world.list_components`
-
-- [x] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyList` → `WorldListComponents`
-- [x] `mcp/src/tool/tool_name.rs` - Update `#[brp_tool(brp_method = "world.list_components")]`
-- [x] Rename `mcp/src/brp_tools/tools/bevy_list.rs` → `world_list_components.rs`
-- [x] Update file header comment and struct docs in `world_list_components.rs`
-- [x] Update `mcp/src/brp_tools/tools/mod.rs` imports
-- [x] Rename `mcp/help_text/bevy_list.txt` → `world_list_components.txt`
-- [x] Update description text in `world_list_components.txt`
-- [x] `mcp/src/brp_tools/brp_type_guide/all_types_tool.rs` - Update `bevy/list` references (2 places)
-- [x] `mcp/help_text/brp_all_type_guides.txt` - Update cross-references
-
 ### 9. `bevy/mutate` → `world.mutate_components`
 
 - [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyMutateComponent` → `WorldMutateComponents`
@@ -125,16 +102,6 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 - [ ] Update `mcp/src/brp_tools/watch_tools/mod.rs` imports
 - [ ] Rename `mcp/help_text/bevy_get_watch.txt` → `world_get_components_watch.txt`
 - [ ] Update description text in `world_get_components_watch.txt`
-
-### 11. `bevy/list+watch` → `world.list_components+watch`
-
-- [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyListWatch` → `WorldListComponentsWatch`
-- [ ] `mcp/src/tool/tool_name.rs` - Update `#[brp_tool(brp_method = "world.list_components+watch")]`
-- [ ] Rename `mcp/src/brp_tools/watch_tools/bevy_list_watch.rs` → `world_list_components_watch.rs`
-- [ ] Update file header comment and struct docs in `world_list_components_watch.rs`
-- [ ] Update `mcp/src/brp_tools/watch_tools/mod.rs` imports
-- [ ] Rename `mcp/help_text/bevy_list_watch.txt` → `world_list_components_watch.txt`
-- [ ] Update description text in `world_list_components_watch.txt`
 
 ---
 
@@ -213,13 +180,10 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 
 ### ✅ File Naming - DECIDED
 **Decision:** Rename all `.rs` and `.txt` files to match new method names
-- Implementation files: `bevy_query.rs` → `world_query.rs`
-- Help text files: `bevy_query.txt` → `world_query.txt`
-- Already completed: `bevy_query.rs` → `world_query.rs` ✓
+
 
 ### ✅ Enum Variant Naming - DECIDED
 **Decision:** Rename all enum variants to match new method names using `World*`/`Registry*` prefixes
-- `BevyQuery` → `WorldQuery`
 - `BevySpawn` → `WorldSpawnEntity`
 - `BevyDestroy` → `WorldDespawnEntity`
 - `BevyGetResource` → `WorldGetResources`

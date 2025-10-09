@@ -41,7 +41,7 @@
       "mcp__brp__bevy_insert_resource",
       "mcp__brp__world_list_components",
       "mcp__brp__bevy_list_resources",
-      "mcp__brp__bevy_list_watch",
+      "mcp__brp__world_list_components_watch",
       "mcp__brp__bevy_mutate_component",
       "mcp__brp__bevy_mutate_resource",
       "mcp__brp__world_query",
