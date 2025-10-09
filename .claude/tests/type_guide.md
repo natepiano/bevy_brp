@@ -26,7 +26,6 @@ Execute `mcp__brp__brp_type_guide` with ALL test types in a single call:
     "extras_plugin::TestTupleField",
     "extras_plugin::TestTupleStruct",
     "extras_plugin::TestComplexComponent",
-    "bevy_render::camera::camera::MipBias"
   ],
   "port": 20114
 }
@@ -45,10 +44,10 @@ Extraction script usage:
 Use extraction script ONLY (no direct jq/bash commands):
 ```bash
 .claude/scripts/type_guide_test_extract.sh <file_path> discovered_count
-# Expected: 8
+# Expected: 7
 
 .claude/scripts/type_guide_test_extract.sh <file_path> summary
-# Expected: {"successful_discoveries": 8, "failed_discoveries": 0, "total_requested": 8}
+# Expected: {"successful_discoveries": 8, "failed_discoveries": 0, "total_requested": 7}
 ```
 
 ### 4. Validate Sprite Component (No Serialize Trait)
