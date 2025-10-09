@@ -331,7 +331,7 @@ For each type name string in your `type_names` array:
       - **BEFORE testing each mutation path**, check if `path_info.root_example` exists
       - **IF `root_example` EXISTS**:
         1. **First** mutate the root path (`""`) to set up the correct variant structure:
-           - Use `bevy/mutate_component` or `bevy/mutate_resource`
+           - Use `bevy/mutate_component` or `world.mutate_resources`
            - Set `path: ""`
            - Set `value` to the `root_example` value from `path_info`
         2. **Then** proceed with mutating the specific path

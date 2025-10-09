@@ -25,7 +25,7 @@ use crate::brp_tools::{
     GetComponentsWatchParams, GetParams, GetResourcesParams, GetResourcesResult, GetResult,
     InsertParams, InsertResourceParams, InsertResourceResult, InsertResult, ListComponentsParams,
     ListComponentsResult, ListComponentsWatchParams, ListResourcesParams, ListResourcesResult,
-    MutateComponentParams, MutateComponentResult, MutateResourceParams, MutateResourceResult,
+    MutateComponentParams, MutateComponentResult, MutateResourcesParams, MutateResourcesResult,
     QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult, RemoveParams,
     RemoveResourceParams, RemoveResourceResult, RemoveResult, ReparentEntitiesParams,
     ReparentEntitiesResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
@@ -153,13 +153,14 @@ pub enum ToolName {
         result = "RemoveResourceResult"
     )]
     BevyRemoveResource,
-    /// `bevy_mutate_resource` - Mutate resource fields
+    /// `bevy_mutate_resources` - Mutate resource fields
     #[brp_tool(
-        brp_method = "bevy/mutate_resource",
-        params = "MutateResourceParams",
-        result = "MutateResourceResult"
+        brp_method = "world.mutate_resources",
+        params = "MutateResourcesParams",
+        result = "MutateResourcesResult"
     )]
-    BevyMutateResource,
+    WorldMutateResources,
+
     /// `bevy_mutate_component` - Mutate component fields
     #[brp_tool(
         brp_method = "bevy/mutate_component",
@@ -346,7 +347,7 @@ impl ToolName {
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            Self::BevyMutateResource => Annotation::new(
+            Self::WorldMutateResources => Annotation::new(
                 "Mutate Resource",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
@@ -528,8 +529,8 @@ impl ToolName {
             Self::BevyMutateComponent => {
                 Some(parameters::build_parameters_from::<MutateComponentParams>)
             }
-            Self::BevyMutateResource => {
-                Some(parameters::build_parameters_from::<MutateResourceParams>)
+            Self::WorldMutateResources => {
+                Some(parameters::build_parameters_from::<MutateResourcesParams>)
             }
             Self::WorldQuery => Some(parameters::build_parameters_from::<QueryParams>),
             Self::RegistrySchema => Some(parameters::build_parameters_from::<RegistrySchemaParams>),
@@ -597,7 +598,7 @@ impl ToolName {
             Self::WorldListComponents => Arc::new(WorldListComponents),
             Self::WorldListResources => Arc::new(WorldListResources),
             Self::BevyMutateComponent => Arc::new(BevyMutateComponent),
-            Self::BevyMutateResource => Arc::new(BevyMutateResource),
+            Self::WorldMutateResources => Arc::new(WorldMutateResources),
             Self::WorldQuery => Arc::new(WorldQuery),
             Self::RegistrySchema => Arc::new(RegistrySchema),
             Self::BevyRemove => Arc::new(BevyRemove),

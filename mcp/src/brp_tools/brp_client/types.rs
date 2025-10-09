@@ -161,7 +161,7 @@ impl TryFrom<BrpMethod> for Operation {
                 parameter_name: ParameterName::Component,
             }),
 
-            BrpMethod::BevyMutateResource => Ok(Self::Mutate {
+            BrpMethod::WorldMutateResources => Ok(Self::Mutate {
                 parameter_name: ParameterName::Resource,
             }),
 

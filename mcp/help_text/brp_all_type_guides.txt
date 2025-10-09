@@ -9,7 +9,7 @@ The tool:
 
 Returns comprehensive type information including:
 - spawn_format: Example JSON structure for world.spawn_entity, bevy/insert and bevy/insert_resource operations
-- mutation_info: Available mutation paths for bevy/mutate_component and bevy/mutate_resource operations
+- mutation_info: Available mutation paths for bevy/mutate_component and world.mutate_resources operations
 - supported_operations: Which BRP operations work with each type
 - reflection_traits: Serialization capabilities (Serialize, Deserialize, etc.)
 

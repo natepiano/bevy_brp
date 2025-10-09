@@ -3,7 +3,6 @@
 pub mod bevy_insert;
 pub mod bevy_insert_resource;
 pub mod bevy_mutate_component;
-pub mod bevy_mutate_resource;
 pub mod bevy_remove;
 pub mod bevy_remove_resource;
 pub mod brp_execute;
@@ -17,6 +16,7 @@ pub mod world_get_components;
 pub mod world_get_resources;
 pub mod world_list_components;
 pub mod world_list_resources;
+pub mod world_mutate_resources;
 pub mod world_query;
 pub mod world_reparent_entities;
 pub mod world_spawn_entity;

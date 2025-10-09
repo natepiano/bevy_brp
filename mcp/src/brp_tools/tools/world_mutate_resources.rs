@@ -1,4 +1,4 @@
-//! `bevy/mutate_resource` tool - Mutate resource fields
+//! `world.mutate_resources` tool - Mutate resource fields
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,9 +7,9 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/mutate_resource` tool
+/// Parameters for the `world.mutate_resources` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct MutateResourceParams {
+pub struct MutateResourcesParams {
     /// The fully-qualified type name of the resource to mutate
     pub resource: String,
 
@@ -26,10 +26,10 @@ pub struct MutateResourceParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/mutate_resource` tool
+/// Result for the `world.mutate_resources` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result(enhanced_errors = true)]
-pub struct MutateResourceResult {
+pub struct MutateResourcesResult {
     /// The raw BRP response data (empty for mutate)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]

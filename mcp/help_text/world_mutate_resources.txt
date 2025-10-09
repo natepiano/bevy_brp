@@ -1,4 +1,4 @@
-Mutates resource fields via bevy/mutate_resource BRP method. Updates specific fields without replacing entire resource.
+Mutates resource fields via world.mutate_resources BRP method. Updates specific fields without replacing entire resource.
 
 Path syntax:
 - Root replacement: "" (empty string to replace entire resource)
