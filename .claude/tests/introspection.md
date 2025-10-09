@@ -29,7 +29,7 @@ Validate BRP introspection capabilities including RPC discovery, schema operatio
 - Verify response format includes component count in metadata
 
 ### 4. Resource Listing
-- Execute `mcp__brp__bevy_list_resources` with port parameter
+- Execute `mcp__brp__world_list_resources` with port parameter
 - Verify response returns around 10+ registered resources
 - Check for specific resources: `ClearColor`, `Time<()>`, `Time<Real>`, `Time<Virtual>`
 - Verify response format includes resource count in metadata

@@ -1,4 +1,4 @@
-//! `bevy/list_resources` tool - List all registered resources
+//! `world.list_resources` tool - List all registered resources
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/list_resources` tool
+/// Parameters for the `world.list_resources` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ListResourcesParams {
     /// The BRP port (default: 15702)
@@ -15,7 +15,7 @@ pub struct ListResourcesParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/list_resources` tool
+/// Result for the `world.list_resources` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
 pub struct ListResourcesResult {

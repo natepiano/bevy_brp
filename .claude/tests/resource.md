@@ -18,7 +18,7 @@ For resources, apparently it doesn't matter if they have Serialize/Deserialize t
 
 ### 1. Insert Resource Test
 **STEP 1**: List available resources:
-- Tool: mcp__brp__bevy_list_resources
+- Tool: mcp__brp__world_list_resources
 - Port: {{PORT}}
 - Verify response includes both test resources:
   - `extras_plugin::TestConfigResource`

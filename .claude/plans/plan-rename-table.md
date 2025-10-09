@@ -11,6 +11,5 @@
 | `bevy/get_resource`    | `world.get_resources`         |
 | `bevy/insert_resource` | `world.insert_resources`      |
 | `bevy/remove_resource` | `world.remove_resources`      |
-| `bevy/list_resources`  | `world.list_resources`        |
 | `bevy/mutate_resource` | `world.mutate_resources`      |
 | `registry/schema`      | `registry.schema`             |

@@ -119,13 +119,13 @@ pub enum ToolName {
         result = "RemoveResult"
     )]
     BevyRemove,
-    /// `bevy_list_resources` - List all registered resources
+    /// `world_list_resources` - List all registered resources
     #[brp_tool(
-        brp_method = "bevy/list_resources",
+        brp_method = "world.list_resources",
         params = "ListResourcesParams",
         result = "ListResourcesResult"
     )]
-    BevyListResources,
+    WorldListResources,
     /// `bevy_get_resource` - Get resource data
     #[brp_tool(
         brp_method = "bevy/get_resource",
@@ -330,7 +330,7 @@ impl ToolName {
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            Self::BevyListResources => Annotation::new(
+            Self::WorldListResources => Annotation::new(
                 "List Resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
@@ -510,7 +510,7 @@ impl ToolName {
                 Some(parameters::build_parameters_from::<InsertResourceParams>)
             }
             Self::WorldListComponents => Some(parameters::build_parameters_from::<ListParams>),
-            Self::BevyListResources => {
+            Self::WorldListResources => {
                 Some(parameters::build_parameters_from::<ListResourcesParams>)
             }
             Self::BevyMutateComponent => {
@@ -581,7 +581,7 @@ impl ToolName {
             Self::BevyInsert => Arc::new(BevyInsert),
             Self::BevyInsertResource => Arc::new(BevyInsertResource),
             Self::WorldListComponents => Arc::new(WorldListComponents),
-            Self::BevyListResources => Arc::new(BevyListResources),
+            Self::WorldListResources => Arc::new(WorldListResources),
             Self::BevyMutateComponent => Arc::new(BevyMutateComponent),
             Self::BevyMutateResource => Arc::new(BevyMutateResource),
             Self::WorldQuery => Arc::new(WorldQuery),
