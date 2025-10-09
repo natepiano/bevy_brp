@@ -35,11 +35,11 @@ Validate entity, component, and resource CRUD operations through BRP.
 ### 6. Resource Operations with Type Guide Discovery
 - Execute `mcp__brp__brp_type_guide` with `["bevy_render::camera::clear_color::ClearColor"]` to discover resource structure
 - Verify schema returns mutation paths and spawn format information
-- Execute `mcp__brp__bevy_get_resource` to retrieve current ClearColor resource value
+- Execute `mcp__brp__world_get_resources` to retrieve current ClearColor resource value
 - Execute `mcp__brp__bevy_mutate_resource` using discovered structure:
   - Path: `.0` (the Color field, as revealed by type schema)
   - Value: `{"Srgba": {"red": 0.8, "green": 0.2, "blue": 0.1, "alpha": 1.0}}`
-- Execute `mcp__brp__bevy_get_resource` again to verify the mutation took effect
+- Execute `mcp__brp__world_get_resources` again to verify the mutation took effect
 - Confirm the color value changed to the new Srgba values
 
 ### 7. Entity Cleanup

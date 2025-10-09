@@ -41,7 +41,7 @@ mcp__brp__bevy_insert_resource with parameters:
 - Confirm no error messages about missing traits
 
 **STEP 3**: Get the inserted resource to verify:
-- Tool: mcp__brp__bevy_get_resource
+- Tool: mcp__brp__world_get_resources
 - Resource: `extras_plugin::TestConfigResource`
 - Port: {{PORT}}
 - Verify the resource data matches what was inserted
@@ -63,7 +63,7 @@ mcp__brp__bevy_insert_resource with parameters:
 - Confirm no error messages about missing traits
 
 **STEP 5**: Get the inserted RuntimeStatsResource to verify:
-- Tool: mcp__brp__bevy_get_resource
+- Tool: mcp__brp__world_get_resources
 - Resource: `extras_plugin::RuntimeStatsResource`
 - Port: {{PORT}}
 - Verify the resource data matches what was inserted
@@ -94,7 +94,7 @@ mcp__brp__bevy_mutate_resource with parameters:
 - Verify this also succeeds
 
 **STEP 3**: Get resource to verify mutations:
-- Tool: mcp__brp__bevy_get_resource
+- Tool: mcp__brp__world_get_resources
 - Resource: `extras_plugin::RuntimeStatsResource`
 - Port: {{PORT}}
 - Verify frame_count is 42 and debug_mode is true
@@ -148,7 +148,7 @@ mcp__brp__bevy_remove_resource with parameters:
 - Verify removal succeeds
 
 **STEP 2**: Try to get the removed resource:
-- Tool: mcp__brp__bevy_get_resource
+- Tool: mcp__brp__world_get_resources
 - Resource: `extras_plugin::TestConfigResource`
 - Port: {{PORT}}
 - Verify it returns an error indicating resource not found

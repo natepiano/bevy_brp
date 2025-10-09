@@ -24,7 +24,6 @@ pub use port::Port;
 // Export all parameter and result structs by name
 pub use tools::bevy_destroy::{DestroyParams, DestroyResult};
 pub use tools::bevy_get::{GetParams, GetResult};
-pub use tools::bevy_get_resource::{GetResourceParams, GetResourceResult};
 pub use tools::bevy_insert::{InsertParams, InsertResult};
 pub use tools::bevy_insert_resource::{InsertResourceParams, InsertResourceResult};
 pub use tools::bevy_mutate_component::{MutateComponentParams, MutateComponentResult};
@@ -35,6 +34,7 @@ pub use tools::bevy_remove_resource::{RemoveResourceParams, RemoveResourceResult
 pub use tools::bevy_reparent::{ReparentParams, ReparentResult};
 pub use tools::bevy_rpc_discover::{RpcDiscoverParams, RpcDiscoverResult};
 pub use tools::bevy_spawn::{SpawnParams, SpawnResult};
+pub use tools::world_get_resources::{GetResourceParams, GetResourceResult};
 pub use tools::world_list_components::{ListParams, ListResult};
 pub use tools::world_list_resources::{ListResourcesParams, ListResourcesResult};
 pub use tools::world_query::{QueryParams, QueryResult};

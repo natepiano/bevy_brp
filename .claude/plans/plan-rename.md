@@ -107,17 +107,6 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 
 ## Resource Methods
 
-### 12. `bevy/get_resource` → `world.get_resources`
-
-- [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyGetResource` → `WorldGetResources`
-- [ ] `mcp/src/tool/tool_name.rs` - Update `#[brp_tool(brp_method = "world.get_resources")]`
-- [ ] Rename `mcp/src/brp_tools/tools/bevy_get_resource.rs` → `world_get_resources.rs`
-- [ ] Update file header comment and struct docs in `world_get_resources.rs`
-- [ ] Update `mcp/src/brp_tools/tools/mod.rs` imports
-- [ ] Rename `mcp/help_text/bevy_get_resource.txt` → `world_get_resources.txt`
-- [ ] Update description text in `world_get_resources.txt`
-- [ ] `mcp/help_text/brp_execute.txt` - Update example references
-
 ### 13. `bevy/insert_resource` → `world.insert_resources`
 
 - [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyInsertResource` → `WorldInsertResources`

@@ -35,7 +35,7 @@
       "WebSearch",
       "mcp__brp__bevy_destroy",
       "mcp__brp__bevy_get",
-      "mcp__brp__bevy_get_resource",
+      "mcp__brp__world_get_resources",
       "mcp__brp__bevy_get_watch",
       "mcp__brp__bevy_insert",
       "mcp__brp__bevy_insert_resource",

@@ -1,4 +1,4 @@
-//! `bevy/get_resource` tool - Get resource data
+//! `world.get_resources` tool - Get resource data
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/get_resource` tool
+/// Parameters for the `world.get_resources` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct GetResourceParams {
     /// The fully-qualified type name of the resource to get
@@ -18,7 +18,7 @@ pub struct GetResourceParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/get_resource` tool
+/// Result for the `world.get_resources` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
 pub struct GetResourceResult {

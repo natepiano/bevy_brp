@@ -1,8 +1,0 @@
-Gets resource data via bevy/get_resource BRP method. Useful for inspecting global state, retrieving config, and monitoring/debugging.
-
-Example names: "bevy_time::time::Time", "my_game::config::GameConfig"
-
-Returns JSON data structured per resource type.
-
-Errors: Resource not found or not registered with BRP.
-Note: Requires BRP registration and reflection traits.
