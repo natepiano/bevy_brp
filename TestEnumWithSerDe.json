@@ -1,5 +1,5 @@
 "extras_plugin::TestEnumWithSerDe": {
-      "agent_guidance": "The mutation_paths field provides valid 'path' arguments for mcp__brp__bevy_mutate_component and mcp__brp__bevy_mutate_resource tools, with example values suitable for testing.",
+      "agent_guidance": "The mutation_paths field provides valid 'path' arguments for mcp__brp__world_mutate_components and mcp__brp__world_mutate_resources tools, with example values suitable for testing.",
       "has_deserialize": true,
       "has_serialize": true,
       "in_registry": true,

@@ -231,7 +231,7 @@ mcp__brp__world_spawn_entity with parameters:
 
 **STEP 2**: Attempt mutation with INCORRECT object format (should be array):
 ```json
-mcp__brp__bevy_mutate_component with parameters:
+mcp__brp__world_mutate_components with parameters:
 {
   "entity": [USE_ENTITY_ID_FROM_QUERY],
   "component": "bevy_transform::components::transform::Transform",
@@ -299,7 +299,7 @@ mcp__brp__world_spawn_entity with parameters:
 
 **STEP 2**: Attempt mutation with INCORRECT enum syntax:
 ```json
-mcp__brp__bevy_mutate_component with parameters:
+mcp__brp__world_mutate_components with parameters:
 {
   "entity": [USE_ENTITY_ID_FROM_QUERY],
   "component": "bevy_render::view::visibility::Visibility",

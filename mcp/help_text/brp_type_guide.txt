@@ -4,6 +4,6 @@ This tool spawn/insert/mutate information for types in your Bevy app so that you
 
 Returns:
 - spawn_format: Example JSON structure for world.spawn_entity operations, bevy/insert and world.insert_resources methods.
-- mutation_info: Available mutation paths for bevy/mutate_component and world.mutate_resources operations
+- mutation_info: Available mutation paths for `world.mutate_components` and `world.mutate_resources` operations
 - supported_operations: Which BRP operations work with each type
 - reflection traits: Reflect, Serialize, Deserialize,

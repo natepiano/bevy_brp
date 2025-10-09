@@ -43,7 +43,7 @@ Validate that the `test_app` binary works correctly with BRP operations, testing
 - This tests proper handling of components that exist in the app but aren't reflection-enabled
 
 ### 5. Mutate Component
-- Use `mcp__brp__bevy_mutate_component` on spawned entity
+- Use `mcp__brp__world_mutate_components` on spawned entity
 - Change translation.x to 100.0 (pass as numeric value, not string)
 - Verify mutation succeeds
 - **IMPORTANT**: The value must be passed as a number (100.0), not as a string ("100.0")

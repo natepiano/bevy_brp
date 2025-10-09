@@ -9,15 +9,11 @@
   },
   "parameters": {
     "port": 15702,
-    "types": [
-      "extras_plugin::TestVariantChainEnum"
-    ]
+    "types": ["extras_plugin::TestVariantChainEnum"]
   },
   "result": {
     "discovered_count": 1,
-    "requested_types": [
-      "extras_plugin::TestVariantChainEnum"
-    ],
+    "requested_types": ["extras_plugin::TestVariantChainEnum"],
     "summary": {
       "failed_discoveries": 0,
       "successful_discoveries": 1,
@@ -25,7 +21,7 @@
     },
     "type_guide": {
       "extras_plugin::TestVariantChainEnum": {
-        "agent_guidance": "The mutation_paths field provides valid 'path' arguments for mcp__brp__bevy_mutate_component and mcp__brp__bevy_mutate_resource tools, with example values suitable for testing.",
+        "agent_guidance": "The mutation_paths field provides valid 'path' arguments for mcp__brp__world_mutate_components and mcp__brp__world_mutate_resources tools, with example values suitable for testing.",
         "has_deserialize": true,
         "has_serialize": true,
         "in_registry": true,
@@ -34,9 +30,7 @@
             "description": "Replace the entire TestVariantChainEnum enum",
             "examples": [
               {
-                "applicable_variants": [
-                  "TestVariantChainEnum::Empty"
-                ],
+                "applicable_variants": ["TestVariantChainEnum::Empty"],
                 "example": "Empty",
                 "signature": "unit"
               },
@@ -75,9 +69,7 @@
               "some_value": 3.1415927410125732
             },
             "path_info": {
-              "applicable_variants": [
-                "TestVariantChainEnum::WithMiddleStruct"
-              ],
+              "applicable_variants": ["TestVariantChainEnum::WithMiddleStruct"],
               "enum_instructions": "First, set the root mutation path to 'root_example', then you can mutate the '.middle_struct' path. See 'applicable_variants' for which variants support this field.",
               "mutation_status": "mutable",
               "path_kind": "StructField",
@@ -100,25 +92,19 @@
             "description": "Mutate the nested_enum field of MiddleStruct enum",
             "examples": [
               {
-                "applicable_variants": [
-                  "BottomEnum::VariantC"
-                ],
+                "applicable_variants": ["BottomEnum::VariantC"],
                 "example": "VariantC",
                 "signature": "unit"
               },
               {
-                "applicable_variants": [
-                  "BottomEnum::VariantA"
-                ],
+                "applicable_variants": ["BottomEnum::VariantA"],
                 "example": {
                   "VariantA": 1000000
                 },
                 "signature": "tuple(u32)"
               },
               {
-                "applicable_variants": [
-                  "BottomEnum::VariantB"
-                ],
+                "applicable_variants": ["BottomEnum::VariantB"],
                 "example": {
                   "VariantB": {
                     "name": "Hello, World!",
@@ -129,9 +115,7 @@
               }
             ],
             "path_info": {
-              "applicable_variants": [
-                "TestVariantChainEnum::WithMiddleStruct"
-              ],
+              "applicable_variants": ["TestVariantChainEnum::WithMiddleStruct"],
               "enum_instructions": "First, set the root mutation path to 'root_example', then you can mutate the '.middle_struct.nested_enum' path. See 'applicable_variants' for which variants support this field.",
               "mutation_status": "mutable",
               "path_kind": "StructField",
@@ -154,9 +138,7 @@
             "description": "Mutate element 0 of BottomEnum",
             "example": 1000000,
             "path_info": {
-              "applicable_variants": [
-                "BottomEnum::VariantA"
-              ],
+              "applicable_variants": ["BottomEnum::VariantA"],
               "enum_instructions": "First, set the root mutation path to 'root_example', then you can mutate the '.middle_struct.nested_enum.0' path. See 'applicable_variants' for which variants support this field.",
               "mutation_status": "mutable",
               "path_kind": "IndexedElement",
@@ -179,9 +161,7 @@
             "description": "Mutate the name field of BottomEnum",
             "example": "Hello, World!",
             "path_info": {
-              "applicable_variants": [
-                "BottomEnum::VariantB"
-              ],
+              "applicable_variants": ["BottomEnum::VariantB"],
               "enum_instructions": "First, set the root mutation path to 'root_example', then you can mutate the '.middle_struct.nested_enum.name' path. See 'applicable_variants' for which variants support this field.",
               "mutation_status": "mutable",
               "path_kind": "StructField",
@@ -207,9 +187,7 @@
             "description": "Mutate the value field of BottomEnum",
             "example": 3.1415927410125732,
             "path_info": {
-              "applicable_variants": [
-                "BottomEnum::VariantB"
-              ],
+              "applicable_variants": ["BottomEnum::VariantB"],
               "enum_instructions": "First, set the root mutation path to 'root_example', then you can mutate the '.middle_struct.nested_enum.value' path. See 'applicable_variants' for which variants support this field.",
               "mutation_status": "mutable",
               "path_kind": "StructField",
@@ -235,9 +213,7 @@
             "description": "Mutate the some_field field of MiddleStruct",
             "example": "Hello, World!",
             "path_info": {
-              "applicable_variants": [
-                "TestVariantChainEnum::WithMiddleStruct"
-              ],
+              "applicable_variants": ["TestVariantChainEnum::WithMiddleStruct"],
               "enum_instructions": "First, set the root mutation path to 'root_example', then you can mutate the '.middle_struct.some_field' path. See 'applicable_variants' for which variants support this field.",
               "mutation_status": "mutable",
               "path_kind": "StructField",
@@ -260,9 +236,7 @@
             "description": "Mutate the some_value field of MiddleStruct",
             "example": 3.1415927410125732,
             "path_info": {
-              "applicable_variants": [
-                "TestVariantChainEnum::WithMiddleStruct"
-              ],
+              "applicable_variants": ["TestVariantChainEnum::WithMiddleStruct"],
               "enum_instructions": "First, set the root mutation path to 'root_example', then you can mutate the '.middle_struct.some_value' path. See 'applicable_variants' for which variants support this field.",
               "mutation_status": "mutable",
               "path_kind": "StructField",
@@ -298,13 +272,7 @@
             }
           }
         },
-        "supported_operations": [
-          "query",
-          "get",
-          "spawn",
-          "insert",
-          "mutate"
-        ],
+        "supported_operations": ["query", "get", "spawn", "insert", "mutate"],
         "type_name": "extras_plugin::TestVariantChainEnum"
       }
     }

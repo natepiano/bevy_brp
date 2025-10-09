@@ -41,14 +41,14 @@ mcp__brp__world_insert_resources with parameters:
 - Confirm no error messages about missing traits
 
 **STEP 3**: Get the inserted resource to verify:
-- Tool: mcp__brp__world_get_resources
+- Tool: `mcp__brp__world_get_resources`
 - Resource: `extras_plugin::TestConfigResource`
 - Port: {{PORT}}
 - Verify the resource data matches what was inserted
 
 **STEP 4**: Insert/update RuntimeStatsResource (no Serialize/Deserialize traits):
 ```
-mcp__brp__world_insert_resources with parameters:
+`mcp__brp__world_insert_resources` with parameters:
 {
   "resource": "extras_plugin::RuntimeStatsResource",
   "value": {
@@ -63,7 +63,7 @@ mcp__brp__world_insert_resources with parameters:
 - Confirm no error messages about missing traits
 
 **STEP 5**: Get the inserted RuntimeStatsResource to verify:
-- Tool: mcp__brp__world_get_resources
+- Tool: `mcp__brp__world_get_resources`
 - Resource: `extras_plugin::RuntimeStatsResource`
 - Port: {{PORT}}
 - Verify the resource data matches what was inserted
@@ -71,7 +71,7 @@ mcp__brp__world_insert_resources with parameters:
 ### 2. Resource Mutation Test (Should Work Without Serialize/Deserialize)
 **STEP 1**: Mutate the RuntimeStatsResource (which lacks Serialize/Deserialize):
 ```
-mcp__brp__bevy_mutate_resource with parameters:
+`mcp__brp__world_mutate_resources` with parameters:
 {
   "resource": "extras_plugin::RuntimeStatsResource",
   "path": ".debug_mode",
@@ -83,7 +83,7 @@ mcp__brp__bevy_mutate_resource with parameters:
 
 **STEP 2**: Mutate another field:
 ```
-mcp__brp__bevy_mutate_resource with parameters:
+`mcp__brp__world_mutate_resources` with parameters:
 {
   "resource": "extras_plugin::RuntimeStatsResource",
   "path": ".frame_count",
@@ -94,7 +94,7 @@ mcp__brp__bevy_mutate_resource with parameters:
 - Verify this also succeeds
 
 **STEP 3**: Get resource to verify mutations:
-- Tool: mcp__brp__world_get_resources
+- Tool: `mcp__brp__world_get_resources`
 - Resource: `extras_plugin::RuntimeStatsResource`
 - Port: {{PORT}}
 - Verify frame_count is 42 and debug_mode is true
@@ -102,7 +102,7 @@ mcp__brp__bevy_mutate_resource with parameters:
 ### 3. Mutation Error Tests
 **STEP 1**: Test mutation with invalid field path:
 ```
-mcp__brp__bevy_mutate_resource with parameters:
+`mcp__brp__world_mutate_resources` with parameters:
 {
   "resource": "extras_plugin::RuntimeStatsResource",
   "path": ".invalid_field",
@@ -114,7 +114,7 @@ mcp__brp__bevy_mutate_resource with parameters:
 
 **STEP 2**: Test mutation with type mismatch:
 ```
-mcp__brp__bevy_mutate_resource with parameters:
+`mcp__brp__world_mutate_resources` with parameters:
 {
   "resource": "extras_plugin::RuntimeStatsResource",
   "path": ".frame_count",
@@ -126,7 +126,7 @@ mcp__brp__bevy_mutate_resource with parameters:
 
 **STEP 3**: Test mutation on non-existent resource type:
 ```
-mcp__brp__bevy_mutate_resource with parameters:
+`mcp__brp__world_mutate_resources` with parameters:
 {
   "resource": "my_game::config::NonExistentResource",
   "path": ".some_field",
@@ -139,7 +139,7 @@ mcp__brp__bevy_mutate_resource with parameters:
 ### 4. Resource Removal Test
 **STEP 1**: Remove the TestConfigResource:
 ```
-mcp__brp__world_remove_resources with parameters:
+`mcp__brp__world_remove_resources` with parameters:
 {
   "resource": "extras_plugin::TestConfigResource",
   "port": {{PORT}}
@@ -148,7 +148,7 @@ mcp__brp__world_remove_resources with parameters:
 - Verify removal succeeds
 
 **STEP 2**: Try to get the removed resource:
-- Tool: mcp__brp__world_get_resources
+- Tool: `mcp__brp__world_get_resources`
 - Resource: `extras_plugin::TestConfigResource`
 - Port: {{PORT}}
 - Verify it returns an error indicating resource not found
@@ -162,7 +162,7 @@ All resource insertion errors should include:
 ### 6. Non-Existent Resource Test
 **STEP 1**: Attempt to insert a non-existent resource:
 ```
-mcp__brp__world_insert_resources with parameters:
+`mcp__brp__world_insert_resources` with parameters:
 {
   "resource": "my_game::config::NonExistentResource",
   "value": {"some": "data"},

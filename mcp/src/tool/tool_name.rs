@@ -25,7 +25,7 @@ use crate::brp_tools::{
     GetComponentsWatchParams, GetParams, GetResourcesParams, GetResourcesResult, GetResult,
     InsertParams, InsertResourcesParams, InsertResourcesResult, InsertResult, ListComponentsParams,
     ListComponentsResult, ListComponentsWatchParams, ListResourcesParams, ListResourcesResult,
-    MutateComponentParams, MutateComponentResult, MutateResourcesParams, MutateResourcesResult,
+    MutateComponentsParams, MutateComponentsResult, MutateResourcesParams, MutateResourcesResult,
     QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult, RemoveParams,
     RemoveResourcesParams, RemoveResourcesResult, RemoveResult, ReparentEntitiesParams,
     ReparentEntitiesResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
@@ -161,13 +161,13 @@ pub enum ToolName {
     )]
     WorldMutateResources,
 
-    /// `bevy_mutate_component` - Mutate component fields
+    /// `world_mutate_components` - Mutate component fields
     #[brp_tool(
-        brp_method = "bevy/mutate_component",
-        params = "MutateComponentParams",
-        result = "MutateComponentResult"
+        brp_method = "world.mutate_components",
+        params = "MutateComponentsParams",
+        result = "MutateComponentsResult"
     )]
-    BevyMutateComponent,
+    WorldMutateComponents,
     /// `bevy_rpc_discover` - Discover available BRP methods
     #[brp_tool(
         brp_method = "rpc.discover",
@@ -342,7 +342,7 @@ impl ToolName {
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
-            Self::BevyMutateComponent => Annotation::new(
+            Self::WorldMutateComponents => Annotation::new(
                 "Mutate Component",
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
@@ -526,8 +526,8 @@ impl ToolName {
             Self::WorldListResources => {
                 Some(parameters::build_parameters_from::<ListResourcesParams>)
             }
-            Self::BevyMutateComponent => {
-                Some(parameters::build_parameters_from::<MutateComponentParams>)
+            Self::WorldMutateComponents => {
+                Some(parameters::build_parameters_from::<MutateComponentsParams>)
             }
             Self::WorldMutateResources => {
                 Some(parameters::build_parameters_from::<MutateResourcesParams>)
@@ -597,7 +597,7 @@ impl ToolName {
             Self::WorldInsertResources => Arc::new(WorldInsertResources),
             Self::WorldListComponents => Arc::new(WorldListComponents),
             Self::WorldListResources => Arc::new(WorldListResources),
-            Self::BevyMutateComponent => Arc::new(BevyMutateComponent),
+            Self::WorldMutateComponents => Arc::new(WorldMutateComponents),
             Self::WorldMutateResources => Arc::new(WorldMutateResources),
             Self::WorldQuery => Arc::new(WorldQuery),
             Self::RegistrySchema => Arc::new(RegistrySchema),

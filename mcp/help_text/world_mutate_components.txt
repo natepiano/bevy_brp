@@ -1,4 +1,4 @@
-Mutates component fields via bevy/mutate_component BRP method. Updates specific fields without replacing entire component.
+Mutates component fields via `world.mutate_components` BRP method. Updates specific fields without replacing entire component.
 
 Path syntax:
 - Root replacement: "" (empty string to replace entire component)

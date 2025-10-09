@@ -23,7 +23,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Verify data matches what was inserted
 
 ### 4. Component Mutation
-- Execute `mcp__brp__bevy_mutate_component` to modify Transform translation
+- Execute `mcp__brp__world_mutate_components` to modify Transform translation
 - Use path `.translation.x` with new value
 - Verify mutation succeeds
 
@@ -36,7 +36,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Execute `mcp__brp__brp_type_guide` with `["bevy_render::camera::clear_color::ClearColor"]` to discover resource structure
 - Verify schema returns mutation paths and spawn format information
 - Execute `mcp__brp__world_get_resources` to retrieve current ClearColor resource value
-- Execute `mcp__brp__bevy_mutate_resource` using discovered structure:
+- Execute `mcp__brp__world_mutate_resources` using discovered structure:
   - Path: `.0` (the Color field, as revealed by type schema)
   - Value: `{"Srgba": {"red": 0.8, "green": 0.2, "blue": 0.1, "alpha": 1.0}}`
 - Execute `mcp__brp__world_get_resources` again to verify the mutation took effect

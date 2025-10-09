@@ -34,7 +34,7 @@
 
 **CONCRETE EXAMPLE - FOLLOW THESE EXACT STEPS**:
 
-1. **You send**: `{"method": "bevy/mutate_component", "params": {"value": "true"}}`
+1. **You send**: `{"method": "world_mutate_components", "params": {"value": "true"}}`
    - ⚠️ ERROR: You quoted the boolean!
 
 2. **You receive**: `invalid type: string "true", expected a boolean`
@@ -60,14 +60,14 @@
 
 **IF YOU GET STUCK IN A LOOP CALLING TOOLS WITH EMPTY PARAMETERS**:
 
-**SYMPTOM**: You find yourself repeatedly calling MCP tools (like `mcp__brp__bevy_mutate_component`) with empty or incomplete parameter lists, unable to construct the full parameters.
+**SYMPTOM**: You find yourself repeatedly calling MCP tools (like `mcp__brp__world_mutate_components`) with empty or incomplete parameter lists, unable to construct the full parameters.
 
 **SOLUTION**: **REORDER THE PARAMETERS** in your tool call and try again. This will break you out of the mental loop.
  Parameter order doesn't matter for the MCP tool - reordering just helps you break the loop
 
 **EXAMPLE**:
-- ❌ STUCK: Calling `mcp__brp__bevy_mutate_component(entity=123, component="type", path=".field", value=42)`
-- ✅ UNSTUCK: Reorder to `mcp__brp__bevy_mutate_component(component="type", entity=123, value=42, path=".field")`
+- ❌ STUCK: Calling `mcp__brp__world_mutate_components(entity=123, component="type", path=".field", value=42)`
+- ✅ UNSTUCK: Reorder to `mcp__brp__world_mutate_components(component="type", entity=123, value=42, path=".field")`
 
 </ErrorRecoveryProtocol>
 
@@ -270,7 +270,7 @@ The assignment gives you a simple array of type names. For EACH type name, you M
 
 - **`guide.supported_operations`**: Which BRP methods work with this type
   - Check before calling: If "spawn" not in list, don't call world_spawn_entity
-  - If "mutate" not in list, don't call bevy_mutate_component
+  - If "mutate" not in list, don't call world_mutate_components
 </ParseAssignmentData>
 
 <TestAllTypes>
@@ -331,7 +331,7 @@ For each type name string in your `type_names` array:
       - **BEFORE testing each mutation path**, check if `path_info.root_example` exists
       - **IF `root_example` EXISTS**:
         1. **First** mutate the root path (`""`) to set up the correct variant structure:
-           - Use `bevy/mutate_component` or `world.mutate_resources`
+           - Use `world.mutate_components` or `world.mutate_resources`
            - Set `path: ""`
            - Set `value` to the `root_example` value from `path_info`
         2. **Then** proceed with mutating the specific path
@@ -424,7 +424,7 @@ For each type name string in your `type_names` array:
     "error_message": "Complete error message from BRP",
     "request_sent": {
       // EXACT parameters sent that caused the failure
-      "method": "bevy/mutate_component",
+      "method": "world.mutate_components",
       "params": {
         "entity": 123,
         "component": "full::type::name",
