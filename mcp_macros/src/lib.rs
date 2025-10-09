@@ -47,8 +47,8 @@ pub fn derive_tool_description(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// #[derive(BrpTools)]
 /// pub enum ToolName {
-///     #[brp_tool(brp_method = "bevy/destroy", params = "DestroyParams")]
-///     BevyDestroy,
+///     #[brp_tool(brp_method = "world.despawn_entity", params = "DespawnEntityParams")]
+///     WorlDespawnEntity,
 ///
 ///     #[brp_tool(brp_method = "bevy/get+watch")]
 ///     BevyGetWatch,  // Just the method, no params

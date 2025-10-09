@@ -77,8 +77,8 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
   - Message shows "Retrieved 2 components" (component_count: 2)
 
 ### 7. Cleanup
-- Execute `mcp__brp__bevy_destroy` to remove test entity
-- Verify entity is properly destroyed
+- Execute `mcp__brp__world_despawn_entity` to remove test entity
+- Verify entity is properly despawned
 
 ## Expected Results
 - ✅ Strict false allows partial success with invalid components

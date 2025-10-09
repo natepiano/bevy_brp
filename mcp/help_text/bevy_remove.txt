@@ -14,4 +14,4 @@ Example:
 Notes:
 - Removing non-existent components isn't an error
 - Entity persists even if all components removed
-- Use bevy_destroy to remove entity entirely
+- Use world_despawn_entity to remove entity entirely

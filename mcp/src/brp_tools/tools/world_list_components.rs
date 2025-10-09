@@ -9,7 +9,7 @@ use crate::brp_tools::Port;
 
 /// Parameters for the `world.list_components` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct ListParams {
+pub struct ListComponentsParams {
     /// Optional entity ID to list components for - to list all types, do not pass entity parameter
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entity: Option<u64>,
@@ -22,7 +22,7 @@ pub struct ListParams {
 /// Result for the `world.list_components` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
-pub struct ListResult {
+pub struct ListComponentsResult {
     /// The raw BRP response data - an array of component type names
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]

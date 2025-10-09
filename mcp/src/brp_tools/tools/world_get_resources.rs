@@ -9,7 +9,7 @@ use crate::brp_tools::Port;
 
 /// Parameters for the `world.get_resources` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct GetResourceParams {
+pub struct GetResourcesParams {
     /// The fully-qualified type name of the resource to get
     pub resource: String,
 
@@ -21,7 +21,7 @@ pub struct GetResourceParams {
 /// Result for the `world.get_resources` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
-pub struct GetResourceResult {
+pub struct GetResourcesResult {
     /// The raw BRP response containing the resource data
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]

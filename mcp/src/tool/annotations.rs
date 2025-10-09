@@ -31,9 +31,9 @@ pub enum ToolCategory {
 /// Ergonomic tool annotations for BRP tools
 #[derive(Debug, Clone)]
 pub struct Annotation {
-    pub title:                 String,
-    pub category:              ToolCategory,
-    pub environment_impact:    EnvironmentImpact,
+    pub title: String,
+    pub category: ToolCategory,
+    pub environment_impact: EnvironmentImpact,
     pub domain_of_interaction: DomainOfInteraction,
 }
 
@@ -100,11 +100,11 @@ impl From<Annotation> for ToolAnnotations {
         };
 
         Self {
-            title:            Some(brp.title),
-            read_only_hint:   read_only,
+            title: Some(brp.title),
+            read_only_hint: read_only,
             destructive_hint: destructive,
-            idempotent_hint:  idempotent,
-            open_world_hint:  open_world,
+            idempotent_hint: idempotent,
+            open_world_hint: open_world,
         }
     }
 }

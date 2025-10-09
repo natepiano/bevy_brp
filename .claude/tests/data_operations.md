@@ -43,8 +43,8 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Confirm the color value changed to the new Srgba values
 
 ### 7. Entity Cleanup
-- Execute `mcp__brp__bevy_destroy` to remove test entity
-- Verify entity is properly destroyed
+- Execute `mcp__brp__world_despawn_entity` to remove test entity
+- Verify entity is properly despawned
 
 ## Expected Results
 - ✅ Entity spawning returns valid entity ID

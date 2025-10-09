@@ -21,15 +21,16 @@ use crate::app_tools::{
 // Import parameter and result types so they're in scope for the macro
 use crate::brp_tools::{
     AllTypeGuidesParams, BevyGetWatch, BevyListWatch, BrpAllTypeGuides, BrpExecute,
-    BrpListActiveWatches, BrpStopWatch, BrpTypeGuide, DestroyParams, DestroyResult, ExecuteParams,
-    GetParams, GetResourceParams, GetResourceResult, GetResult, GetWatchParams, InsertParams,
-    InsertResourceParams, InsertResourceResult, InsertResult, ListParams, ListResourcesParams,
-    ListResourcesResult, ListResult, ListWatchParams, MutateComponentParams, MutateComponentResult,
-    MutateResourceParams, MutateResourceResult, QueryParams, QueryResult, RegistrySchemaParams,
-    RegistrySchemaResult, RemoveParams, RemoveResourceParams, RemoveResourceResult, RemoveResult,
-    ReparentParams, ReparentResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
-    ScreenshotResult, SendKeysParams, SendKeysResult, SetWindowTitleParams, SetWindowTitleResult,
-    SpawnParams, SpawnResult, StopWatchParams, TypeGuideParams,
+    BrpListActiveWatches, BrpStopWatch, BrpTypeGuide, DespawnEntityParams, DespawnEntityResult,
+    ExecuteParams, GetParams, GetResourcesParams, GetResourcesResult, GetResult, GetWatchParams,
+    InsertParams, InsertResourceParams, InsertResourceResult, InsertResult, ListComponentsParams,
+    ListComponentsResult, ListResourcesParams, ListResourcesResult, ListWatchParams,
+    MutateComponentParams, MutateComponentResult, MutateResourceParams, MutateResourceResult,
+    QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult, RemoveParams,
+    RemoveResourceParams, RemoveResourceResult, RemoveResult, ReparentParams, ReparentResult,
+    RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams, ScreenshotResult, SendKeysParams,
+    SendKeysResult, SetWindowTitleParams, SetWindowTitleResult, SpawnEntityParams,
+    SpawnEntityResult, StopWatchParams, TypeGuideParams,
 };
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
@@ -91,20 +92,20 @@ pub enum ToolName {
     /// `world_list_components` - List components on an entity or all component types
     #[brp_tool(
         brp_method = "world.list_components",
-        params = "ListParams",
-        result = "ListResult"
+        params = "ListComponentsParams",
+        result = "ListComponentsResult"
     )]
     WorldListComponents,
     /// `bevy_get` - Get component data from entities
     #[brp_tool(brp_method = "bevy/get", params = "GetParams", result = "GetResult")]
     BevyGet,
-    /// `bevy_destroy` - Destroy entities permanently
+    /// `world_despawn_entity` - Despawns entities permanently
     #[brp_tool(
-        brp_method = "bevy/destroy",
-        params = "DestroyParams",
-        result = "DestroyResult"
+        brp_method = "world.despawn_entity",
+        params = "DespawnEntityParams",
+        result = "DespawnEntityResult"
     )]
-    BevyDestroy,
+    WorldDespawnEntity,
     /// `bevy_insert` - Insert or replace components on entities
     #[brp_tool(
         brp_method = "bevy/insert",
@@ -129,8 +130,8 @@ pub enum ToolName {
     /// `world_get_resources` - Get resource data
     #[brp_tool(
         brp_method = "world.get_resources",
-        params = "GetResourceParams",
-        result = "GetResourceResult"
+        params = "GetResourcesParams",
+        result = "GetResourcesResult"
     )]
     WorldGetResources,
     /// `bevy_insert_resource` - Insert or update resources
@@ -178,8 +179,8 @@ pub enum ToolName {
     /// `world_spawn_entity` - Spawn entities with components
     #[brp_tool(
         brp_method = "world.spawn_entity",
-        params = "SpawnParams",
-        result = "SpawnResult"
+        params = "SpawnEntityParams",
+        result = "SpawnEntityResult"
     )]
     WorldSpawnEntity,
     /// `bevy_registry_schema` - Get type schemas
@@ -300,8 +301,8 @@ impl ToolName {
     #[allow(clippy::too_many_lines)]
     pub fn get_annotations(self) -> Annotation {
         match self {
-            Self::BevyDestroy => Annotation::new(
-                "Destroy Bevy Entity",
+            Self::WorldDespawnEntity => Annotation::new(
+                "Despawn Bevy Entity",
                 ToolCategory::Entity,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
@@ -502,14 +503,20 @@ impl ToolName {
     #[allow(clippy::too_many_lines)]
     pub fn get_parameters(self) -> Option<fn() -> parameters::ParameterBuilder> {
         match self {
-            Self::BevyDestroy => Some(parameters::build_parameters_from::<DestroyParams>),
+            Self::WorldDespawnEntity => {
+                Some(parameters::build_parameters_from::<DespawnEntityParams>)
+            }
             Self::BevyGet => Some(parameters::build_parameters_from::<GetParams>),
-            Self::WorldGetResources => Some(parameters::build_parameters_from::<GetResourceParams>),
+            Self::WorldGetResources => {
+                Some(parameters::build_parameters_from::<GetResourcesParams>)
+            }
             Self::BevyInsert => Some(parameters::build_parameters_from::<InsertParams>),
             Self::BevyInsertResource => {
                 Some(parameters::build_parameters_from::<InsertResourceParams>)
             }
-            Self::WorldListComponents => Some(parameters::build_parameters_from::<ListParams>),
+            Self::WorldListComponents => {
+                Some(parameters::build_parameters_from::<ListComponentsParams>)
+            }
             Self::WorldListResources => {
                 Some(parameters::build_parameters_from::<ListResourcesParams>)
             }
@@ -529,7 +536,7 @@ impl ToolName {
             }
             Self::BevyReparent => Some(parameters::build_parameters_from::<ReparentParams>),
             Self::BevyRpcDiscover => Some(parameters::build_parameters_from::<RpcDiscoverParams>),
-            Self::WorldSpawnEntity => Some(parameters::build_parameters_from::<SpawnParams>),
+            Self::WorldSpawnEntity => Some(parameters::build_parameters_from::<SpawnEntityParams>),
             Self::BrpExecute => Some(parameters::build_parameters_from::<ExecuteParams>),
             Self::BrpExtrasScreenshot => {
                 Some(parameters::build_parameters_from::<ScreenshotParams>)
@@ -575,7 +582,7 @@ impl ToolName {
     pub fn create_handler(self) -> Arc<dyn ErasedToolFn> {
         match self {
             // BRP tools generated by the macro
-            Self::BevyDestroy => Arc::new(BevyDestroy),
+            Self::WorldDespawnEntity => Arc::new(WorldDespawnEntity),
             Self::BevyGet => Arc::new(BevyGet),
             Self::WorldGetResources => Arc::new(WorldGetResources),
             Self::BevyInsert => Arc::new(BevyInsert),

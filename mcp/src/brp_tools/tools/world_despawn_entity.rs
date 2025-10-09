@@ -1,4 +1,4 @@
-//! `bevy/destroy` tool - Destroy entities permanently
+//! `world.despawn_entity` tool - Despawn entities permanently
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,10 +7,10 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/destroy` tool
+/// Parameters for the `world.despawn_entity` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct DestroyParams {
-    /// The entity ID to destroy
+pub struct DespawnEntityParams {
+    /// The entity ID to despawn
     pub entity: u64,
 
     /// The BRP port (default: 15702)
@@ -18,16 +18,16 @@ pub struct DestroyParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/destroy` tool
+/// Result for the `world.despawn_entity` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
-pub struct DestroyResult {
-    /// The raw BRP response data (empty for destroy)
+pub struct DespawnEntityResult {
+    /// The raw BRP response data (empty for despawn)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
     result: Option<Value>,
 
     /// Message template for formatting responses
-    #[to_message(message_template = "Destroyed entity {entity}")]
+    #[to_message(message_template = "Despawned entity {entity}")]
     message_template: String,
 }

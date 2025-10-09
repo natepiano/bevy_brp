@@ -6,7 +6,6 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 
 | Category | Old Namespace | New Namespace | Key Changes |
 |----------|---------------|---------------|-------------|
-| Entity/Component | `bevy/*` | `world.*` | Pluralization, `destroy`→`despawn` |
 | Resource | `bevy/*_resource` | `world.*_resources` | Pluralization |
 | Registry | `registry/schema` | `registry.schema` | Separator change `/`→`.` |
 
@@ -14,15 +13,6 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 
 ## Entity/Component Methods
 
-### 3. `bevy/destroy` → `world.despawn_entity`
-
-- [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyDestroy` → `WorldDespawnEntity`
-- [ ] `mcp/src/tool/tool_name.rs` - Update `#[brp_tool(brp_method = "world.despawn_entity")]`
-- [ ] Rename `mcp/src/brp_tools/tools/bevy_destroy.rs` → `world_despawn_entity.rs`
-- [ ] Update file header comment and struct docs in `world_despawn_entity.rs`
-- [ ] Update `mcp/src/brp_tools/tools/mod.rs` imports
-- [ ] Rename `mcp/help_text/bevy_destroy.txt` → `world_despawn_entity.txt`
-- [ ] Update description text in `world_despawn_entity.txt`
 
 ### 4. `bevy/reparent` → `world.reparent_entities`
 
@@ -154,7 +144,6 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 ### ✅ Enum Variant Naming - DECIDED
 **Decision:** Rename all enum variants to match new method names using `World*`/`Registry*` prefixes
 - `BevySpawn` → `WorldSpawnEntity`
-- `BevyDestroy` → `WorldDespawnEntity`
 - `BevyGetResource` → `WorldGetResources`
 - `BevyRegistrySchema` → `RegistrySchema`
 - etc.

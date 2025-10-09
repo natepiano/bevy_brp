@@ -1,0 +1,4 @@
+Despawns entities permanently via world.despawn_entity BRP method. Useful for removing game objects, cleaning up temporaries, and managing lifecycles.
+
+WARNING: Permanent operation - entity and all components removed.
+Note: Entity ID may be reused for new entities.

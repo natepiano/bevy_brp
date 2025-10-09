@@ -18,7 +18,7 @@ The bevy_brp_mcp crate follows Bevy's version numbering and releases new version
 ## Features
 
 ### Core BRP Operations
-- **Entity Management**: Create, destroy, query, and modify entities
+- **Entity Management**: Spawn, despawn, query
 - **Component Operations**: Get, insert, remove, and mutate components on entities
 - **Resource Management**: Access and modify global resources
 - **Query System**: Advanced entity querying with filters

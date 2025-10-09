@@ -1,6 +1,5 @@
 | Old                    | New                           |
 |------------------------|-------------------------------|
-| `bevy/destroy`         | `world.despawn_entity`        |
 | `bevy/reparent`        | `world.reparent_entities`     |
 | `bevy/get`             | `world.get_components`        |
 | `bevy/insert`          | `world.insert_components`     |

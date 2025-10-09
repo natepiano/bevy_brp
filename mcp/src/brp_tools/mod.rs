@@ -22,7 +22,6 @@ pub use constants::{BRP_EXTRAS_PORT_ENV_VAR, MAX_VALID_PORT};
 pub use port::Port;
 //
 // Export all parameter and result structs by name
-pub use tools::bevy_destroy::{DestroyParams, DestroyResult};
 pub use tools::bevy_get::{GetParams, GetResult};
 pub use tools::bevy_insert::{InsertParams, InsertResult};
 pub use tools::bevy_insert_resource::{InsertResourceParams, InsertResourceResult};
@@ -33,11 +32,12 @@ pub use tools::bevy_remove::{RemoveParams, RemoveResult};
 pub use tools::bevy_remove_resource::{RemoveResourceParams, RemoveResourceResult};
 pub use tools::bevy_reparent::{ReparentParams, ReparentResult};
 pub use tools::bevy_rpc_discover::{RpcDiscoverParams, RpcDiscoverResult};
-pub use tools::world_get_resources::{GetResourceParams, GetResourceResult};
-pub use tools::world_list_components::{ListParams, ListResult};
+pub use tools::world_despawn_entity::{DespawnEntityParams, DespawnEntityResult};
+pub use tools::world_get_resources::{GetResourcesParams, GetResourcesResult};
+pub use tools::world_list_components::{ListComponentsParams, ListComponentsResult};
 pub use tools::world_list_resources::{ListResourcesParams, ListResourcesResult};
 pub use tools::world_query::{QueryParams, QueryResult};
-pub use tools::world_spawn_entity::{SpawnParams, SpawnResult};
+pub use tools::world_spawn_entity::{SpawnEntityParams, SpawnEntityResult};
 //
 // Export special case tools that don't follow the standard pattern
 pub use tools::brp_execute::{BrpExecute, ExecuteParams};
