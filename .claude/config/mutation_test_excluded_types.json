@@ -15,6 +15,14 @@
     {
       "type_name": "bevy_ui::ui_node::CalculatedClip",
       "reason": "Auto-generated internal component. Only created by Bevy's UI clipping system on child nodes when parent has overflow clipping enabled. Cannot be spawned/inserted (no Serialize/Deserialize traits). Requires specific UI hierarchy not present in test scene."
+    },
+    {
+      "type_name": "bevy_anti_alias::contrast_adaptive_sharpening::DenoiseCas",
+      "reason": "Render-world-only component. Automatically extracted from ContrastAdaptiveSharpening via ExtractComponent trait and only exists in the render world, not the main world. BRP can only query the main world, so this component is fundamentally not accessible."
+    },
+    {
+      "type_name": "bevy_ecs::observer::distributed_storage::ObservedBy",
+      "reason": "Internal ECS component. Automatically managed by Bevy's observer system to track which observers are watching an entity. Not user-spawnable and only added when observers are registered."
     }
   ]
 }

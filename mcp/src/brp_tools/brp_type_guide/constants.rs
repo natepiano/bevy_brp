@@ -94,6 +94,7 @@ pub const TYPE_BEVY_ENTITY: &str = "bevy_ecs::entity::Entity";
 pub const TYPE_BEVY_COLOR: &str = "bevy_color::color::Color";
 pub const TYPE_BEVY_NAME: &str = "bevy_ecs::name::Name";
 pub const TYPE_BEVY_IMAGE_HANDLE: &str = "bevy_asset::handle::Handle<bevy_image::image::Image>";
+pub const TYPE_BLOOM: &str = "bevy_post_process::bloom::settings::Bloom";
 
 // ============================================================================
 // AGENT WARNING MESSAGES

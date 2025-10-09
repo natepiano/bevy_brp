@@ -18,10 +18,14 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 
+use bevy::animation::graph::{AnimationGraph, AnimationGraphHandle};
+use bevy::animation::{AnimationPlayer, AnimationTarget};
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
 use bevy::anti_alias::fxaa::Fxaa;
 use bevy::anti_alias::smaa::Smaa;
+use bevy::anti_alias::taa::TemporalAntiAliasing;
 use bevy::asset::RenderAssetUsages;
+use bevy::audio::{PlaybackSettings, SpatialListener};
 use bevy::camera::ManualTextureViewHandle;
 use bevy::camera::primitives::CascadesFrusta;
 use bevy::camera::visibility::{NoFrustumCulling, RenderLayers, VisibilityRange};
@@ -30,9 +34,10 @@ use bevy::core_pipeline::prepass::MotionVectorPrepass;
 use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
+use bevy::input_focus::tab_navigation::{TabGroup, TabIndex};
 use bevy::light::cluster::ClusterConfig;
 use bevy::light::{
-    CascadeShadowConfig, Cascades, ClusteredDecal, IrradianceVolume, NotShadowCaster,
+    CascadeShadowConfig, Cascades, ClusteredDecal, FogVolume, IrradianceVolume, NotShadowCaster,
     NotShadowReceiver, ShadowFilteringMethod, VolumetricFog, VolumetricLight,
 };
 use bevy::pbr::decal::ForwardDecalMaterialExt;
@@ -45,11 +50,11 @@ use bevy::prelude::{ChildOf, *};
 use bevy::render::camera::{MipBias, TemporalJitter};
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
-use bevy::render::view::ColorGrading;
 use bevy::render::view::window::screenshot::Screenshot;
+use bevy::render::view::{ColorGrading, Msaa};
 use bevy::scene::{Scene, SceneRoot};
 use bevy::ui::widget::{Button, Label};
-use bevy::ui::{CalculatedClip, Outline};
+use bevy::ui::{CalculatedClip, FocusPolicy, Interaction, Outline, UiTargetCamera, ZIndex};
 use bevy::window::{CursorIcon, PrimaryWindow};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
@@ -518,54 +523,6 @@ fn main() {
         .add_plugins(brp_plugin)
         .init_resource::<KeyboardInputHistory>()
         .insert_resource(CurrentPort(port))
-        // Register test resources
-        .register_type::<TestConfigResource>()
-        .register_type::<RuntimeStatsResource>()
-        // Register test components
-        .register_type::<TestStructWithSerDe>()
-        .register_type::<TestStructNoSerDe>()
-        .register_type::<SimpleSetComponent>()
-        .register_type::<TestMapComponent>()
-        .register_type::<TestEnumKeyedMap>()
-        .register_type::<SimpleTestEnum>()
-        .register_type::<TestEnumWithSerDe>()
-        .register_type::<NestedConfigEnum>()
-        .register_type::<SimpleNestedEnum>()
-        .register_type::<OptionTestEnum>()
-        .register_type::<WrapperEnum>()
-        .register_type::<TestVariantChainEnum>()
-        .register_type::<MiddleStruct>()
-        .register_type::<BottomEnum>()
-        .register_type::<TestEnumNoSerDe>()
-        .register_type::<TestEnumWithArray>()
-        .register_type::<TestArrayField>()
-        .register_type::<TestArrayTransforms>()
-        .register_type::<TestTupleField>()
-        .register_type::<TestTupleStruct>()
-        .register_type::<TestComplexTuple>()
-        .register_type::<TestComplexComponent>()
-        .register_type::<TestCollectionComponent>()
-        .register_type::<TestMixedMutabilityCore>()
-        .register_type::<TestMixedMutabilityVec>()
-        .register_type::<TestMixedMutabilityArray>()
-        .register_type::<TestMixedMutabilityTuple>()
-        .register_type::<TestMixedMutabilityEnum>()
-        .register_type::<TestPartiallyMutableNested>()
-        .register_type::<TestDeeplyNested>()
-        .register_type::<Gamepad>()
-        .register_type::<GamepadSettings>()
-        .register_type::<Screenshot>()
-        .register_type::<MotionVectorPrepass>()
-        .register_type::<NotShadowCaster>()
-        .register_type::<NotShadowReceiver>()
-        .register_type::<VolumetricLight>()
-        .register_type::<OcclusionCulling>()
-        .register_type::<NoFrustumCulling>()
-        .register_type::<CalculatedClip>()
-        .register_type::<Button>()
-        .register_type::<Label>()
-        .register_type::<BorderRadius>()
-        .register_type::<Outline>()
         .add_systems(
             Startup,
             (setup_test_entities, setup_ui, minimize_window_on_start),
@@ -657,12 +614,17 @@ fn setup_scene_test(mut commands: Commands, mut scenes: ResMut<Assets<Scene>>) {
 }
 
 /// Setup test entities for format discovery
-fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
+fn setup_test_entities(
+    mut commands: Commands,
+    port: Res<CurrentPort>,
+    mut animation_graphs: ResMut<Assets<AnimationGraph>>,
+) {
     info!("Setting up test entities...");
 
     spawn_transform_entities(&mut commands);
     spawn_visual_entities(&mut commands);
     spawn_test_component_entities(&mut commands);
+    spawn_animation_and_audio_entities(&mut commands, &mut animation_graphs);
     spawn_render_entities(&mut commands);
 
     info!(
@@ -734,12 +696,14 @@ fn spawn_visual_entities(commands: &mut Commands) {
         Name::new("CursorIconTestEntity"),
     ));
 
-    // Entity with PointLight which will automatically get CubemapFrusta due to required components
+    // Entity with PointLight which will automatically get CubemapFrusta and shadow maps when
+    // shadows enabled
     commands.spawn((
         PointLight {
             intensity: 1500.0,
             color: Color::WHITE,
-            shadows_enabled: false,
+            shadows_enabled: true, /* Enable shadows to trigger CubemapFrusta and
+                                    * PointLightShadowMap */
             ..default()
         },
         Transform::from_xyz(4.0, 8.0, 4.0),
@@ -1144,6 +1108,91 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     ));
 }
 
+fn spawn_animation_and_audio_entities(
+    commands: &mut Commands,
+    animation_graphs: &mut ResMut<Assets<AnimationGraph>>,
+) {
+    // Entity with AnimationGraphHandle AND AnimationPlayer for testing mutations
+    // (they must be on the same entity per Bevy's requirements)
+    let animation_graph = AnimationGraph::default();
+    let graph_handle = animation_graphs.add(animation_graph);
+    commands.spawn((
+        AnimationGraphHandle(graph_handle),
+        AnimationPlayer::default(),
+        Name::new("AnimationGraphHandleAndPlayerTestEntity"),
+    ));
+
+    // Entity with AnimationTarget for testing mutations
+    commands.spawn((
+        AnimationTarget {
+            id:     bevy::animation::AnimationTargetId::from_name(&Name::new("test_target")),
+            player: Entity::PLACEHOLDER,
+        },
+        Name::new("AnimationTargetTestEntity"),
+    ));
+
+    // Entity with AnimationTransitions for testing mutations
+    commands.spawn((
+        bevy::prelude::AnimationTransitions::default(),
+        Name::new("AnimationTransitionsTestEntity"),
+    ));
+
+    // Entity with DenoiseCas for testing mutations
+    // Note: DenoiseCas doesn't have a public constructor, but we can register it
+    // It's automatically added when ContrastAdaptiveSharpening has denoise enabled
+
+    // Entity with TemporalAntiAliasing for testing mutations
+    commands.spawn((
+        TemporalAntiAliasing::default(),
+        Name::new("TemporalAntiAliasingTestEntity"),
+    ));
+
+    // Entity with SpatialListener for testing mutations
+    commands.spawn((
+        SpatialListener::default(),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        Name::new("SpatialListenerTestEntity"),
+    ));
+
+    // Entity with TabGroup for testing mutations
+    commands.spawn((TabGroup::new(0), Name::new("TabGroupTestEntity")));
+
+    // Entity with TabIndex for testing mutations
+    commands.spawn((TabIndex(0), Name::new("TabIndexTestEntity")));
+
+    // Entity with FogVolume for testing mutations
+    commands.spawn((
+        FogVolume::default(),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        Name::new("FogVolumeTestEntity"),
+    ));
+
+    // Entity with MainPassResolutionOverride for testing mutations
+    // Try accessing it directly from bevy::camera even though the module is private
+    commands.spawn((
+        bevy::camera::MainPassResolutionOverride(bevy::math::UVec2::new(1920, 1080)),
+        Name::new("MainPassResolutionOverrideTestEntity"),
+    ));
+
+    // Entity with GltfMeshName for testing mutations
+    commands.spawn((
+        bevy::gltf::GltfMeshName("test_mesh_name".to_string()),
+        Name::new("GltfMeshNameTestEntity"),
+    ));
+
+    // Entity with PlaybackSettings - this is actually a component that can be spawned!
+    commands.spawn((
+        PlaybackSettings::default(),
+        Name::new("PlaybackSettingsTestEntity"),
+    ));
+
+    // Note: DenoiseCas is automatically added when ContrastAdaptiveSharpening has denoise enabled
+    // AnimationGraphHandle, DirectionalLightTexture, PointLightTexture, SpotLightTexture,
+    // GeneratedEnvironmentMapLight are internal/generated components
+    // AudioSink, SpatialAudioSink, AudioSourceHandle, SpatialAudioSourceHandle, GlobalVolume,
+    // Volume are not components
+}
+
 fn spawn_render_entities(commands: &mut Commands) {
     // Entity with MeshMorphWeights for testing mutations
     if let Ok(morph_weights) = MeshMorphWeights::new(vec![0.5, 1.0, 0.75]) {
@@ -1209,6 +1258,7 @@ fn spawn_render_entities(commands: &mut Commands) {
     ));
 
     // Entity with AmbientLight (requires Camera) for testing mutations
+    // Also has Msaa since this camera is disabled and won't cause rendering conflicts
     commands.spawn((
         Camera3d::default(),
         Camera {
@@ -1217,6 +1267,7 @@ fn spawn_render_entities(commands: &mut Commands) {
             ..default()
         },
         AmbientLight::default(),
+        Msaa::default(), // Safe to test here since camera is disabled
         Transform::from_xyz(100.0, 100.0, 100.0),
         Name::new("AmbientLightTestEntity"),
     ));
@@ -1262,18 +1313,19 @@ fn spawn_cameras(commands: &mut Commands) {
         IsDefaultUiCamera, // This camera renders UI
     ));
 
-    // 3D Camera for 3D test entities (inactive to avoid conflicts with 2D/UI camera)
+    // 3D Camera for 3D test entities (disabled to avoid rendering conflicts)
     commands.spawn((
         Camera3d::default(),
         Camera {
             order: 1,         // Different order to avoid ambiguity
-            is_active: false, // Disable this camera - we're primarily testing 2D/UI components
+            is_active: false, // Disable to avoid rendering conflicts with deferred pipeline
             ..default()
         },
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
         ColorGrading::default(), // For testing mutations
         ContrastAdaptiveSharpening {
-            enabled: false,
+            enabled: true,
+            denoise: true, // Enable denoise to trigger DenoiseCas auto-extraction
             ..default()
         },
         DepthOfField::default(),                // For testing mutations
@@ -1284,7 +1336,9 @@ fn spawn_cameras(commands: &mut Commands) {
         ScreenSpaceAmbientOcclusion::default(), // For testing mutations
         ScreenSpaceReflections::default(),      // For testing mutations
         VolumetricFog::default(),               // For testing mutations
-        MotionVectorPrepass,                    // For testing mutations
+        MotionVectorPrepass,                    /* For testing mutations
+                                                 * Msaa causes crashes with the deferred
+                                                 * rendering setup - test separately */
     ));
 }
 
@@ -1382,6 +1436,9 @@ fn spawn_button_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
         Button,
         Outline::new(Val::Px(2.0), Val::Px(0.0), Color::srgb(1.0, 1.0, 0.0)), /* Yellow outline
                                                                                * for testing */
+        FocusPolicy::Block, // For testing mutations
+        Interaction::None,  // For testing mutations
+        ZIndex(0),          // For testing mutations
         Name::new("ButtonTestEntity"),
     ));
 }
@@ -1396,6 +1453,7 @@ fn spawn_label_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
         },
         TextColor(Color::srgb(1.0, 1.0, 0.0)), // Yellow color
         Label,
+        UiTargetCamera(Entity::PLACEHOLDER), // For testing mutations
         Name::new("LabelTestEntity"),
     ));
 }

@@ -13,8 +13,8 @@ use crate::brp_tools::BrpTypeName;
 use crate::brp_tools::brp_type_guide::constants::{
     TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_ENTITY, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2,
     TYPE_BEVY_MAT3, TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2,
-    TYPE_BEVY_VEC3, TYPE_BEVY_VEC3A, TYPE_BEVY_VEC4, TYPE_BOOL, TYPE_CHAR, TYPE_F32, TYPE_F64,
-    TYPE_GLAM_IVEC2, TYPE_GLAM_IVEC3, TYPE_GLAM_IVEC4, TYPE_GLAM_MAT2, TYPE_GLAM_MAT3,
+    TYPE_BEVY_VEC3, TYPE_BEVY_VEC3A, TYPE_BEVY_VEC4, TYPE_BLOOM, TYPE_BOOL, TYPE_CHAR, TYPE_F32,
+    TYPE_F64, TYPE_GLAM_IVEC2, TYPE_GLAM_IVEC3, TYPE_GLAM_IVEC4, TYPE_GLAM_MAT2, TYPE_GLAM_MAT3,
     TYPE_GLAM_MAT3A, TYPE_GLAM_MAT4, TYPE_GLAM_QUAT, TYPE_GLAM_UVEC2, TYPE_GLAM_UVEC3,
     TYPE_GLAM_UVEC4, TYPE_GLAM_VEC2, TYPE_GLAM_VEC3, TYPE_GLAM_VEC3A, TYPE_GLAM_VEC4, TYPE_I8,
     TYPE_I16, TYPE_I32, TYPE_I64, TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF,
@@ -31,7 +31,7 @@ pub enum KnowledgeKey {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: String,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
 }
 
@@ -45,7 +45,7 @@ impl KnowledgeKey {
     pub fn struct_field(struct_type: impl Into<String>, field_name: impl Into<String>) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
     }
 }
@@ -57,7 +57,7 @@ pub enum MutationKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }
@@ -69,10 +69,10 @@ impl MutationKnowledge {
     }
 
     /// Create a knowledge entry that should be treated as a simple value
-    pub const fn as_root_value(example: Value, simplified_type: String) -> Self {
+    pub fn as_root_value(example: Value, simplified_type: impl Into<String>) -> Self {
         Self::TreatAsRootValue {
             example,
-            simplified_type,
+            simplified_type: simplified_type.into(),
         }
     }
 
@@ -106,109 +106,100 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // ===== Numeric types =====
         map.insert(
             KnowledgeKey::exact(TYPE_I8),
-            MutationKnowledge::as_root_value(json!(42), "i8".to_string()),
+            MutationKnowledge::as_root_value(json!(42), TYPE_I8),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I16),
-            MutationKnowledge::as_root_value(json!(1000), "i16".to_string()),
+            MutationKnowledge::as_root_value(json!(1000), TYPE_I16),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I32),
-            MutationKnowledge::as_root_value(json!(100_000), "i32".to_string()),
+            MutationKnowledge::as_root_value(json!(100_000), TYPE_I32),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I64),
-            MutationKnowledge::as_root_value(json!(1_000_000_000_i64), "i64".to_string()),
+            MutationKnowledge::as_root_value(json!(1_000_000_000_i64), TYPE_I64),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I128),
-            MutationKnowledge::as_root_value(
-                json!("123456789012345678901234567890"),
-                "i128".to_string(),
-            ),
+            MutationKnowledge::as_root_value(json!("123456789012345678901234567890"), TYPE_I128),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U8),
-            MutationKnowledge::as_root_value(json!(128), "u8".to_string()),
+            MutationKnowledge::as_root_value(json!(128), TYPE_U8),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U16),
-            MutationKnowledge::as_root_value(json!(5000), "u16".to_string()),
+            MutationKnowledge::as_root_value(json!(5000), TYPE_U16),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U32),
-            MutationKnowledge::as_root_value(json!(1_000_000_u32), "u32".to_string()),
+            MutationKnowledge::as_root_value(json!(1_000_000_u32), TYPE_U32),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U64),
-            MutationKnowledge::as_root_value(json!(10_000_000_000_u64), "u64".to_string()),
+            MutationKnowledge::as_root_value(json!(10_000_000_000_u64), TYPE_U64),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U128),
-            MutationKnowledge::as_root_value(
-                json!("987654321098765432109876543210"),
-                "u128".to_string(),
-            ),
+            MutationKnowledge::as_root_value(json!("987654321098765432109876543210"), TYPE_U128),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_F32),
-            MutationKnowledge::as_root_value(json!(std::f32::consts::PI), "f32".to_string()),
+            MutationKnowledge::as_root_value(json!(std::f32::consts::PI), TYPE_F32),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_F64),
-            MutationKnowledge::as_root_value(json!(std::f64::consts::PI), "f64".to_string()),
+            MutationKnowledge::as_root_value(json!(std::f64::consts::PI), TYPE_F64),
         );
 
         // ===== Size types =====
         map.insert(
             KnowledgeKey::exact(TYPE_ISIZE),
-            MutationKnowledge::as_root_value(json!(1_000_000_i64), "isize".to_string()),
+            MutationKnowledge::as_root_value(json!(1_000_000_i64), TYPE_ISIZE),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_USIZE),
-            MutationKnowledge::as_root_value(json!(2_000_000_u64), "usize".to_string()),
+            MutationKnowledge::as_root_value(json!(2_000_000_u64), TYPE_USIZE),
         );
 
         // ===== Text types =====
         map.insert(
             KnowledgeKey::exact(TYPE_ALLOC_STRING),
-            MutationKnowledge::as_root_value(json!("Hello, World!"), "String".to_string()),
+            MutationKnowledge::as_root_value(json!("Hello, World!"), TYPE_STRING),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STD_STRING),
-            MutationKnowledge::as_root_value(json!("Hello, World!"), "String".to_string()),
+            MutationKnowledge::as_root_value(json!("Hello, World!"), TYPE_STRING),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STRING),
-            MutationKnowledge::as_root_value(json!("Hello, World!"), "String".to_string()),
+            MutationKnowledge::as_root_value(json!("Hello, World!"), TYPE_STRING),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STR_REF),
-            MutationKnowledge::as_root_value(json!("static string"), "str".to_string()),
+            MutationKnowledge::as_root_value(json!("static string"), TYPE_STR),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STR),
-            MutationKnowledge::as_root_value(json!("static string"), "str".to_string()),
+            MutationKnowledge::as_root_value(json!("static string"), TYPE_STR),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CHAR),
-            MutationKnowledge::as_root_value(json!('A'), "char".to_string()),
+            MutationKnowledge::as_root_value(json!('A'), TYPE_CHAR),
         );
 
         // ===== Boolean =====
         map.insert(
             KnowledgeKey::exact(TYPE_BOOL),
-            MutationKnowledge::as_root_value(json!(true), "bool".to_string()),
+            MutationKnowledge::as_root_value(json!(true), TYPE_BOOL),
         );
 
         // ===== UUID =====
         // Standard UUID v4 format string
         map.insert(
             KnowledgeKey::exact("uuid::Uuid"),
-            MutationKnowledge::as_root_value(
-                json!("550e8400-e29b-41d4-a716-446655440000"),
-                "Uuid".to_string(),
-            ),
+            MutationKnowledge::as_root_value(json!("550e8400-e29b-41d4-a716-446655440000"), "Uuid"),
         );
 
         // ===== Bevy math types (these serialize as arrays, not objects!) =====
@@ -365,13 +356,13 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // obtained from spawn operations or queries. Using invalid entity IDs will cause errors.
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_ENTITY),
-            MutationKnowledge::as_root_value(json!(8_589_934_670_u64), "Entity".to_string()),
+            MutationKnowledge::as_root_value(json!(8_589_934_670_u64), "Entity"),
         );
 
         // Name serializes as a plain string, not as a struct with hash/name fields
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_NAME),
-            MutationKnowledge::as_root_value(json!("Entity Name"), "String".to_string()),
+            MutationKnowledge::as_root_value(json!("Entity Name"), TYPE_STRING),
         );
 
         // ===== Camera3d depth texture usage =====
@@ -386,7 +377,7 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
                 "depth_texture_usages",
             ),
             // RENDER_ATTACHMENT | TEXTURE_BINDING - safe combination, treat as opaque u32
-            MutationKnowledge::as_root_value(json!(20), "u32".to_string()),
+            MutationKnowledge::as_root_value(json!(20), TYPE_U32),
         );
 
         // ===== Transform types =====
@@ -424,93 +415,96 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // Provide reasonable window dimension values to prevent GPU texture size errors
         map.insert(
             KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_width"),
-            MutationKnowledge::as_root_value(json!(800), "u32".to_string()), /* Reasonable
-                                                                              * window width */
+            MutationKnowledge::as_root_value(json!(800), TYPE_U32), // Reasonable window width
         );
         map.insert(
             KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_height"),
-            MutationKnowledge::as_root_value(json!(600), "u32".to_string()), /* Reasonable
-                                                                              * window height */
+            MutationKnowledge::as_root_value(json!(600), TYPE_U32), // Reasonable window height
         );
 
         // ===== GlyphAtlasLocation field-specific values =====
         // Provide safe glyph index to prevent crashes from out-of-bounds atlas access
         map.insert(
             KnowledgeKey::struct_field("bevy_text::glyph::GlyphAtlasLocation", "glyph_index"),
-            MutationKnowledge::as_root_value(json!(5), "usize".to_string()),
+            MutationKnowledge::as_root_value(json!(5), TYPE_USIZE),
         );
 
         // ===== VideoMode field-specific values =====
         // Provide realistic video mode values to prevent window system crashes
         map.insert(
             KnowledgeKey::struct_field("bevy_window::monitor::VideoMode", "bit_depth"),
-            MutationKnowledge::as_root_value(json!(32), "u16".to_string()), /* Standard 32-bit
-                                                                             * color */
+            MutationKnowledge::as_root_value(json!(32), "u16"), // Standard 32-bit color
         );
         map.insert(
             KnowledgeKey::struct_field("bevy_window::monitor::VideoMode", "physical_size"),
-            MutationKnowledge::as_root_value(json!([1920, 1080]), "UVec2".to_string()), /* Standard
-                                                                                          * Full HD
-                                                                                          * resolution */
+            MutationKnowledge::as_root_value(json!([1920, 1080]), "UVec2"), /* Standard Full HD
+                                                                             * resolution */
         );
         map.insert(
             KnowledgeKey::struct_field(
                 "bevy_window::monitor::VideoMode",
                 "refresh_rate_millihertz",
             ),
-            MutationKnowledge::as_root_value(json!(60000), "u32".to_string()), /* 60 Hz in
-                                                                                * millihertz */
+            MutationKnowledge::as_root_value(json!(60000), TYPE_U32), // 60 Hz in millihertz
+        );
+
+        // ===== Bloom field-specific values =====
+        // Provide safe max_mip_dimension to prevent GPU texture allocation crashes
+        // Default is 512, using u32 generic value of 1_000_000 causes rendering pipeline corruption
+        map.insert(
+            KnowledgeKey::struct_field(TYPE_BLOOM, "max_mip_dimension"),
+            MutationKnowledge::as_root_value(json!(512), TYPE_U32),
         );
 
         // ===== NonZero types =====
         // These types guarantee the value is never zero
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroU8"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroU8".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroU8"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroU16"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroU16".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroU16"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroU32"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroU32".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroU32"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroU64"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroU64".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroU64"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroU128"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroU128".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroU128"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroUsize"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroUsize".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroUsize"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroI8"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroI8".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroI8"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroI16"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroI16".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroI16"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroI32"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroI32".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroI32"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroI64"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroI64".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroI64"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroI128"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroI128".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroI128"),
         );
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroIsize"),
-            MutationKnowledge::as_root_value(json!(1), "NonZeroIsize".to_string()),
+            MutationKnowledge::as_root_value(json!(1), "NonZeroIsize"),
         );
 
         map
