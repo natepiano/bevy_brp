@@ -177,7 +177,7 @@ Test that format errors include embedded type_guide information for self-correct
 
 **STEP 2**: Attempt insert with INCORRECT object format:
 ```json
-mcp__brp__bevy_insert with parameters:
+`mcp__brp__world_insert_components` with parameters:
 {
   "entity": [USE_ENTITY_ID_FROM_QUERY],
   "components": {
@@ -258,7 +258,7 @@ mcp__brp__world_mutate_components with parameters:
 
 **STEP 1**: Test completely malformed input:
 ```json
-mcp__brp__bevy_insert with parameters:
+`mcp__brp__world_insert_components` with parameters:
 {
   "entity": [USE_ENTITY_ID_FROM_QUERY],
   "components": {

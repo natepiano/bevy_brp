@@ -22,7 +22,7 @@ Validate entity watch functionality including component monitoring, list watchin
 - Execute `mcp__brp__world_list_components_watch` on the same entity from step 1
 - Remove Transform component using `mcp__brp__world_remove_components` with components array `["bevy_transform::components::transform::Transform"]`
 - Read list watch log file and verify COMPONENT_UPDATE shows Transform in removed arrayevy
-- Add Transform component back using `mcp__brp__bevy_insert` with Transform data
+- Add Transform component back using `mcp__brp__world_insert_components` with Transform data
 - Read list watch log file again and verify COMPONENT_UPDATE shows Transform in added array
 - Stop this watch using `mcp__brp__brp_stop_watch`
 

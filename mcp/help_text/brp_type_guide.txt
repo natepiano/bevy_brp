@@ -3,7 +3,7 @@ Provides guidance to the coding agent for working with bevy components and resou
 This tool spawn/insert/mutate information for types in your Bevy app so that your coding agent can construct the necessary JSON structures for BRP operations.
 
 Returns:
-- spawn_format: Example JSON structure for world.spawn_entity operations, bevy/insert and world.insert_resources methods.
+- spawn_format: Example JSON structure for `world.spawn_entity` operations, `world.insert_components` and `world.insert_resources` methods.
 - mutation_info: Available mutation paths for `world.mutate_components` and `world.mutate_resources` operations
 - supported_operations: Which BRP operations work with each type
 - reflection traits: Reflect, Serialize, Deserialize,

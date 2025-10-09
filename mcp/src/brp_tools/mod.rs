@@ -22,12 +22,12 @@ pub use constants::{BRP_EXTRAS_PORT_ENV_VAR, MAX_VALID_PORT};
 pub use port::Port;
 //
 // Export all parameter and result structs by name
-pub use tools::bevy_insert::{InsertParams, InsertResult};
 pub use tools::registry_schema::{RegistrySchemaParams, RegistrySchemaResult};
 pub use tools::rpc_discover::{RpcDiscoverParams, RpcDiscoverResult};
 pub use tools::world_despawn_entity::{DespawnEntityParams, DespawnEntityResult};
 pub use tools::world_get_components::{GetComponentsParams, GetComponentsResult};
 pub use tools::world_get_resources::{GetResourcesParams, GetResourcesResult};
+pub use tools::world_insert_components::{InsertComponentsParams, InsertComponentsResult};
 pub use tools::world_insert_resources::{InsertResourcesParams, InsertResourcesResult};
 pub use tools::world_list_components::{ListComponentsParams, ListComponentsResult};
 pub use tools::world_list_resources::{ListResourcesParams, ListResourcesResult};

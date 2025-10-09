@@ -13,7 +13,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Use simple Transform format: `{"translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1]}`
 
 ### 2. Component Insertion
-- Execute `mcp__brp__bevy_insert` to add Name component to spawned entity
+- Execute `mcp__brp__world_insert_components` to add Name component to spawned entity
 - Use format: `{"bevy_ecs::name::Name": "TestEntity"}`
 - Verify operation succeeds
 

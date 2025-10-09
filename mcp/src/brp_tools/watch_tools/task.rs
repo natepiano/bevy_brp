@@ -621,7 +621,14 @@ pub async fn start_entity_watch_task(
         ParameterName::Components: components
     });
 
-    start_watch_task(entity_id, "get", BrpMethod::BevyGetWatch, params, port).await
+    start_watch_task(
+        entity_id,
+        "get",
+        BrpMethod::WorldGetComponentsWatch,
+        params,
+        port,
+    )
+    .await
 }
 
 /// Start a background task for entity list watching

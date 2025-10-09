@@ -1,4 +1,4 @@
-//! `bevy/insert` tool - Insert or replace components on entities
+//! `world.insert_components` tool - Insert or replace components on entities
 
 use std::collections::HashMap;
 
@@ -9,9 +9,9 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/insert` tool
+/// Parameters for the `world.insert_components` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct InsertParams {
+pub struct InsertComponentsParams {
     /// The entity ID to insert components into
     pub entity: u64,
 
@@ -25,10 +25,10 @@ pub struct InsertParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/insert` tool
+/// Result for the `world.insert_components` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result(enhanced_errors = true)]
-pub struct InsertResult {
+pub struct InsertComponentsResult {
     /// The raw BRP response data (usually empty for insert)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]

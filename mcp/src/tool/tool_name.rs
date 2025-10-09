@@ -23,15 +23,15 @@ use crate::brp_tools::{
     AllTypeGuidesParams, BevyListWatch, BrpAllTypeGuides, BrpExecute, BrpListActiveWatches,
     BrpStopWatch, BrpTypeGuide, DespawnEntityParams, DespawnEntityResult, ExecuteParams,
     GetComponentsParams, GetComponentsResult, GetComponentsWatchParams, GetResourcesParams,
-    GetResourcesResult, InsertParams, InsertResourcesParams, InsertResourcesResult, InsertResult,
-    ListComponentsParams, ListComponentsResult, ListComponentsWatchParams, ListResourcesParams,
-    ListResourcesResult, MutateComponentsParams, MutateComponentsResult, MutateResourcesParams,
-    MutateResourcesResult, QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult,
-    RemoveComponentsParams, RemoveComponentsResult, RemoveResourcesParams, RemoveResourcesResult,
-    ReparentEntitiesParams, ReparentEntitiesResult, RpcDiscoverParams, RpcDiscoverResult,
-    ScreenshotParams, ScreenshotResult, SendKeysParams, SendKeysResult, SetWindowTitleParams,
-    SetWindowTitleResult, SpawnEntityParams, SpawnEntityResult, StopWatchParams, TypeGuideParams,
-    WorldGetComponentsWatch,
+    GetResourcesResult, InsertComponentsParams, InsertComponentsResult, InsertResourcesParams,
+    InsertResourcesResult, ListComponentsParams, ListComponentsResult, ListComponentsWatchParams,
+    ListResourcesParams, ListResourcesResult, MutateComponentsParams, MutateComponentsResult,
+    MutateResourcesParams, MutateResourcesResult, QueryParams, QueryResult, RegistrySchemaParams,
+    RegistrySchemaResult, RemoveComponentsParams, RemoveComponentsResult, RemoveResourcesParams,
+    RemoveResourcesResult, ReparentEntitiesParams, ReparentEntitiesResult, RpcDiscoverParams,
+    RpcDiscoverResult, ScreenshotParams, ScreenshotResult, SendKeysParams, SendKeysResult,
+    SetWindowTitleParams, SetWindowTitleResult, SpawnEntityParams, SpawnEntityResult,
+    StopWatchParams, TypeGuideParams, WorldGetComponentsWatch,
 };
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
@@ -111,13 +111,13 @@ pub enum ToolName {
         result = "DespawnEntityResult"
     )]
     WorldDespawnEntity,
-    /// `bevy_insert` - Insert or replace components on entities
+    /// `world_insert_components` - Insert or replace components on entities
     #[brp_tool(
-        brp_method = "bevy/insert",
-        params = "InsertParams",
-        result = "InsertResult"
+        brp_method = "world.insert_components",
+        params = "InsertComponentsParams",
+        result = "InsertComponentsResult"
     )]
-    BevyInsert,
+    WorldInsertComponents,
     /// `world_remove_components` - Remove components from entities
     #[brp_tool(
         brp_method = "world.remove_components",
@@ -206,7 +206,7 @@ pub enum ToolName {
     WorldReparentEntities,
     /// `world_get_components_watch` - Watch entity component changes
     #[brp_tool(brp_method = "world.get_components+watch")]
-    BevyGetWatch,
+    WorldGetComponentsWatch,
     /// `world_list_components_watch` - Watch entity component list changes
     #[brp_tool(brp_method = "world.list_components+watch")]
     WorldListComponentsWatch,
@@ -322,7 +322,7 @@ impl ToolName {
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
-            Self::BevyInsert => Annotation::new(
+            Self::WorldInsertComponents => Annotation::new(
                 "Insert Components",
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
@@ -407,7 +407,7 @@ impl ToolName {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            Self::BevyGetWatch => Annotation::new(
+            Self::WorldGetComponentsWatch => Annotation::new(
                 "Watch Component Changes",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
@@ -518,7 +518,9 @@ impl ToolName {
             Self::WorldGetResources => {
                 Some(parameters::build_parameters_from::<GetResourcesParams>)
             }
-            Self::BevyInsert => Some(parameters::build_parameters_from::<InsertParams>),
+            Self::WorldInsertComponents => {
+                Some(parameters::build_parameters_from::<InsertComponentsParams>)
+            }
             Self::WorldInsertResources => {
                 Some(parameters::build_parameters_from::<InsertResourcesParams>)
             }
@@ -555,7 +557,7 @@ impl ToolName {
             Self::BrpExtrasSetWindowTitle => {
                 Some(parameters::build_parameters_from::<SetWindowTitleParams>)
             }
-            Self::BevyGetWatch => {
+            Self::WorldGetComponentsWatch => {
                 Some(parameters::build_parameters_from::<GetComponentsWatchParams>)
             }
             Self::WorldListComponentsWatch => {
@@ -597,7 +599,7 @@ impl ToolName {
             Self::WorldDespawnEntity => Arc::new(WorldDespawnEntity),
             Self::WorldGetComponents => Arc::new(WorldGetComponents),
             Self::WorldGetResources => Arc::new(WorldGetResources),
-            Self::BevyInsert => Arc::new(BevyInsert),
+            Self::WorldInsertComponents => Arc::new(WorldInsertComponents),
             Self::WorldInsertResources => Arc::new(WorldInsertResources),
             Self::WorldListComponents => Arc::new(WorldListComponents),
             Self::WorldListResources => Arc::new(WorldListResources),
@@ -616,7 +618,7 @@ impl ToolName {
 
             // Special tools with their own implementations
             Self::BrpExecute => Arc::new(BrpExecute),
-            Self::BevyGetWatch => Arc::new(WorldGetComponentsWatch),
+            Self::WorldGetComponentsWatch => Arc::new(WorldGetComponentsWatch),
             Self::WorldListComponentsWatch => Arc::new(BevyListWatch),
             Self::BrpListActiveWatches => Arc::new(BrpListActiveWatches),
             Self::BrpStopWatch => Arc::new(BrpStopWatch),

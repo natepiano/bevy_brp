@@ -149,9 +149,11 @@ impl TryFrom<BrpMethod> for Operation {
 
     fn try_from(method: BrpMethod) -> std::result::Result<Self, Self::Error> {
         match method {
-            BrpMethod::WorldSpawnEntity | BrpMethod::BevyInsert => Ok(Self::SpawnInsert {
-                parameter_name: ParameterName::Components,
-            }),
+            BrpMethod::WorldSpawnEntity | BrpMethod::WorldInsertComponents => {
+                Ok(Self::SpawnInsert {
+                    parameter_name: ParameterName::Components,
+                })
+            }
 
             BrpMethod::WorldInsertResources => Ok(Self::SpawnInsert {
                 parameter_name: ParameterName::Value,
