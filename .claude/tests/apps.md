@@ -36,7 +36,7 @@ Validate that the `test_app` binary works correctly with BRP operations, testing
 - Store entity ID for subsequent tests
 
 ### 4. Query Operation - Non-Reflected Component
-- Execute `mcp__brp__bevy_query` for `test_app::Rotator` component (which lacks Reflect derive)
+- Execute `mcp__brp__world_query` for `test_app::Rotator` component (which lacks Reflect derive)
 - **IMPORTANT**: The `data` parameter is required - use an empty object `{}` if you only want to filter
 - With default `strict: false` and `data: {}`: Verify it returns empty results (0 entities)
 - With `strict: true` and `data: {}`: Verify it returns error -23402 with message about component not being registered
@@ -55,7 +55,7 @@ Validate that the `test_app` binary works correctly with BRP operations, testing
 - Verify translation.x is now 100.0
 
 ### 7. List Operations
-- Execute `mcp__brp__bevy_list` without entity parameter
+- Execute `mcp__brp__world_list_components` without entity parameter
 - Verify comprehensive component list is returned
 - Check that Transform, Sprite, and other standard components are listed
 

@@ -39,12 +39,12 @@
       "mcp__brp__bevy_get_watch",
       "mcp__brp__bevy_insert",
       "mcp__brp__bevy_insert_resource",
-      "mcp__brp__bevy_list",
+      "mcp__brp__world_list_components",
       "mcp__brp__bevy_list_resources",
       "mcp__brp__bevy_list_watch",
       "mcp__brp__bevy_mutate_component",
       "mcp__brp__bevy_mutate_resource",
-      "mcp__brp__bevy_query",
+      "mcp__brp__world_query",
       "mcp__brp__bevy_registry_schema",
       "mcp__brp__bevy_remove",
       "mcp__brp__bevy_remove_resource",
@@ -175,10 +175,7 @@
       "SlashCommand(/get_kind_baseline)",
       "Bash(.claude/scripts/get_type_kind.sh:*)"
     ],
-    "deny": [
-      "Bash(sed:*)",
-      "Bash(cat >:*)"
-    ],
+    "deny": ["Bash(sed:*)", "Bash(cat >:*)"],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",

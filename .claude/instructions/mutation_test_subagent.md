@@ -312,7 +312,7 @@ For each type name string in your `type_names` array:
       - **CRITICAL**: If any mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
       - **YOU MUST**: Replace ALL instances of `8589934670` with REAL entity IDs from the running app
       - **HOW TO GET REAL ENTITY IDs**:
-        1. First query for existing entities: `bevy_query` with appropriate filter
+        1. First query for existing entities: `world_query` with appropriate filter
         2. Use the entity IDs from query results
         3. If testing EntityHashMap types, use the queried entity ID as the map key
       - **EXAMPLE**: If mutation example shows `{"8589934670": [...]}` for an EntityHashMap:
@@ -320,7 +320,7 @@ For each type name string in your `type_names` array:
         - Replace `8589934670` with the actual entity ID from the query
         - Then perform the mutation with the real entity ID
       - **FOR HIERARCHY COMPONENTS** (Children, Parent):
-        - **CRITICAL**: Query for ALL entities in the scene using `bevy_query` with no filter
+        - **CRITICAL**: Query for ALL entities in the scene using `world_query` with no filter
         - Use a DIFFERENT entity ID than the one being mutated
         - **NEVER** create circular relationships (entity as its own parent/child)
         - Example: When testing entity 4294967390's `Children` component:

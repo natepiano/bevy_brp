@@ -1,4 +1,4 @@
-//! `bevy/query` tool - Query entities by components
+//! `world.query` tool - Query entities by components
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/query` tool
+/// Parameters for the `world.query` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct QueryParams {
     /// Object specifying what component data to retrieve. Required.
@@ -29,7 +29,7 @@ pub struct QueryParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/query` tool
+/// Result for the `world.query` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
 pub struct QueryResult {

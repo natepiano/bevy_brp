@@ -48,7 +48,7 @@ pub enum CallInfo {
     /// BRP tool execution (calls Bevy Remote Protocol)
     Brp {
         /// The MCP tool name (e.g., "`bevy_spawn`")
-        mcp_tool:   String,
+        mcp_tool: String,
         /// The BRP method name (e.g., "bevy/spawn")
         brp_method: String,
     },
@@ -88,9 +88,13 @@ impl CallInfo {
 #[tool_description(path = "../../help_text")]
 pub enum ToolName {
     // Core BRP Tools (Direct protocol methods)
-    /// `bevy_list` - List components on an entity or all component types
-    #[brp_tool(brp_method = "bevy/list", params = "ListParams", result = "ListResult")]
-    BevyList,
+    /// `world_list_components` - List components on an entity or all component types
+    #[brp_tool(
+        brp_method = "world.list_components",
+        params = "ListParams",
+        result = "ListResult"
+    )]
+    WorldListComponents,
     /// `bevy_get` - Get component data from entities
     #[brp_tool(brp_method = "bevy/get", params = "GetParams", result = "GetResult")]
     BevyGet,
@@ -164,13 +168,13 @@ pub enum ToolName {
         result = "RpcDiscoverResult"
     )]
     BevyRpcDiscover,
-    /// `bevy_query` - Query entities by components
+    /// `world_query` - Query entities by components
     #[brp_tool(
-        brp_method = "bevy/query",
+        brp_method = "world.query",
         params = "QueryParams",
         result = "QueryResult"
     )]
-    BevyQuery,
+    WorldQuery,
     /// `bevy_spawn` - Spawn entities with components
     #[brp_tool(
         brp_method = "bevy/spawn",
@@ -279,7 +283,7 @@ impl ToolName {
         let tool_name = self.to_string();
         match self.to_brp_method() {
             Some(brp_method) => CallInfo::Brp {
-                mcp_tool:   tool_name,
+                mcp_tool: tool_name,
                 brp_method: brp_method.as_str().to_string(),
             },
             None => CallInfo::Local {
@@ -321,7 +325,7 @@ impl ToolName {
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            Self::BevyList => Annotation::new(
+            Self::WorldListComponents => Annotation::new(
                 "List Components",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
@@ -341,7 +345,7 @@ impl ToolName {
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            Self::BevyQuery => Annotation::new(
+            Self::WorldQuery => Annotation::new(
                 "Query Entities/Components",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
@@ -505,7 +509,7 @@ impl ToolName {
             Self::BevyInsertResource => {
                 Some(parameters::build_parameters_from::<InsertResourceParams>)
             }
-            Self::BevyList => Some(parameters::build_parameters_from::<ListParams>),
+            Self::WorldListComponents => Some(parameters::build_parameters_from::<ListParams>),
             Self::BevyListResources => {
                 Some(parameters::build_parameters_from::<ListResourcesParams>)
             }
@@ -515,7 +519,7 @@ impl ToolName {
             Self::BevyMutateResource => {
                 Some(parameters::build_parameters_from::<MutateResourceParams>)
             }
-            Self::BevyQuery => Some(parameters::build_parameters_from::<QueryParams>),
+            Self::WorldQuery => Some(parameters::build_parameters_from::<QueryParams>),
             Self::BevyRegistrySchema => {
                 Some(parameters::build_parameters_from::<RegistrySchemaParams>)
             }
@@ -574,11 +578,11 @@ impl ToolName {
             Self::BevyGetResource => Arc::new(BevyGetResource),
             Self::BevyInsert => Arc::new(BevyInsert),
             Self::BevyInsertResource => Arc::new(BevyInsertResource),
-            Self::BevyList => Arc::new(BevyList),
+            Self::WorldListComponents => Arc::new(WorldListComponents),
             Self::BevyListResources => Arc::new(BevyListResources),
             Self::BevyMutateComponent => Arc::new(BevyMutateComponent),
             Self::BevyMutateResource => Arc::new(BevyMutateResource),
-            Self::BevyQuery => Arc::new(BevyQuery),
+            Self::WorldQuery => Arc::new(WorldQuery),
             Self::BevyRegistrySchema => Arc::new(BevyRegistrySchema),
             Self::BevyRemove => Arc::new(BevyRemove),
             Self::BevyRemoveResource => Arc::new(BevyRemoveResource),
@@ -617,10 +621,10 @@ impl ToolName {
     /// Convert this tool name to a complete `ToolDef`
     pub fn to_tool_def(self) -> ToolDef {
         ToolDef {
-            tool_name:   self,
+            tool_name: self,
             annotations: self.get_annotations(),
-            handler:     self.create_handler(),
-            parameters:  self.get_parameters(),
+            handler: self.create_handler(),
+            parameters: self.get_parameters(),
         }
     }
 

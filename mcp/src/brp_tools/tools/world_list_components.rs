@@ -1,4 +1,4 @@
-//! `bevy/list` tool - List components on an entity or all component types
+//! `world.list_components` tool - List components on an entity or all component types
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/list` tool
+/// Parameters for the `world.list_components` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ListParams {
     /// Optional entity ID to list components for - to list all types, do not pass entity parameter
@@ -19,7 +19,7 @@ pub struct ListParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/list` tool
+/// Result for the `world.list_components` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
 pub struct ListResult {

@@ -1,3 +1,0 @@
-Lists components via bevy/list BRP method. Lists all registered components or components on a specific entity.
-
-Useful for discovering available types, inspecting entities, and getting fully-qualified names.

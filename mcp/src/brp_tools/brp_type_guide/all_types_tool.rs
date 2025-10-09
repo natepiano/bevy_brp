@@ -1,7 +1,7 @@
 //! `brp_all_type_guides` tool - Get type guides for all registered types
 //!
 //! This tool fetches all registered component types from the Bevy app and returns
-//! their type schema information in a single call. It combines `bevy/list` and
+//! their type schema information in a single call. It combines `world.list_components` and
 //! `brp_type_guide` functionality for convenience.
 
 use bevy_brp_mcp_macros::{ParamStruct, ToolFn};
@@ -28,9 +28,9 @@ pub struct BrpAllTypeGuides;
 
 /// Implementation that fetches all types then gets their guides
 async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
-    // First, get all registered types using bevy/list without entity parameter
+    // First, get all registered types using `world.list_components` without entity parameter
     let list_client = BrpClient::new(
-        BrpMethod::BevyList,
+        BrpMethod::WorldListComponents,
         params.port,
         None, // No params means get all types
     );
@@ -45,17 +45,20 @@ async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
                     .collect::<Vec<String>>()
             } else {
                 return Err(Error::BrpCommunication(
-                    "bevy/list did not return an array of types".to_string(),
+                    "world.list_components did not return an array of types".to_string(),
                 )
                 .into());
             }
         }
         Ok(ResponseStatus::Success(None)) => {
-            return Err(Error::BrpCommunication("bevy/list returned no data".to_string()).into());
+            return Err(Error::BrpCommunication(
+                "world.list_components returned no data".to_string(),
+            )
+            .into());
         }
         Ok(ResponseStatus::Error(err)) => {
             return Err(Error::BrpCommunication(format!(
-                "bevy/list failed: {}",
+                "world.list_components failed: {}",
                 err.get_message()
             ))
             .into());

@@ -172,7 +172,7 @@ Test that format errors include embedded type_guide information for self-correct
 #### 9a. Test Format Error with Type Schema Embedding
 
 **STEP 1**: Query for an entity with Transform:
-- Tool: mcp__brp__bevy_query
+- Tool: mcp__brp__world_query
 - Use filter: {"with": ["bevy_transform::components::transform::Transform"]}
 
 **STEP 2**: Attempt insert with INCORRECT object format:
@@ -226,7 +226,7 @@ mcp__brp__bevy_spawn with parameters:
 #### 9c. Test Mutation Format Error with Type Schema Embedding
 
 **STEP 1**: Query for an entity with Transform:
-- Tool: mcp__brp__bevy_query
+- Tool: mcp__brp__world_query
 - Use filter: {"with": ["bevy_transform::components::transform::Transform"]}
 
 **STEP 2**: Attempt mutation with INCORRECT object format (should be array):
@@ -294,7 +294,7 @@ mcp__brp__bevy_spawn with parameters:
 #### 9f. Test Enum Mutation Error Guidance
 
 **STEP 1**: Query for entity with Visibility:
-- Tool: mcp__brp__bevy_query
+- Tool: mcp__brp__world_query
 - Filter: {"with": ["bevy_render::view::visibility::Visibility"]}
 
 **STEP 2**: Attempt mutation with INCORRECT enum syntax:

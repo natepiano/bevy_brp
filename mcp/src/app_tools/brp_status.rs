@@ -14,7 +14,7 @@ pub struct StatusParams {
     pub app_name: String,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    pub port:     Port,
+    pub port: Port,
 }
 
 /// Result from checking status of a Bevy app
@@ -22,13 +22,13 @@ pub struct StatusParams {
 pub struct StatusResult {
     /// App name
     #[to_metadata]
-    app_name:         String,
+    app_name: String,
     /// Process ID
     #[to_metadata]
-    pid:              u32,
+    pid: u32,
     /// Port where BRP is responding
     #[to_metadata]
-    port:             u16,
+    port: u16,
     /// Message template for formatting responses
     #[to_message(
         message_template = "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}"
@@ -315,7 +315,7 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
 async fn check_brp_on_port(port: Port) -> Result<bool> {
     // Try up to 5 times with 500ms delays to account for BRP initialization timing
     for _attempt in 0..5 {
-        let client = brp_tools::BrpClient::new(BrpMethod::BevyList, port, None);
+        let client = brp_tools::BrpClient::new(BrpMethod::WorldListComponents, port, None);
         match client.execute_raw().await {
             Ok(ResponseStatus::Success(_)) => {
                 // BRP is responding and working

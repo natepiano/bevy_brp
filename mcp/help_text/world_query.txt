@@ -1,4 +1,4 @@
-Queries entities via bevy/query BRP method. Searches entities by components, applies filters, returns data.
+Queries entities via world.query BRP method. Searches entities by components, applies filters, returns data.
 
 ### notes on data parameter
 **REQUIRED** - Specifies what components to retrieve from matching entities.

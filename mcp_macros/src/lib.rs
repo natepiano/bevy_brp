@@ -28,8 +28,8 @@ use proc_macro::TokenStream;
 /// impl ToolName {
 ///     pub const fn description(&self) -> &'static str {
 ///         match self {
-///             ToolName::BevyList => include_str!("../../help_text/bevy_list.txt"),
-///             ToolName::BevyGet => include_str!("../../help_text/bevy_get.txt"),
+///             ToolName::BevyList => include_str!("../../help_text/world.list_components.txt"),
+///             ToolName::BevyGet => include_str!("../../help_text/world.get_components.txt"),
 ///         }
 ///     }
 /// }

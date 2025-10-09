@@ -1,9 +1,9 @@
 Get type schemas for all registered types in a running Bevy application.
 
-This tool combines the functionality of bevy/list and brp_type_guide to fetch schemas for all registered component types in a single convenient call. It's particularly useful for coding agents to discover all available types and their formats without multiple round trips.
+This tool combines the functionality of `world.list_components` and `brp_type_guide` to fetch schemas for all registered component types in a single convenient call. It's particularly useful for coding agents to discover all available types and their formats without multiple round trips.
 
 The tool:
-1. Calls bevy/list without an entity parameter to get all registered types
+1. Calls `world.list_components` without an entity parameter to get all registered types
 2. Uses the TypeSchemaEngine to fetch the complete registry
 3. Generates type schema information for every registered type
 
@@ -17,4 +17,4 @@ This is especially useful for:
 - Initial exploration of a Bevy app's type system
 - Generating comprehensive type documentation
 - Building tooling that needs to understand all available types
-- Avoiding the slower workflow of calling bevy/list then brp_type_guide separately
+- Avoiding the slower workflow of calling `world.list_components` then `brp_type_guide` separately
