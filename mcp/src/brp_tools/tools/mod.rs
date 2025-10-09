@@ -1,7 +1,6 @@
 //! Individual tool modules containing parameter and result structs for each BRP tool
 
 pub mod bevy_insert;
-pub mod bevy_insert_resource;
 pub mod bevy_mutate_component;
 pub mod bevy_remove;
 pub mod brp_execute;
@@ -13,6 +12,7 @@ pub mod rpc_discover;
 pub mod world_despawn_entity;
 pub mod world_get_components;
 pub mod world_get_resources;
+pub mod world_insert_resources;
 pub mod world_list_components;
 pub mod world_list_resources;
 pub mod world_mutate_resources;

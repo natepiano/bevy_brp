@@ -1,4 +1,4 @@
-//! `bevy/insert_resource` tool - Insert or update resources
+//! `world.insert_resources` tool - Insert or update resources
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,9 +7,9 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/insert_resource` tool
+/// Parameters for the `world.insert_resources` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct InsertResourceParams {
+pub struct InsertResourcesParams {
     /// The fully-qualified type name of the resource to insert or update
     pub resource: String,
 
@@ -22,10 +22,10 @@ pub struct InsertResourceParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/insert_resource` tool
+/// Result for the `world.insert_resources` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result(enhanced_errors = true)]
-pub struct InsertResourceResult {
+pub struct InsertResourcesResult {
     /// The raw BRP response data (empty for insert)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]

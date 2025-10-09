@@ -26,7 +26,7 @@ For resources, apparently it doesn't matter if they have Serialize/Deserialize t
 
 **STEP 2**: Insert/update TestConfigResource (has traits):
 ```
-mcp__brp__bevy_insert_resource with parameters:
+mcp__brp__world_insert_resources with parameters:
 {
   "resource": "extras_plugin::TestConfigResource",
   "value": {
@@ -48,7 +48,7 @@ mcp__brp__bevy_insert_resource with parameters:
 
 **STEP 4**: Insert/update RuntimeStatsResource (no Serialize/Deserialize traits):
 ```
-mcp__brp__bevy_insert_resource with parameters:
+mcp__brp__world_insert_resources with parameters:
 {
   "resource": "extras_plugin::RuntimeStatsResource",
   "value": {
@@ -162,7 +162,7 @@ All resource insertion errors should include:
 ### 6. Non-Existent Resource Test
 **STEP 1**: Attempt to insert a non-existent resource:
 ```
-mcp__brp__bevy_insert_resource with parameters:
+mcp__brp__world_insert_resources with parameters:
 {
   "resource": "my_game::config::NonExistentResource",
   "value": {"some": "data"},

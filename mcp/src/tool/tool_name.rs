@@ -23,7 +23,7 @@ use crate::brp_tools::{
     AllTypeGuidesParams, BevyListWatch, BrpAllTypeGuides, BrpExecute, BrpListActiveWatches,
     BrpStopWatch, BrpTypeGuide, DespawnEntityParams, DespawnEntityResult, ExecuteParams,
     GetComponentsWatchParams, GetParams, GetResourcesParams, GetResourcesResult, GetResult,
-    InsertParams, InsertResourceParams, InsertResourceResult, InsertResult, ListComponentsParams,
+    InsertParams, InsertResourcesParams, InsertResourcesResult, InsertResult, ListComponentsParams,
     ListComponentsResult, ListComponentsWatchParams, ListResourcesParams, ListResourcesResult,
     MutateComponentParams, MutateComponentResult, MutateResourcesParams, MutateResourcesResult,
     QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult, RemoveParams,
@@ -139,13 +139,13 @@ pub enum ToolName {
         result = "GetResourcesResult"
     )]
     WorldGetResources,
-    /// `bevy_insert_resource` - Insert or update resources
+    /// `world_insert_resources` - Insert or update resources
     #[brp_tool(
-        brp_method = "bevy/insert_resource",
-        params = "InsertResourceParams",
-        result = "InsertResourceResult"
+        brp_method = "world.insert_resources",
+        params = "InsertResourcesParams",
+        result = "InsertResourcesResult"
     )]
-    BevyInsertResource,
+    WorldInsertResources,
     /// `bevy_remove_resources` - Remove resources
     #[brp_tool(
         brp_method = "world.remove_resources",
@@ -327,7 +327,7 @@ impl ToolName {
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            Self::BevyInsertResource => Annotation::new(
+            Self::WorldInsertResources => Annotation::new(
                 "Insert Resource",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
@@ -517,8 +517,8 @@ impl ToolName {
                 Some(parameters::build_parameters_from::<GetResourcesParams>)
             }
             Self::BevyInsert => Some(parameters::build_parameters_from::<InsertParams>),
-            Self::BevyInsertResource => {
-                Some(parameters::build_parameters_from::<InsertResourceParams>)
+            Self::WorldInsertResources => {
+                Some(parameters::build_parameters_from::<InsertResourcesParams>)
             }
             Self::WorldListComponents => {
                 Some(parameters::build_parameters_from::<ListComponentsParams>)
@@ -594,7 +594,7 @@ impl ToolName {
             Self::WorldGetComponents => Arc::new(WorldGetComponents),
             Self::WorldGetResources => Arc::new(WorldGetResources),
             Self::BevyInsert => Arc::new(BevyInsert),
-            Self::BevyInsertResource => Arc::new(BevyInsertResource),
+            Self::WorldInsertResources => Arc::new(WorldInsertResources),
             Self::WorldListComponents => Arc::new(WorldListComponents),
             Self::WorldListResources => Arc::new(WorldListResources),
             Self::BevyMutateComponent => Arc::new(BevyMutateComponent),

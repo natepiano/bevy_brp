@@ -153,7 +153,7 @@ impl TryFrom<BrpMethod> for Operation {
                 parameter_name: ParameterName::Components,
             }),
 
-            BrpMethod::BevyInsertResource => Ok(Self::SpawnInsert {
+            BrpMethod::WorldInsertResources => Ok(Self::SpawnInsert {
                 parameter_name: ParameterName::Value,
             }),
 

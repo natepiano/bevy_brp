@@ -1,4 +1,4 @@
-Inserts/updates resources via bevy/insert_resource BRP method. Useful for modifying config, injecting data, testing states, and building tools.
+Inserts/updates resources via world.insert_resources BRP method. Useful for modifying config, injecting data, testing states, and building tools.
 
 Example:
 ```json
