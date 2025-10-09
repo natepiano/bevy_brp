@@ -1,4 +1,4 @@
-//! `bevy/registry/schema` tool - Get type schemas
+//! `registry.schema` tool - Get type schemas
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/registry/schema` tool
+/// Parameters for the `registry.schema` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct RegistrySchemaParams {
     /// Include only types from these crates (e.g., [`bevy_transform`, `my_game`])
@@ -31,7 +31,7 @@ pub struct RegistrySchemaParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/registry/schema` tool
+/// Result for the `registry.schema` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
 pub struct RegistrySchemaResult {

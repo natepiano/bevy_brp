@@ -111,7 +111,7 @@ This crate is designed to work seamlessly with [bevy_brp_extras](https://github.
 1. Add `BrpExtrasPlugin` to your Bevy app for enhanced BRP features
 2. Use `bevy_brp_mcp` with your AI coding assistant
 3. Additional methods like screenshot, shutdown, and keyboard input will be automatically available
-4. Get proper JSON formats for complex BRP operations using the `brp_type_guide` tool. The value returned from bevy/registry/schema does not tell you exactly what is expected by the brp spawn/insert/mutate calls. The `brp_type_guide` tool provides enhanced format information that will make it easier for your coding agent to know how to use spawn/insert/mutate.
+4. Get proper JSON formats for complex BRP operations using the `brp_type_guide` tool. The value returned from `registry.schema` does not tell you exactly what is expected by the brp spawn/insert/mutate calls. The `brp_type_guide` tool provides enhanced format information that will make it easier for your coding agent to know how to use spawn/insert/mutate.
 
 ## Example Workflow
 

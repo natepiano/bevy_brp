@@ -20,7 +20,7 @@ Validate handling of large responses that exceed context limits, particularly re
 ## Test Steps
 
 ### 1. Large Registry Schema Request
-- Execute `mcp__brp__bevy_registry_schema` without filters (intentionally large)
+- Execute `mcp__brp__registry_schema` without filters (intentionally large)
 - Verify response indicates file output due to size
 - Check that `result.filepath` is returned instead of inline schema data
 - Verify response has success status, message, call_info, and `result.saved_to_file: true`

@@ -15,7 +15,7 @@ Validate that the `test_app` binary works correctly with BRP operations, testing
 - Confirm app process is detected and BRP is responsive
 
 ### 2. RPC Discovery
-- Execute `mcp__brp__bevy_rpc_discover`
+- Execute `mcp__brp__rpc_discover`
 - Verify standard BRP methods are available
 - Confirm bevy_brp_extras methods ARE listed (since app has extras plugin)
 

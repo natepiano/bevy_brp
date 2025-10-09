@@ -1,4 +1,4 @@
-Gets type schemas via bevy/registry/schema BRP method. Useful for understanding structures, building tools, validating data, generating docs.
+Gets type schemas via `registry.schema` BRP method. Useful for understanding structures, building tools, validating data, generating docs.
 
 ⚠️ WARNING: Can exceed 200k+ tokens. ALWAYS use filters.
 

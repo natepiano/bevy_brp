@@ -331,7 +331,7 @@ The shortPath resolution feature needs extensive testing across multiple scenari
   → Resolve shortPaths in keys, preserve full paths
 
 #### 4. Error Handling Edge Cases
-- **Registry Unavailable**: What happens if `bevy/registry/schema` fails?
+- **Registry Unavailable**: What happens if `registry.schema` fails?
 - **Empty Registry**: App with no registered components
 - **Network Timeout**: Registry call times out
 - **Malformed Registry**: Registry returns invalid data

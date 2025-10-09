@@ -173,7 +173,7 @@ pub enum ToolName {
         params = "RpcDiscoverParams",
         result = "RpcDiscoverResult"
     )]
-    BevyRpcDiscover,
+    RpcDiscover,
     /// `world_query` - Query entities by components
     #[brp_tool(
         brp_method = "world.query",
@@ -188,13 +188,13 @@ pub enum ToolName {
         result = "SpawnEntityResult"
     )]
     WorldSpawnEntity,
-    /// `bevy_registry_schema` - Get type schemas
+    /// `registry_schema` - Get type schemas
     #[brp_tool(
-        brp_method = "bevy/registry/schema",
+        brp_method = "registry.schema",
         params = "RegistrySchemaParams",
         result = "RegistrySchemaResult"
     )]
-    BevyRegistrySchema,
+    RegistrySchema,
 
     /// `world_reparent_entities` - Change entity parents
     #[brp_tool(
@@ -356,7 +356,7 @@ impl ToolName {
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            Self::BevyRegistrySchema => Annotation::new(
+            Self::RegistrySchema => Annotation::new(
                 "Get Type Schemas from Registry",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
@@ -376,7 +376,7 @@ impl ToolName {
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            Self::BevyRpcDiscover => Annotation::new(
+            Self::RpcDiscover => Annotation::new(
                 "Discover BRP Methods",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
@@ -532,9 +532,7 @@ impl ToolName {
                 Some(parameters::build_parameters_from::<MutateResourceParams>)
             }
             Self::WorldQuery => Some(parameters::build_parameters_from::<QueryParams>),
-            Self::BevyRegistrySchema => {
-                Some(parameters::build_parameters_from::<RegistrySchemaParams>)
-            }
+            Self::RegistrySchema => Some(parameters::build_parameters_from::<RegistrySchemaParams>),
             Self::BevyRemove => Some(parameters::build_parameters_from::<RemoveParams>),
             Self::BevyRemoveResource => {
                 Some(parameters::build_parameters_from::<RemoveResourceParams>)
@@ -542,7 +540,7 @@ impl ToolName {
             Self::WorldReparentEntities => {
                 Some(parameters::build_parameters_from::<ReparentEntitiesParams>)
             }
-            Self::BevyRpcDiscover => Some(parameters::build_parameters_from::<RpcDiscoverParams>),
+            Self::RpcDiscover => Some(parameters::build_parameters_from::<RpcDiscoverParams>),
             Self::WorldSpawnEntity => Some(parameters::build_parameters_from::<SpawnEntityParams>),
             Self::BrpExecute => Some(parameters::build_parameters_from::<ExecuteParams>),
             Self::BrpExtrasScreenshot => {
@@ -601,11 +599,11 @@ impl ToolName {
             Self::BevyMutateComponent => Arc::new(BevyMutateComponent),
             Self::BevyMutateResource => Arc::new(BevyMutateResource),
             Self::WorldQuery => Arc::new(WorldQuery),
-            Self::BevyRegistrySchema => Arc::new(BevyRegistrySchema),
+            Self::RegistrySchema => Arc::new(RegistrySchema),
             Self::BevyRemove => Arc::new(BevyRemove),
             Self::BevyRemoveResource => Arc::new(BevyRemoveResource),
             Self::WorldReparentEntities => Arc::new(WorldReparentEntities),
-            Self::BevyRpcDiscover => Arc::new(BevyRpcDiscover),
+            Self::RpcDiscover => Arc::new(RpcDiscover),
             Self::WorldSpawnEntity => Arc::new(WorldSpawnEntity),
             Self::BrpExtrasScreenshot => Arc::new(BrpExtrasScreenshot),
             Self::BrpExtrasSendKeys => Arc::new(BrpExtrasSendKeys),
