@@ -118,7 +118,7 @@ This crate is designed to work seamlessly with [bevy_brp_extras](https://github.
 1. **Discovery**: Use `list_bevy_apps` to find available applications
 2. **Launch**: Use `launch_bevy_app` to start your game with proper logging
 3. **Inspect**: Use `world_query` to find entities of interest
-4. **Monitor**: Use `brp_get_watch` to observe entity changes in real-time
+4. **Monitor**: Use `world_get_components_watch` to observe entity changes in real-time
 5. **Modify**: Use `bevy_mutate_component` to adjust entity properties
 6. **Debug**: Use `read_log` to examine application output
 7. **Capture**: Use `brp_extras_screenshot` to document current state

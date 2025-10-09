@@ -36,7 +36,7 @@
       "mcp__brp__world_despawn_entity",
       "mcp__brp__bevy_get",
       "mcp__brp__world_get_resources",
-      "mcp__brp__bevy_get_watch",
+      "mcp__brp__world_get_components_watch",
       "mcp__brp__bevy_insert",
       "mcp__brp__bevy_insert_resource",
       "mcp__brp__world_list_components",

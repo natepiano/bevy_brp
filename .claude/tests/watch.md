@@ -9,7 +9,7 @@ Validate entity watch functionality including component monitoring, list watchin
 
 ### 1. Start Component Watch and Verify Logging
 - Spawn an entity with Transform component using `mcp__brp__world_spawn_entity`
-- Execute `mcp__brp__bevy_get_watch` on the spawned entity
+- Execute `mcp__brp__world_get_components_watch` on the spawned entity
 - Specify components array: `["bevy_transform::components::transform::Transform"]`
 - Verify watch returns watch_id and log_path
 - Check watch starts successfully

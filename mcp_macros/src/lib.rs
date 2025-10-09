@@ -50,7 +50,7 @@ pub fn derive_tool_description(input: TokenStream) -> TokenStream {
 ///     #[brp_tool(brp_method = "world.despawn_entity", params = "DespawnEntityParams")]
 ///     WorlDespawnEntity,
 ///
-///     #[brp_tool(brp_method = "bevy/get+watch")]
+///     #[brp_tool(brp_method = "world.get_components+watch")]
 ///     BevyGetWatch,  // Just the method, no params
 /// }
 /// ```

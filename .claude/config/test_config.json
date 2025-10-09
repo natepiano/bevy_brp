@@ -46,7 +46,7 @@
     "test_file": ".claude/tests/watch.md",
     "app_name": "extras_plugin",
     "app_type": "example",
-    "test_objective": "Test get_watch, list_watch, active_watches, stop_watch"
+    "test_objective": "Test get_componentswatch, list_components_watch, active_watches, stop_watch"
   },
   {
     "test_name": "resource",

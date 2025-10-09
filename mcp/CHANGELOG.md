@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implements "do no harm" principle - no trace log files created until explicitly enabled via `brp_set_tracing_level` tool
 - `brp_type_guide` tool for type discovery using registry schema introspection
 - Optional `port` parameter to `brp_launch_bevy_app` and `brp_launch_bevy_example` for custom BRP port support (requires bevy_brp_extras)
-- Configurable timeouts for watch operations (`bevy_get_watch` and `world_list_components_watch`) with `timeout_seconds` parameter
+- Configurable timeouts for watch operations (`world_get_components_watch` and `world_list_components_watch`) with `timeout_seconds` parameter
 - Trace logging integration for watch operations controlled by tracing level
 - Timeout status tracking in `brp_list_active_watches` output
 - Optional `verbose` parameter to `brp_list_logs` (default: false) for minimal output
@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added comprehensive output schemas to all tools using automatic schema generation from `ToolCallJsonResponse` struct
 - Improved error messages when duplicate app/example names are found across workspaces
 - All tools will return a pointer to a file in the local temp directory if the response is too large to return to coding agent. Hard coded using heuristics to fit within claude code limits.
-- `bevy_get_watch` parameter: Renamed parameter from `components` to `types` for consistency with other BRP tools
+- `world_get_components_watch` parameter: Renamed parameter from `components` to `types` for consistency with other BRP tools
 - Substantial tool call response changes. If you have any prompts that depend on the response returned from a tool call, please review the response carefully.
 - All BRP tool `port` parameters are now optional with default value 15702
 

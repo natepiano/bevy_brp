@@ -58,20 +58,6 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 
 ---
 
-## Watch Methods
-
-### 10. `bevy/get+watch` → `world.get_components+watch`
-
-- [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyGetWatch` → `WorldGetComponentsWatch`
-- [ ] `mcp/src/tool/tool_name.rs` - Update `#[brp_tool(brp_method = "world.get_components+watch")]`
-- [ ] Rename `mcp/src/brp_tools/watch_tools/bevy_get_watch.rs` → `world_get_components_watch.rs`
-- [ ] Update file header comment and struct docs in `world_get_components_watch.rs`
-- [ ] Update `mcp/src/brp_tools/watch_tools/mod.rs` imports
-- [ ] Rename `mcp/help_text/bevy_get_watch.txt` → `world_get_components_watch.txt`
-- [ ] Update description text in `world_get_components_watch.txt`
-
----
-
 ## Resource Methods
 
 ### 13. `bevy/insert_resource` → `world.insert_resources`

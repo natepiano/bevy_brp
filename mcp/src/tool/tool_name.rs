@@ -198,8 +198,8 @@ pub enum ToolName {
         result = "ReparentEntitiesResult"
     )]
     WorldReparentEntities,
-    /// `bevy_get_watch` - Watch entity component changes
-    #[brp_tool(brp_method = "bevy/get+watch")]
+    /// `world_get_components_watch` - Watch entity component changes
+    #[brp_tool(brp_method = "world.get_components+watch")]
     BevyGetWatch,
     /// `world_list_components_watch` - Watch entity component list changes
     #[brp_tool(brp_method = "world.list_components+watch")]
