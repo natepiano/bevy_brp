@@ -13,17 +13,6 @@ This plan covers renaming all 17 BRP methods from Bevy 0.16 to 0.17 naming conve
 
 ## Entity/Component Methods
 
-### 5. `bevy/get` → `world.get_components`
-
-- [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyGet` → `WorldGetComponents`
-- [ ] `mcp/src/tool/tool_name.rs` - Update `#[brp_tool(brp_method = "world.get_components")]`
-- [ ] Rename `mcp/src/brp_tools/tools/bevy_get.rs` → `world_get_components.rs`
-- [ ] Update file header comment and struct docs in `world_get_components.rs`
-- [ ] Update `mcp/src/brp_tools/tools/mod.rs` imports
-- [ ] Rename `mcp/help_text/bevy_get.txt` → `world_get_components.txt`
-- [ ] Update description text in `world_get_components.txt`
-- [ ] `mcp/help_text/brp_execute.txt` - Update example references
-
 ### 6. `bevy/insert` → `world.insert_components`
 
 - [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyInsert` → `WorldInsertComponents`

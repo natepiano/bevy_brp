@@ -10,19 +10,19 @@ use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct ListWatchParams {
+pub struct ListComponentsWatchParams {
     /// The entity ID to watch for component list changes
     pub entity: u64,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    pub port:   Port,
+    pub port: Port,
 }
 
 #[derive(ToolFn)]
-#[tool_fn(params = "ListWatchParams", output = "WatchStartResult")]
+#[tool_fn(params = "ListComponentsWatchParams", output = "WatchStartResult")]
 pub struct BevyListWatch;
 
-async fn handle_impl(params: ListWatchParams) -> Result<WatchStartResult> {
+async fn handle_impl(params: ListComponentsWatchParams) -> Result<WatchStartResult> {
     // Start the watch task
     let result = super::start_list_watch_task(params.entity, params.port)
         .await

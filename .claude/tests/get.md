@@ -1,7 +1,7 @@
 # Get Strict Parameter Tests
 
 ## Objective
-Validate the `strict` parameter behavior in `bevy_get` operations, testing both lenient (default) and strict modes with valid and invalid component requests.
+Validate the `strict` parameter behavior in `world_get_components` operations, testing both lenient (default) and strict modes with valid and invalid component requests.
 
 **NOTE**: The extras_plugin app is already running on the specified port - focus on testing operations, not app management.
 
@@ -23,7 +23,7 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
 - Save the returned entity ID for all subsequent tests
 
 ### 2. Test: Strict false with 1 invalid component
-- Execute `mcp__brp__bevy_get` with:
+- Execute `mcp__brp__world_get_components` with:
   - entity: [saved entity ID]
   - components: `["NonExistentComponent"]`
   - strict: `false` (or omit for default)
@@ -34,7 +34,7 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
   - Message shows "Retrieved 0 components" (component_count: 0)
 
 ### 3. Test: Strict false with 1 invalid and 1 valid component
-- Execute `mcp__brp__bevy_get` with:
+- Execute `mcp__brp__world_get_components` with:
   - entity: [saved entity ID]
   - components: `["bevy_transform::components::transform::Transform", "InvalidComponent::DoesNotExist"]`
   - strict: `false`
@@ -46,7 +46,7 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
   - Message shows "Retrieved 1 components" (component_count: 1)
 
 ### 4. Test: Strict true with 1 invalid component
-- Execute `mcp__brp__bevy_get` with:
+- Execute `mcp__brp__world_get_components` with:
   - entity: [saved entity ID]
   - components: `["ThisComponent::DoesNotExist"]`
   - strict: `true`
@@ -55,7 +55,7 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
 - **Verify**: Operation fails with error about invalid component
 
 ### 5. Test: Strict true with 1 invalid and 1 valid component
-- Execute `mcp__brp__bevy_get` with:
+- Execute `mcp__brp__world_get_components` with:
   - entity: [saved entity ID]
   - components: `["bevy_ecs::name::Name", "AnotherInvalid::Component"]`
   - strict: `true`
@@ -64,7 +64,7 @@ Validate the `strict` parameter behavior in `bevy_get` operations, testing both 
 - **Verify**: Operation fails even though Name component exists, because of the invalid component
 
 ### 6. Test: Strict true with 2 valid components
-- Execute `mcp__brp__bevy_get` with:
+- Execute `mcp__brp__world_get_components` with:
   - entity: [saved entity ID]
   - components: `["bevy_transform::components::transform::Transform", "bevy_ecs::name::Name"]`
   - strict: `true`

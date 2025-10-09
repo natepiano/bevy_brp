@@ -1,0 +1,5 @@
+Gets component data from entities via world.get_components BRP method. Useful for inspecting state and debugging.
+
+Example types: "bevy_transform::components::transform::Transform", "bevy_sprite::sprite::Sprite"
+
+Note: Requires BRP registration

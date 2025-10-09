@@ -1,4 +1,4 @@
-//! `bevy/get` tool - Get component data from entities
+//! `world.get_components` tool - Get component data from entities
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/get` tool
+/// Parameters for the `world.get_components` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct GetParams {
     /// The entity ID to get component data from
@@ -25,7 +25,7 @@ pub struct GetParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/get` tool
+/// Result for the `world.get_components` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
 pub struct GetResult {

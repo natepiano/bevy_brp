@@ -22,7 +22,6 @@ pub use constants::{BRP_EXTRAS_PORT_ENV_VAR, MAX_VALID_PORT};
 pub use port::Port;
 //
 // Export all parameter and result structs by name
-pub use tools::bevy_get::{GetParams, GetResult};
 pub use tools::bevy_insert::{InsertParams, InsertResult};
 pub use tools::bevy_insert_resource::{InsertResourceParams, InsertResourceResult};
 pub use tools::bevy_mutate_component::{MutateComponentParams, MutateComponentResult};
@@ -32,6 +31,7 @@ pub use tools::bevy_remove::{RemoveParams, RemoveResult};
 pub use tools::bevy_remove_resource::{RemoveResourceParams, RemoveResourceResult};
 pub use tools::bevy_rpc_discover::{RpcDiscoverParams, RpcDiscoverResult};
 pub use tools::world_despawn_entity::{DespawnEntityParams, DespawnEntityResult};
+pub use tools::world_get_components::{GetParams, GetResult};
 pub use tools::world_get_resources::{GetResourcesParams, GetResourcesResult};
 pub use tools::world_list_components::{ListComponentsParams, ListComponentsResult};
 pub use tools::world_list_resources::{ListResourcesParams, ListResourcesResult};
@@ -46,8 +46,8 @@ pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};
 pub use tools::brp_extras_set_window_title::{SetWindowTitleParams, SetWindowTitleResult};
 //
 // Export watch tools
-pub use watch_tools::{BevyGetWatch, GetWatchParams};
 pub use watch_tools::{
-    BevyListWatch, BrpListActiveWatches, BrpStopWatch, ListWatchParams, StopWatchParams,
+    BevyListWatch, BrpListActiveWatches, BrpStopWatch, ListComponentsWatchParams, StopWatchParams,
     WatchManager,
 };
+pub use watch_tools::{GetComponentsWatchParams, WorldGetComponentsWatch};

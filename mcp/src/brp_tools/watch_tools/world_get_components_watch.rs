@@ -10,22 +10,22 @@ use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct GetWatchParams {
+pub struct GetComponentsWatchParams {
     /// The entity ID to watch for component changes
     pub entity: u64,
     /// Required array of component types to watch. Must contain at least one component. Without
     /// this, the watch will not detect any changes.
-    pub types:  Vec<String>,
+    pub types: Vec<String>,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    pub port:   Port,
+    pub port: Port,
 }
 
 #[derive(ToolFn)]
-#[tool_fn(params = "GetWatchParams", output = "WatchStartResult")]
-pub struct BevyGetWatch;
+#[tool_fn(params = "GetComponentsWatchParams", output = "WatchStartResult")]
+pub struct WorldGetComponentsWatch;
 
-async fn handle_impl(params: GetWatchParams) -> Result<WatchStartResult> {
+async fn handle_impl(params: GetComponentsWatchParams) -> Result<WatchStartResult> {
     // Start the watch task
     let result = super::start_entity_watch_task(params.entity, Some(params.types), params.port)
         .await

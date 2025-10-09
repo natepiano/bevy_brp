@@ -13,7 +13,7 @@ use crate::tool::{BrpMethod, ToolFn};
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ExecuteParams {
-    /// The BRP method to execute (e.g., 'rpc.discover', 'bevy/get', 'world.query')
+    /// The BRP method to execute (e.g., 'rpc.discover', 'world.get_components', 'world.query')
     /// Note: `BrpMethod` deserializes from BRP method strings using `#[serde(rename)]`
     /// attributes generated in `mcp_macros/src/brp_tools.rs`
     pub method: BrpMethod,

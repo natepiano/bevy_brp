@@ -18,7 +18,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Verify operation succeeds
 
 ### 3. Component Retrieval
-- Execute `mcp__brp__bevy_get` to retrieve components from entity
+- Execute `mcp__brp__world_get_components` to retrieve components from entity
 - Request both Transform and Name components
 - Verify data matches what was inserted
 

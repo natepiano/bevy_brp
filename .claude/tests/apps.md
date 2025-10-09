@@ -50,7 +50,7 @@ Validate that the `test_app` binary works correctly with BRP operations, testing
 - If passed as string, expect error: `invalid type: string "100.0", expected f32`
 
 ### 6. Get Component Data
-- Execute `mcp__brp__bevy_get` on mutated entity
+- Execute `mcp__brp__world_get_components` on mutated entity
 - Request Transform component
 - Verify translation.x is now 100.0
 

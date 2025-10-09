@@ -34,7 +34,7 @@
       "WebFetch(domain:cloudartisan.com)",
       "WebSearch",
       "mcp__brp__world_despawn_entity",
-      "mcp__brp__bevy_get",
+      "mcp__brp__world_get_components",
       "mcp__brp__world_get_resources",
       "mcp__brp__world_get_components_watch",
       "mcp__brp__bevy_insert",

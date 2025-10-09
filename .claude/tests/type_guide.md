@@ -151,19 +151,19 @@ Spawn entities with components that have Serialize trait:
 #### 8b. Execute and Verify Mutations
 For each mutation context type, perform ONE representative mutation and verify:
 
-**ArrayElement**: Mutate `.values[1]` on TestArrayField (even though only `.values[0]` is in type_guide) → Verify with `bevy_get`
+**ArrayElement**: Mutate `.values[1]` on TestArrayField (even though only `.values[0]` is in type_guide) → Verify with `world_get_components`
 
-**TupleElement**: Mutate `.color_rgb.2` on TestTupleField → Verify with `bevy_get`
+**TupleElement**: Mutate `.color_rgb.2` on TestTupleField → Verify with `world_get_components`
 
-**RootValue**: Replace entire TestTupleStruct using path "" → Verify with `bevy_get`
+**RootValue**: Replace entire TestTupleStruct using path "" → Verify with `world_get_components`
 
-**NestedPath**: Mutate `.transform.translation.y` on TestComplexComponent → Verify with `bevy_get`
+**NestedPath**: Mutate `.transform.translation.y` on TestComplexComponent → Verify with `world_get_components`
 
-**StructField with enum**: Mutate `.mode` to "Inactive" on TestComplexComponent → Verify with `bevy_get`
+**StructField with enum**: Mutate `.mode` to "Inactive" on TestComplexComponent → Verify with `world_get_components`
 
-**Option field**: Mutate `.optional_value` to None on TestComplexComponent → Verify with `bevy_get`
+**Option field**: Mutate `.optional_value` to None on TestComplexComponent → Verify with `world_get_components`
 
-**Non-Serializable**: Mutate `.flip_x` to true on Sprite → Verify with `bevy_get`
+**Non-Serializable**: Mutate `.flip_x` to true on Sprite → Verify with `world_get_components`
 
 ### 9. Type Schema in Error Responses
 
