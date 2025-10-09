@@ -22,15 +22,15 @@ use crate::app_tools::{
 use crate::brp_tools::{
     AllTypeGuidesParams, BevyListWatch, BrpAllTypeGuides, BrpExecute, BrpListActiveWatches,
     BrpStopWatch, BrpTypeGuide, DespawnEntityParams, DespawnEntityResult, ExecuteParams,
-    GetComponentsWatchParams, GetParams, GetResourcesParams, GetResourcesResult, GetResult,
-    InsertParams, InsertResourcesParams, InsertResourcesResult, InsertResult, ListComponentsParams,
-    ListComponentsResult, ListComponentsWatchParams, ListResourcesParams, ListResourcesResult,
-    MutateComponentsParams, MutateComponentsResult, MutateResourcesParams, MutateResourcesResult,
-    QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult, RemoveParams,
-    RemoveResourcesParams, RemoveResourcesResult, RemoveResult, ReparentEntitiesParams,
-    ReparentEntitiesResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
-    ScreenshotResult, SendKeysParams, SendKeysResult, SetWindowTitleParams, SetWindowTitleResult,
-    SpawnEntityParams, SpawnEntityResult, StopWatchParams, TypeGuideParams,
+    GetComponentsParams, GetComponentsResult, GetComponentsWatchParams, GetResourcesParams,
+    GetResourcesResult, InsertParams, InsertResourcesParams, InsertResourcesResult, InsertResult,
+    ListComponentsParams, ListComponentsResult, ListComponentsWatchParams, ListResourcesParams,
+    ListResourcesResult, MutateComponentsParams, MutateComponentsResult, MutateResourcesParams,
+    MutateResourcesResult, QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult,
+    RemoveComponentsParams, RemoveComponentsResult, RemoveResourcesParams, RemoveResourcesResult,
+    ReparentEntitiesParams, ReparentEntitiesResult, RpcDiscoverParams, RpcDiscoverResult,
+    ScreenshotParams, ScreenshotResult, SendKeysParams, SendKeysResult, SetWindowTitleParams,
+    SetWindowTitleResult, SpawnEntityParams, SpawnEntityResult, StopWatchParams, TypeGuideParams,
     WorldGetComponentsWatch,
 };
 use crate::log_tools::{
@@ -100,8 +100,8 @@ pub enum ToolName {
     /// `world_get_components` - Get component data from entities
     #[brp_tool(
         brp_method = "world.get_components",
-        params = "GetParams",
-        result = "GetResult"
+        params = "GetComponentsParams",
+        result = "GetComponentsResult"
     )]
     WorldGetComponents,
     /// `world_despawn_entity` - Despawns entities permanently
@@ -118,13 +118,13 @@ pub enum ToolName {
         result = "InsertResult"
     )]
     BevyInsert,
-    /// `bevy_remove` - Remove components from entities
+    /// `world_remove_components` - Remove components from entities
     #[brp_tool(
-        brp_method = "bevy/remove",
-        params = "RemoveParams",
-        result = "RemoveResult"
+        brp_method = "world.remove_components",
+        params = "RemoveComponentsParams",
+        result = "RemoveComponentsResult"
     )]
-    BevyRemove,
+    WorldRemoveComponents,
     /// `world_list_resources` - List all registered resources
     #[brp_tool(
         brp_method = "world.list_resources",
@@ -146,7 +146,7 @@ pub enum ToolName {
         result = "InsertResourcesResult"
     )]
     WorldInsertResources,
-    /// `bevy_remove_resources` - Remove resources
+    /// `world_remove_resources` - Remove resources
     #[brp_tool(
         brp_method = "world.remove_resources",
         params = "RemoveResourcesParams",
@@ -328,7 +328,7 @@ impl ToolName {
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::WorldInsertResources => Annotation::new(
-                "Insert Resource",
+                "Insert Resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
@@ -343,12 +343,12 @@ impl ToolName {
                 EnvironmentImpact::ReadOnly,
             ),
             Self::WorldMutateComponents => Annotation::new(
-                "Mutate Component",
+                "Mutate Components",
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::WorldMutateResources => Annotation::new(
-                "Mutate Resource",
+                "Mutate Resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
@@ -362,13 +362,13 @@ impl ToolName {
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
-            Self::BevyRemove => Annotation::new(
+            Self::WorldRemoveComponents => Annotation::new(
                 "Remove Components",
                 ToolCategory::Component,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             Self::WorldRemoveResources => Annotation::new(
-                "Remove Resource",
+                "Remove Resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
@@ -512,7 +512,9 @@ impl ToolName {
             Self::WorldDespawnEntity => {
                 Some(parameters::build_parameters_from::<DespawnEntityParams>)
             }
-            Self::WorldGetComponents => Some(parameters::build_parameters_from::<GetParams>),
+            Self::WorldGetComponents => {
+                Some(parameters::build_parameters_from::<GetComponentsParams>)
+            }
             Self::WorldGetResources => {
                 Some(parameters::build_parameters_from::<GetResourcesParams>)
             }
@@ -534,7 +536,9 @@ impl ToolName {
             }
             Self::WorldQuery => Some(parameters::build_parameters_from::<QueryParams>),
             Self::RegistrySchema => Some(parameters::build_parameters_from::<RegistrySchemaParams>),
-            Self::BevyRemove => Some(parameters::build_parameters_from::<RemoveParams>),
+            Self::WorldRemoveComponents => {
+                Some(parameters::build_parameters_from::<RemoveComponentsParams>)
+            }
             Self::WorldRemoveResources => {
                 Some(parameters::build_parameters_from::<RemoveResourcesParams>)
             }
@@ -601,7 +605,7 @@ impl ToolName {
             Self::WorldMutateResources => Arc::new(WorldMutateResources),
             Self::WorldQuery => Arc::new(WorldQuery),
             Self::RegistrySchema => Arc::new(RegistrySchema),
-            Self::BevyRemove => Arc::new(BevyRemove),
+            Self::WorldRemoveComponents => Arc::new(WorldRemoveComponents),
             Self::WorldRemoveResources => Arc::new(WorldRemoveResources),
             Self::WorldReparentEntities => Arc::new(WorldReparentEntities),
             Self::RpcDiscover => Arc::new(RpcDiscover),

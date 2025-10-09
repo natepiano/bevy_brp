@@ -1,4 +1,4 @@
-Removes components from entities via bevy/remove BRP method. Useful for removing behaviors, implementing state machines, and optimizing entities.
+Removes components from entities via world.remove_componentsBRP method. Useful for removing behaviors, implementing state machines, and optimizing entities.
 
 Example:
 ```json

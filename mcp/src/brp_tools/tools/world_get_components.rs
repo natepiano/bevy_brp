@@ -9,7 +9,7 @@ use crate::brp_tools::Port;
 
 /// Parameters for the `world.get_components` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct GetParams {
+pub struct GetComponentsParams {
     /// The entity ID to get component data from
     pub entity: u64,
 
@@ -28,7 +28,7 @@ pub struct GetParams {
 /// Result for the `world.get_components` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
-pub struct GetResult {
+pub struct GetComponentsResult {
     /// The raw BRP response with components and errors
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]

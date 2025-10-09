@@ -28,7 +28,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Verify mutation succeeds
 
 ### 5. Component Removal
-- Execute `mcp__brp__bevy_remove` to remove Name component
+- Execute `mcp__brp__world_remove_components` to remove Name component
 - Verify component is removed from entity
 - Confirm Transform component remains
 
