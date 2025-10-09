@@ -27,10 +27,10 @@ use crate::brp_tools::{
     ListComponentsResult, ListResourcesParams, ListResourcesResult, ListWatchParams,
     MutateComponentParams, MutateComponentResult, MutateResourceParams, MutateResourceResult,
     QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult, RemoveParams,
-    RemoveResourceParams, RemoveResourceResult, RemoveResult, ReparentParams, ReparentResult,
-    RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams, ScreenshotResult, SendKeysParams,
-    SendKeysResult, SetWindowTitleParams, SetWindowTitleResult, SpawnEntityParams,
-    SpawnEntityResult, StopWatchParams, TypeGuideParams,
+    RemoveResourceParams, RemoveResourceResult, RemoveResult, ReparentEntitiesParams,
+    ReparentEntitiesResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
+    ScreenshotResult, SendKeysParams, SendKeysResult, SetWindowTitleParams, SetWindowTitleResult,
+    SpawnEntityParams, SpawnEntityResult, StopWatchParams, TypeGuideParams,
 };
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
@@ -191,13 +191,13 @@ pub enum ToolName {
     )]
     BevyRegistrySchema,
 
-    /// `bevy_reparent` - Change entity parents
+    /// `world_reparent_entities` - Change entity parents
     #[brp_tool(
-        brp_method = "bevy/reparent",
-        params = "ReparentParams",
-        result = "ReparentResult"
+        brp_method = "world.reparent_entities",
+        params = "ReparentEntitiesParams",
+        result = "ReparentEntitiesResult"
     )]
-    BevyReparent,
+    WorldReparentEntities,
     /// `bevy_get_watch` - Watch entity component changes
     #[brp_tool(brp_method = "bevy/get+watch")]
     BevyGetWatch,
@@ -366,7 +366,7 @@ impl ToolName {
                 ToolCategory::Resource,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            Self::BevyReparent => Annotation::new(
+            Self::WorldReparentEntities => Annotation::new(
                 "Reparent Entities",
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveIdempotent,
@@ -534,7 +534,9 @@ impl ToolName {
             Self::BevyRemoveResource => {
                 Some(parameters::build_parameters_from::<RemoveResourceParams>)
             }
-            Self::BevyReparent => Some(parameters::build_parameters_from::<ReparentParams>),
+            Self::WorldReparentEntities => {
+                Some(parameters::build_parameters_from::<ReparentEntitiesParams>)
+            }
             Self::BevyRpcDiscover => Some(parameters::build_parameters_from::<RpcDiscoverParams>),
             Self::WorldSpawnEntity => Some(parameters::build_parameters_from::<SpawnEntityParams>),
             Self::BrpExecute => Some(parameters::build_parameters_from::<ExecuteParams>),
@@ -595,7 +597,7 @@ impl ToolName {
             Self::BevyRegistrySchema => Arc::new(BevyRegistrySchema),
             Self::BevyRemove => Arc::new(BevyRemove),
             Self::BevyRemoveResource => Arc::new(BevyRemoveResource),
-            Self::BevyReparent => Arc::new(BevyReparent),
+            Self::WorldReparentEntities => Arc::new(WorldReparentEntities),
             Self::BevyRpcDiscover => Arc::new(BevyRpcDiscover),
             Self::WorldSpawnEntity => Arc::new(WorldSpawnEntity),
             Self::BrpExtrasScreenshot => Arc::new(BrpExtrasScreenshot),

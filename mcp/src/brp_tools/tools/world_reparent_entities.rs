@@ -1,4 +1,4 @@
-//! `bevy/reparent` tool - Change entity parents
+//! `world.reparent_entities` tool - Change entity parents
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,9 +7,9 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/reparent` tool
+/// Parameters for the `world.reparent_entities` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct ReparentParams {
+pub struct ReparentEntitiesParams {
     /// Array of entity IDs to reparent
     pub entities: Vec<u64>,
 
@@ -23,10 +23,10 @@ pub struct ReparentParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/reparent` tool
+/// Result for the `world.reparent_entities` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
-pub struct ReparentResult {
+pub struct ReparentEntitiesResult {
     /// The raw BRP response data (empty for reparent)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]

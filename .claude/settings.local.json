@@ -123,7 +123,7 @@
       "Bash(.claude/scripts/create_mutation_test_json_promote_baseline_test.sh:*)",
       "Bash(.claude/scripts/create_mutation_test_json_promote_baseline.sh:*)",
       "Bash(.claude/scripts/get_type_guide.sh:*)",
-      "mcp__brp__bevy_reparent",
+      "mcp__brp__world_reparent_entities",
       "WebFetch(domain:crates.io)",
       "WebFetch(domain:keepachangelog.com)",
       "Bash(gh run list:*)",

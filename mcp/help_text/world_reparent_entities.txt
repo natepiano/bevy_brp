@@ -1,4 +1,4 @@
-Changes entity parents via bevy/reparent BRP method. Useful for reorganizing hierarchies, drag-and-drop, scene graphs, and dynamic attachment.
+Changes entity parents via world.reparent_entities BRP method. Useful for reorganizing hierarchies, drag-and-drop, scene graphs, and dynamic attachment.
 
 Examples:
 ```json

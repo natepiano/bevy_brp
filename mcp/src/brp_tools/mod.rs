@@ -30,13 +30,13 @@ pub use tools::bevy_mutate_resource::{MutateResourceParams, MutateResourceResult
 pub use tools::bevy_registry_schema::{RegistrySchemaParams, RegistrySchemaResult};
 pub use tools::bevy_remove::{RemoveParams, RemoveResult};
 pub use tools::bevy_remove_resource::{RemoveResourceParams, RemoveResourceResult};
-pub use tools::bevy_reparent::{ReparentParams, ReparentResult};
 pub use tools::bevy_rpc_discover::{RpcDiscoverParams, RpcDiscoverResult};
 pub use tools::world_despawn_entity::{DespawnEntityParams, DespawnEntityResult};
 pub use tools::world_get_resources::{GetResourcesParams, GetResourcesResult};
 pub use tools::world_list_components::{ListComponentsParams, ListComponentsResult};
 pub use tools::world_list_resources::{ListResourcesParams, ListResourcesResult};
 pub use tools::world_query::{QueryParams, QueryResult};
+pub use tools::world_reparent_entities::{ReparentEntitiesParams, ReparentEntitiesResult};
 pub use tools::world_spawn_entity::{SpawnEntityParams, SpawnEntityResult};
 //
 // Export special case tools that don't follow the standard pattern
