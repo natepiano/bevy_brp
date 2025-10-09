@@ -1,4 +1,4 @@
-//! `bevy/remove_resource` tool - Remove resources
+//! `world.remove_resources` tool - Remove resources
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -7,9 +7,9 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `bevy/remove_resource` tool
+/// Parameters for the `world.remove_resources` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct RemoveResourceParams {
+pub struct RemoveResourcesParams {
     /// The fully-qualified type name of the resource to remove
     pub resource: String,
 
@@ -18,10 +18,10 @@ pub struct RemoveResourceParams {
     pub port: Port,
 }
 
-/// Result for the `bevy/remove_resource` tool
+/// Result for the `world.remove_resources` tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
-pub struct RemoveResourceResult {
+pub struct RemoveResourcesResult {
     /// The raw BRP response data (empty for remove)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]

@@ -51,18 +51,6 @@
 - [ ] `mcp/help_text/brp_type_guide.txt` - Update cross-references
 - [ ] `mcp/help_text/brp_all_type_guides.txt` - Update cross-references
 
-### 14. `bevy/remove_resource` → `world.remove_resources`
-
-- [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyRemoveResource` → `WorldRemoveResources`
-- [ ] `mcp/src/tool/tool_name.rs` - Update `#[brp_tool(brp_method = "world.remove_resources")]`
-- [ ] Rename `mcp/src/brp_tools/tools/bevy_remove_resource.rs` → `world_remove_resources.rs`
-- [ ] Update file header comment and struct docs in `world_remove_resources.rs`
-- [ ] Update `mcp/src/brp_tools/tools/mod.rs` imports
-- [ ] Rename `mcp/help_text/bevy_remove_resource.txt` → `world_remove_resources.txt`
-- [ ] Update description text in `world_remove_resources.txt`
-
-
-
 ### 16. `bevy/mutate_resource` → `world.mutate_resources`
 
 - [ ] `mcp/src/tool/tool_name.rs` - Rename enum variant `BevyMutateResource` → `WorldMutateResources`

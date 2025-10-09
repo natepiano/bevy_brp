@@ -27,7 +27,7 @@ use crate::brp_tools::{
     ListComponentsResult, ListComponentsWatchParams, ListResourcesParams, ListResourcesResult,
     MutateComponentParams, MutateComponentResult, MutateResourcesParams, MutateResourcesResult,
     QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult, RemoveParams,
-    RemoveResourceParams, RemoveResourceResult, RemoveResult, ReparentEntitiesParams,
+    RemoveResourcesParams, RemoveResourcesResult, RemoveResult, ReparentEntitiesParams,
     ReparentEntitiesResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
     ScreenshotResult, SendKeysParams, SendKeysResult, SetWindowTitleParams, SetWindowTitleResult,
     SpawnEntityParams, SpawnEntityResult, StopWatchParams, TypeGuideParams,
@@ -146,13 +146,13 @@ pub enum ToolName {
         result = "InsertResourceResult"
     )]
     BevyInsertResource,
-    /// `bevy_remove_resource` - Remove resources
+    /// `bevy_remove_resources` - Remove resources
     #[brp_tool(
-        brp_method = "bevy/remove_resource",
-        params = "RemoveResourceParams",
-        result = "RemoveResourceResult"
+        brp_method = "world.remove_resources",
+        params = "RemoveResourcesParams",
+        result = "RemoveResourcesResult"
     )]
-    BevyRemoveResource,
+    WorldRemoveResources,
     /// `bevy_mutate_resources` - Mutate resource fields
     #[brp_tool(
         brp_method = "world.mutate_resources",
@@ -367,7 +367,7 @@ impl ToolName {
                 ToolCategory::Component,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            Self::BevyRemoveResource => Annotation::new(
+            Self::WorldRemoveResources => Annotation::new(
                 "Remove Resource",
                 ToolCategory::Resource,
                 EnvironmentImpact::DestructiveIdempotent,
@@ -535,8 +535,8 @@ impl ToolName {
             Self::WorldQuery => Some(parameters::build_parameters_from::<QueryParams>),
             Self::RegistrySchema => Some(parameters::build_parameters_from::<RegistrySchemaParams>),
             Self::BevyRemove => Some(parameters::build_parameters_from::<RemoveParams>),
-            Self::BevyRemoveResource => {
-                Some(parameters::build_parameters_from::<RemoveResourceParams>)
+            Self::WorldRemoveResources => {
+                Some(parameters::build_parameters_from::<RemoveResourcesParams>)
             }
             Self::WorldReparentEntities => {
                 Some(parameters::build_parameters_from::<ReparentEntitiesParams>)
@@ -602,7 +602,7 @@ impl ToolName {
             Self::WorldQuery => Arc::new(WorldQuery),
             Self::RegistrySchema => Arc::new(RegistrySchema),
             Self::BevyRemove => Arc::new(BevyRemove),
-            Self::BevyRemoveResource => Arc::new(BevyRemoveResource),
+            Self::WorldRemoveResources => Arc::new(WorldRemoveResources),
             Self::WorldReparentEntities => Arc::new(WorldReparentEntities),
             Self::RpcDiscover => Arc::new(RpcDiscover),
             Self::WorldSpawnEntity => Arc::new(WorldSpawnEntity),

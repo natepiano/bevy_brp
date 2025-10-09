@@ -47,7 +47,7 @@
       "mcp__brp__world_query",
       "mcp__brp__registry_schema",
       "mcp__brp__bevy_remove",
-      "mcp__brp__bevy_remove_resource",
+      "mcp__brp__world_remove_resources",
       "mcp__brp__rpc_discover",
       "mcp__brp__world_spawn_entity",
       "mcp__brp__brp_delete_logs",

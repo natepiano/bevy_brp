@@ -26,7 +26,6 @@ pub use tools::bevy_insert::{InsertParams, InsertResult};
 pub use tools::bevy_insert_resource::{InsertResourceParams, InsertResourceResult};
 pub use tools::bevy_mutate_component::{MutateComponentParams, MutateComponentResult};
 pub use tools::bevy_remove::{RemoveParams, RemoveResult};
-pub use tools::bevy_remove_resource::{RemoveResourceParams, RemoveResourceResult};
 pub use tools::registry_schema::{RegistrySchemaParams, RegistrySchemaResult};
 pub use tools::rpc_discover::{RpcDiscoverParams, RpcDiscoverResult};
 pub use tools::world_despawn_entity::{DespawnEntityParams, DespawnEntityResult};
@@ -36,6 +35,7 @@ pub use tools::world_list_components::{ListComponentsParams, ListComponentsResul
 pub use tools::world_list_resources::{ListResourcesParams, ListResourcesResult};
 pub use tools::world_mutate_resources::{MutateResourcesParams, MutateResourcesResult};
 pub use tools::world_query::{QueryParams, QueryResult};
+pub use tools::world_remove_resources::{RemoveResourcesParams, RemoveResourcesResult};
 pub use tools::world_reparent_entities::{ReparentEntitiesParams, ReparentEntitiesResult};
 pub use tools::world_spawn_entity::{SpawnEntityParams, SpawnEntityResult};
 //

@@ -139,7 +139,7 @@ mcp__brp__bevy_mutate_resource with parameters:
 ### 4. Resource Removal Test
 **STEP 1**: Remove the TestConfigResource:
 ```
-mcp__brp__bevy_remove_resource with parameters:
+mcp__brp__world_remove_resources with parameters:
 {
   "resource": "extras_plugin::TestConfigResource",
   "port": {{PORT}}
