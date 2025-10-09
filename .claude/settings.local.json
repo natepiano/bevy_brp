@@ -173,9 +173,13 @@
       "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/get_type_guide.sh:*)",
       "Bash(~/.claude/scripts/orphans.py)",
       "SlashCommand(/get_kind_baseline)",
-      "Bash(.claude/scripts/get_type_kind.sh:*)"
+      "Bash(.claude/scripts/get_type_kind.sh:*)",
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh /Users/natemccoy/rust/bevy_brp/test_screenshot_1.png)"
     ],
-    "deny": ["Bash(sed:*)", "Bash(cat >:*)"],
+    "deny": [
+      "Bash(sed:*)",
+      "Bash(cat >:*)"
+    ],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",

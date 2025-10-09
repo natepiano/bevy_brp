@@ -44,14 +44,14 @@ use crate::log_tools::{
 pub enum CallInfo {
     /// Local tool execution (no BRP involved)
     Local {
-        /// The MCP tool name (e.g., "`brp_status`")
+        /// The MCP tool name (e.g., `brp_status`)
         mcp_tool: String,
     },
     /// BRP tool execution (calls Bevy Remote Protocol)
     Brp {
-        /// The MCP tool name (e.g., "`world_spawn_entity`")
-        mcp_tool: String,
-        /// The BRP method name (e.g., "world.spawn_entity")
+        /// The MCP tool name (e.g., `world_spawn_entity`)
+        mcp_tool:   String,
+        /// The BRP method name (e.g., `world.spawn_entity`)
         brp_method: String,
     },
 }
@@ -290,7 +290,7 @@ impl ToolName {
         let tool_name = self.to_string();
         match self.to_brp_method() {
             Some(brp_method) => CallInfo::Brp {
-                mcp_tool: tool_name,
+                mcp_tool:   tool_name,
                 brp_method: brp_method.as_str().to_string(),
             },
             None => CallInfo::Local {
@@ -644,10 +644,10 @@ impl ToolName {
     /// Convert this tool name to a complete `ToolDef`
     pub fn to_tool_def(self) -> ToolDef {
         ToolDef {
-            tool_name: self,
+            tool_name:   self,
             annotations: self.get_annotations(),
-            handler: self.create_handler(),
-            parameters: self.get_parameters(),
+            handler:     self.create_handler(),
+            parameters:  self.get_parameters(),
         }
     }
 

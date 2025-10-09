@@ -17,10 +17,10 @@ pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Check if PNG support is available at runtime
     if bevy::image::ImageFormat::from_extension("png").is_none() {
         return Err(BrpError {
-            code: remote::error_codes::INTERNAL_ERROR,
+            code:    remote::error_codes::INTERNAL_ERROR,
             message: "PNG support not available. Enable the 'png' feature in your Bevy dependency"
                 .to_string(),
-            data: None,
+            data:    None,
         });
     }
     // Get the path from params
@@ -29,9 +29,9 @@ pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
         .and_then(|v| v.get("path"))
         .and_then(|v| v.as_str())
         .ok_or_else(|| BrpError {
-            code: INVALID_PARAMS,
+            code:    INVALID_PARAMS,
             message: "Missing 'path' parameter".to_string(),
-            data: None,
+            data:    None,
         })?;
 
     // Convert to absolute path
@@ -41,9 +41,9 @@ pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     } else {
         std::env::current_dir()
             .map_err(|e| BrpError {
-                code: INTERNAL_ERROR,
+                code:    INTERNAL_ERROR,
                 message: format!("Failed to get current directory: {e}"),
-                data: None,
+                data:    None,
             })?
             .join(path_buf)
     };

@@ -526,7 +526,8 @@ fn generate_from_brp_client_response(
                 }
             }
             "count_components" => {
-                // For world.get_components - handles both strict=true (flat) and strict=false (nested) formats
+                // For world.get_components - handles both strict=true (flat) and strict=false
+                // (nested) formats
                 quote! {
                     #source.as_ref()
                         .and_then(|v| v.as_object())

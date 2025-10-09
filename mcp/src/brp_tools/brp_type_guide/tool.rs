@@ -108,13 +108,13 @@ impl TypeGuideEngine {
     pub fn generate_response(&self, requested_types: &[String]) -> Result<TypeGuideResponse> {
         let mut response = TypeGuideResponse {
             discovered_count: 0,
-            requested_types: requested_types.to_vec(),
-            summary: TypeGuideSummary {
-                failed_discoveries: 0,
+            requested_types:  requested_types.to_vec(),
+            summary:          TypeGuideSummary {
+                failed_discoveries:     0,
                 successful_discoveries: 0,
-                total_requested: requested_types.len(),
+                total_requested:        requested_types.len(),
             },
-            type_guide: HashMap::new(),
+            type_guide:       HashMap::new(),
         };
 
         for brp_type_name in requested_types.iter().map(BrpTypeName::from) {

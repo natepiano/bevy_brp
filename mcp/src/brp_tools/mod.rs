@@ -21,6 +21,12 @@ pub use brp_type_guide::{
 pub use constants::{BRP_EXTRAS_PORT_ENV_VAR, MAX_VALID_PORT};
 pub use port::Port;
 //
+// Export special case tools that don't follow the standard pattern
+pub use tools::brp_execute::{BrpExecute, ExecuteParams};
+pub use tools::brp_extras_screenshot::{ScreenshotParams, ScreenshotResult};
+pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};
+pub use tools::brp_extras_set_window_title::{SetWindowTitleParams, SetWindowTitleResult};
+//
 // Export all parameter and result structs by name
 pub use tools::registry_schema::{RegistrySchemaParams, RegistrySchemaResult};
 pub use tools::rpc_discover::{RpcDiscoverParams, RpcDiscoverResult};
@@ -38,12 +44,6 @@ pub use tools::world_remove_components::{RemoveComponentsParams, RemoveComponent
 pub use tools::world_remove_resources::{RemoveResourcesParams, RemoveResourcesResult};
 pub use tools::world_reparent_entities::{ReparentEntitiesParams, ReparentEntitiesResult};
 pub use tools::world_spawn_entity::{SpawnEntityParams, SpawnEntityResult};
-//
-// Export special case tools that don't follow the standard pattern
-pub use tools::brp_execute::{BrpExecute, ExecuteParams};
-pub use tools::brp_extras_screenshot::{ScreenshotParams, ScreenshotResult};
-pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};
-pub use tools::brp_extras_set_window_title::{SetWindowTitleParams, SetWindowTitleResult};
 //
 // Export watch tools
 pub use watch_tools::{
