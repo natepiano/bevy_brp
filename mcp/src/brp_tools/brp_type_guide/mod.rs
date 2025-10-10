@@ -5,12 +5,12 @@
 //! serialization knowledge to provide accurate format discovery for BRP operations.
 
 mod brp_type_name;
+mod builder;
 mod constants;
 mod mutation_path_builder;
 mod response_types;
 mod tool_all_types;
 mod tool_type_guide;
-mod type_guide;
 mod type_kind;
 
 // Re-export public API

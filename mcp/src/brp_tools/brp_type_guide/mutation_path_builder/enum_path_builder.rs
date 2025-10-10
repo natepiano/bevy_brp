@@ -505,8 +505,29 @@ fn process_children(
             // No enum context needed - each type handles its own behavior
 
             // Use the same recursion function as MutationPathBuilder
+            tracing::debug!(
+                "[ENUM_CHILD] About to recurse into child type: {} for variant group: {:?}",
+                child_ctx.type_name(),
+                applicable_variants
+            );
             let mut child_paths =
                 builder::recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
+
+            // Check mutation status of returned child paths
+            tracing::debug!(
+                "[ENUM_CHILD] Returned {} child paths for type {}",
+                child_paths.len(),
+                child_ctx.type_name()
+            );
+            for (i, cp) in child_paths.iter().enumerate() {
+                tracing::debug!(
+                    "[ENUM_CHILD]   Child path #{}: path={}, type={}, mutation_status={:?}",
+                    i,
+                    cp.full_mutation_path,
+                    cp.type_name,
+                    cp.mutation_status
+                );
+            }
 
             // ==================== NEW: POPULATE applicable_variants ====================
             // Track which variants make these child paths valid
@@ -587,6 +608,12 @@ fn process_children(
         tracing::debug!(
             "process_children: built example for signature={:?}, example={:?}",
             signature,
+            example
+        );
+
+        tracing::info!(
+            "[ENUM_DEBUG] Adding ExampleGroup for variants {:?} with example: {:?}",
+            applicable_variants,
             example
         );
 
