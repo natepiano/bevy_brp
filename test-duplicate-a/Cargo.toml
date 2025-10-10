@@ -20,7 +20,7 @@ path = "examples/extras_plugin_duplicate.rs"
 # This is a workspace member, allowing it to be discovered via the workspace root's
 # cargo metadata call, testing disambiguation within a single workspace.
 [dependencies]
-bevy = { version = "0.17.2", default-features = false, features = [
+bevy = { workspace = true, default-features = false, features = [
   "bevy_remote",
 ] }
 bevy_brp_extras = { path = "../extras" }
