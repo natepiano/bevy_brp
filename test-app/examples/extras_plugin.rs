@@ -37,8 +37,9 @@ use bevy::input::keyboard::KeyboardInput;
 use bevy::input_focus::tab_navigation::{TabGroup, TabIndex};
 use bevy::light::cluster::ClusterConfig;
 use bevy::light::{
-    CascadeShadowConfig, Cascades, ClusteredDecal, FogVolume, IrradianceVolume, NotShadowCaster,
-    NotShadowReceiver, ShadowFilteringMethod, VolumetricFog, VolumetricLight,
+    CascadeShadowConfig, Cascades, ClusteredDecal, DirectionalLightTexture, FogVolume,
+    IrradianceVolume, NotShadowCaster, NotShadowReceiver, ShadowFilteringMethod, VolumetricFog,
+    VolumetricLight,
 };
 use bevy::pbr::decal::ForwardDecalMaterialExt;
 use bevy::pbr::{ExtendedMaterial, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections};
@@ -606,13 +607,14 @@ fn setup_scene_test(mut commands: Commands, mut scenes: ResMut<Assets<Scene>>) {
 /// Setup test entities for format discovery
 fn setup_test_entities(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     port: Res<CurrentPort>,
     mut animation_graphs: ResMut<Assets<AnimationGraph>>,
 ) {
     info!("Setting up test entities...");
 
     spawn_transform_entities(&mut commands);
-    spawn_visual_entities(&mut commands);
+    spawn_visual_entities(&mut commands, &asset_server);
     spawn_test_component_entities(&mut commands);
     spawn_animation_and_audio_entities(&mut commands, &mut animation_graphs);
     spawn_render_entities(&mut commands);
@@ -656,7 +658,7 @@ fn spawn_transform_entities(commands: &mut Commands) {
     ));
 }
 
-fn spawn_visual_entities(commands: &mut Commands) {
+fn spawn_visual_entities(commands: &mut Commands, asset_server: &AssetServer) {
     // Entity with Sprite component for testing mutation paths
     commands.spawn((
         Sprite {
@@ -714,6 +716,10 @@ fn spawn_visual_entities(commands: &mut Commands) {
         CascadeShadowConfig::default(),
         Cascades::default(),
         VolumetricLight, // For testing mutations - enables light shafts/god rays
+        DirectionalLightTexture {
+            image: asset_server.load("lightmaps/caustic_directional_texture.png"),
+            tiled: true,
+        },
     ));
 
     // Entity with SpotLight for testing mutations
