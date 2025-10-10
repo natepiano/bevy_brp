@@ -297,18 +297,18 @@ For each type name string in your `type_names` array:
            - Report status as COMPONENT_NOT_FOUND
            - Set both `type` and `tested_type` to the assignment's type_name
    b. **TYPE CATEGORY DETERMINATION - CRITICAL DECISION POINT**:
-      - **CHECK `supported_operations` FIRST** before any testing operations
+      - **CHECK `schema_info.reflect_types` to determine type category**
       - **RESOURCE DETECTION**:
-        * IF "insert" in operations AND "spawn" NOT in operations → **THIS IS A RESOURCE**
+        * IF "Resource" in schema_info.reflect_types → **THIS IS A RESOURCE**
         * Execute <ResourceTestingProtocol/> ONLY
         * **SKIP** all component testing steps completely
         * **NEVER** use `world_spawn_entity` or `world_mutate_components` for resources
       - **COMPONENT DETECTION**:
-        * IF "spawn" in operations → **THIS IS A COMPONENT**
+        * IF "Component" in schema_info.reflect_types → **THIS IS A COMPONENT**
         * Execute <ComponentTestingProtocol/> ONLY
         * **SKIP** all resource testing steps completely
         * **NEVER** use `world_insert_resources` or `world_mutate_resources` for components
-      - **ERROR CASE**: If neither pattern matches, report error in failure_details
+      - **ERROR CASE**: If neither "Resource" nor "Component" found in reflect_types, report error in failure_details
 
    e. **ENTITY ID SUBSTITUTION FOR MUTATIONS**:
       - **CRITICAL**: If any mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
