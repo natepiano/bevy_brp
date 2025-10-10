@@ -230,9 +230,8 @@ fn process_cargo_toml(
                 discovered_projects,
             );
             return is_multi_member_workspace;
-        } else {
-            add_workspace_member(dir, workspace_root, discovered_projects);
         }
+        add_workspace_member(dir, workspace_root, discovered_projects);
     } else {
         add_fallback_standalone(dir, discovered_projects);
     }

@@ -30,12 +30,12 @@ impl PathBuilder for ValueMutationBuilder {
 
     fn assemble_from_children(
         &self,
-        _ctx: &RecursionContext,
+        ctx: &RecursionContext,
         _children: HashMap<MutationPathDescriptor, Value>,
     ) -> std::result::Result<Value, BuilderError> {
         // For leaf types without mutation knowledge, return appropriate reason
         Err(BuilderError::NotMutable(
-            NotMutableReason::NoExampleAvailable(_ctx.type_name().clone()),
+            NotMutableReason::NoExampleAvailable(ctx.type_name().clone()),
         ))
     }
 }

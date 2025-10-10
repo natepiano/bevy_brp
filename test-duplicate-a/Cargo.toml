@@ -1,6 +1,13 @@
 [package]
+categories = ["development-tools::testing"]
+description = "Test infrastructure for path disambiguation testing"
 edition = "2024"
-name    = "test-app-a"
+keywords = ["bevy", "brp", "testing"]
+license = "MIT OR Apache-2.0"
+name = "test-app-a"
+publish = false
+readme = "../test-app/README.md"
+repository.workspace = true
 version = "0.3.0"
 
 [[bin]]
