@@ -193,77 +193,85 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 ### BATCH PROCESSING SUBSTEPS
 
 <GetBatchAssignments>
-    **Retrieve subagent assignments for current batch:**
+    **Determine how many subagents needed for current batch:**
 
-    **MANDATORY EXACT COMMAND - DO NOT MODIFY**:
+    **STEP 1: Get batch summary (lightweight call without full data)**:
     ```bash
     python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
     ```
 
-    **CRITICAL INSTRUCTION**: Use the command EXACTLY as specified above. DO NOT:
-    - Create intermediate files
-    - Pipe output to files
-    - Add custom Python processing
-    - Modify the command in any way
-    - Work around truncated output by creating files
+    **STEP 2: Extract only the count information**:
+    - Parse the JSON output
+    - Extract `assignments.length` - this tells you how many subagents to launch
+    - Extract `total_types` - this tells you how many types in the batch
+    - DO NOT try to parse or use the type names from this output
+    - Discard the rest of the data
 
-    **If output appears truncated**: Work with the available data directly from the command output.
-
-    Returns JSON with:
-    - batch_number, max_subagents, types_per_subagent, total_types
-    - assignments: Array with subagent, port, and types (complete type data including spawn_format and mutation_paths)
-
-    **CRITICAL VALIDATION**:
-    Execute <ValidateAssignmentsStructure/> followed by <ValidateAssignmentFields/>
-
-    **Extract essential information directly from the command output for the next steps.**
+    **CRITICAL**: This step is ONLY for determining the number of subagents.
+    Type names and detailed assignments will be fetched individually in the next steps.
 </GetBatchAssignments>
 
 <SetWindowTitles>
-    **Set window titles for visual tracking using GetBatchAssignments JSON output:**
+    **Set window titles by fetching each subagent's assignment individually:**
 
-    **STEP 1: Parse and validate assignments data from previous command output:**
-    - Locate the "assignments" array in the GetBatchAssignments JSON response
-    - Execute <ValidateAssignmentsStructure/>
+    **For each subagent index (0 through subagent_count-1):**
 
-    **STEP 2: Validate individual assignments:**
-    - Execute <ValidateAssignmentFields/>
-    - Extract required fields: `assignment.port`, `assignment.types`
+    1. **Fetch the specific subagent's assignment**:
+       ```bash
+       python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
+           --batch [BATCH_NUMBER] \
+           --max-subagents ${MAX_SUBAGENTS} \
+           --types-per-subagent ${TYPES_PER_SUBAGENT} \
+           --subagent-index [SUBAGENT_INDEX]
+       ```
 
-    **STEP 3: Create window titles and execute in parallel:**
-    - For each assignment.types[].type_name, extract short name (text after last "::")
-    - Join short names with commas: "ShortName1, ShortName2, ShortName3"
-    - Create title: "Subagent {assignment.subagent}: {joined_short_names}"
-    - Use mcp__brp__brp_extras_set_window_title tool with assignment.port and title
+    2. **Extract type names from the result**:
+       - Parse the JSON output
+       - Extract the `type_names` array
+       - Extract short names (text after last "::")
+       - Join with commas
+
+    3. **Create window title**:
+       - Format: "Subagent [SUBAGENT_NUMBER]: [ShortName1], [ShortName2], ..."
+       - SUBAGENT_NUMBER = SUBAGENT_INDEX + 1 (for display purposes)
 
     **EXECUTE ALL WINDOW TITLE UPDATES IN PARALLEL:**
-    ```python
-    # For each assignment, execute in ONE message:
-    mcp__brp__brp_extras_set_window_title(port=assignment1.port, title="Subagent 1: Type1, Type2")
-    mcp__brp__brp_extras_set_window_title(port=assignment2.port, title="Subagent 2: Type3, Type4")
-    # ... continue for all assignments
-    ```
+    Make one Bash call per subagent to get assignments, then make all window title calls in parallel.
 
-    **Example data transformation:**
+    **Example**:
     ```
-    Input: assignment.types = [{"type_name": "bevy_pbr::light::CascadeShadowConfig"}, {"type_name": "bevy_pbr::light::AmbientLight"}]
-    Output: title = "Subagent 1: CascadeShadowConfig, AmbientLight"
-    Tool call: mcp__brp__brp_extras_set_window_title(port=${BASE_PORT}, title="Subagent 1: CascadeShadowConfig, AmbientLight")
+    For subagent_index=0:
+      Command output: {"type_names": ["bevy_pbr::light::CascadeShadowConfig", "bevy_pbr::light::AmbientLight"]}
+      Window title: "Subagent 1: CascadeShadowConfig, AmbientLight"
+      Tool call: mcp__brp__brp_extras_set_window_title(port=30001, title="Subagent 1: CascadeShadowConfig, AmbientLight")
     ```
 </SetWindowTitles>
 
 <LaunchSubagents>
-    **Launch parallel subagents for batch testing:**
+    **Launch parallel subagents using individual assignment calls:**
 
-    **EXACT PROCEDURE**:
-    1. Use the assignments from GetBatchAssignments to determine type names and counts
-    2. Create exactly assignments.length Task invocations - one per actual assignment
-    3. Each subagent will fetch their own complete type data
-    4. For each subagent (index 0 through assignments.length-1):
-       - Subagent index = loop index (0-based)
-       - Port = ${BASE_PORT} + index
-       - Task description = "Test [TYPE_NAMES] ([INDEX+1] of [ACTUAL_SUBAGENTS])" where TYPE_NAMES is comma-separated list of last segments after "::" from assignment data and INDEX is 0-based
-       - Task prompt = Reference to instructions file with variable substitution
+    **CRITICAL**: Both main agent and subagent must use the SAME command with `--subagent-index` to ensure consistency.
+
+    **For each subagent index (0 through subagent_count-1):**
+
+    1. **Fetch the specific subagent's assignment** (reuse from <SetWindowTitles/> if cached):
+       ```bash
+       python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
+           --batch [BATCH_NUMBER] \
+           --max-subagents ${MAX_SUBAGENTS} \
+           --types-per-subagent ${TYPES_PER_SUBAGENT} \
+           --subagent-index [SUBAGENT_INDEX]
+       ```
+
+    2. **Extract type names** for task description:
+       - Parse `type_names` array
+       - Extract short names (text after last "::")
+       - Join with commas
+
+    3. **Create Task** with:
+       - description: "Test [TYPE_NAMES] ([SUBAGENT_NUMBER] of [TOTAL_SUBAGENTS])"
+       - subagent_type: "general-purpose"
+       - prompt: See template below
 
     **TASK PROMPT TEMPLATE**:
     ```
@@ -279,37 +287,13 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     CRITICAL: You MUST return ONLY the JSON array result. NO explanations, NO commentary, NO test steps.
     ```
 
-    **DEFENSIVE VALIDATION**:
-    - Main agent verifies assignment count before launching subagents
-    - Subagents fetch their own data to prevent prompt corruption
-    - Use actual assignment count (may be less than MAX_SUBAGENTS for partial batches)
-    - Task prompts contain ONLY identification info, not type data
-    - Task description should include type names for tracking
-    - Subagents retrieve their exact assigned types directly from the script
+    **CONSISTENCY GUARANTEE**:
+    - Main agent fetches assignment with `--subagent-index N`
+    - Subagent fetches assignment with same `--subagent-index N`
+    - Both see IDENTICAL type_names array
+    - Task description and window title match what subagent will test
 
-    **CRITICAL TYPE ASSIGNMENT VALIDATION**:
-    The main agent provides ONLY identification information to subagents.
-    Subagents are responsible for:
-    1. **FETCHING** their assignments directly from the script
-    2. **VALIDATING** the fetched data contains expected number of types
-    3. **USING** the exact type data as fetched - NO MODIFICATIONS
-    4. **REMEMBER**: This prevents corruption during prompt construction
-
-    **Example for MAX_SUBAGENTS=3, TYPES_PER_SUBAGENT=1**:
-    ```
-    Subagent index 0: port BASE_PORT, batch 5, description "Test Bloom (1 of 3)"
-    Subagent index 1: port BASE_PORT+1, batch 5, description "Test Camera3d (2 of 3)"
-    Subagent index 2: port BASE_PORT+2, batch 5, description "Test Skybox (3 of 3)"
-    ```
-
-    **Example for MAX_SUBAGENTS=3, TYPES_PER_SUBAGENT=2**:
-    ```
-    Subagent index 0: port BASE_PORT, batch 5, description "Test Bloom, BloomSettings (1 of 3)"
-    Subagent index 1: port BASE_PORT+1, batch 5, description "Test Camera3d, Camera2d (2 of 3)"
-    Subagent index 2: port BASE_PORT+2, batch 5, description "Test Skybox, Tonemapping (3 of 3)"
-    ```
-
-    Send ALL Tasks in ONE message for parallel execution.
+    **Send ALL Tasks in ONE message for parallel execution.**
 </LaunchSubagents>
 
 <ProcessBatchResults>
