@@ -1,6 +1,5 @@
 [workspace]
-exclude  = ["test-duplicate-a", "test-duplicate-b"]
-members  = ["extras", "mcp", "mcp_macros", "test-app"]
+members  = ["extras", "mcp", "mcp_macros", "test-app", "test-duplicate-a", "test-duplicate-b"]
 resolver = "2"
 
 [workspace.package]

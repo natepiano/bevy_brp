@@ -22,8 +22,10 @@ pub fn collect_all_items<S: CollectionStrategy>(
                 // Create a unique key using the strategy
                 let key = strategy.create_unique_key(&item);
                 if seen_items.insert(key) {
-                    // Compute relative path for the project
-                    let relative_path = scanning::compute_relative_path(&path, search_paths);
+                    // Compute relative path using the item's specific path (e.g., manifest
+                    // directory)
+                    let item_path = strategy.get_path_for_relative(&item);
+                    let relative_path = scanning::compute_relative_path(&item_path, search_paths);
 
                     let serialized_item =
                         strategy.serialize_item(&item, relative_path.display().to_string());

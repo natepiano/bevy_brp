@@ -1,5 +1,3 @@
-[workspace]
-
 [package]
 edition = "2024"
 name    = "test-app-a"
@@ -13,19 +11,14 @@ path = "src/bin/test_duplicate_app.rs"
 name = "extras_plugin_duplicate"
 path = "examples/extras_plugin_duplicate.rs"
 
-# TEST INFRASTRUCTURE - DO NOT MODIFY DEPENDENCY DECLARATIONS
+# TEST INFRASTRUCTURE - Path Disambiguation Testing
 #
-# This directory exists to test path disambiguation when multiple apps have the same name.
+# This package exists to test path disambiguation when multiple apps have the same name.
 # Both test-duplicate-a and test-duplicate-b contain an app named `test_duplicate_app`,
 # which tests the MCP's ability to handle duplicates via the `path` parameter.
 #
-# This directory is EXCLUDED from the parent workspace (see root Cargo.toml exclude list).
-# The exclusion tests that MCP's recursive discovery can find apps beyond workspace members.
-#
-# CRITICAL: Dependencies MUST use explicit versions (e.g., version = "0.17.2").
-# DO NOT use `workspace = true` - excluded directories cannot access workspace dependencies,
-# which causes `cargo metadata` to fail, making these apps invisible to MCP discovery.
-# This will break both the `list` and `path` integration tests.
+# This is a workspace member, allowing it to be discovered via the workspace root's
+# cargo metadata call, testing disambiguation within a single workspace.
 [dependencies]
 bevy = { version = "0.17.2", default-features = false, features = [
   "bevy_remote",

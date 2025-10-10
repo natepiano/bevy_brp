@@ -574,12 +574,13 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
         None
     };
 
-    // Find the specific target with path disambiguation
+    // Find the specific target with path disambiguation (reuse all_targets to avoid duplicate scan)
     let target = match scanning::find_required_target_with_path(
         config.target_name(),
         target_type,
         config.path(),
         search_paths,
+        Some(all_targets.clone()),
     ) {
         Ok(target) => target,
         Err(err) => {

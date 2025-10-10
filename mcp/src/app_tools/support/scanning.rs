@@ -41,16 +41,33 @@ struct DiscoveredProject {
 /// Recursively scans all directories at any depth
 /// Smart deduplication: workspace-discovered apps take precedence over filesystem-discovered
 pub fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> Vec<PathBuf> {
+    use std::time::Instant;
+    let start = Instant::now();
+    debug!(
+        "Starting iter_cargo_project_paths with {} search paths",
+        search_paths.len()
+    );
+    for (i, path) in search_paths.iter().enumerate() {
+        debug!("  Search path {}: {}", i, path.display());
+    }
+
     let mut visited_canonical = HashSet::new();
     let mut discovered_projects: HashMap<PathBuf, DiscoveredProject> = HashMap::new();
 
     for root in search_paths {
+        let root_start = Instant::now();
         let canonical_root = safe_canonicalize(root);
+        debug!(
+            "Scanning root: {} (canonical: {})",
+            root.display(),
+            canonical_root.display()
+        );
         shallow_scan(
             &canonical_root,
             &mut visited_canonical,
             &mut discovered_projects,
         );
+        debug!("Scanned {} in {:?}", root.display(), root_start.elapsed());
     }
 
     // Apply smart deduplication and return paths
@@ -81,6 +98,10 @@ pub fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> Vec<PathBuf> {
         // If a project was found both ways, the workspace discovery takes precedence
     }
 
+    debug!(
+        "iter_cargo_project_paths completed in {:?}",
+        start.elapsed()
+    );
     final_paths.into_iter().collect()
 }
 
@@ -182,7 +203,12 @@ fn add_fallback_standalone(
         });
 }
 
-fn process_cargo_toml(dir: &Path, discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>) {
+/// Process a directory that contains a Cargo.toml file
+/// Returns `true` if this is a multi-member workspace root (subdirectories already discovered)
+fn process_cargo_toml(
+    dir: &Path,
+    discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
+) -> bool {
     // Try to get metadata to determine if it's a workspace
     if let Ok(metadata) = cargo_metadata::MetadataCommand::new()
         .current_dir(dir)
@@ -196,18 +222,21 @@ fn process_cargo_toml(dir: &Path, discovered_projects: &mut HashMap<PathBuf, Dis
         let is_workspace_root = canonical_dir == canonical_workspace;
 
         if is_workspace_root {
+            let is_multi_member_workspace = metadata.workspace_members.len() > 1;
             handle_workspace_root(
                 &metadata,
                 &workspace_root,
                 canonical_dir,
                 discovered_projects,
             );
+            return is_multi_member_workspace;
         } else {
             add_workspace_member(dir, workspace_root, discovered_projects);
         }
     } else {
         add_fallback_standalone(dir, discovered_projects);
     }
+    false
 }
 
 /// Shallow scan a directory for Cargo projects (current + immediate subdirectories only)
@@ -227,40 +256,81 @@ fn shallow_scan_internal(
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
     check_skip: bool,
 ) {
+    use std::time::Instant;
+    let scan_start = Instant::now();
+    debug!("shallow_scan_internal: {}", dir.display());
+
     // Skip if we've already visited this canonical path
     let canonical = safe_canonicalize(dir);
     if !visited_canonical.insert(canonical) {
+        debug!("  Already visited, skipping");
         return;
     }
 
     // Skip hidden directories and target directories (but not for root search paths)
     if check_skip && should_skip_directory(dir) {
+        debug!("  Skipping directory (hidden or target)");
         return;
     }
 
     // Level 0: Check if this directory contains a Cargo.toml
     let cargo_toml = dir.join("Cargo.toml");
-    if cargo_toml.exists() {
-        process_cargo_toml(dir, discovered_projects);
-    }
+    let skip_subdirs = if cargo_toml.exists() {
+        debug!("  Found Cargo.toml at level 0");
+        process_cargo_toml(dir, discovered_projects)
+    } else {
+        false
+    };
 
     // Level 1: Check immediate subdirectories only (no recursion)
+    // Skip if we found a multi-member workspace - all members already discovered
+    if skip_subdirs {
+        debug!("  Skipping subdirectory scan - workspace members already discovered");
+        debug!(
+            "  shallow_scan_internal completed in {:?}",
+            scan_start.elapsed()
+        );
+        return;
+    }
+    let read_dir_start = Instant::now();
     if let Ok(entries) = std::fs::read_dir(dir) {
+        let read_dir_elapsed = read_dir_start.elapsed();
+        debug!("  read_dir took {:?}", read_dir_elapsed);
+
+        let mut entry_count = 0;
+        let mut skipped_count = 0;
+        let mut found_count = 0;
+
         for entry in entries.flatten() {
+            entry_count += 1;
             let path = entry.path();
             if path.is_dir() && !should_skip_directory(&path) {
                 // Check for Cargo.toml in immediate subdirectory
                 let sub_cargo_toml = path.join("Cargo.toml");
                 if sub_cargo_toml.exists() {
+                    found_count += 1;
+                    debug!("  Found Cargo.toml in subdirectory: {}", path.display());
                     // Skip if we've already visited this canonical path
                     let sub_canonical = safe_canonicalize(&path);
                     if visited_canonical.insert(sub_canonical) {
                         process_cargo_toml(&path, discovered_projects);
                     }
                 }
+            } else {
+                skipped_count += 1;
             }
         }
+
+        debug!(
+            "  Processed {} entries ({} skipped, {} found)",
+            entry_count, skipped_count, found_count
+        );
     }
+
+    debug!(
+        "  shallow_scan_internal completed in {:?}",
+        scan_start.elapsed()
+    );
 }
 
 /// Extract workspace name from workspace root path
@@ -321,8 +391,12 @@ pub fn find_all_targets_by_name(
                         continue;
                     }
 
-                    // Set the relative path based on the discovered project path
-                    target.relative_path = compute_relative_path(&path, search_paths);
+                    // Set the relative path based on the target's manifest directory
+                    let manifest_dir = target
+                        .manifest_path
+                        .parent()
+                        .unwrap_or(&target.manifest_path);
+                    target.relative_path = compute_relative_path(manifest_dir, search_paths);
                     targets.push(target);
                 }
             }
@@ -334,11 +408,14 @@ pub fn find_all_targets_by_name(
 
 /// Find a required target by name with path parameter handling
 /// Returns an error with enhanced path error messages if duplicates found and no path specified
+///
+/// If `cached_targets` is provided, uses those instead of scanning again (performance optimization)
 pub fn find_required_target_with_path(
     target_name: &str,
     target_type: TargetType,
     path: Option<&str>,
     search_paths: &[PathBuf],
+    cached_targets: Option<Vec<BevyTarget>>,
 ) -> Result<BevyTarget, Error> {
     let target_type_str = match target_type {
         TargetType::App => "app",
@@ -350,7 +427,10 @@ pub fn find_required_target_with_path(
         debug!("With path filter: {p}");
     }
 
-    let all_targets = find_all_targets_by_name(target_name, Some(target_type), search_paths);
+    let all_targets = cached_targets.unwrap_or_else(|| {
+        debug!("No cached targets provided, scanning filesystem");
+        find_all_targets_by_name(target_name, Some(target_type), search_paths)
+    });
     debug!("Found {} matching {target_type_str}(s)", all_targets.len());
 
     // If a path is provided and we found multiple targets, check for ambiguity

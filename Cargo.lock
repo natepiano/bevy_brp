@@ -5516,6 +5516,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-app-a"
+version = "0.3.0"
+dependencies = [
+ "bevy",
+ "bevy_brp_extras",
+]
+
+[[package]]
+name = "test-app-b"
+version = "0.3.0"
+dependencies = [
+ "bevy",
+ "bevy_brp_extras",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"

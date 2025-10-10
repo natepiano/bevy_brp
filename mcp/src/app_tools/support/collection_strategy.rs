@@ -29,6 +29,9 @@ pub trait CollectionStrategy {
     /// Create a unique key for deduplication
     fn create_unique_key(&self, item: &Self::Item) -> String;
 
+    /// Get the path to use for relative path computation (typically manifest directory)
+    fn get_path_for_relative(&self, item: &Self::Item) -> std::path::PathBuf;
+
     /// Serialize an item to JSON with relative path
     fn serialize_item(&self, item: &Self::Item, relative_path: String) -> serde_json::Value;
 }
@@ -48,7 +51,14 @@ impl CollectionStrategy for BevyAppsStrategy {
     }
 
     fn create_unique_key(&self, item: &Self::Item) -> String {
-        format!("{}::{}", item.workspace_root.display(), item.name)
+        format!("{}::{}", item.manifest_path.display(), item.name)
+    }
+
+    fn get_path_for_relative(&self, item: &Self::Item) -> std::path::PathBuf {
+        item.manifest_path
+            .parent()
+            .unwrap_or(&item.manifest_path)
+            .to_path_buf()
     }
 
     fn serialize_item(&self, item: &Self::Item, relative_path: String) -> serde_json::Value {
@@ -80,7 +90,14 @@ impl CollectionStrategy for BrpAppsStrategy {
     }
 
     fn create_unique_key(&self, item: &Self::Item) -> String {
-        format!("{}::{}", item.workspace_root.display(), item.name)
+        format!("{}::{}", item.manifest_path.display(), item.name)
+    }
+
+    fn get_path_for_relative(&self, item: &Self::Item) -> std::path::PathBuf {
+        item.manifest_path
+            .parent()
+            .unwrap_or(&item.manifest_path)
+            .to_path_buf()
     }
 
     fn serialize_item(&self, item: &Self::Item, _relative_path: String) -> serde_json::Value {
@@ -110,6 +127,13 @@ impl CollectionStrategy for BevyExamplesStrategy {
 
     fn create_unique_key(&self, item: &Self::Item) -> String {
         format!("{}::{}", item.package_name, item.name)
+    }
+
+    fn get_path_for_relative(&self, item: &Self::Item) -> std::path::PathBuf {
+        item.manifest_path
+            .parent()
+            .unwrap_or(&item.manifest_path)
+            .to_path_buf()
     }
 
     fn serialize_item(&self, item: &Self::Item, relative_path: String) -> serde_json::Value {
