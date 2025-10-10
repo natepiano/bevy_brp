@@ -106,50 +106,45 @@ impl TypeGuideEngine {
 
     /// Generate response for requested types
     pub fn generate_response(&self, requested_types: &[String]) -> Result<TypeGuideResponse> {
-        let mut response = TypeGuideResponse {
-            discovered_count: 0,
-            requested_types:  requested_types.to_vec(),
-            summary:          TypeGuideSummary {
-                failed_discoveries:     0,
-                successful_discoveries: 0,
-                total_requested:        requested_types.len(),
-            },
-            type_guide:       HashMap::new(),
-        };
-
-        for brp_type_name in requested_types.iter().map(BrpTypeName::from) {
-            let type_info = if let Some(registry_schema) = self.registry.get(&brp_type_name) {
-                // Attempt to process the type
-                match TypeGuide::from_registry_schema(
+        // Build the type_guide HashMap functionally
+        let type_guide: HashMap<BrpTypeName, TypeGuide> = requested_types
+            .iter()
+            .map(BrpTypeName::from)
+            .map(|brp_type_name| {
+                let type_info = TypeGuide::from_registry_schema(
                     brp_type_name.clone(),
-                    registry_schema,
                     Arc::clone(&self.registry),
-                ) {
-                    Ok(type_guide) => {
-                        response.discovered_count += 1;
-                        response.summary.successful_discoveries += 1;
-                        type_guide
-                    }
-                    Err(e) => {
-                        // Processing failed - return error TypeGuide but continue processing
-                        response.summary.failed_discoveries += 1;
-                        TypeGuide::processing_failed(
-                            brp_type_name.clone(),
-                            format!("Failed to process type: {e}"),
-                        )
-                    }
-                }
-            } else {
-                response.summary.failed_discoveries += 1;
-                TypeGuide::not_found_in_registry(
-                    brp_type_name.clone(),
-                    "Type not found in registry".to_string(),
                 )
-            };
+                .unwrap_or_else(|e| {
+                    // Processing failed - type was found but building failed
+                    TypeGuide::processing_failed(
+                        brp_type_name.clone(),
+                        format!("Failed to process type: {e}"),
+                    )
+                });
+                (brp_type_name, type_info)
+            })
+            .collect();
 
-            response.type_guide.insert(brp_type_name, type_info);
-        }
+        // Calculate summary statistics from the results
+        let successful_discoveries = type_guide
+            .values()
+            .filter(|tg| tg.in_registry && tg.error.is_none())
+            .count();
+        let failed_discoveries = type_guide
+            .values()
+            .filter(|tg| !tg.in_registry || tg.error.is_some())
+            .count();
 
-        Ok(response)
+        Ok(TypeGuideResponse {
+            discovered_count: successful_discoveries,
+            requested_types: requested_types.to_vec(),
+            summary: TypeGuideSummary {
+                failed_discoveries,
+                successful_discoveries,
+                total_requested: requested_types.len(),
+            },
+            type_guide,
+        })
     }
 }

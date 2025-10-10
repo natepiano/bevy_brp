@@ -124,7 +124,7 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
         });
 
         // Compute parent's mutation status from children's statuses
-        let (parent_status, reason_enum) = Self::determine_parent_mutation_status(ctx, &all_paths);
+        let (parent_status, reason_enum) = determine_parent_mutation_status(ctx, &all_paths);
 
         // Convert NotMutableReason to Value if present
         let mutation_status_reason = reason_enum.as_ref().and_then(Option::<Value>::from);
@@ -193,9 +193,22 @@ pub fn recurse_mutation_paths(
     ctx: &RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
+    tracing::debug!(
+        "[DISPATCH] recurse_mutation_paths called: type_kind={:?}, type={}, path={}",
+        type_kind,
+        ctx.type_name(),
+        ctx.full_mutation_path
+    );
+
     let mutation_result = match type_kind {
         // Enum is distinct from the rest but now returns MutationResult too
-        TypeKind::Enum => enum_path_builder::process_enum(ctx, depth),
+        TypeKind::Enum => {
+            tracing::debug!(
+                "[DISPATCH] Dispatching to enum_path_builder::process_enum for {}",
+                ctx.type_name()
+            );
+            enum_path_builder::process_enum(ctx, depth)
+        }
         TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx, depth),
         TypeKind::Tuple | TypeKind::TupleStruct => {
             MutationPathBuilder::new(TupleMutationBuilder).build_paths(ctx, depth)
@@ -218,6 +231,55 @@ pub fn recurse_mutation_paths(
         )]),
         Err(BuilderError::SystemError(e)) => Err(e),
     }
+}
+
+/// Determine parent's mutation status based on children's statuses and return detailed reasons
+///
+/// This is a shared helper function used by both non-enum types (via `MutationPathBuilder`)
+/// and enum types (via `enum_path_builder::create_result_paths`).
+pub fn determine_parent_mutation_status(
+    ctx: &RecursionContext,
+    child_paths: &[MutationPathInternal],
+) -> (MutationStatus, Option<NotMutableReason>) {
+    // Check for any partially mutable children
+    let has_partially_mutable = child_paths
+        .iter()
+        .any(|p| matches!(p.mutation_status, MutationStatus::PartiallyMutable));
+
+    let has_mutable = child_paths
+        .iter()
+        .any(|p| matches!(p.mutation_status, MutationStatus::Mutable));
+
+    let has_not_mutable = child_paths
+        .iter()
+        .any(|p| matches!(p.mutation_status, MutationStatus::NotMutable));
+
+    // Determine status
+    let status = if has_partially_mutable || (has_mutable && has_not_mutable) {
+        MutationStatus::PartiallyMutable
+    } else if has_not_mutable {
+        MutationStatus::NotMutable
+    } else {
+        MutationStatus::Mutable
+    };
+
+    // Build detailed reason if not fully mutable
+    let reason = match status {
+        MutationStatus::PartiallyMutable => {
+            let summaries: Vec<PathSummary> = child_paths
+                .iter()
+                .map(MutationPathInternal::to_path_summary)
+                .collect();
+            Some(NotMutableReason::from_partial_mutability(
+                ctx.type_name().clone(),
+                summaries,
+            ))
+        }
+        MutationStatus::NotMutable => Some(ctx.create_no_mutable_children_error()),
+        MutationStatus::Mutable => None,
+    };
+
+    (status, reason)
 }
 
 impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
@@ -580,51 +642,5 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
         // Continue with normal processing, no hard coded mutation knowledge found
         (None, None)
-    }
-
-    /// Determine parent's mutation status based on children's statuses and return detailed reasons
-    fn determine_parent_mutation_status(
-        ctx: &RecursionContext,
-        child_paths: &[MutationPathInternal],
-    ) -> (MutationStatus, Option<NotMutableReason>) {
-        // Check for any partially mutable children
-        let has_partially_mutable = child_paths
-            .iter()
-            .any(|p| matches!(p.mutation_status, MutationStatus::PartiallyMutable));
-
-        let has_mutable = child_paths
-            .iter()
-            .any(|p| matches!(p.mutation_status, MutationStatus::Mutable));
-
-        let has_not_mutable = child_paths
-            .iter()
-            .any(|p| matches!(p.mutation_status, MutationStatus::NotMutable));
-
-        // Determine status
-        let status = if has_partially_mutable || (has_mutable && has_not_mutable) {
-            MutationStatus::PartiallyMutable
-        } else if has_not_mutable {
-            MutationStatus::NotMutable
-        } else {
-            MutationStatus::Mutable
-        };
-
-        // Build detailed reason if not fully mutable
-        let reason = match status {
-            MutationStatus::PartiallyMutable => {
-                let summaries: Vec<PathSummary> = child_paths
-                    .iter()
-                    .map(MutationPathInternal::to_path_summary)
-                    .collect();
-                Some(NotMutableReason::from_partial_mutability(
-                    ctx.type_name().clone(),
-                    summaries,
-                ))
-            }
-            MutationStatus::NotMutable => Some(ctx.create_no_mutable_children_error()),
-            MutationStatus::Mutable => None,
-        };
-
-        (status, reason)
     }
 }

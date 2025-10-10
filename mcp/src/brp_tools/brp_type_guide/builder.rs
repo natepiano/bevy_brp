@@ -60,9 +60,20 @@ impl TypeGuide {
     /// Builder method to create ``TypeGuide`` from schema data
     pub fn from_registry_schema(
         brp_type_name: BrpTypeName,
-        registry_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Result<Self> {
+        // Look up the type in the registry
+        let registry_schema = match registry.get(&brp_type_name) {
+            Some(schema) => schema,
+            None => {
+                // Not found is a valid result, not an error
+                return Ok(Self::not_found_in_registry(
+                    brp_type_name,
+                    "Type not found in registry".to_string(),
+                ));
+            }
+        };
+
         // Extract reflection traits
         let reflect_types = Self::extract_reflect_types(registry_schema);
 

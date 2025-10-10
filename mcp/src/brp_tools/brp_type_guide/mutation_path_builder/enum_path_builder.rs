@@ -49,7 +49,7 @@ use super::types::{
     EnumPathData, ExampleGroup, PathAction, StructFieldName, VariantName, VariantPath,
     VariantSignature,
 };
-use super::{BuilderError, MutationPathInternal, MutationStatus, PathKind, builder};
+use super::{BuilderError, MutationPathInternal, PathKind, builder};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::types::FullMutationPath;
 use crate::error::{Error, Result};
@@ -505,29 +505,8 @@ fn process_children(
             // No enum context needed - each type handles its own behavior
 
             // Use the same recursion function as MutationPathBuilder
-            tracing::debug!(
-                "[ENUM_CHILD] About to recurse into child type: {} for variant group: {:?}",
-                child_ctx.type_name(),
-                applicable_variants
-            );
             let mut child_paths =
                 builder::recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
-
-            // Check mutation status of returned child paths
-            tracing::debug!(
-                "[ENUM_CHILD] Returned {} child paths for type {}",
-                child_paths.len(),
-                child_ctx.type_name()
-            );
-            for (i, cp) in child_paths.iter().enumerate() {
-                tracing::debug!(
-                    "[ENUM_CHILD]   Child path #{}: path={}, type={}, mutation_status={:?}",
-                    i,
-                    cp.full_mutation_path,
-                    cp.type_name,
-                    cp.mutation_status
-                );
-            }
 
             // ==================== NEW: POPULATE applicable_variants ====================
             // Track which variants make these child paths valid
@@ -603,18 +582,6 @@ fn process_children(
             representative.name(),
             &child_examples,
             ctx.type_name(),
-        );
-
-        tracing::debug!(
-            "process_children: built example for signature={:?}, example={:?}",
-            signature,
-            example
-        );
-
-        tracing::info!(
-            "[ENUM_DEBUG] Adding ExampleGroup for variants {:?} with example: {:?}",
-            applicable_variants,
-            example
         );
 
         all_examples.push(ExampleGroup {
@@ -937,6 +904,10 @@ fn create_result_paths(
     partial_roots: BTreeMap<Vec<VariantName>, Value>,
     depth: RecursionDepth,
 ) -> Vec<MutationPathInternal> {
+    // Calculate mutation status from child paths using shared helper
+    let (enum_mutation_status, mutation_status_reason) =
+        builder::determine_parent_mutation_status(ctx, &child_paths);
+
     // Generate enum data only if we have a variant chain (nested in another enum)
     let enum_data = if ctx.variant_chain.is_empty() {
         None
@@ -958,8 +929,10 @@ fn create_result_paths(
         enum_example_for_parent: Some(default_example.clone()),
         type_name:               ctx.type_name().display_name(),
         path_kind:               ctx.path_kind.clone(),
-        mutation_status:         MutationStatus::Mutable, // Simplified for now
-        mutation_status_reason:  None,
+        mutation_status:         enum_mutation_status,
+        mutation_status_reason:  mutation_status_reason
+            .as_ref()
+            .and_then(Option::<Value>::from),
         enum_path_data:          enum_data,
         depth:                   *depth,
         partial_root_examples:   None,
