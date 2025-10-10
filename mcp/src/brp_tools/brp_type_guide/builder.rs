@@ -15,16 +15,17 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::constants::{
-    AGENT_GUIDANCE, ENTITY_WARNING, ERROR_GUIDANCE, RecursionDepth, TYPE_BEVY_ENTITY,
+    AGENT_GUIDANCE, ENTITY_WARNING, ERROR_GUIDANCE, REFLECT_TRAIT_COMPONENT,
+    REFLECT_TRAIT_RESOURCE, RecursionDepth, TYPE_BEVY_ENTITY,
 };
 use super::mutation_path_builder;
 use super::mutation_path_builder::{
     MutationPath, MutationPathInternal, PathKind, RecursionContext, recurse_mutation_paths,
 };
-use super::response_types::{BrpTypeName, ReflectTrait, SchemaInfo};
+use super::response_types::{BrpTypeName, SchemaInfo};
 use super::type_kind::TypeKind;
 use crate::error::Result;
-use crate::json_object::JsonObjectAccess;
+use crate::json_object::{IntoStrings, JsonObjectAccess};
 use crate::json_schema::SchemaField;
 
 /// this is all of the information we provide about a type
@@ -87,28 +88,8 @@ impl TypeGuide {
         // Extract schema info from registry
         let schema_info = Self::extract_schema_info(registry_schema);
 
-        // Generate agent warning based on whether Entity type is present
-        let has_entity = mutation_paths
-            .values()
-            .any(|path| path.path_info.type_name.as_str().contains(TYPE_BEVY_ENTITY));
-        let agent_guidance = if has_entity {
-            // Get the Entity example value from mutation knowledge
-            use super::mutation_path_builder::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-            let entity_example = BRP_MUTATION_KNOWLEDGE
-                .get(&KnowledgeKey::exact(TYPE_BEVY_ENTITY))
-                .and_then(|knowledge| knowledge.example().as_u64())
-                .ok_or_else(|| {
-                    crate::error::Error::InvalidState(
-                        "Entity type knowledge missing or invalid in BRP_MUTATION_KNOWLEDGE"
-                            .to_string(),
-                    )
-                })?;
-
-            let entity_suffix = ENTITY_WARNING.replace("{}", &entity_example.to_string());
-            format!("{AGENT_GUIDANCE}{entity_suffix}")
-        } else {
-            AGENT_GUIDANCE.to_string()
-        };
+        // Generate agent guidance (with Entity warning if needed)
+        let agent_guidance = Self::generate_agent_guidance(&mutation_paths)?;
 
         Ok(Self {
             type_name: brp_type_name,
@@ -155,6 +136,36 @@ impl TypeGuide {
 
     // Private helper methods
 
+    /// Generate agent guidance with Entity warning if type contains Entity fields
+    ///
+    /// Checks all mutation paths for Entity types and adds a warning about using
+    /// valid Entity IDs from the running app.
+    fn generate_agent_guidance(mutation_paths: &HashMap<String, MutationPath>) -> Result<String> {
+        // Check if any mutation path contains Entity type
+        let has_entity = mutation_paths
+            .values()
+            .any(|path| path.path_info.type_name.as_str().contains(TYPE_BEVY_ENTITY));
+
+        if has_entity {
+            // Get the Entity example value from mutation knowledge
+            use super::mutation_path_builder::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
+            let entity_example = BRP_MUTATION_KNOWLEDGE
+                .get(&KnowledgeKey::exact(TYPE_BEVY_ENTITY))
+                .and_then(|knowledge| knowledge.example().as_u64())
+                .ok_or_else(|| {
+                    crate::error::Error::InvalidState(
+                        "Entity type knowledge missing or invalid in BRP_MUTATION_KNOWLEDGE"
+                            .to_string(),
+                    )
+                })?;
+
+            let entity_suffix = ENTITY_WARNING.replace("{}", &entity_example.to_string());
+            Ok(format!("{AGENT_GUIDANCE}{entity_suffix}"))
+        } else {
+            Ok(AGENT_GUIDANCE.to_string())
+        }
+    }
+
     /// Extract spawn format if the type is spawnable (Component or Resource)
     ///
     /// Encapsulates the logic for determining whether a type should have a spawn format
@@ -164,9 +175,14 @@ impl TypeGuide {
         mutation_paths: &HashMap<String, MutationPath>,
     ) -> Option<Value> {
         // Check if type is spawnable (has Component or Resource trait)
-        let reflect_types = Self::extract_reflect_types(registry_schema);
-        let is_spawnable = reflect_types.contains(&ReflectTrait::Component)
-            || reflect_types.contains(&ReflectTrait::Resource);
+        let reflect_types = registry_schema
+            .get_field_array(SchemaField::ReflectTypes)
+            .map(|arr| arr.iter().filter_map(Value::as_str).into_strings())
+            .unwrap_or_default();
+
+        let is_spawnable = reflect_types.iter().any(|trait_name| {
+            trait_name == REFLECT_TRAIT_COMPONENT || trait_name == REFLECT_TRAIT_RESOURCE
+        });
 
         if is_spawnable {
             Self::extract_spawn_format_from_paths(mutation_paths)
@@ -193,7 +209,7 @@ impl TypeGuide {
         })
     }
 
-    /// Build mutation paths for a type using the trait system
+    /// Build mutation paths for a type
     fn build_mutation_paths(
         brp_type_name: &BrpTypeName,
         registry_schema: &Value,
@@ -201,17 +217,12 @@ impl TypeGuide {
     ) -> Result<Vec<MutationPathInternal>> {
         let type_kind = TypeKind::from_schema(registry_schema);
 
-        tracing::debug!(
-            "build_mutation_paths: {} determined as TypeKind::{:?}",
-            brp_type_name,
-            type_kind
-        );
-
-        // Create root context for this type
+        // Create root `PathKind` for this type - the root has a mutation path of ""
         let path_kind = PathKind::new_root_value(brp_type_name.clone());
+
         let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
 
-        // Use the single dispatch point
+        // Use the single, recursive dispatch point for all `TypeKind`s
         let result = recurse_mutation_paths(type_kind, &ctx, RecursionDepth::ZERO)?;
 
         Ok(result)
@@ -222,104 +233,46 @@ impl TypeGuide {
         paths: &[MutationPathInternal],
         registry: &HashMap<BrpTypeName, Value>,
     ) -> HashMap<String, MutationPath> {
-        let mut result = HashMap::new();
-
-        for path in paths {
-            // Debug logging for enum root examples
-            if path.full_mutation_path.is_empty() && path.enum_example_groups.is_some() {
-                tracing::debug!(
-                    "Converting root path for {} with {} enum examples",
-                    path.type_name,
-                    path.enum_example_groups.as_ref().map_or(0, Vec::len)
-                );
-            }
-
-            // Create MutationPathInfo from MutationPath
-            let path_info = MutationPath::from_mutation_path_internal(path, registry);
-
-            // Debug log the result
-            if path.full_mutation_path.is_empty() && !path_info.examples.is_empty() {
-                tracing::debug!(
-                    "After conversion: root path has {} examples in MutationPath",
-                    path_info.examples.len()
-                );
-            }
-
-            // Keep empty path as empty for root mutations
-            // BRP expects empty string for root replacements, not "."
-            let key = (*path.full_mutation_path).clone();
-
-            result.insert(key, path_info);
-        }
-
-        result
-    }
-
-    /// Extract enum information from schema
-    /// Extract reflect types from a registry schema
-    fn extract_reflect_types(registry_schema: &Value) -> Vec<ReflectTrait> {
-        registry_schema
-            .get_field(SchemaField::ReflectTypes)
-            .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str())
-                    .filter_map(|s| s.parse::<ReflectTrait>().ok())
-                    .collect()
+        paths
+            .iter()
+            .map(|path| {
+                let path_info = MutationPath::from_mutation_path_internal(path, registry);
+                // Keep empty path as empty for root mutations
+                // BRP expects empty string for root replacements, not "."
+                let key = (*path.full_mutation_path).clone();
+                (key, path_info)
             })
-            .unwrap_or_default()
+            .collect()
     }
 
     /// Extract schema information from registry schema
     fn extract_schema_info(registry_schema: &Value) -> Option<SchemaInfo> {
         let type_kind = registry_schema
-            .get_field(SchemaField::Kind)
-            .and_then(Value::as_str)
+            .get_field_str(SchemaField::Kind)
             .and_then(|s| TypeKind::from_str(s).ok());
 
         let properties = registry_schema.get_field(SchemaField::Properties).cloned();
 
         let required = registry_schema
-            .get_field(SchemaField::Required)
-            .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(Value::as_str)
-                    .map(String::from)
-                    .collect()
-            });
+            .get_field_array(SchemaField::Required)
+            .map(|arr| arr.iter().filter_map(Value::as_str).into_strings());
 
-        let module_path = registry_schema
-            .get_field(SchemaField::ModulePath)
-            .and_then(Value::as_str)
-            .map(String::from);
+        let module_path = registry_schema.get_field_string(SchemaField::ModulePath);
 
-        let crate_name = registry_schema
-            .get_field(SchemaField::CrateName)
-            .and_then(Value::as_str)
-            .map(String::from);
+        let crate_name = registry_schema.get_field_string(SchemaField::CrateName);
 
         // Extract reflection traits
-        let reflect_types = Self::extract_reflect_types(registry_schema);
+        let reflect_traits = registry_schema
+            .get_field_array(SchemaField::ReflectTypes)
+            .map(|arr| arr.iter().filter_map(Value::as_str).into_strings());
 
-        // Only return SchemaInfo if we have at least some information
-        if type_kind.is_some()
-            || properties.is_some()
-            || required.is_some()
-            || module_path.is_some()
-            || crate_name.is_some()
-            || !reflect_types.is_empty()
-        {
-            Some(SchemaInfo {
-                type_kind,
-                properties,
-                required,
-                module_path,
-                crate_name,
-                reflect_types: Some(reflect_types),
-            })
-        } else {
-            None
-        }
+        Some(SchemaInfo {
+            type_kind,
+            properties,
+            required,
+            module_path,
+            crate_name,
+            reflect_traits,
+        })
     }
 }

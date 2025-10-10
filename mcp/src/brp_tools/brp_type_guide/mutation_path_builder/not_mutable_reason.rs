@@ -13,7 +13,7 @@
 //! pub(super) type MutationResult = Result<Vec<MutationPathInternal>, NotMutableReason>;
 //! ```
 //!
-//! When a type cannot be mutated (missing serialization, recursion limits, etc.), builders return
+//! When a type cannot be mutated (missing `Reflect`, recursion limits, etc.), builders return
 //! `Err(NotMutableReason::*)` rather than continuing processing. This gets caught at the choke
 //! point in `recurse_mutation_paths()` and converted to user output via `build_not_mutable_path()`.
 //!
@@ -48,8 +48,6 @@ pub struct PathDetailWithReason {
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NotMutableReason {
-    /// Type lacks required serialization traits
-    MissingSerializationTraits(BrpTypeName),
     /// Container type has non-mutable element type
     NonMutableHandle {
         container_type: BrpTypeName,
@@ -63,7 +61,7 @@ pub enum NotMutableReason {
     ComplexCollectionKey(BrpTypeName),
     /// All child paths are `NotMutable`
     NoMutableChildren { parent_type: BrpTypeName },
-    /// Type has serialization support but no example value available
+    /// Leaf type registered in schema but has no hardcoded example value
     NoExampleAvailable(BrpTypeName),
     /// Some children are mutable, others are not (results in `PartiallyMutable`)
     PartialChildMutability {
@@ -78,8 +76,7 @@ impl NotMutableReason {
     /// Extract the deepest failing type from nested error contexts
     pub fn get_deepest_failing_type(&self) -> BrpTypeName {
         match self {
-            Self::MissingSerializationTraits(type_name)
-            | Self::NotInRegistry(type_name)
+            Self::NotInRegistry(type_name)
             | Self::RecursionLimitExceeded(type_name)
             | Self::ComplexCollectionKey(type_name)
             | Self::NoExampleAvailable(type_name) => type_name.clone(),
@@ -144,10 +141,6 @@ impl NotMutableReason {
 impl Display for NotMutableReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::MissingSerializationTraits(type_name) => write!(
-                f,
-                "Type {type_name} lacks Serialize/Deserialize traits required for mutation"
-            ),
             Self::NonMutableHandle {
                 container_type,
                 element_type,
@@ -172,7 +165,7 @@ impl Display for NotMutableReason {
             ),
             Self::NoExampleAvailable(type_name) => write!(
                 f,
-                "Type {type_name} has serialization support but no example value is available for mutations"
+                "Type {type_name} is a leaf type registered in the schema but has no hardcoded example value available for mutations"
             ),
             Self::PartialChildMutability { parent_type, .. } => write!(
                 f,
@@ -186,10 +179,6 @@ impl Display for NotMutableReason {
 impl From<&NotMutableReason> for Option<Value> {
     fn from(reason: &NotMutableReason) -> Self {
         match reason {
-            // Simple variants return strings
-            NotMutableReason::MissingSerializationTraits(_) => Some(Value::String(format!(
-                "missing_serialization_traits: {reason}"
-            ))),
             NotMutableReason::NonMutableHandle { .. } => {
                 Some(Value::String(format!("handle_wrapper_component: {reason}")))
             }

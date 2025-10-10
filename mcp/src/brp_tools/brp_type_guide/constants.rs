@@ -99,6 +99,16 @@ pub const TYPE_BEVY_IMAGE_HANDLE: &str = "bevy_asset::handle::Handle<bevy_image:
 pub const TYPE_BLOOM: &str = "bevy_post_process::bloom::settings::Bloom";
 
 // ============================================================================
+// REFLECTION TRAIT CONSTANTS
+// ============================================================================
+
+/// Reflection trait name for Bevy components
+pub const REFLECT_TRAIT_COMPONENT: &str = "Component";
+
+/// Reflection trait name for Bevy resources
+pub const REFLECT_TRAIT_RESOURCE: &str = "Resource";
+
+// ============================================================================
 // AGENT WARNING MESSAGES
 // ============================================================================
 

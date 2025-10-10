@@ -85,9 +85,10 @@ jq --arg excluded "$EXCLUDED_TYPES" --argjson previous "$PREVIOUS_RESULTS" '
                         if ($entry.value.mutation_paths == null or $entry.value.mutation_paths == {}) then
                             "passed"
                         elif (($entry.value.mutation_paths | type == "object") and ($entry.value.mutation_paths | length == 1) and ($entry.value.mutation_paths | has(""))) then
-                            # Check if root path has meaningful examples
-                            if ($entry.value.mutation_paths[""].example == {} and
-                                ($entry.value.mutation_paths[""].examples == null or $entry.value.mutation_paths[""].examples == [])) then
+                            # Check if root path is testable
+                            if (($entry.value.mutation_paths[""].path_info.mutation_status // "") == "not_mutable") then
+                                "passed"
+                            elif ($entry.value.mutation_paths[""].example == {} and ($entry.value.mutation_paths[""].examples == null or $entry.value.mutation_paths[""].examples == [])) then
                                 "passed"
                             else
                                 "untested"

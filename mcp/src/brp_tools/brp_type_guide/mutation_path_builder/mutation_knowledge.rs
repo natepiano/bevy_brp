@@ -357,7 +357,7 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // obtained from spawn operations or queries. Using invalid entity IDs will cause errors.
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_ENTITY),
-            MutationKnowledge::as_root_value(json!(8_589_934_670_u64), "Entity"),
+            MutationKnowledge::as_root_value(json!(8_589_934_670_u64), TYPE_BEVY_ENTITY),
         );
 
         // Name serializes as a plain string, not as a struct with hash/name fields
@@ -366,19 +366,26 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             MutationKnowledge::as_root_value(json!("Entity Name"), TYPE_STRING),
         );
 
-        // ===== Camera3d depth texture usage =====
+        // ===== Camera3d field-specific values =====
         // Camera3dDepthTextureUsage - wrapper around u32 texture usage flags
         // Valid flags: COPY_SRC=1, COPY_DST=2, TEXTURE_BINDING=4, STORAGE_BINDING=8,
         // RENDER_ATTACHMENT=16 STORAGE_BINDING (8) causes crashes with multisampled
         // textures! Safe combinations: 16 (RENDER_ATTACHMENT only), 20 (RENDER_ATTACHMENT |
         // TEXTURE_BINDING)
         map.insert(
-            KnowledgeKey::struct_field(
-                "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
-                "depth_texture_usages",
-            ),
+            KnowledgeKey::struct_field("bevy_camera::components::Camera3d", "depth_texture_usages"),
             // RENDER_ATTACHMENT | TEXTURE_BINDING - safe combination, treat as opaque u32
             MutationKnowledge::as_root_value(json!(20), TYPE_U32),
+        );
+
+        // Screen space specular transmission steps - reasonable value to prevent memory issues
+        // Default is 1, typical range is 0-4 per transmission.rs example
+        map.insert(
+            KnowledgeKey::struct_field(
+                "bevy_camera::components::Camera3d",
+                "screen_space_specular_transmission_steps",
+            ),
+            MutationKnowledge::as_root_value(json!(1), TYPE_USIZE),
         );
 
         // ===== Transform types =====

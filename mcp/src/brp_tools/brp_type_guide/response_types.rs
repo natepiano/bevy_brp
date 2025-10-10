@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use strum::{AsRefStr, Display, EnumString};
+use strum::{AsRefStr, Display};
 
 pub use super::brp_type_name::BrpTypeName;
 use super::builder::TypeGuide;
@@ -43,37 +43,27 @@ impl From<BrpSupportedOperation> for String {
 pub struct SchemaInfo {
     /// Category of the type (Struct, Enum, etc.) from registry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub type_kind:     Option<TypeKind>,
+    pub type_kind:      Option<TypeKind>,
     /// Field definitions from the registry schema
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub properties:    Option<Value>,
+    pub properties:     Option<Value>,
     /// Required fields list
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub required:      Option<Vec<String>>,
+    pub required:       Option<Vec<String>>,
     /// Module path of the type
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub module_path:   Option<String>,
+    pub module_path:    Option<String>,
     /// Crate name of the type
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub crate_name:    Option<String>,
+    pub crate_name:     Option<String>,
     /// Reflection traits available on this type (Component, Resource, Serialize, Deserialize,
-    /// etc.) Clients can check this array to determine supported operations:
+    /// Default, FromReflect, etc.) Clients can check this array to determine supported operations:
     /// - Contains "Component" → supports Query, Get, Spawn, Insert (+ Mutate if mutable)
     /// - Contains "Resource" → supports Query, Get, Insert (+ Mutate if mutable)
     /// - Contains "Serialize"/"Deserialize" → type can be serialized (informational only)
+    /// - Other traits are informational and preserved from Bevy's reflection system
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reflect_types: Option<Vec<ReflectTrait>>,
-}
-
-/// Bevy reflection trait names
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString, Serialize, Deserialize)]
-#[strum(serialize_all = "PascalCase")]
-#[serde(rename_all = "PascalCase")]
-pub enum ReflectTrait {
-    Component,
-    Resource,
-    Serialize,
-    Deserialize,
+    pub reflect_traits: Option<Vec<String>>,
 }
 
 /// response structure

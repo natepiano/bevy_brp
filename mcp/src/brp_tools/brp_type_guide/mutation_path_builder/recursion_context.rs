@@ -1,7 +1,77 @@
-//! Context types for mutation path building
+//! Recursion context for mutation path building
 //!
-//! This module contains the context structures and related types used for building mutation paths,
-//! including the main context struct and location enums.
+//! This module implements an **immutable context propagation pattern** where each level of
+//! type recursion gets a fresh `RecursionContext` built from its parent's state.
+//!
+//! ## Why Create New Contexts at Each Level?
+//!
+//! The mutation path building process is a **depth-first tree traversal** where:
+//! - **Descending**: State accumulates (paths grow longer, variant chains extend)
+//! - **Ascending**: Each level needs its exact context to build its mutation paths
+//!
+//! Creating new contexts at each level enables:
+//! 1. **Proper Path Accumulation**: `""` → `".translation"` → `".translation.x"`
+//! 2. **Variant Chain Building**: Enum variant requirements accumulate through nesting
+//! 3. **Clean Ascent Processing**: Each level has its correct context when building paths
+//! 4. **Path Action Propagation**: Skip decisions flow down the entire subtree
+//!
+//! ## Context Creation Flow
+//!
+//! ```text
+//! Root: RecursionContext::new(root_path_kind, registry)
+//!   ↓
+//! Child 1: ctx.create_recursion_context(field_path_kind, Create)
+//!   ↓
+//! Child 2: ctx.create_recursion_context(nested_field_path_kind, Create)
+//! ```
+//!
+//! Each child context inherits from parent:
+//! - `registry`: Shared (cheap Arc clone)
+//! - `full_mutation_path`: Parent path + new segment
+//! - `variant_chain`: Parent chain (cloned, may be extended for enum children)
+//! - `path_action`: Controls mutation path exposure (not recursion)
+//!
+//! ## Path Action: Exposure vs Recursion
+//!
+//! `PathAction` controls whether mutation paths are **exposed in the final result**,
+//! NOT whether recursion happens:
+//!
+//! - **`PathAction::Create`**: Include this path and all descendant paths in results
+//!   - Example: `Transform.translation.x` → exposes `""`, `".translation"`, `".translation.x"`
+//!
+//! - **`PathAction::Skip`**: Recurse for examples but DON'T expose descendant paths
+//!   - Example: `HashMap<String, Transform>` → exposes only `""` with map example
+//!   - Still recurses into `Transform` to get example values for map assembly
+//!   - Does NOT expose Transform's `.rotation`, `.scale` paths (invalid for maps)
+//!
+//! **Skip Propagation**: Once a parent sets `Skip`, the entire subtree stays `Skip`.
+//! This prevents deeper nested paths from leaking into results when their container
+//! type (Map, Set) doesn't support nested mutations.
+//!
+//! Used by: `MapMutationBuilder`, `SetMutationBuilder` (collections that only support
+//! root-level replacement, not element-level mutations).
+//!
+//! ## State Mutation
+//!
+//! While context creation is immutable, `variant_chain` CAN be mutated after creation
+//! in `enum_path_builder.rs` (line 493) when processing enum children. This is the
+//! only post-creation mutation and enables variant selection information to flow
+//! through the type hierarchy.
+//!
+//! ## Example: Transform Struct
+//!
+//! ```text
+//! Transform (root: "")
+//!   ├─ translation: Vec3 (path: ".translation")
+//!   │   ├─ x: f32 (path: ".translation.x")
+//!   │   ├─ y: f32 (path: ".translation.y")
+//!   │   └─ z: f32 (path: ".translation.z")
+//!   ├─ rotation: Quat (path: ".rotation")
+//!   └─ scale: Vec3 (path: ".scale")
+//! ```
+//!
+//! Each node gets a RecursionContext with its exact position, enabling correct
+//! mutation path generation during the ascent phase.
 use std::collections::HashMap;
 use std::sync::Arc;
 
