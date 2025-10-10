@@ -88,6 +88,8 @@ pub const TYPE_GLAM_MAT2: &str = "glam::Mat2";
 pub const TYPE_GLAM_MAT3: &str = "glam::Mat3";
 pub const TYPE_GLAM_MAT3A: &str = "glam::Mat3A";
 pub const TYPE_GLAM_MAT4: &str = "glam::Mat4";
+pub const TYPE_GLAM_AFFINE2: &str = "glam::Affine2";
+pub const TYPE_GLAM_AFFINE3A: &str = "glam::Affine3A";
 
 // Bevy component types
 pub const TYPE_BEVY_ENTITY: &str = "bevy_ecs::entity::Entity";

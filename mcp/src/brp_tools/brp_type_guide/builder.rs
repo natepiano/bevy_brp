@@ -74,24 +74,15 @@ impl TypeGuide {
             }
         };
 
-        // Extract reflection traits
-        let reflect_types = Self::extract_reflect_types(registry_schema);
-
         // Build mutation paths to determine actual mutation capability
         let mutation_paths_vec =
             Self::build_mutation_paths(&brp_type_name, registry_schema, Arc::clone(&registry))?;
 
         let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec, &registry);
 
-        // Build spawn format from root path mutation example - for components and resources
-        let has_component = reflect_types.contains(&ReflectTrait::Component);
-        let has_resource = reflect_types.contains(&ReflectTrait::Resource);
-
-        let spawn_format = if has_component || has_resource {
-            Self::extract_spawn_format_from_paths(&mutation_paths)
-        } else {
-            None
-        };
+        // Extract spawn format if type is spawnable (Component or Resource)
+        let spawn_format =
+            Self::extract_spawn_format_if_spawnable(registry_schema, &mutation_paths);
 
         // Extract schema info from registry
         let schema_info = Self::extract_schema_info(registry_schema);
@@ -163,6 +154,26 @@ impl TypeGuide {
     }
 
     // Private helper methods
+
+    /// Extract spawn format if the type is spawnable (Component or Resource)
+    ///
+    /// Encapsulates the logic for determining whether a type should have a spawn format
+    /// and extracting it from the mutation paths.
+    fn extract_spawn_format_if_spawnable(
+        registry_schema: &Value,
+        mutation_paths: &HashMap<String, MutationPath>,
+    ) -> Option<Value> {
+        // Check if type is spawnable (has Component or Resource trait)
+        let reflect_types = Self::extract_reflect_types(registry_schema);
+        let is_spawnable = reflect_types.contains(&ReflectTrait::Component)
+            || reflect_types.contains(&ReflectTrait::Resource);
+
+        if is_spawnable {
+            Self::extract_spawn_format_from_paths(mutation_paths)
+        } else {
+            None
+        }
+    }
 
     /// Extract spawn format from root mutation path
     /// Uses the root path `""` example as the spawn format for consistency

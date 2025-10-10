@@ -43,6 +43,7 @@ use bevy::light::{
 };
 use bevy::pbr::decal::ForwardDecalMaterialExt;
 use bevy::pbr::{ExtendedMaterial, Lightmap, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections};
+use bevy::post_process::auto_exposure::AutoExposure;
 use bevy::post_process::bloom::Bloom;
 use bevy::post_process::dof::DepthOfField;
 use bevy::post_process::effect_stack::ChromaticAberration;
@@ -1346,6 +1347,7 @@ fn spawn_cameras(commands: &mut Commands) {
             ..default()
         },
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+        AutoExposure::default(), // For testing mutations
         ColorGrading::default(), // For testing mutations
         ContrastAdaptiveSharpening {
             enabled: true,
