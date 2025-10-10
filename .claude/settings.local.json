@@ -149,7 +149,6 @@
       "Bash(bash:*)",
       "Bash(git grep:*)",
       "Bash(ps:*)",
-      "Bash(.claude/scripts/extras_test_poll_screenshot.sh:*)",
       "Bash(pkill:*)",
       "Bash(.claude/scripts/integration_test_launch_retry.sh:*)",
       "Bash(kill:*)",
@@ -174,17 +173,13 @@
       "Bash(~/.claude/scripts/orphans.py)",
       "SlashCommand(/get_kind_baseline)",
       "Bash(.claude/scripts/get_type_kind.sh:*)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh /Users/natemccoy/rust/bevy_brp/test_screenshot_1.png)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh /Users/natemccoy/rust/bevy_brp/test_screenshot_2.png)",
       "WebFetch(domain:bevy.org)",
       "Bash(du:*)",
       "Bash(mcp__brp__brp_status:*)",
-      "Bash(killall:*)"
+      "Bash(killall:*)",
+      "Bash(.claude/scripts/extras_test_poll_screenshot.sh:*)"
     ],
-    "deny": [
-      "Bash(sed:*)",
-      "Bash(cat >:*)"
-    ],
+    "deny": ["Bash(sed:*)", "Bash(cat >:*)"],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
