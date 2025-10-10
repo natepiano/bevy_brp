@@ -2,13 +2,19 @@
 
 # Augment full BRP response with test metadata
 # This script preserves the ENTIRE BRP response structure while adding test tracking fields
-# Usage: ./create_mutation_test_json_augment_response.sh [FILEPATH] [TARGET_FILE]
+# Usage: ./create_mutation_test_json_augment_response.sh [FILEPATH] [TARGET_FILE] [MODE]
+#
+# MODE (optional):
+#   - preserve (default): Preserve test results from existing TARGET_FILE
+#   - init/initialize: Start fresh with all types untested or auto-passed
 
 FILEPATH="$1"
 TARGET_FILE="$2"
+MODE="${3:-preserve}"  # Third argument, defaults to "preserve"
 
 if [ -z "$FILEPATH" ] || [ -z "$TARGET_FILE" ]; then
-    echo "Usage: $0 <source_json_file> <target_json_file>"
+    echo "Usage: $0 <source_json_file> <target_json_file> [mode]"
+    echo "  mode: preserve (default) | init | initialize"
     exit 1
 fi
 
@@ -25,9 +31,23 @@ if [ -f "$EXCLUSION_FILE" ]; then
     EXCLUDED_TYPES=$(jq -r '.excluded_types[].type_name' "$EXCLUSION_FILE" 2>/dev/null | tr '\n' '|' | sed 's/|$//')
 fi
 
+# If preserving and target file exists, read previous test results
+PREVIOUS_RESULTS="{}"
+if [[ "$MODE" != "init" && "$MODE" != "initialize" && -f "$TARGET_FILE" ]]; then
+    echo "Preserving test results from existing $TARGET_FILE"
+    # Extract test results: {type_name: {batch_number, test_status, fail_reason}}
+    PREVIOUS_RESULTS=$(jq -r '.type_guide | to_entries | map({(.key): {batch_number: .value.batch_number, test_status: .value.test_status, fail_reason: .value.fail_reason}}) | add' "$TARGET_FILE" 2>/dev/null || echo "{}")
+else
+    if [[ "$MODE" == "init" || "$MODE" == "initialize" ]]; then
+        echo "Initializing fresh test results (mode: $MODE)"
+    else
+        echo "No existing file to preserve from - initializing fresh test results"
+    fi
+fi
+
 # Create the augmented JSON using jq
 # This preserves ALL fields from the original BRP response and adds test metadata
-jq --arg excluded "$EXCLUDED_TYPES" '
+jq --arg excluded "$EXCLUDED_TYPES" --argjson previous "$PREVIOUS_RESULTS" '
 # Process the response, preserving everything and adding test metadata
 # type_guide is an object with type names as keys
 .type_guide |= with_entries(
@@ -36,34 +56,50 @@ jq --arg excluded "$EXCLUDED_TYPES" '
     if ($excluded != "" and $entry.key != null and ($entry.key | test($excluded))) then
         empty
     else
-        # Preserve the key (type name) and augment the value
-        {
-            key: $entry.key,
-            value: ($entry.value + {
-                # Add the type field from the key
-                "type": $entry.key,
-                # Add test tracking fields
-                "batch_number": null,
-                "test_status": (
-                    # Auto-pass only types with no mutation paths or empty root-only paths
-                    # Types with examples in root path should be tested
-                    if ($entry.value.mutation_paths == null or $entry.value.mutation_paths == {}) then
-                        "passed"
-                    elif (($entry.value.mutation_paths | type == "object") and ($entry.value.mutation_paths | length == 1) and ($entry.value.mutation_paths | has(""))) then
-                        # Check if root path has meaningful examples
-                        if ($entry.value.mutation_paths[""].example == {} and
-                            ($entry.value.mutation_paths[""].examples == null or $entry.value.mutation_paths[""].examples == [])) then
+        # Check if we have previous test results for this type
+        if $previous[$entry.key] then
+            # Preserve previous test results
+            {
+                key: $entry.key,
+                value: ($entry.value + {
+                    # Add the type field from the key
+                    "type": $entry.key,
+                    # Preserve previous test tracking fields
+                    "batch_number": $previous[$entry.key].batch_number,
+                    "test_status": $previous[$entry.key].test_status,
+                    "fail_reason": $previous[$entry.key].fail_reason
+                })
+            }
+        else
+            # New type - initialize with default test metadata
+            {
+                key: $entry.key,
+                value: ($entry.value + {
+                    # Add the type field from the key
+                    "type": $entry.key,
+                    # Add test tracking fields
+                    "batch_number": null,
+                    "test_status": (
+                        # Auto-pass only types with no mutation paths or empty root-only paths
+                        # Types with examples in root path should be tested
+                        if ($entry.value.mutation_paths == null or $entry.value.mutation_paths == {}) then
                             "passed"
+                        elif (($entry.value.mutation_paths | type == "object") and ($entry.value.mutation_paths | length == 1) and ($entry.value.mutation_paths | has(""))) then
+                            # Check if root path has meaningful examples
+                            if ($entry.value.mutation_paths[""].example == {} and
+                                ($entry.value.mutation_paths[""].examples == null or $entry.value.mutation_paths[""].examples == [])) then
+                                "passed"
+                            else
+                                "untested"
+                            end
                         else
                             "untested"
                         end
-                    else
-                        "untested"
-                    end
-                ),
-                "fail_reason": ""
-            })
-        }
+                    ),
+                    "fail_reason": ""
+                })
+            }
+        end
     end
 )
 ' "$FILEPATH" > "$TARGET_FILE"

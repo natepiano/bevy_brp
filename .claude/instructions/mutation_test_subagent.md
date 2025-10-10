@@ -296,6 +296,13 @@ For each type name string in your `type_names` array:
    2. **EXTRACT TYPE NAME**: Get the `type_name` field from the script output - this is your AUTHORITATIVE string
    3. **TEST THE TYPE**:
 
+   **UNDERSTANDING spawn_format NULL**:
+   - `spawn_format: null` means root path is `partially_mutable`
+   - This is NOT an error or skip condition
+   - Mutation paths ARE still testable
+   - Components: Query for existing entities instead of spawning
+   - Resources: Skip insert, mutate existing resource directly
+
    a. **COMPONENT_NOT_FOUND VALIDATION**:
       - **IF** entity query returns 0 entities for a type:
         1. **STOP IMMEDIATELY** - do NOT report COMPONENT_NOT_FOUND yet
@@ -400,20 +407,20 @@ For each type name string in your `type_names` array:
 
 **CRITICAL**: Do NOT use component methods (`world_spawn_entity`, `world_mutate_components`) - these will CRASH the app
 
-1. **SKIP CHECK**: If `guide.spawn_format` is `null`, SKIP all insert/mutation testing for this resource
-
-2. **INSERT RESOURCE**:
+1. **INSERT CHECK**: If `guide.spawn_format` is NOT null:
    - Use `world_insert_resources` tool
    - Pass `resource` parameter with exact type name from type guide
    - Pass `value` parameter with `spawn_format` data
-   - **NEVER** use `world_spawn_entity` - resources are NOT spawned as entities
+   - Then verify insertion with `world_get_resources`
+   - Set `spawn_insert: true` in operations_completed
 
-3. **VERIFY INSERTION**:
-   - Use `world_get_resources` tool
-   - Pass `resource` parameter with exact type name
-   - Confirms the resource exists in the world
+2. **IF spawn_format IS null**:
+   - Skip insert step (root is `partially_mutable`)
+   - Resource must already exist in the running app
+   - Set `spawn_insert: false` in operations_completed
+   - Proceed directly to mutation testing
 
-4. **MUTATION TESTING**:
+3. **MUTATION TESTING** (ALWAYS execute if mutation paths exist):
    - Use `world_mutate_resources` tool (NOT `world_mutate_components`)
    - Pass `resource` parameter with exact type name
    - Pass `path` parameter with mutation path from type guide
@@ -421,7 +428,7 @@ For each type name string in your `type_names` array:
    - Follow <JsonPrimitiveRules/> for value formatting
    - **NO entity ID parameter** - resources don't have entities
 
-5. **SKIP ENTITY QUERY**:
+4. **ENTITY QUERY**:
    - Resources are NOT attached to entities
    - Do NOT query for entities with `world_query`
    - Set `entity_query: false` in operations_completed
@@ -433,20 +440,27 @@ For each type name string in your `type_names` array:
 
 **CRITICAL**: Do NOT use resource methods (`world_insert_resources`, `world_mutate_resources`)
 
-1. **SKIP CHECK**: If `guide.spawn_format` is `null`, SKIP all spawn/insert testing for this component
-
-2. **SPAWN ENTITY**:
+1. **SPAWN/INSERT CHECK**: If `guide.spawn_format` is NOT null:
    - Use `world_spawn_entity` tool
    - Pass `components` parameter with type name as key and `spawn_format` as value
-   - **NEVER** use `world_insert_resources` - components are spawned with entities
+   - Set `spawn_insert: true` in operations_completed
+   - Proceed to query for entity
 
-3. **QUERY FOR ENTITY**:
+2. **IF spawn_format IS null**:
+   - Skip spawn step (root is `partially_mutable`)
+   - Component must already exist on entities in the running app
+   - Set `spawn_insert: false` in operations_completed
+   - Proceed to query for EXISTING entities with this component
+
+3. **QUERY FOR ENTITY** (ALWAYS execute):
    - Use `world_query` tool
    - Pass `filter: {"with": ["EXACT_TYPE_NAME"]}` to find entities
    - Pass `data: {}` to get entity IDs only
    - Store entity ID for mutation testing
+   - If 0 entities found → Report COMPONENT_NOT_FOUND status
+   - Set `entity_query: true` in operations_completed
 
-4. **MUTATION TESTING**:
+4. **MUTATION TESTING** (ALWAYS execute if entity found and mutation paths exist):
    - Use `world_mutate_components` tool (NOT `world_mutate_resources`)
    - Pass `entity` parameter with entity ID from query
    - Pass `component` parameter with exact type name

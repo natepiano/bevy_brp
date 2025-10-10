@@ -7,6 +7,19 @@
 .claude/scripts/create_mutation_test_json/validate_directory.sh
 ```
 
+## Command Arguments
+
+This command supports an optional argument to control test result preservation:
+
+**Default (no arguments)**: `/create_mutation_test_json`
+- **Preserves test results** (batch_number, test_status, fail_reason) from existing all_types.json
+- New types get initialized with default test metadata ("untested" or "passed")
+- Removed types are automatically cleaned up
+
+**Initialize mode**: `/create_mutation_test_json init` or `/create_mutation_test_json initialize`
+- Starts fresh, all types reset to "untested" or "passed" (auto-pass for types with no mutations)
+- Use this when you want to clear all test history and start over
+
 <ExecutionSteps/>
 
 <CreateContext>
@@ -14,6 +27,7 @@ TARGET_FILE = .claude/transient/all_types.json
 PURPOSE = Creates the mutation test tracking file by discovering all registered component types via BRP and systematically determining spawn support and mutation paths for ALL types.
 APP_PORT = 22222
 APP_NAME = extras_plugin
+MODE = ${ARGUMENTS:-preserve}
 </CreateContext>
 
 <CreateKeywords>
@@ -165,16 +179,16 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
     Execute the augmentation script:
     ```bash
-    .claude/scripts/create_mutation_test_json/augment_response.sh [FILEPATH] ${TARGET_FILE}
+    .claude/scripts/create_mutation_test_json/augment_response.sh [FILEPATH] ${TARGET_FILE} ${MODE}
     ```
 
-    Replace `[FILEPATH]` with the actual path from Step 2 and `${TARGET_FILE}` with the target location from <CreateContext/>.
+    Replace `[FILEPATH]` with the actual path from Step 2, `${TARGET_FILE}` with the target location, and `${MODE}` with the mode from <CreateContext/>.
 
     The script augments the full BRP response with test metadata for each type:
     - Preserves ALL original type guide data (mutation_paths with examples, spawn_format, etc.)
-    - Adds: batch_number: null
-    - Adds: test_status: "untested" (or "passed" for auto-pass types)
-    - Adds: fail_reason: ""
+    - **If MODE is "preserve" (default)**: Preserves test results (batch_number, test_status, fail_reason) from existing types
+    - **If MODE is "init" or "initialize"**: Resets all test metadata to defaults
+    - **For new types**: Adds batch_number: null, test_status: "untested" (or "passed" for auto-pass types), fail_reason: ""
 
     **File Structure**: The file is the COMPLETE BRP response with added test fields
 
