@@ -380,7 +380,7 @@ For each type name string in your `type_names` array:
 </TestAllTypes>
 
 <ResourceTestingProtocol>
-**RESOURCE TESTING PROTOCOL - Use ONLY for types with "insert" but NO "spawn" in supported_operations**
+**RESOURCE TESTING PROTOCOL - Use ONLY for types with "Resource" in schema_info.reflect_types**
 
 **CRITICAL**: Do NOT use component methods (`world_spawn_entity`, `world_mutate_components`) - these will CRASH the app
 
