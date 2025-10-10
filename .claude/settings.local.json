@@ -177,9 +177,13 @@
       "Bash(du:*)",
       "Bash(mcp__brp__brp_status:*)",
       "Bash(killall:*)",
-      "Bash(.claude/scripts/extras_test_poll_screenshot.sh:*)"
+      "Bash(.claude/scripts/extras_test_poll_screenshot.sh:*)",
+      "Bash(mcp__brp__brp_launch_bevy_example:*)"
     ],
-    "deny": ["Bash(sed:*)", "Bash(cat >:*)"],
+    "deny": [
+      "Bash(sed:*)",
+      "Bash(cat >:*)"
+    ],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
