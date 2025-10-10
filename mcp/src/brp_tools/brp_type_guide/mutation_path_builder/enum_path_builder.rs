@@ -41,7 +41,6 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::super::constants::RecursionDepth;
 use super::super::type_kind::TypeKind;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
@@ -175,14 +174,12 @@ impl EnumVariantInfo {
 /// - `enum_root_example_for_parent`: concrete value for parent assembly
 pub fn process_enum(
     ctx: &RecursionContext,
-    depth: RecursionDepth,
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
     // Use shared function to get variant information
     let variant_groups = extract_and_group_variants(ctx)?;
 
     // Process children - now builds examples immediately to avoid HashMap overwrites
-    let (enum_examples, child_paths, partial_roots) =
-        process_children(&variant_groups, ctx, depth)?;
+    let (enum_examples, child_paths, partial_roots) = process_children(&variant_groups, ctx)?;
 
     // Select default example from the generated examples
     let default_example = select_preferred_example(&enum_examples).unwrap_or(json!(null));
@@ -194,7 +191,6 @@ pub fn process_enum(
         default_example,
         child_paths,
         partial_roots,
-        depth,
     ))
 }
 
@@ -466,8 +462,7 @@ fn populate_variant_path(
 fn process_children(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     ctx: &RecursionContext,
-    depth: RecursionDepth,
-) -> Result<ProcessChildrenResult> {
+) -> std::result::Result<ProcessChildrenResult, BuilderError> {
     let mut all_examples = Vec::new();
     let mut all_child_paths = Vec::new();
 
@@ -505,8 +500,7 @@ fn process_children(
             // No enum context needed - each type handles its own behavior
 
             // Use the same recursion function as MutationPathBuilder
-            let mut child_paths =
-                builder::recurse_mutation_paths(child_type_kind, &child_ctx, depth.increment())?;
+            let mut child_paths = builder::recurse_mutation_paths(child_type_kind, &child_ctx)?;
 
             // ==================== NEW: POPULATE applicable_variants ====================
             // Track which variants make these child paths valid
@@ -592,8 +586,7 @@ fn process_children(
     }
 
     // Build partial roots using assembly during ascent
-    let partial_roots =
-        build_partial_roots(variant_groups, &all_examples, &all_child_paths, ctx, depth);
+    let partial_roots = build_partial_roots(variant_groups, &all_examples, &all_child_paths, ctx);
 
     Ok((all_examples, all_child_paths, partial_roots))
 }
@@ -690,7 +683,6 @@ fn build_partial_roots(
     enum_examples: &[ExampleGroup],
     child_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
-    depth: RecursionDepth,
 ) -> BTreeMap<Vec<VariantName>, Value> {
     let mut partial_roots = BTreeMap::new();
 
@@ -718,7 +710,7 @@ fn build_partial_roots(
             let mut child_chains_to_wrap = BTreeSet::new();
             for child in child_paths {
                 // Skip grandchildren - only process direct children
-                if !child.is_direct_child_at_depth(*depth) {
+                if !child.is_direct_child_at_depth(*ctx.depth) {
                     continue;
                 }
 
@@ -763,7 +755,7 @@ fn build_partial_roots(
                 // Collect children with variant-specific or regular values
                 for child in child_paths {
                     // Skip grandchildren - only process direct children
-                    if !child.is_direct_child_at_depth(*depth) {
+                    if !child.is_direct_child_at_depth(*ctx.depth) {
                         continue;
                     }
 
@@ -819,7 +811,7 @@ fn build_partial_roots(
                 let mut children = HashMap::new();
                 for child in child_paths {
                     // Skip grandchildren - only process direct children
-                    if !child.is_direct_child_at_depth(*depth) {
+                    if !child.is_direct_child_at_depth(*ctx.depth) {
                         continue;
                     }
 
@@ -902,7 +894,6 @@ fn create_result_paths(
     default_example: Value,
     mut child_paths: Vec<MutationPathInternal>,
     partial_roots: BTreeMap<Vec<VariantName>, Value>,
-    depth: RecursionDepth,
 ) -> Vec<MutationPathInternal> {
     // Calculate mutation status from child paths using shared helper
     let (enum_mutation_status, mutation_status_reason) =
@@ -934,7 +925,7 @@ fn create_result_paths(
             .as_ref()
             .and_then(Option::<Value>::from),
         enum_path_data:          enum_data,
-        depth:                   *depth,
+        depth:                   *ctx.depth,
         partial_root_examples:   None,
     };
 

@@ -196,10 +196,9 @@ pub struct MutationPathInternal {
     pub mutation_status_reason:  Option<Value>,
     /// Consolidated enum-specific data (new approach)
     pub enum_path_data:          Option<EnumPathData>,
-
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
-    pub depth: usize,
+    pub depth:                   usize,
 
     /// For enum root paths at each nesting level: Maps FULL variant chains to partial
     /// root examples built from this enum level down through all descendants.

@@ -16,7 +16,7 @@ use serde_json::Value;
 
 use super::constants::{
     AGENT_GUIDANCE, ENTITY_WARNING, ERROR_GUIDANCE, REFLECT_TRAIT_COMPONENT,
-    REFLECT_TRAIT_RESOURCE, RecursionDepth, TYPE_BEVY_ENTITY,
+    REFLECT_TRAIT_RESOURCE, TYPE_BEVY_ENTITY,
 };
 use super::mutation_path_builder;
 use super::mutation_path_builder::{
@@ -223,7 +223,7 @@ impl TypeGuide {
         let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
 
         // Use the single, recursive dispatch point for all `TypeKind`s
-        let result = recurse_mutation_paths(type_kind, &ctx, RecursionDepth::ZERO)?;
+        let result = recurse_mutation_paths(type_kind, &ctx)?;
 
         Ok(result)
     }

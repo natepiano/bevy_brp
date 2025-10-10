@@ -78,6 +78,7 @@ use std::sync::Arc;
 use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
+use super::super::constants::RecursionDepth;
 use super::NotMutableReason;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
@@ -104,6 +105,8 @@ pub struct RecursionContext {
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
     pub variant_chain:      Vec<VariantPath>,
+    /// Recursion depth tracking to prevent infinite loops
+    pub depth:              RecursionDepth,
 }
 
 impl RecursionContext {
@@ -115,6 +118,7 @@ impl RecursionContext {
             full_mutation_path: FullMutationPath::from(""),
             path_action: PathAction::Create, // Default to creating paths
             variant_chain: Vec::new(),       // Start with empty variant chain
+            depth: RecursionDepth::ZERO,     // Start at depth 0
         }
     }
 
@@ -145,11 +149,17 @@ impl RecursionContext {
     }
 
     /// Create a new context for recursion
+    ///
+    /// Increments depth for the child context. Depth limit checking should be done
+    /// by the caller before calling this method.
     pub fn create_recursion_context(
         &self,
         path_kind: PathKind,
         child_path_action: PathAction,
     ) -> Self {
+        // Increment depth for child context
+        let new_depth = self.depth.increment();
+
         let new_path_prefix = FullMutationPath::from(format!(
             "{}{}",
             self.full_mutation_path,
@@ -171,6 +181,7 @@ impl RecursionContext {
             full_mutation_path: new_path_prefix,
             path_action,
             variant_chain: self.variant_chain.clone(), // Inherit parent's variant chain
+            depth: new_depth,
         }
     }
 

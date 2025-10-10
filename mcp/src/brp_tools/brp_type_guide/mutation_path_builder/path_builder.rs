@@ -4,7 +4,6 @@ use serde_json::{Value, json};
 
 use super::types::PathAction;
 use super::{BuilderError, MutationPathDescriptor, RecursionContext};
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
 /// Trait for building mutation paths for different type kinds
@@ -25,16 +24,14 @@ pub trait PathBuilder {
 
     /// Build mutation paths with depth tracking for recursion safety
     ///
-    /// This method takes a `MutationPathContext` which provides all necessary information
-    /// including the registry, wrapper info, and enum variants, plus a `RecursionDepth`
-    /// parameter to track recursion depth and prevent infinite loops.
+    /// This method takes a `RecursionContext` which provides all necessary information
+    /// including the registry, wrapper info, enum variants, and recursion depth.
     ///
     /// Returns a `Result` containing a vector of `MutationPathInternal` representing
     /// all possible mutation paths, or a `BuilderError` if path building failed.
     fn build_paths(
         &self,
         _ctx: &RecursionContext,
-        _depth: RecursionDepth,
     ) -> std::result::Result<Vec<super::types::MutationPathInternal>, BuilderError> {
         // Implementation details here
         Ok(vec![])
