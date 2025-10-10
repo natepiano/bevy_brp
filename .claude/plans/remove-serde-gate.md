@@ -225,9 +225,41 @@ fn get_supported_operations(reflect_types: &[ReflectTrait]) -> Vec<BrpSupportedO
 #### `mcp/src/brp_tools/brp_type_guide/type_guide.rs`
 **Function: `extract_schema_info()`** - Add `reflect_types` to schema_info
 
-Current implementation extracts: `type_kind`, `properties`, `required`, `module_path`, `crate_name`
+Current implementation (lines 263-309) extracts: `type_kind`, `properties`, `required`, `module_path`, `crate_name`
 
-**Add `reflect_types` extraction:**
+**Specific changes required:**
+
+1. **After extracting `crate_name` (line 290), add reflect_types extraction:**
+   ```rust
+   // ADD THIS after line 290:
+   let reflect_types = Self::extract_reflect_types(registry_schema);
+   ```
+
+2. **Update the conditional check (lines 293-297) to include reflect_types:**
+   ```rust
+   // MODIFY the if condition to add:
+   if type_kind.is_some()
+       || properties.is_some()
+       || required.is_some()
+       || module_path.is_some()
+       || crate_name.is_some()
+       || !reflect_types.is_empty()  // ADD THIS LINE
+   {
+   ```
+
+3. **Add reflect_types field to SchemaInfo construction (after line 304):**
+   ```rust
+   Some(SchemaInfo {
+       type_kind,
+       properties,
+       required,
+       module_path,
+       crate_name,
+       reflect_types: Some(reflect_types),  // ADD THIS LINE
+   })
+   ```
+
+**Complete modified function:**
 
 ```rust
 fn extract_schema_info(registry_schema: &Value) -> Option<SchemaInfo> {
@@ -258,7 +290,7 @@ fn extract_schema_info(registry_schema: &Value) -> Option<SchemaInfo> {
         .and_then(Value::as_str)
         .map(String::from);
 
-    // ADD THIS: Extract reflection traits
+    // Extract reflection traits
     let reflect_types = Self::extract_reflect_types(registry_schema);
 
     // Only return SchemaInfo if we have at least some information
@@ -267,7 +299,7 @@ fn extract_schema_info(registry_schema: &Value) -> Option<SchemaInfo> {
         || required.is_some()
         || module_path.is_some()
         || crate_name.is_some()
-        || !reflect_types.is_empty()  // ADD THIS
+        || !reflect_types.is_empty()
     {
         Some(SchemaInfo {
             type_kind,
@@ -275,7 +307,7 @@ fn extract_schema_info(registry_schema: &Value) -> Option<SchemaInfo> {
             required,
             module_path,
             crate_name,
-            reflect_types: Some(reflect_types),  // ADD THIS
+            reflect_types: Some(reflect_types),
         })
     } else {
         None
@@ -283,7 +315,7 @@ fn extract_schema_info(registry_schema: &Value) -> Option<SchemaInfo> {
 }
 ```
 
-**Note:** The `extract_reflect_types()` helper already exists (private function in the impl block), we're just reusing it here.
+**Note:** The `extract_reflect_types()` helper already exists at line 250 (private function in the impl block), we're just reusing it here. Empty `reflect_types` array is allowed - the conditional returns Some if ANY field has data.
 
 #### `mcp/src/brp_tools/brp_type_guide/response_types.rs`
 **Update `SchemaInfo` struct** - Add `reflect_types` field
@@ -407,6 +439,10 @@ fn assemble_from_children(
 #### `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/recursion_context.rs`
 **Remove now-obsolete SerDe helper method**
 
+**Dependency check performed:** Searched codebase for all usages of `value_type_has_serialization`:
+- Found in: `recursion_context.rs` (definition), `value_builder.rs` (single call site - being removed), `.claude/plans/remove-serde-gate.md` (this plan)
+- **Verified safe to remove** - only call site is in `value_builder.rs` lines 36-41, which is being removed as part of this plan
+
 Remove the `value_type_has_serialization()` method (no longer needed after removing SerDe gating from value_builder.rs):
 
 ```rust
@@ -474,6 +510,14 @@ The TestMixedMutability types (TestMixedMutabilityCore, Vec, Array, Tuple, Enum)
 
 #### `.claude/tests/type_guide.md`
 
+**Search and replace ALL references to removed fields:**
+
+1. **Search the entire file for:** `has_serialize`, `has_deserialize`, `supported_operations`
+2. **Update each reference:**
+   - Replace field checks with `schema_info.reflect_types` array checks
+   - Example: `has_serialize: false` → check that `schema_info.reflect_types` does NOT contain "Serialize"
+   - Example: `supported_operations: ["query", "get", "mutate"]` → derive from `schema_info.reflect_types` containing "Component"
+
 **Remove entire test sections that tested SerDe failure cases:**
 
 - **### 4. Validate Sprite Component (No Serialize Trait)** - Remove entire section
@@ -484,7 +528,10 @@ The TestMixedMutability types (TestMixedMutabilityCore, Vec, Array, Tuple, Enum)
 
 **Update test expectations:**
 
-- **In #### 4a. Validate Type Info:** Since `supported_operations` field is being removed entirely, delete this test step
+- **In #### 4a. Validate Type Info (line 59):**
+  - BEFORE: `has_serialize: false, has_deserialize: false, supported_operations: ["query", "get", "mutate"]`
+  - AFTER: `schema_info.reflect_types` should NOT contain "Serialize" or "Deserialize", but SHOULD contain "Component"
+  - Delete the entire `supported_operations` check - this field no longer exists
 
 - **In #### 4c. Verify Spawn Format Is Absent:** Update this subsection
   - Rename to: "#### 4c. Verify Spawn Format Is Present"
@@ -492,9 +539,15 @@ The TestMixedMutability types (TestMixedMutabilityCore, Vec, Array, Tuple, Enum)
   - New expectation: Spawn format should now be present for Sprite (all components with Reflect can be spawned)
   - Update the extraction command to verify spawn_format is NOT null
 
-- **In ## Success Criteria section:**
+- **In ### 7. Validate Name Component (line 138):**
+  - BEFORE: "Has both `mutation_paths` and `spawn_format` (has Serialize/Deserialize)"
+  - AFTER: "Has both `mutation_paths` and `spawn_format` (has Reflect trait)" OR check `schema_info.reflect_types` contains "Component"
+
+- **In ## Success Criteria section (line 325):**
   - Remove: "Components without Serialize can be mutated but not spawned"
   - Remove: "Verify `supported_operations` includes spawn/insert for all components" (field no longer exists)
+  - Add: "All components with Reflect trait can be spawned, mutated, and queried"
+  - Add: "Check `schema_info.reflect_types` array to determine type capabilities"
 
 **Add new verification:**
 - Consider adding a test that verifies components with only Reflect (no SerDe) CAN be spawned successfully
