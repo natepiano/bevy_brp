@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Support for Bevy 0.17.0 through 0.17.2
 - Multi-instance launch support via `instance_count` parameter for `brp_launch_bevy_app` and `brp_launch_bevy_example`
   - Launch multiple instances on sequential ports for parallel testing and load simulation
 - 'brp_extras_set_window_title` tool, allowing agent to change the running apps window title

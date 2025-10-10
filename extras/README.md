@@ -14,6 +14,7 @@ bevy_brp_extras does two things
 
 | bevy | bevy_brp_extras |
 |------|-----------------|
+| 0.17 | 0.3             |
 | 0.16 | 0.1 - 0.2       |
 
 

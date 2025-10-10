@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Support for Bevy 0.17.0 through 0.17.2
 - New `brp_extras/send_keys` method for simulating keyboard input
 - New `brp_extras/set_window_title` method for changing window title
 - Optional `enable_debug_info` parameter for `brp_extras/discover_format` method
