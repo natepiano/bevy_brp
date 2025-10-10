@@ -1,8 +1,8 @@
 //! `brp_all_type_guides` tool - Get type guides for all registered types
 //!
-//! This tool fetches all registered component types from the Bevy app and returns
-//! their type schema information in a single call. It combines `world.list_components` and
-//! `brp_type_guide` functionality for convenience.
+//! This tool fetches all registered component and resource types from the Bevy app and returns
+//! their type schema information in a single call. It combines `world.list_components`,
+//! `world.list_resources`, and `brp_type_guide` functionality for convenience.
 
 use bevy_brp_mcp_macros::{ParamStruct, ToolFn};
 use schemars::JsonSchema;
@@ -28,43 +28,25 @@ pub struct BrpAllTypeGuides;
 
 /// Implementation that fetches all types then gets their guides
 async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
-    // First, get all registered types using `world.list_components` without entity parameter
-    let list_client = BrpClient::new(
+    // Fetch component types
+    let component_types = fetch_type_list(
         BrpMethod::WorldListComponents,
         params.port,
-        None, // No params means get all types
-    );
+        "world.list_components",
+    )
+    .await?;
 
-    let all_types = match list_client.execute_direct_internal_no_enhancement().await {
-        Ok(ResponseStatus::Success(Some(types_data))) => {
-            // Extract the array of type names
-            if let Some(types_array) = types_data.as_array() {
-                types_array
-                    .iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect::<Vec<String>>()
-            } else {
-                return Err(Error::BrpCommunication(
-                    "world.list_components did not return an array of types".to_string(),
-                )
-                .into());
-            }
-        }
-        Ok(ResponseStatus::Success(None)) => {
-            return Err(Error::BrpCommunication(
-                "world.list_components returned no data".to_string(),
-            )
-            .into());
-        }
-        Ok(ResponseStatus::Error(err)) => {
-            return Err(Error::BrpCommunication(format!(
-                "world.list_components failed: {}",
-                err.get_message()
-            ))
-            .into());
-        }
-        Err(e) => return Err(e),
-    };
+    // Fetch resource types
+    let resource_types = fetch_type_list(
+        BrpMethod::WorldListResources,
+        params.port,
+        "world.list_resources",
+    )
+    .await?;
+
+    // Merge both lists
+    let mut all_types = component_types;
+    all_types.extend(resource_types);
 
     // Construct TypeSchemaEngine and generate response for all types
     let engine = TypeGuideEngine::new(params.port).await?;
@@ -76,4 +58,35 @@ async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
             "Discovered schemas for all {type_count} registered type(s)"
         )),
     )
+}
+
+/// Helper function to fetch a list of type names from a BRP method
+async fn fetch_type_list(method: BrpMethod, port: Port, method_name: &str) -> Result<Vec<String>> {
+    let client = BrpClient::new(method, port, None);
+
+    match client.execute_direct_internal_no_enhancement().await {
+        Ok(ResponseStatus::Success(Some(types_data))) => types_data.as_array().map_or_else(
+            || {
+                Err(Error::BrpCommunication(format!(
+                    "{method_name} did not return an array of types"
+                ))
+                .into())
+            },
+            |types_array| {
+                Ok(types_array
+                    .iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect())
+            },
+        ),
+        Ok(ResponseStatus::Success(None)) => {
+            Err(Error::BrpCommunication(format!("{method_name} returned no data")).into())
+        }
+        Ok(ResponseStatus::Error(err)) => Err(Error::BrpCommunication(format!(
+            "{method_name} failed: {}",
+            err.get_message()
+        ))
+        .into()),
+        Err(e) => Err(e),
+    }
 }

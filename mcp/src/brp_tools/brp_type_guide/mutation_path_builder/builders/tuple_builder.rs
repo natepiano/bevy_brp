@@ -31,13 +31,10 @@ impl PathBuilder for TupleMutationBuilder {
         // Use Result-returning API - MutationPathBuilder handles missing schema
         let schema = ctx.require_registry_schema()?;
 
+        // Handle empty tuples (unit type `()`) - they don't have prefixItems
         let Some(prefix_items) = schema.get("prefixItems") else {
-            return Err(Error::schema_processing_for_type(
-                ctx.type_name().as_str(),
-                "extract_prefix_items",
-                "Missing prefixItems in tuple schema",
-            )
-            .into());
+            // Empty tuple - no children to process
+            return Ok(Vec::new().into_iter());
         };
 
         // Extract array of element schemas

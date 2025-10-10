@@ -296,19 +296,21 @@ For each type name string in your `type_names` array:
         6. **ONLY IF EXACT MATCH**:
            - Report status as COMPONENT_NOT_FOUND
            - Set both `type` and `tested_type` to the assignment's type_name
-   b. **SPAWN/INSERT TESTING**:
-      - **CHECK FIRST**: If `guide.spawn_format` is `null` OR `guide.supported_operations` does NOT include "spawn" or "insert", SKIP spawn/insert testing entirely
-      - **ONLY IF** spawn_format exists AND supported_operations includes "spawn"/"insert": attempt spawn/insert operations
-      - **NEVER** attempt spawn/insert on types that don't support it - this will cause massive error responses
-   c. **ENTITY QUERY**: Query for entities with component using EXACT syntax:
-   ```json
-   {
-     "filter": {"with": ["USE_EXACT_TYPE_NAME_FROM_TYPE_GUIDE"]},
-     "data": {}
-   }
-   ```
-   CRITICAL: Use the EXACT `type_name` string from the type guide script output
-   d. **ENTITY ID SUBSTITUTION FOR MUTATIONS**:
+   b. **TYPE CATEGORY DETERMINATION - CRITICAL DECISION POINT**:
+      - **CHECK `supported_operations` FIRST** before any testing operations
+      - **RESOURCE DETECTION**:
+        * IF "insert" in operations AND "spawn" NOT in operations → **THIS IS A RESOURCE**
+        * Execute <ResourceTestingProtocol/> ONLY
+        * **SKIP** all component testing steps completely
+        * **NEVER** use `world_spawn_entity` or `world_mutate_components` for resources
+      - **COMPONENT DETECTION**:
+        * IF "spawn" in operations → **THIS IS A COMPONENT**
+        * Execute <ComponentTestingProtocol/> ONLY
+        * **SKIP** all resource testing steps completely
+        * **NEVER** use `world_insert_resources` or `world_mutate_resources` for components
+      - **ERROR CASE**: If neither pattern matches, report error in failure_details
+
+   e. **ENTITY ID SUBSTITUTION FOR MUTATIONS**:
       - **CRITICAL**: If any mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
       - **YOU MUST**: Replace ALL instances of `8589934670` with REAL entity IDs from the running app
       - **HOW TO GET REAL ENTITY IDs**:
@@ -331,7 +333,8 @@ For each type name string in your `type_names` array:
       - **BEFORE testing each mutation path**, check if `path_info.root_example` exists
       - **IF `root_example` EXISTS**:
         1. **First** mutate the root path (`""`) to set up the correct variant structure:
-           - Use `world.mutate_components` or `world.mutate_resources`
+           - **FOR COMPONENTS**: Use `world_mutate_components` with entity ID
+           - **FOR RESOURCES**: Use `world_mutate_resources` (no entity ID)
            - Set `path: ""`
            - Set `value` to the `root_example` value from `path_info`
         2. **Then** proceed with mutating the specific path
@@ -351,11 +354,14 @@ For each type name string in your `type_names` array:
         ```
         First mutate path `""` with this complete value, THEN mutate `.middle_struct.nested_enum.name`
    f. **MUTATION TESTING**: Test ONLY mutable paths from the mutation_paths object
+      - **CHOOSE MUTATION METHOD** based on type category:
+        * **FOR COMPONENTS**: Use `world_mutate_components` with entity ID
+        * **FOR RESOURCES**: Use `world_mutate_resources` (no entity ID needed)
       - **SKIP NON-MUTABLE PATHS**: Check `path_info.mutation_status` before attempting ANY mutation:
         * `"not_mutable"` → SKIP (don't count in total)
         * `"partially_mutable"` → SKIP unless `example` or `examples` exists
         * `"mutable"` or missing → TEST normally
-      - Apply Entity ID substitution BEFORE sending any mutation request
+      - Apply Entity ID substitution BEFORE sending any mutation request (components only)
       - If a mutation uses Entity IDs and you don't have real ones, query for them first
       - **CRITICAL VALUE HANDLING**: Extract the `example` value from mutation_paths and follow <JsonPrimitiveRules/> when using it
       - **ENUM TESTING REQUIREMENT**: When a mutation path contains an "examples" array (indicating enum variants), you MUST test each example individually:
@@ -372,6 +378,67 @@ For each type name string in your `type_names` array:
 **ERROR SIGNAL**: "invalid type: string" means you quoted a primitive.
 **IF YOU GET THIS ERROR**: Follow the ERROR RECOVERY PROTOCOL in <JsonPrimitiveRules/> - retry immediately with the unquoted value, do NOT report as test failure unless retry fails with a different error.
 </TestAllTypes>
+
+<ResourceTestingProtocol>
+**RESOURCE TESTING PROTOCOL - Use ONLY for types with "insert" but NO "spawn" in supported_operations**
+
+**CRITICAL**: Do NOT use component methods (`world_spawn_entity`, `world_mutate_components`) - these will CRASH the app
+
+1. **SKIP CHECK**: If `guide.spawn_format` is `null`, SKIP all insert/mutation testing for this resource
+
+2. **INSERT RESOURCE**:
+   - Use `world_insert_resources` tool
+   - Pass `resource` parameter with exact type name from type guide
+   - Pass `value` parameter with `spawn_format` data
+   - **NEVER** use `world_spawn_entity` - resources are NOT spawned as entities
+
+3. **VERIFY INSERTION**:
+   - Use `world_get_resources` tool
+   - Pass `resource` parameter with exact type name
+   - Confirms the resource exists in the world
+
+4. **MUTATION TESTING**:
+   - Use `world_mutate_resources` tool (NOT `world_mutate_components`)
+   - Pass `resource` parameter with exact type name
+   - Pass `path` parameter with mutation path from type guide
+   - Pass `value` parameter with example from type guide
+   - Follow <JsonPrimitiveRules/> for value formatting
+   - **NO entity ID parameter** - resources don't have entities
+
+5. **SKIP ENTITY QUERY**:
+   - Resources are NOT attached to entities
+   - Do NOT query for entities with `world_query`
+   - Set `entity_query: false` in operations_completed
+   - Set `entity_id: null` in result
+</ResourceTestingProtocol>
+
+<ComponentTestingProtocol>
+**COMPONENT TESTING PROTOCOL - Use ONLY for types with "spawn" in supported_operations**
+
+**CRITICAL**: Do NOT use resource methods (`world_insert_resources`, `world_mutate_resources`)
+
+1. **SKIP CHECK**: If `guide.spawn_format` is `null`, SKIP all spawn/insert testing for this component
+
+2. **SPAWN ENTITY**:
+   - Use `world_spawn_entity` tool
+   - Pass `components` parameter with type name as key and `spawn_format` as value
+   - **NEVER** use `world_insert_resources` - components are spawned with entities
+
+3. **QUERY FOR ENTITY**:
+   - Use `world_query` tool
+   - Pass `filter: {"with": ["EXACT_TYPE_NAME"]}` to find entities
+   - Pass `data: {}` to get entity IDs only
+   - Store entity ID for mutation testing
+
+4. **MUTATION TESTING**:
+   - Use `world_mutate_components` tool (NOT `world_mutate_resources`)
+   - Pass `entity` parameter with entity ID from query
+   - Pass `component` parameter with exact type name
+   - Pass `path` parameter with mutation path from type guide
+   - Pass `value` parameter with example from type guide
+   - Follow <JsonPrimitiveRules/> for value formatting
+   - Apply Entity ID substitution per <TestAllTypes/> section e
+</ComponentTestingProtocol>
 
 <PreFailureCheck>
 ═══════════════════════════════════════════════════════════════════════════════
