@@ -38,11 +38,11 @@ use bevy::input_focus::tab_navigation::{TabGroup, TabIndex};
 use bevy::light::cluster::ClusterConfig;
 use bevy::light::{
     CascadeShadowConfig, Cascades, ClusteredDecal, DirectionalLightTexture, FogVolume,
-    IrradianceVolume, NotShadowCaster, NotShadowReceiver, ShadowFilteringMethod, VolumetricFog,
-    VolumetricLight,
+    GeneratedEnvironmentMapLight, IrradianceVolume, NotShadowCaster, NotShadowReceiver,
+    PointLightTexture, ShadowFilteringMethod, VolumetricFog, VolumetricLight,
 };
 use bevy::pbr::decal::ForwardDecalMaterialExt;
-use bevy::pbr::{ExtendedMaterial, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections};
+use bevy::pbr::{ExtendedMaterial, Lightmap, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections};
 use bevy::post_process::bloom::Bloom;
 use bevy::post_process::dof::DepthOfField;
 use bevy::post_process::effect_stack::ChromaticAberration;
@@ -659,6 +659,12 @@ fn spawn_transform_entities(commands: &mut Commands) {
 }
 
 fn spawn_visual_entities(commands: &mut Commands, asset_server: &AssetServer) {
+    spawn_sprite_and_ui_components(commands);
+    spawn_light_entities(commands, asset_server);
+    spawn_shadow_test_entities(commands, asset_server);
+}
+
+fn spawn_sprite_and_ui_components(commands: &mut Commands) {
     // Entity with Sprite component for testing mutation paths
     commands.spawn((
         Sprite {
@@ -687,7 +693,9 @@ fn spawn_visual_entities(commands: &mut Commands, asset_server: &AssetServer) {
         CursorIcon::System(bevy::window::SystemCursorIcon::Default),
         Name::new("CursorIconTestEntity"),
     ));
+}
 
+fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
     // Entity with PointLight which will automatically get CubemapFrusta and shadow maps when
     // shadows enabled
     commands.spawn((
@@ -701,6 +709,10 @@ fn spawn_visual_entities(commands: &mut Commands, asset_server: &AssetServer) {
         Transform::from_xyz(4.0, 8.0, 4.0),
         Name::new("PointLightTestEntity"),
         ShadowFilteringMethod::default(),
+        PointLightTexture {
+            image:          asset_server.load("lightmaps/caustic_directional_texture.png"),
+            cubemap_layout: bevy::camera::primitives::CubemapLayout::CrossVertical,
+        },
     ));
 
     // Entity with DirectionalLight for testing mutations
@@ -751,7 +763,9 @@ fn spawn_visual_entities(commands: &mut Commands, asset_server: &AssetServer) {
         },
         Name::new("DistanceFogTestEntity"),
     ));
+}
 
+fn spawn_shadow_test_entities(commands: &mut Commands, asset_server: &AssetServer) {
     // Entity with NotShadowCaster for testing mutations
     commands.spawn((
         Mesh3d(Handle::default()),                             // Dummy mesh handle
@@ -759,6 +773,19 @@ fn spawn_visual_entities(commands: &mut Commands, asset_server: &AssetServer) {
         Transform::from_xyz(-2.0, 1.0, 0.0),
         NotShadowCaster, // For testing mutations
         Name::new("NotShadowCasterTestEntity"),
+    ));
+
+    // Entity with Lightmap for testing mutations
+    commands.spawn((
+        Mesh3d(Handle::default()),                             // Dummy mesh handle
+        MeshMaterial3d::<StandardMaterial>(Handle::default()), // Dummy material handle
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        Lightmap {
+            image:            asset_server.load("lightmaps/caustic_directional_texture.png"),
+            uv_rect:          bevy::math::Rect::new(0.0, 0.0, 1.0, 1.0),
+            bicubic_sampling: true,
+        },
+        Name::new("LightmapTestEntity"),
     ));
 
     // Entity with NotShadowReceiver for testing mutations
@@ -1234,6 +1261,18 @@ fn spawn_render_entities(commands: &mut Commands) {
     commands.spawn((
         EnvironmentMapLight::default(),
         Name::new("EnvironmentMapLightTestEntity"),
+    ));
+
+    // Entity with GeneratedEnvironmentMapLight for testing mutations
+    // Uses the same skybox image handle we created earlier
+    commands.spawn((
+        GeneratedEnvironmentMapLight {
+            environment_map:                  Handle::default(), // Dummy handle for testing
+            intensity:                        1000.0,
+            rotation:                         Quat::IDENTITY,
+            affects_lightmapped_mesh_diffuse: true,
+        },
+        Name::new("GeneratedEnvironmentMapLightTestEntity"),
     ));
 
     // Entity with IrradianceVolume for testing mutations

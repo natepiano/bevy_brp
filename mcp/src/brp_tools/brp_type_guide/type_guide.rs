@@ -1,5 +1,12 @@
-//! This is the main response structure use to convey type information
-//! to the caller
+//! Orchestrates type information assembly for AI agents
+//!
+//! This module builds `TypeGuide` responses by coordinating multiple subsystems:
+//! - Mutation path generation (via `TypeKind` dispatch)
+//! - Spawn format extraction
+//! - Schema metadata extraction
+//! - Entity-aware guidance generation
+//!
+//! The `TypeGuide` struct is the final assembled response sent to MCP clients.
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc; // unused import for testing // another unused import for testing
@@ -7,7 +14,9 @@ use std::sync::Arc; // unused import for testing // another unused import for te
 use serde::Serialize;
 use serde_json::Value;
 
-use super::constants::{AGENT_GUIDANCE, ENTITY_WARNING, RecursionDepth, TYPE_BEVY_ENTITY};
+use super::constants::{
+    AGENT_GUIDANCE, ENTITY_WARNING, ERROR_GUIDANCE, RecursionDepth, TYPE_BEVY_ENTITY,
+};
 use super::mutation_path_builder;
 use super::mutation_path_builder::{
     MutationPath, MutationPathInternal, PathKind, RecursionContext, recurse_mutation_paths,
@@ -111,7 +120,7 @@ impl TypeGuide {
         })
     }
 
-    /// Builder method to create ``TypeGuide`` for type not found in registry
+    /// Builder method to create `TypeGuide` for type not found in registry
     pub fn not_found_in_registry(type_name: BrpTypeName, error_msg: String) -> Self {
         Self {
             type_name,
@@ -121,6 +130,23 @@ impl TypeGuide {
             spawn_format: None,
             schema_info: None,
             agent_guidance: AGENT_GUIDANCE.to_string(),
+            error: Some(error_msg),
+        }
+    }
+
+    /// Builder method to create `TypeGuide` for type that failed during processing
+    ///
+    /// This is used when a type is found in the registry but `from_registry_schema()`
+    /// fails during mutation path building or other processing steps.
+    pub fn processing_failed(type_name: BrpTypeName, error_msg: String) -> Self {
+        Self {
+            type_name,
+            in_registry: true, // Type WAS found in registry
+            mutation_paths: HashMap::new(),
+            example_values: HashMap::new(),
+            spawn_format: None,
+            schema_info: None,
+            agent_guidance: ERROR_GUIDANCE.to_string(),
             error: Some(error_msg),
         }
     }

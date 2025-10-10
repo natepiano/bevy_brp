@@ -106,6 +106,9 @@ pub const AGENT_GUIDANCE: &str = "The mutation_paths field provides valid 'path'
 /// Additional warning when Entity fields are present (with placeholder for entity ID)
 pub const ENTITY_WARNING: &str = " CAUTION: This type contains bevy_ecs::entity::Entity fields - you must use valid Entity IDs from the running app to replace the example value '{}'. Invalid Entity values may crash the application.";
 
+/// Guidance for types that failed during processing
+pub const ERROR_GUIDANCE: &str = "This type was found in the registry but failed during processing. Check the 'error' field for details. No mutation paths or spawn format are available due to the processing failure.";
+
 // ============================================================================
 // PATH PROCESSING CONSTANTS
 // ============================================================================

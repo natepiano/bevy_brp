@@ -8,7 +8,7 @@ use bevy_brp_mcp_macros::{ParamStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::tool::{TypeGuideEngine, TypeGuideResult};
+use super::tool_type_guide::{TypeGuideEngine, TypeGuideResult};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};

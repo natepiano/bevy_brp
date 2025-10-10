@@ -76,7 +76,7 @@ impl TypeGuideEngine {
         Ok(Self { registry })
     }
 
-    /// Get the complete registry for a port
+    /// Get the complete registry
     ///
     /// Fetches fresh registry data from the BRP server on each call.
     async fn get_full_registry(port: Port) -> Result<HashMap<BrpTypeName, Value>> {
@@ -119,15 +119,26 @@ impl TypeGuideEngine {
 
         for brp_type_name in requested_types.iter().map(BrpTypeName::from) {
             let type_info = if let Some(registry_schema) = self.registry.get(&brp_type_name) {
-                response.discovered_count += 1;
-                response.summary.successful_discoveries += 1;
-                // Wrap error with type context to identify which type failed
-                TypeGuide::from_registry_schema(
+                // Attempt to process the type
+                match TypeGuide::from_registry_schema(
                     brp_type_name.clone(),
                     registry_schema,
                     Arc::clone(&self.registry),
-                )
-                .map_err(|e| e.attach(format!("Failed to process type: {brp_type_name}")))?
+                ) {
+                    Ok(type_guide) => {
+                        response.discovered_count += 1;
+                        response.summary.successful_discoveries += 1;
+                        type_guide
+                    }
+                    Err(e) => {
+                        // Processing failed - return error TypeGuide but continue processing
+                        response.summary.failed_discoveries += 1;
+                        TypeGuide::processing_failed(
+                            brp_type_name.clone(),
+                            format!("Failed to process type: {e}"),
+                        )
+                    }
+                }
             } else {
                 response.summary.failed_discoveries += 1;
                 TypeGuide::not_found_in_registry(
