@@ -452,23 +452,29 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     ---
 
     ## Available Actions
-    - **investigate** - Investigate this specific failure in detail
-    - **known** - Mark as known issue and continue to next
+    - **investigate** - Investigate this specific failure in detail (DEFAULT - agent will always investigate unless told otherwise)
+    - **known** - Mark as known issue and continue to next (USER DECISION ONLY - agent never suggests this)
     - **skip** - Skip this failure and continue to the next
     - **stop** - Stop reviewing failures and exit
 
     Please select one of the keywords above.
     ```
 
-    3. **Wait for User Response** after each failure presentation
+    3. **MANDATORY: Always investigate first**
+    - Execute <InvestigateFailure/> IMMEDIATELY after presenting each failure
+    - Present investigation findings to user
+    - NEVER suggest marking as "known" - this is user's decision only
+    - Only proceed to next failure if user explicitly selects a keyword after investigation
 
-    4. **Handle User Choice**:
-    - **Investigate**: Execute <InvestigateFailure/>
-    - **Known Issue**: Add to `.claude/transient/mutation_test_known_issues.json` with full details and continue
+    4. **Wait for User Response** after investigation findings
+
+    5. **Handle User Choice**:
+    - **Investigate**: Already completed - confirm findings and wait for next keyword
+    - **Known Issue**: Add to `.claude/config/mutation_test_known_issues.json` with full details and continue
     - **Skip**: Continue to next failure without marking as known
     - **Stop**: Exit failure review
 
-    **CRITICAL**: Present failures ONE AT A TIME and wait for user input between each one.
+    **CRITICAL**: Present failures ONE AT A TIME, investigate each one, and wait for user input between each one.
 </InteractiveFailureReview>
 
 ## KEYWORD HANDLING
@@ -480,25 +486,31 @@ When presenting failures, ALWAYS use this exact format for the options:
 
 ```
 ## Available Actions
-- **investigate** - Investigate this specific failure in detail
-- **known** - Mark as known issue and continue to next
+- **investigate** - Investigate this specific failure in detail (DEFAULT - agent will always investigate unless told otherwise)
+- **known** - Mark as known issue and continue to next (USER DECISION ONLY - agent never suggests this)
 - **skip** - Skip this failure and continue to the next
 - **stop** - Stop reviewing failures and exit
 
 Please select one of the keywords above.
 ```
 
+**CRITICAL AGENT BEHAVIOR**:
+- **ALWAYS** execute <InvestigateFailure/> first for every failure
+- **NEVER** suggest marking as "known issue" in your analysis
+- **ALWAYS** attempt to identify root cause and propose fixes
+- "known" keyword exists ONLY for user to override investigation - not for agent to suggest
+
 **Keyword Actions**:
-- **Investigate**: Execute <InvestigateFailure/>
-- **Known Issue**:
-  1. Add type to `.claude/transient/mutation_test_known_issues.json`
+- **Investigate**: Already executed automatically - present findings
+- **Known Issue** (USER ONLY):
+  1. Add type to `.claude/config/mutation_test_known_issues.json`
   2. Include a brief description of the issue
   3. Continue to the next failure
 - **Skip**: Continue to the next failure without recording (temporary skip)
 - **Stop**: Exit the failure review process immediately
 
-**Known Issues Tracking**:
-When user selects **Known Issue**, add to `.claude/config/mutation_test_known_issues.json`:
+**Known Issues Tracking** (USER-INITIATED ONLY):
+When user selects **known**, add to `.claude/config/mutation_test_known_issues.json`:
 ```json
 {
   "type": "fully::qualified::type::name",
