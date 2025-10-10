@@ -2,7 +2,7 @@
 
 ## Configuration
 PARALLEL_TESTS = 12  # Number of tests to run concurrently
-TEST_CONFIG_FILE = .claude/config/test_config.json  # Test configuration file location
+TEST_CONFIG_FILE = .claude/config/integration_tests.json  # Test configuration file location
 
 ## Overview
 
