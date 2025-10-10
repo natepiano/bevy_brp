@@ -32,6 +32,6 @@ pub struct InsertResourcesResult {
     pub result: Option<Value>,
 
     /// Message template for formatting responses
-    #[to_message(message_template = "Inserted resource {resource_name}")]
+    #[to_message(message_template = "Inserted resource {resource}")]
     pub message_template: String,
 }

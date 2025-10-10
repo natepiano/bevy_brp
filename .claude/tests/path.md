@@ -5,19 +5,21 @@ Validate path parameter handling when multiple apps or examples with the same na
 
 ## Test Steps
 
-### 1. Check for Path Conflicts
+### 1. Check for Path Conflicts (Apps)
 - Execute `mcp__brp__brp_list_bevy_apps`
 - Look for duplicate app names across different paths
-- If no conflicts found, mark tests as SKIPPED with reason
-- Note available paths for testing
+- **NOTE**: Currently no duplicate apps exist in test environment - app disambiguation tests will be SKIPPED
+- If duplicate apps are added in the future, note available paths for testing
 
-### 2. Test App Launch Without Path (If Conflicts Exist)
-- Execute `mcp__brp__brp_launch_bevy_app` with duplicate app name
-- Do NOT specify path parameter
-- Verify error response lists available paths (not just workspace names)
-- Check error message provides clear guidance with relative paths
+### 2. Test App Launch Without Path (Currently SKIPPED - No Duplicate Apps)
+- **STATUS**: SKIPPED - no duplicate app names in current test environment
+- If duplicate apps exist:
+  - Execute `mcp__brp__brp_launch_bevy_app` with duplicate app name
+  - Do NOT specify path parameter
+  - Verify error response lists available paths (not just workspace names)
+  - Check error message provides clear guidance with relative paths
 
-### 3. Test App Launch With Different Path Matching Modes (If Conflicts Exist)
+### 3. Test App Launch With Different Path Matching Modes (Currently SKIPPED - No Duplicate Apps)
 
 #### 3a. Full Relative Path Test
 - Execute `mcp__brp__brp_launch_bevy_app` with same app name
@@ -75,8 +77,10 @@ Validate path parameter handling when multiple apps or examples with the same na
 - ✅ Error handling is consistent between apps and examples
 
 ## Special Notes
+- **Current test environment**: No duplicate apps exist, so app-related tests (sections 1-3) are SKIPPED
+- **Current test environment**: Duplicate examples exist (`extras_plugin_duplicate` in `test-duplicate-a` and `test-duplicate-b`)
+- **IMPORTANT**: Missing duplicate examples is a FAILED test, not SKIPPED - the test environment must provide duplicate examples
 - If no path conflicts exist for apps, app-related sub-tests will be marked as SKIPPED
-- **IMPORTANT**: Missing duplicate examples is a FAILED test, not SKIPPED - the test environment should provide duplicate examples for comprehensive testing
 - Tests adapt to available path configurations
 - Focus is on error handling and path disambiguation logic
 - The path parameter accepts: full relative paths and partial paths (if unambiguous)

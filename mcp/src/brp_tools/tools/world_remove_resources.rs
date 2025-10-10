@@ -28,6 +28,6 @@ pub struct RemoveResourcesResult {
     pub result: Option<Value>,
 
     /// Message template for formatting responses
-    #[to_message(message_template = "Removed resource {resource_name}")]
+    #[to_message(message_template = "Removed resource {resource}")]
     pub message_template: String,
 }

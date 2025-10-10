@@ -36,6 +36,6 @@ pub struct MutateResourcesResult {
     pub result: Option<Value>,
 
     /// Message template for formatting responses
-    #[to_message(message_template = "Mutated resource {resource_name}")]
+    #[to_message(message_template = "Mutated resource {resource}")]
     pub message_template: String,
 }

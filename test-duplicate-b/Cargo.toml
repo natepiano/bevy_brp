@@ -1,31 +1,24 @@
 [package]
-categories = ["development-tools::testing"]
-description = "Test infrastructure for path disambiguation testing"
-edition = "2024"
-keywords = ["bevy", "brp", "testing"]
-license = "MIT OR Apache-2.0"
-name = "test-app-b"
-publish = false
-readme = "../test-app/README.md"
+categories           = ["development-tools::testing"]
+description          = "Test infrastructure for path disambiguation testing"
+edition              = "2024"
+keywords             = ["bevy", "brp", "testing"]
+license              = "MIT OR Apache-2.0"
+name                 = "test-app-b"
+publish              = false
+readme               = "../test-app/README.md"
 repository.workspace = true
-version = "0.3.0"
+version              = "0.3.0"
 
-[[bin]]
-name = "test_duplicate_app"
-path = "src/bin/test_duplicate_app.rs"
-
+# TEST INFRASTRUCTURE - Path Disambiguation Testing
+#
+# This package exists to test path disambiguation when multiple examples have the same name.
+# Both test-duplicate-a and test-duplicate-b contain an example named `extras_plugin_duplicate`,
+# which tests the MCP's ability to handle duplicates via the `path` parameter.
 [[example]]
 name = "extras_plugin_duplicate"
 path = "examples/extras_plugin_duplicate.rs"
 
-# TEST INFRASTRUCTURE - Path Disambiguation Testing
-#
-# This package exists to test path disambiguation when multiple apps have the same name.
-# Both test-duplicate-a and test-duplicate-b contain an app named `test_duplicate_app`,
-# which tests the MCP's ability to handle duplicates via the `path` parameter.
-#
-# This is a workspace member, allowing it to be discovered via the workspace root's
-# cargo metadata call, testing disambiguation within a single workspace.
 [dependencies]
 bevy = { workspace = true, default-features = false, features = [
   "bevy_remote",

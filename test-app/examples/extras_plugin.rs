@@ -1096,14 +1096,15 @@ fn spawn_animation_and_audio_entities(
     commands: &mut Commands,
     animation_graphs: &mut ResMut<Assets<AnimationGraph>>,
 ) {
-    // Entity with AnimationGraphHandle AND AnimationPlayer for testing mutations
-    // (they must be on the same entity per Bevy's requirements)
+    // Entity with AnimationGraphHandle AND AnimationPlayer AND AnimationTransitions for testing
+    // mutations (they must be on the same entity per Bevy's requirements)
     let animation_graph = AnimationGraph::default();
     let graph_handle = animation_graphs.add(animation_graph);
     commands.spawn((
         AnimationGraphHandle(graph_handle),
         AnimationPlayer::default(),
-        Name::new("AnimationGraphHandleAndPlayerTestEntity"),
+        AnimationTransitions::default(),
+        Name::new("AnimationGraphHandleAndPlayerAndTransitionsTestEntity"),
     ));
 
     // Entity with AnimationTarget for testing mutations
@@ -1113,12 +1114,6 @@ fn spawn_animation_and_audio_entities(
             player: Entity::PLACEHOLDER,
         },
         Name::new("AnimationTargetTestEntity"),
-    ));
-
-    // Entity with AnimationTransitions for testing mutations
-    commands.spawn((
-        bevy::prelude::AnimationTransitions::default(),
-        Name::new("AnimationTransitionsTestEntity"),
     ));
 
     // Entity with DenoiseCas for testing mutations

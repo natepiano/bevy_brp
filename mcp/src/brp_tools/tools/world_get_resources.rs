@@ -28,6 +28,6 @@ pub struct GetResourcesResult {
     pub result: Option<Value>,
 
     /// Message template for formatting responses
-    #[to_message(message_template = "Retrieved {resource_name} resource")]
+    #[to_message(message_template = "Retrieved {resource} resource")]
     pub message_template: String,
 }
