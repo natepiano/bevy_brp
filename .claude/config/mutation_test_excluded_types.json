@@ -23,6 +23,14 @@
     {
       "type_name": "bevy_ecs::observer::distributed_storage::ObservedBy",
       "reason": "Internal ECS component. Automatically managed by Bevy's observer system to track which observers are watching an entity. Not user-spawnable and only added when observers are registered."
+    },
+    {
+      "type_name": "bevy_picking::hover::DirectlyHovered",
+      "reason": "Immutable component (marked with #[component(immutable)]). Automatically managed by Bevy's picking system based on HoverMap. Cannot be mutated through reflection - ComponentInfo::mutable() returns false, but this information is not exposed through BRP registry.schema."
+    },
+    {
+      "type_name": "bevy_picking::hover::Hovered",
+      "reason": "Immutable component (marked with #[component(immutable)]). Automatically managed by Bevy's picking system based on HoverMap and entity hierarchy. Cannot be mutated through reflection - ComponentInfo::mutable() returns false, but this information is not exposed through BRP registry.schema."
     }
   ]
 }

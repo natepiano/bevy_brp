@@ -368,14 +368,15 @@ For each type name string in your `type_names` array:
         }
         ```
         First mutate path `""` with this complete value, THEN mutate `.middle_struct.nested_enum.name`
-   f. **MUTATION TESTING**: Test ONLY mutable paths from the mutation_paths object
+   f. **MUTATION TESTING**: For each path in mutation_paths, validate THEN test
+      - **FOR EACH path in mutation_paths object:**
+        1. **CHECK mutation_status FIRST**: If `path_info.mutation_status == "not_mutable"` → SKIP path (don't count in total)
+        2. **CHECK for example**: If no `example` or `examples` field exists → SKIP path (cannot test without value)
+        3. **IF partially_mutable**: SKIP unless `example` or `examples` exists
+        4. **ONLY if checks pass**: Proceed to mutation
       - **CHOOSE MUTATION METHOD** based on type category:
         * **FOR COMPONENTS**: Use `world_mutate_components` with entity ID
         * **FOR RESOURCES**: Use `world_mutate_resources` (no entity ID needed)
-      - **SKIP NON-MUTABLE PATHS**: Check `path_info.mutation_status` before attempting ANY mutation:
-        * `"not_mutable"` → SKIP (don't count in total)
-        * `"partially_mutable"` → SKIP unless `example` or `examples` exists
-        * `"mutable"` or missing → TEST normally
       - Apply Entity ID substitution BEFORE sending any mutation request (components only)
       - If a mutation uses Entity IDs and you don't have real ones, query for them first
       - **CRITICAL VALUE HANDLING**: Extract the `example` value from mutation_paths and follow <JsonPrimitiveRules/> when using it
