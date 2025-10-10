@@ -14,4 +14,4 @@ Example:
 ```
 
 Returns: New entity ID
-Note: Requires BRP registration
+Note: Requires component to be registered with BRP and have the Reflect trait

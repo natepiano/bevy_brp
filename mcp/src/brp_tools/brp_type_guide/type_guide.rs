@@ -12,7 +12,7 @@ use super::mutation_path_builder;
 use super::mutation_path_builder::{
     MutationPath, MutationPathInternal, PathKind, RecursionContext, recurse_mutation_paths,
 };
-use super::response_types::{BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaInfo};
+use super::response_types::{BrpTypeName, ReflectTrait, SchemaInfo};
 use super::type_kind::TypeKind;
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
@@ -24,33 +24,27 @@ use crate::json_schema::SchemaField;
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeGuide {
     /// Guidance for AI agents about using mutation paths
-    pub agent_guidance:       String,
+    pub agent_guidance: String,
     /// Fully-qualified type name
-    pub type_name:            BrpTypeName,
+    pub type_name:      BrpTypeName,
     /// Whether the type is registered in the Bevy registry
-    pub in_registry:          bool,
-    /// Whether the type has the Serialize trait
-    pub has_serialize:        bool,
-    /// Whether the type has the Deserialize trait
-    pub has_deserialize:      bool,
-    /// List of BRP operations supported by this type
-    pub supported_operations: Vec<BrpSupportedOperation>,
+    pub in_registry:    bool,
     /// Mutation paths available for this type - using same format as V1
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub mutation_paths:       HashMap<String, MutationPath>,
+    pub mutation_paths: HashMap<String, MutationPath>,
     /// Example values for spawn/insert operations (currently empty to match V1)
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub example_values:       HashMap<String, Value>,
+    pub example_values: HashMap<String, Value>,
     /// Example format for spawn/insert operations when supported
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub spawn_format:         Option<Value>,
+    pub spawn_format:   Option<Value>,
     /// Schema information from the registry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schema_info:          Option<SchemaInfo>,
+    pub schema_info:    Option<SchemaInfo>,
     /// Type information for direct fields (struct fields only, one level deep)
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error:                Option<String>,
+    pub error:          Option<String>,
 }
 
 impl TypeGuide {
@@ -63,30 +57,17 @@ impl TypeGuide {
         // Extract reflection traits
         let reflect_types = Self::extract_reflect_types(registry_schema);
 
-        // Check for serialization traits
-        let has_serialize = reflect_types.contains(&ReflectTrait::Serialize);
-        let has_deserialize = reflect_types.contains(&ReflectTrait::Deserialize);
-
-        // Get supported operations
-        let supported_operations = Self::get_supported_operations(&reflect_types);
-
         // Build mutation paths to determine actual mutation capability
         let mutation_paths_vec =
             Self::build_mutation_paths(&brp_type_name, registry_schema, Arc::clone(&registry))?;
 
         let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec, &registry);
 
-        // Add Mutate operation if any paths are actually mutable
-        let mut supported_operations = supported_operations;
-        if Self::has_mutable_paths(&mutation_paths) {
-            supported_operations.push(BrpSupportedOperation::Mutate);
-        }
+        // Build spawn format from root path mutation example - for components and resources
+        let has_component = reflect_types.contains(&ReflectTrait::Component);
+        let has_resource = reflect_types.contains(&ReflectTrait::Resource);
 
-        // Build spawn format from root path mutation example - ONLY for types that support
-        // spawn/insert
-        let spawn_format = if supported_operations.contains(&BrpSupportedOperation::Spawn)
-            || supported_operations.contains(&BrpSupportedOperation::Insert)
-        {
+        let spawn_format = if has_component || has_resource {
             Self::extract_spawn_format_from_paths(&mutation_paths)
         } else {
             None
@@ -121,9 +102,6 @@ impl TypeGuide {
         Ok(Self {
             type_name: brp_type_name,
             in_registry: true,
-            has_serialize,
-            has_deserialize,
-            supported_operations,
             mutation_paths,
             example_values: HashMap::new(), // V1 always has this empty
             spawn_format,
@@ -138,9 +116,6 @@ impl TypeGuide {
         Self {
             type_name,
             in_registry: false,
-            has_serialize: false,
-            has_deserialize: false,
-            supported_operations: Vec::new(),
             mutation_paths: HashMap::new(),
             example_values: HashMap::new(),
             spawn_format: None,
@@ -166,19 +141,6 @@ impl TypeGuide {
                     mutation_path_builder::select_preferred_example(&root_path.examples)
                 },
                 |example| Some(example.clone()),
-            )
-        })
-    }
-
-    /// Check if any mutation paths are mutable (fully or partially)
-    /// This determines if the type supports the Mutate operation
-    fn has_mutable_paths(mutation_paths: &HashMap<String, MutationPath>) -> bool {
-        use mutation_path_builder::MutationStatus;
-
-        mutation_paths.values().any(|mutation_path| {
-            matches!(
-                mutation_path.path_info.mutation_status,
-                MutationStatus::Mutable | MutationStatus::PartiallyMutable
             )
         })
     }
@@ -289,12 +251,16 @@ impl TypeGuide {
             .and_then(Value::as_str)
             .map(String::from);
 
+        // Extract reflection traits
+        let reflect_types = Self::extract_reflect_types(registry_schema);
+
         // Only return SchemaInfo if we have at least some information
         if type_kind.is_some()
             || properties.is_some()
             || required.is_some()
             || module_path.is_some()
             || crate_name.is_some()
+            || !reflect_types.is_empty()
         {
             Some(SchemaInfo {
                 type_kind,
@@ -302,35 +268,10 @@ impl TypeGuide {
                 required,
                 module_path,
                 crate_name,
+                reflect_types: Some(reflect_types),
             })
         } else {
             None
         }
-    }
-
-    /// Get supported BRP operations based on reflection traits
-    fn get_supported_operations(reflect_types: &[ReflectTrait]) -> Vec<BrpSupportedOperation> {
-        let mut operations = vec![BrpSupportedOperation::Query];
-
-        let has_component = reflect_types.contains(&ReflectTrait::Component);
-        let has_resource = reflect_types.contains(&ReflectTrait::Resource);
-        let has_serialize = reflect_types.contains(&ReflectTrait::Serialize);
-        let has_deserialize = reflect_types.contains(&ReflectTrait::Deserialize);
-
-        if has_component {
-            operations.push(BrpSupportedOperation::Get);
-            if has_serialize && has_deserialize {
-                operations.push(BrpSupportedOperation::Spawn);
-                operations.push(BrpSupportedOperation::Insert);
-            }
-        }
-
-        if has_resource && has_serialize && has_deserialize {
-            // Resources support Insert but mutation capability is determined dynamically
-            // based on actual mutation path analysis in from_schema()
-            operations.push(BrpSupportedOperation::Insert);
-        }
-
-        operations
     }
 }

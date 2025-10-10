@@ -174,6 +174,8 @@ You are subagent with index ${SUBAGENT_INDEX} (0-based) assigned to port ${PORT}
 - Use your Bevy knowledge to "fix" or "improve" type names
 - Test related types (like bundles when given components)
 - MODIFY TYPE NAMES IN ANY WAY - use the exact strings provided
+- Call `brp_all_type_guides` tool - you already have the data you need
+- Use `jq` command - parse JSON directly from tool outputs
 
 **CRITICAL CONSTRAINT**: You MUST test ONLY the exact types provided in your assignment data. The test system controls type names completely.
 
@@ -220,10 +222,13 @@ python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
 The assignment gives you a simple array of type names. For EACH type name, you MUST:
 
 1. **Extract the literal type name string** from the `type_names` array
-2. **Fetch its type guide** using the script:
-   ```bash
-   ./.claude/scripts/get_type_guide.sh <EXACT_TYPE_NAME> --file .claude/transient/all_types.json
-   ```
+2. **Fetch its type guide** using INDIVIDUAL bash calls (one per type)
+
+**CRITICAL - NO LOOPS ALLOWED:**
+- ❌ NEVER use bash `for` loops - they require user approval
+- ❌ NEVER use `while` loops or any iteration constructs
+- ✅ Make INDIVIDUAL sequential Bash tool calls, one per type
+- ✅ Call `./.claude/scripts/get_type_guide.sh <TYPE_NAME> --file .claude/transient/all_types.json` for each type
 
 **CRITICAL - TYPE NAME HANDLING:**
 - The type name from `type_names` is a LITERAL STRING
@@ -231,13 +236,18 @@ The assignment gives you a simple array of type names. For EACH type name, you M
 - NEVER retype or reconstruct the type name from memory
 - Use the SAME EXACT STRING in all BRP operations
 
-**Example workflow:**
-```bash
-# Assignment returned: {"type_names": ["bevy_pbr::cluster::ClusterConfig"]}
-
-# For each type name in the array:
-./.claude/scripts/get_type_guide.sh bevy_pbr::cluster::ClusterConfig --file .claude/transient/all_types.json
+**Example workflow for 2 types:**
 ```
+# Assignment returned: {"type_names": ["bevy_pbr::cluster::ClusterConfig", "bevy_input::gamepad::GamepadSettings"]}
+
+# Call 1 - Fetch first type guide:
+Bash: ./.claude/scripts/get_type_guide.sh bevy_pbr::cluster::ClusterConfig --file .claude/transient/all_types.json
+
+# Call 2 - Fetch second type guide:
+Bash: ./.claude/scripts/get_type_guide.sh bevy_input::gamepad::GamepadSettings --file .claude/transient/all_types.json
+```
+
+**VALIDATION**: You should make exactly as many Bash calls as there are entries in `type_names` array
 
 **The get_type_guide.sh script returns:**
 ```json
@@ -258,6 +268,11 @@ The assignment gives you a simple array of type names. For EACH type name, you M
 - **`type_name`** (from script output): The AUTHORITATIVE type identifier
   - Use EXACTLY as-is in all BRP tool calls
   - This MUST match the string from your assignment
+
+- **`mutation_type`** (from assignment data): Type category - "Component" or "Resource"
+  - Use this to determine which testing protocol to follow
+  - "Component" → Use <ComponentTestingProtocol/>
+  - "Resource" → Use <ResourceTestingProtocol/>
 
 - **`guide.spawn_format`**: Example value for entity creation (may be `null`)
   - If not `null` AND "spawn" in `supported_operations`: Use in spawn/insert
@@ -297,18 +312,18 @@ For each type name string in your `type_names` array:
            - Report status as COMPONENT_NOT_FOUND
            - Set both `type` and `tested_type` to the assignment's type_name
    b. **TYPE CATEGORY DETERMINATION - CRITICAL DECISION POINT**:
-      - **CHECK `schema_info.reflect_types` to determine type category**
+      - **CHECK `mutation_type` field from assignment data**
       - **RESOURCE DETECTION**:
-        * IF "Resource" in schema_info.reflect_types → **THIS IS A RESOURCE**
+        * IF `mutation_type == "Resource"` → **THIS IS A RESOURCE**
         * Execute <ResourceTestingProtocol/> ONLY
         * **SKIP** all component testing steps completely
         * **NEVER** use `world_spawn_entity` or `world_mutate_components` for resources
       - **COMPONENT DETECTION**:
-        * IF "Component" in schema_info.reflect_types → **THIS IS A COMPONENT**
+        * IF `mutation_type == "Component"` → **THIS IS A COMPONENT**
         * Execute <ComponentTestingProtocol/> ONLY
         * **SKIP** all resource testing steps completely
         * **NEVER** use `world_insert_resources` or `world_mutate_resources` for components
-      - **ERROR CASE**: If neither "Resource" nor "Component" found in reflect_types, report error in failure_details
+      - **ERROR CASE**: If `mutation_type` is neither "Resource" nor "Component", report error in failure_details
 
    e. **ENTITY ID SUBSTITUTION FOR MUTATIONS**:
       - **CRITICAL**: If any mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
@@ -413,7 +428,7 @@ For each type name string in your `type_names` array:
 </ResourceTestingProtocol>
 
 <ComponentTestingProtocol>
-**COMPONENT TESTING PROTOCOL - Use ONLY for types with "spawn" in supported_operations**
+**COMPONENT TESTING PROTOCOL - Use ONLY for types with "Component" in schema_info.reflect_types**
 
 **CRITICAL**: Do NOT use resource methods (`world_insert_resources`, `world_mutate_resources`)
 

@@ -1,7 +1,7 @@
-# Resource Serialization Tests
+# Resource Operations Tests
 
 ## Objective
-Validate BRP behavior with resources that lack Serialize/Deserialize traits and ensure proper error handling for insert_resource operations.
+Validate BRP resource operations including insert, get, mutate, and remove.
 
 **NOTE**: The extras_plugin app is already running on the specified port - focus on testing resource operations, not app management.
 
@@ -9,10 +9,8 @@ Validate BRP behavior with resources that lack Serialize/Deserialize traits and 
 
 ## Test Resources
 This test uses two resources defined in the extras_plugin example:
-- `TestConfigResource` - Has Serialize, Deserialize, and Reflect traits
-- `RuntimeStatsResource` - Has only Reflect trait (no Serialize/Deserialize)
-
-For resources, apparently it doesn't matter if they have Serialize/Deserialize traits - they can be inserted and updated without them.
+- `TestConfigResource` - Standard test resource
+- `RuntimeStatsResource` - Standard test resource
 
 ## Test Steps
 
@@ -24,7 +22,7 @@ For resources, apparently it doesn't matter if they have Serialize/Deserialize t
   - `extras_plugin::TestConfigResource`
   - `extras_plugin::RuntimeStatsResource`
 
-**STEP 2**: Insert/update TestConfigResource (has traits):
+**STEP 2**: Insert/update TestConfigResource:
 ```
 mcp__brp__world_insert_resources with parameters:
 {
@@ -38,7 +36,6 @@ mcp__brp__world_insert_resources with parameters:
 }
 ```
 - Verify operation succeeds
-- Confirm no error messages about missing traits
 
 **STEP 3**: Get the inserted resource to verify:
 - Tool: `mcp__brp__world_get_resources`
@@ -46,7 +43,7 @@ mcp__brp__world_insert_resources with parameters:
 - Port: {{PORT}}
 - Verify the resource data matches what was inserted
 
-**STEP 4**: Insert/update RuntimeStatsResource (no Serialize/Deserialize traits):
+**STEP 4**: Insert/update RuntimeStatsResource:
 ```
 `mcp__brp__world_insert_resources` with parameters:
 {
@@ -59,8 +56,7 @@ mcp__brp__world_insert_resources with parameters:
   "port": {{PORT}}
 }
 ```
-- Verify operation succeeds despite lacking Serialize/Deserialize traits
-- Confirm no error messages about missing traits
+- Verify operation succeeds
 
 **STEP 5**: Get the inserted RuntimeStatsResource to verify:
 - Tool: `mcp__brp__world_get_resources`
@@ -68,8 +64,8 @@ mcp__brp__world_insert_resources with parameters:
 - Port: {{PORT}}
 - Verify the resource data matches what was inserted
 
-### 2. Resource Mutation Test (Should Work Without Serialize/Deserialize)
-**STEP 1**: Mutate the RuntimeStatsResource (which lacks Serialize/Deserialize):
+### 2. Resource Mutation Test
+**STEP 1**: Mutate the RuntimeStatsResource:
 ```
 `mcp__brp__world_mutate_resources` with parameters:
 {
@@ -79,7 +75,7 @@ mcp__brp__world_insert_resources with parameters:
   "port": {{PORT}}
 }
 ```
-- Verify mutation SUCCEEDS (mutation doesn't require Serialize/Deserialize)
+- Verify mutation succeeds
 
 **STEP 2**: Mutate another field:
 ```
@@ -153,13 +149,7 @@ mcp__brp__world_insert_resources with parameters:
 - Port: {{PORT}}
 - Verify it returns an error indicating resource not found
 
-### 5. Error Message Quality Check
-All resource insertion errors should include:
-- Clear problem description mentioning the specific resource type
-- Guidance that this is a BRP requirement for insert_resource
-- Helpful suggestion to add the traits to the resource definition
-
-### 6. Non-Existent Resource Test
+### 5. Non-Existent Resource Test
 **STEP 1**: Attempt to insert a non-existent resource:
 ```
 `mcp__brp__world_insert_resources` with parameters:
@@ -170,24 +160,20 @@ All resource insertion errors should include:
 }
 ```
 
-**STEP 2**: Verify error is different from missing traits:
+**STEP 2**: Verify error indicates resource is not registered:
 - Error should indicate resource type is not registered
-- Should NOT mention Serialize/Deserialize traits
-- This confirms the system can distinguish between:
-  - Resources that exist but lack traits
-  - Resources that don't exist at all
+- Should provide clear guidance about the issue
 
 ## Expected Results
-- ✅ Insert succeeds for TestConfigResource
-- ✅ Mutation works for RuntimeStatsResource
+- ✅ Insert succeeds for both test resources
+- ✅ Mutation works for both test resources
 - ✅ Correct mutations update resource fields properly
 - ✅ Invalid field path mutations fail with clear error about missing field
 - ✅ Type mismatch mutations fail with clear type error messages
 - ✅ Mutations on non-existent resources fail with "Unknown resource type" error
 - ✅ Resource listing shows both test resources
-- ✅ Error messages clearly distinguish between missing traits vs non-existent resources
-- ✅ Educational error messages guide users to the solution
+- ✅ Error messages are clear and actionable
 - ✅ Resource removal works correctly
 
 ## Failure Criteria
-STOP if: Resource errors are unclear, insert succeeds when it shouldn't, mutation fails for registered resources, or error guidance is insufficient.
+STOP if: Resource errors are unclear, insert fails for valid resources, mutation fails for registered resources, or error guidance is insufficient.

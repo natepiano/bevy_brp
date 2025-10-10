@@ -33,6 +33,7 @@ class TypeData(TypedDict):
     in_registry: bool | None
     schema_info: dict[str, Any] | None  # pyright: ignore[reportExplicitAny] - JSON schema
     batch_number: int | None
+    mutation_type: str | None  # "Component" or "Resource"
 
 class TypeGuideRoot(TypedDict):
     type_guide: dict[str, TypeData]
@@ -86,6 +87,23 @@ if subagent_index is not None:
     if subagent_index < 0:
         print(f"Error: subagent_index must be non-negative, got: {subagent_index}", file=sys.stderr)
         sys.exit(1)
+
+def extract_mutation_type(schema_info: dict[str, object] | None) -> str | None:
+    """Extract mutation_type from schema_info.reflect_types."""
+    if not schema_info:
+        return None
+
+    reflect_types = schema_info.get('reflect_types')
+    if not reflect_types or not isinstance(reflect_types, list):
+        return None
+
+    # Check for Component or Resource in reflect_types
+    if 'Component' in reflect_types:
+        return 'Component'
+    if 'Resource' in reflect_types:
+        return 'Resource'
+
+    return None
 
 # Get the JSON file path from .claude/transient
 json_file = '.claude/transient/all_types.json'
@@ -151,6 +169,8 @@ for subagent_num in range(1, actual_subagents_needed + 1):
     for _ in range(types_for_this_subagent):
         if type_index < len(batch_types):
             type_item = batch_types[type_index]
+            schema_info = type_item.get('schema_info')
+            mutation_type = extract_mutation_type(schema_info)
             type_data: TypeData = cast(TypeData, cast(object, {
                 'type_name': type_item['type_name'],
                 'spawn_format': type_item.get('spawn_format'),
@@ -159,7 +179,8 @@ for subagent_num in range(1, actual_subagents_needed + 1):
                 'has_serialize': type_item.get('has_serialize'),
                 'has_deserialize': type_item.get('has_deserialize'),
                 'in_registry': type_item.get('in_registry'),
-                'schema_info': type_item.get('schema_info')
+                'schema_info': schema_info,
+                'mutation_type': mutation_type
             }))
             subagent_types.append(type_data)
             type_index += 1

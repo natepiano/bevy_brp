@@ -273,16 +273,6 @@ enum BottomEnum {
     VariantC,
 }
 
-/// Test component enum WITHOUT Serialize/Deserialize (only Reflect)
-#[derive(Component, Default, Reflect)]
-#[reflect(Component)]
-enum TestEnumNoSerDe {
-    Active,
-    #[default]
-    Inactive,
-    Special(String, u32),
-}
-
 /// Test enum with array field for testing array wrapping in enum variants
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
@@ -918,12 +908,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     commands.spawn((
         SimpleNestedEnum::WithVec2(Vec2::new(10.0, 20.0)),
         Name::new("SimpleNestedEnumEntity"),
-    ));
-
-    // Entity with TestEnumNoSerDe
-    commands.spawn((
-        TestEnumNoSerDe::Inactive,
-        Name::new("TestEnumNoSerDeEntity"),
     ));
 
     // Entity with TestEnumWithArray for testing array wrapping

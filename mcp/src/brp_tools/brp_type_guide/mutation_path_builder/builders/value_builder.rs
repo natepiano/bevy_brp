@@ -30,22 +30,12 @@ impl PathBuilder for ValueMutationBuilder {
 
     fn assemble_from_children(
         &self,
-        ctx: &RecursionContext,
+        _ctx: &RecursionContext,
         _children: HashMap<MutationPathDescriptor, Value>,
     ) -> std::result::Result<Value, BuilderError> {
-        // Check if this Value type has serialization support
-        if !ctx.value_type_has_serialization(ctx.type_name()) {
-            // Return NotMutableReason for types without serialization
-            return Err(BuilderError::NotMutable(
-                NotMutableReason::MissingSerializationTraits(ctx.type_name().clone()),
-            ));
-        }
-
-        // For leaf types with no children that have serialization, return NotMutableReason
-        // This should only be reached by types that don't have knowledge entries
-        // Types with knowledge entries and TreatAsValue guidance stop recursion before getting here
+        // For leaf types without mutation knowledge, return appropriate reason
         Err(BuilderError::NotMutable(
-            NotMutableReason::NoExampleAvailable(ctx.type_name().clone()),
+            NotMutableReason::NoExampleAvailable(_ctx.type_name().clone()),
         ))
     }
 }

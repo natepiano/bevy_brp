@@ -8,7 +8,6 @@ use std::sync::Arc;
 use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
-use super::super::response_types::ReflectTrait;
 use super::NotMutableReason;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
@@ -75,11 +74,6 @@ impl RecursionContext {
         })
     }
 
-    /// Look up a type in the registry
-    pub fn get_registry_schema(&self, type_name: &BrpTypeName) -> Option<&Value> {
-        self.registry.get(type_name)
-    }
-
     /// Create a new context for recursion
     pub fn create_recursion_context(
         &self,
@@ -108,23 +102,6 @@ impl RecursionContext {
             path_action,
             variant_chain: self.variant_chain.clone(), // Inherit parent's variant chain
         }
-    }
-
-    /// Check if a value type has serialization support
-    /// Used to determine if opaque Value types like String can be mutated
-    pub fn value_type_has_serialization(&self, type_name: &BrpTypeName) -> bool {
-        self.get_registry_schema(type_name).is_some_and(|schema| {
-            let reflect_types: Vec<ReflectTrait> =
-                Self::get_schema_field_as_array(schema, SchemaField::ReflectTypes)
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|v| v.as_str())
-                    .filter_map(|s| s.parse().ok())
-                    .collect();
-
-            reflect_types.contains(&ReflectTrait::Serialize)
-                && reflect_types.contains(&ReflectTrait::Deserialize)
-        })
     }
 
     /// Extract all element types from Tuple/TupleStruct schema

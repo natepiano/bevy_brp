@@ -50,34 +50,29 @@ Use extraction script ONLY (no direct jq/bash commands):
 # Expected: {"successful_discoveries": 8, "failed_discoveries": 0, "total_requested": 7}
 ```
 
-### 4. Validate Sprite Component (No Serialize Trait)
+### 4. Validate Sprite Component
 
 #### 4a. Validate Type Info
 ```bash
 # Get Sprite type info
 .claude/scripts/type_guide_test_extract.sh <file_path> type_info "bevy_sprite::sprite::Sprite"
-# Expected: type_name: "bevy_sprite::sprite::Sprite", in_registry: true, has_serialize: false, has_deserialize: false, supported_operations: ["query", "get", "mutate"]
+# Expected: type_name: "bevy_sprite::sprite::Sprite", in_registry: true
+# Check schema_info.reflect_types contains "Component"
 ```
 
-#### 4b. Verify Mutation Paths Exist Despite No Serialize
+#### 4b. Verify Mutation Paths Exist
 ```bash
 # Get Sprite mutation paths
 .claude/scripts/type_guide_test_extract.sh <file_path> mutation_paths "bevy_sprite::sprite::Sprite"
 # Should contain paths for fields like .color, .flip_x, .flip_y, .custom_size, etc.
 ```
 
-#### 4c. Verify Spawn Format Is Absent
-```bash
-# Check spawn format (should be null/absent)
-.claude/scripts/type_guide_test_extract.sh <file_path> spawn_format "bevy_sprite::sprite::Sprite"
-# Expected: null (cannot spawn without Serialize)
-```
-
-#### 4d. Validate Schema Info
+#### 4c. Validate Schema Info
 ```bash
 # Get Sprite schema info
 .claude/scripts/type_guide_test_extract.sh <file_path> schema_info "bevy_sprite::sprite::Sprite"
-# Expected: type_kind: "Struct", properties with anchor/color/flip_x/etc, module_path: "bevy_sprite::sprite", crate_name: "bevy_sprite"
+# Expected: type_kind: "Struct", properties with color/flip_x/etc, module_path: "bevy_sprite::sprite", crate_name: "bevy_sprite"
+# Expected: reflect_types contains "Component" (may or may not contain "Serialize"/"Deserialize")
 ```
 
 ### 5. Validate Transform Component (Standard Nested)
@@ -137,14 +132,15 @@ Use extraction script ONLY (no direct jq/bash commands):
 ### 7. Validate Name Component
 Verify `result."type_guide"["bevy_ecs::name::Name"]`:
 - Has appropriate fields for a wrapper type
-- Has both `mutation_paths` and `spawn_format` (has Serialize/Deserialize)
+- Has both `mutation_paths` and `spawn_format`
+- `schema_info.reflect_types` contains "Component"
 
 ### 8. Functional Mutation Testing
 
 Spawn test entities and perform mutations to verify the discovered paths work:
 
 #### 8a. Spawn Test Entities
-Spawn entities with components that have Serialize trait:
+Spawn entities with test components:
 - TestArrayField, TestTupleField, TestTupleStruct, TestComplexComponent, Transform, Name
 
 #### 8b. Execute and Verify Mutations
@@ -162,7 +158,7 @@ For each mutation context type, perform ONE representative mutation and verify:
 
 **Option field**: Mutate `.optional_value` to None on TestComplexComponent → Verify with `world_get_components`
 
-**Non-Serializable**: Mutate `.flip_x` to true on Sprite → Verify with `world_get_components`
+**Sprite field**: Mutate `.flip_x` to true on Sprite → Verify with `world_get_components`
 
 ### 9. Type Schema in Error Responses
 
@@ -272,25 +268,7 @@ mcp__brp__world_mutate_components with parameters:
 - Clear indication that format cannot be corrected automatically
 - type_guide shows expected Transform structure
 
-#### 9e. Test Component Without Serialize/Deserialize - Spawn Failure
-
-**STEP 1**: Attempt to spawn Visibility (lacks Serialize/Deserialize):
-```json
-mcp__brp__world_spawn_entity with parameters:
-{
-  "components": {
-    "bevy_render::view::visibility::Visibility": "Visible"
-  },
-  "port": 20114
-}
-```
-
-**Expected Result**:
-- Error indicating component lacks required traits
-- Error message mentions Serialize/Deserialize requirements
-- May include type_guide showing component is in registry but not spawnable
-
-#### 9f. Test Enum Mutation Error Guidance
+#### 9e. Test Enum Mutation Error Guidance
 
 **STEP 1**: Query for entity with Visibility:
 - Tool: mcp__brp__world_query
@@ -318,11 +296,12 @@ mcp__brp__world_mutate_components with parameters:
 ## Success Criteria
 
 ✅ Test passes when:
-- Single batched discovery call retrieves all 8 types successfully
+- Single batched discovery call retrieves all 7 types successfully
 - All expected fields are present for each type
+- `schema_info.reflect_types` array is present and contains appropriate trait names
 - Mutation contexts are correct (RootValue, StructField, TupleElement, ArrayElement, NestedPath)
 - Functional mutations work for all context types
-- Components without Serialize can be mutated but not spawned
+- All components with Reflect trait can be spawned and mutated
 - Tool provides comprehensive type information for BRP operations
 - **Format errors include embedded type_guide for failed types**
 - **Type extraction works from both parameters and error messages**

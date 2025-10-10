@@ -13,4 +13,4 @@ Example:
 ```
 
 Behavior: Replaces existing resources, creates if missing.
-Note: Requires BRP registration and reflection traits.
+Note: Requires resource to be registered with BRP and have the Reflect trait
