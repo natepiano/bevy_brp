@@ -177,28 +177,28 @@ pub enum PathSignature {
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path
-    pub example: Value,
+    pub example:                 Value,
     /// For enum roots only: the examples array with all variant groups
     /// None for all other paths (including enum children and regular types)
-    pub enum_example_groups: Option<Vec<ExampleGroup>>,
+    pub enum_example_groups:     Option<Vec<ExampleGroup>>,
     /// For enum roots only: simple example for parent assembly
     /// None for all other paths (including enum children and regular types)
     pub enum_example_for_parent: Option<Value>,
     /// Path for mutation, e.g., ".translation.x"
-    pub full_mutation_path: FullMutationPath,
+    pub full_mutation_path:      FullMutationPath,
     /// Type information for this path
-    pub type_name: BrpTypeName,
+    pub type_name:               BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind: PathKind,
+    pub path_kind:               PathKind,
     /// Status of whether this path can be mutated
-    pub mutation_status: MutationStatus,
+    pub mutation_status:         MutationStatus,
     /// Reason if mutation is not possible
-    pub mutation_status_reason: Option<Value>,
+    pub mutation_status_reason:  Option<Value>,
     /// Consolidated enum-specific data (new approach)
-    pub enum_path_data: Option<EnumPathData>,
+    pub enum_path_data:          Option<EnumPathData>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
-    pub depth: usize,
+    pub depth:                   usize,
 
     /// For enum root paths at each nesting level: Maps FULL variant chains to partial
     /// root examples built from this enum level down through all descendants.
@@ -228,9 +228,9 @@ impl MutationPathInternal {
     pub fn to_path_summary(&self) -> PathSummary {
         PathSummary {
             full_mutation_path: self.full_mutation_path.clone(),
-            type_name: self.type_name.clone(),
-            status: self.mutation_status,
-            reason: self.mutation_status_reason.clone(),
+            type_name:          self.type_name.clone(),
+            status:             self.mutation_status,
+            reason:             self.mutation_status_reason.clone(),
         }
     }
 
@@ -247,36 +247,36 @@ impl MutationPathInternal {
 #[derive(Debug, Clone)]
 pub struct PathSummary<T = FullMutationPath> {
     pub full_mutation_path: T,
-    pub type_name: BrpTypeName,
-    pub status: MutationStatus,
-    pub reason: Option<Value>,
+    pub type_name:          BrpTypeName,
+    pub status:             MutationStatus,
+    pub reason:             Option<Value>,
 }
 
 /// Path information combining navigation and type metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
-    pub path_kind: PathKind,
+    pub path_kind:              PathKind,
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
-    pub type_name: BrpTypeName,
+    pub type_name:              BrpTypeName,
     /// The kind of type this field contains (Struct, Enum, Array, etc.)
-    pub type_kind: TypeKind,
+    pub type_kind:              TypeKind,
     /// Status of whether this path can be mutated
-    pub mutation_status: MutationStatus,
+    pub mutation_status:        MutationStatus,
     /// Reason if mutation is not possible
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mutation_status_reason: Option<Value>,
     /// Instructions for setting variants required for this mutation path (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_instructions: Option<String>,
+    pub enum_instructions:      Option<String>,
     /// Example: `["BottomEnum::VariantB"]`
     /// `VariantName` serializes as a string in JSON output
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub applicable_variants: Option<Vec<VariantName>>,
+    pub applicable_variants:    Option<Vec<VariantName>>,
     /// Only present for paths nested in enums - built using assembly during ascent
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub root_example: Option<Value>,
+    pub root_example:           Option<Value>,
 }
 
 /// Example group for enum variants
@@ -286,31 +286,18 @@ pub struct ExampleGroup {
     pub applicable_variants: Vec<VariantName>,
     /// Example value for this group (omitted for `NotMutable` variants)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example: Option<Value>,
+    pub example:             Option<Value>,
     /// The variant signature as a string
-    pub signature: String,
+    pub signature:           String,
     /// Mutation status for this signature/variant group
-    pub mutation_status: MutationStatus,
-}
-
-/// Entry describing a variant requirement at a specific path
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VariantPath {
-    /// The mutation path where this variant is required (e.g., `""`, `".nested_config"`)
-    pub full_mutation_path: FullMutationPath,
-    /// The variant name including enum type (e.g., `"TestEnumWithSerDe::Nested"`)
-    pub variant: VariantName,
-    /// Clear instruction for this step (e.g., `"Set root to TestEnumWithSerDe::Nested"`)
-    pub instructions: String,
-    /// The exact mutation value needed for this step
-    pub variant_example: Value,
+    pub mutation_status:     MutationStatus,
 }
 
 /// Consolidated enum-specific data for mutation paths
 #[derive(Debug, Clone)]
 pub struct EnumPathData {
-    /// Chain of enum variants from root to this path with full metadata
-    pub variant_chain: Vec<VariantPath>,
+    /// Chain of enum variants from root to this path
+    pub variant_chain: Vec<VariantName>,
 
     /// All variants that share the same signature and support this path
     pub applicable_variants: Vec<VariantName>,
@@ -319,25 +306,19 @@ pub struct EnumPathData {
     pub root_example: Option<Value>,
 }
 
-impl EnumPathData {
-    pub const fn is_empty(&self) -> bool {
-        self.variant_chain.is_empty()
-    }
-}
-
 /// Information about a mutation path that we serialize to our response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPath {
     /// Human-readable description of what this path mutates
     pub description: String,
     /// Combined path navigation and type metadata
-    pub path_info: PathInfo,
+    pub path_info:   PathInfo,
     /// Array of example groups with variants, signatures, and examples (for enums)
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub examples: Vec<ExampleGroup>,
+    pub examples:    Vec<ExampleGroup>,
     /// Single example value (for non-enum types)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example: Option<Value>,
+    pub example:     Option<Value>,
 }
 
 impl MutationPath {

@@ -82,7 +82,7 @@ use super::super::brp_type_name::BrpTypeName;
 use super::super::constants::MAX_TYPE_RECURSION_DEPTH;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
-use super::types::{FullMutationPath, PathAction, VariantPath};
+use super::types::{FullMutationPath, PathAction, VariantName};
 use super::{BuilderError, NotMutableReason};
 use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
@@ -135,7 +135,7 @@ pub struct RecursionContext {
     pub path_action:        PathAction,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
-    pub variant_chain:      Vec<VariantPath>,
+    pub variant_chain:      Vec<VariantName>,
     /// Recursion depth tracking to prevent infinite loops
     pub depth:              RecursionDepth,
 }

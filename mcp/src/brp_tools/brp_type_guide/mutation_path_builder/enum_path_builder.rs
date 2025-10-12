@@ -46,7 +46,7 @@ use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
 use super::types::{
     EnumPathData, ExampleGroup, MutationStatus, PathAction, PathSummary, StructFieldName,
-    VariantName, VariantPath, VariantSignature,
+    VariantName, VariantSignature,
 };
 use super::{BuilderError, MutationPathInternal, PathKind, builder};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
@@ -468,41 +468,6 @@ pub fn generate_enum_instructions(
     )
 }
 
-/// Populate variant path with proper instructions and variant examples
-fn populate_variant_path(
-    ctx: &RecursionContext,
-    enum_examples: &[ExampleGroup],
-    default_example: &Value,
-) -> Vec<VariantPath> {
-    let mut populated_paths = Vec::new();
-
-    for variant_path in &ctx.variant_chain {
-        let mut populated_path = variant_path.clone();
-
-        // Generate instructions for this variant step
-        populated_path.instructions = format!(
-            "Mutate '{}' 'full_mutation_path' to the '{}' variant using 'variant_example'",
-            if populated_path.full_mutation_path.is_empty() {
-                "root".to_string()
-            } else {
-                populated_path.full_mutation_path.to_string()
-            },
-            variant_path.variant
-        );
-
-        // Find the appropriate example for this variant
-        populated_path.variant_example = enum_examples
-            .iter()
-            .find(|ex| ex.applicable_variants.contains(&variant_path.variant))
-            .and_then(|ex| ex.example.clone())
-            .unwrap_or_else(|| default_example.clone());
-
-        populated_paths.push(populated_path);
-    }
-
-    populated_paths
-}
-
 /// Process child paths - simplified version of `MutationPathBuilder`'s child processing
 ///
 /// Now builds examples immediately for each variant group to avoid `HashMap` collision issues
@@ -533,14 +498,9 @@ fn process_children(
         for path in paths.into_iter().flatten() {
             let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create)?;
 
-            // Set up enum context for children
+            // Set up enum context for children - just push the variant name
             if let Some(representative_variant) = applicable_variants.first() {
-                child_ctx.variant_chain.push(VariantPath {
-                    full_mutation_path: ctx.full_mutation_path.clone(),
-                    variant:            representative_variant.clone(),
-                    instructions:       String::new(),
-                    variant_example:    json!(null),
-                });
+                child_ctx.variant_chain.push(representative_variant.clone());
             }
             // Recursively process child and collect paths
             let child_descriptor = path.to_mutation_path_descriptor();
@@ -713,46 +673,6 @@ fn create_paths_for_signature(
     }
 }
 
-/// Updates `variant_path` entries in child paths with level-appropriate examples
-fn update_child_variant_paths(
-    paths: &mut [MutationPathInternal],
-    current_path: &FullMutationPath,
-    current_example: &Value,
-    enum_examples: Option<&Vec<ExampleGroup>>,
-) {
-    // For each child path that has enum variant requirements
-    for child in paths.iter_mut() {
-        if let Some(enum_data) = &mut child.enum_path_data
-            && !enum_data.is_empty()
-        {
-            // Find matching entry in child's variant_chain that corresponds to our level
-            for entry in &mut enum_data.variant_chain {
-                if entry.full_mutation_path == *current_path {
-                    // This entry represents our current level - update its instructions
-                    entry.instructions = format!(
-                        "Mutate '{}' mutation 'path' to the '{}' variant using 'variant_example'",
-                        if entry.full_mutation_path.is_empty() {
-                            "root"
-                        } else {
-                            &entry.full_mutation_path
-                        },
-                        &entry.variant
-                    );
-
-                    // find the matching variant example
-                    if let Some(examples) = enum_examples {
-                        entry.variant_example = examples
-                            .iter()
-                            .find(|ex| ex.applicable_variants.contains(&entry.variant))
-                            .and_then(|ex| ex.example.clone())
-                            .unwrap_or_else(|| current_example.clone());
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// Build partial root examples using assembly during ascent
 ///
 /// Builds partial roots IMMEDIATELY during recursion by wrapping child partial roots
@@ -772,11 +692,8 @@ fn build_partial_roots(
             let our_variant = variant.variant_name().clone();
 
             // Build our variant chain by extending parent's chain
-            let mut our_chain = ctx
-                .variant_chain
-                .iter()
-                .map(|vp| vp.variant.clone())
-                .collect::<Vec<_>>();
+            // Since variant_chain is now Vec<VariantName>, we can directly clone it
+            let mut our_chain = ctx.variant_chain.clone();
             our_chain.push(our_variant.clone());
 
             // Get base example for this variant
@@ -842,16 +759,14 @@ fn build_partial_roots(
                     // Filter by variant_chain compatibility: child's variant_chain must be a
                     // prefix of the child_chain we're building for
                     if let Some(child_enum_data) = &child.enum_path_data {
-                        let child_variant_chain =
-                            extract_variant_names(&child_enum_data.variant_chain);
-
                         // Child's variant_chain cannot be longer than target chain
-                        if child_variant_chain.len() > child_chain.len() {
+                        if child_enum_data.variant_chain.len() > child_chain.len() {
                             continue;
                         }
 
                         // Check prefix compatibility: all elements must match
-                        let is_compatible = child_variant_chain
+                        let is_compatible = child_enum_data
+                            .variant_chain
                             .iter()
                             .zip(child_chain.iter())
                             .all(|(child_v, chain_v)| child_v == chain_v);
@@ -976,12 +891,14 @@ fn populate_root_example(paths: &mut [MutationPathInternal]) {
         if let Some(enum_data) = &mut path.enum_path_data
             && !enum_data.variant_chain.is_empty()
         {
-            let chain = extract_variant_names(&enum_data.variant_chain);
-
             tracing::debug!(
                 "[POPULATE_ROOT] Path: {}, variant_chain: {:?}",
                 path.full_mutation_path,
-                chain.iter().map(VariantName::as_str).collect::<Vec<_>>()
+                enum_data
+                    .variant_chain
+                    .iter()
+                    .map(VariantName::as_str)
+                    .collect::<Vec<_>>()
             );
 
             // Use the partial_root_examples that was propagated to this path
@@ -994,13 +911,17 @@ fn populate_root_example(paths: &mut [MutationPathInternal]) {
                         .collect::<Vec<_>>()
                 );
 
-                if let Some(root_example) = partials.get(&chain) {
+                if let Some(root_example) = partials.get(&enum_data.variant_chain) {
                     tracing::debug!("[POPULATE_ROOT]   FOUND root_example: {root_example:?}");
                     enum_data.root_example = Some(root_example.clone());
                 } else {
                     tracing::debug!(
                         "[POPULATE_ROOT]   NOT FOUND - no entry for chain {:?}",
-                        chain.iter().map(VariantName::as_str).collect::<Vec<_>>()
+                        enum_data
+                            .variant_chain
+                            .iter()
+                            .map(VariantName::as_str)
+                            .collect::<Vec<_>>()
                     );
                 }
             } else {
@@ -1008,11 +929,6 @@ fn populate_root_example(paths: &mut [MutationPathInternal]) {
             }
         }
     }
-}
-
-/// Helper to extract variant names from variant path chain
-fn extract_variant_names(variant_chain: &[VariantPath]) -> Vec<VariantName> {
-    variant_chain.iter().map(|vp| vp.variant.clone()).collect()
 }
 
 /// Create final result paths - includes both root and child paths
@@ -1072,7 +988,7 @@ fn create_result_paths(
         None
     } else {
         Some(EnumPathData {
-            variant_chain:       populate_variant_path(ctx, &enum_examples, &default_example),
+            variant_chain:       ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
             root_example:        None,
         })
@@ -1142,16 +1058,6 @@ fn create_result_paths(
         );
     }
     // ==================== END NEW CODE ====================
-
-    // Update variant_path entries in child paths with level-appropriate examples
-    // Use the default_example which contains actual data, not the null example
-    let example_for_children = &default_example;
-    update_child_variant_paths(
-        &mut child_paths,
-        &ctx.full_mutation_path,
-        example_for_children,
-        root_mutation_path.enum_example_groups.as_ref(),
-    );
 
     // Return root path plus all child paths (like MutationPathBuilder does)
     let mut result = vec![root_mutation_path];
