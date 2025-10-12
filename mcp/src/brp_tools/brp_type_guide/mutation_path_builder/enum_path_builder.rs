@@ -45,8 +45,8 @@ use super::super::type_kind::TypeKind;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
 use super::types::{
-    EnumPathData, ExampleGroup, MutationStatus, PathAction, StructFieldName, VariantName,
-    VariantPath, VariantSignature,
+    EnumPathData, ExampleGroup, MutationStatus, PathAction, PathSummary, StructFieldName,
+    VariantName, VariantPath, VariantSignature,
 };
 use super::{BuilderError, MutationPathInternal, PathKind, builder};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
@@ -467,7 +467,6 @@ fn populate_variant_path(
 ///
 /// Now builds examples immediately for each variant group to avoid `HashMap` collision issues
 /// where multiple variant groups with the same signature would overwrite each other's examples.
-#[allow(clippy::too_many_lines)]
 fn process_children(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     ctx: &RecursionContext,
@@ -479,6 +478,8 @@ fn process_children(
     for (signature, variants_in_group) in variant_groups {
         // Create FRESH child_examples HashMap for each variant group to avoid overwrites
         let mut child_examples = HashMap::new();
+        // Collect THIS signature's children separately to avoid mixing with other variants
+        let mut signature_child_paths = Vec::new();
 
         let applicable_variants: Vec<VariantName> = variants_in_group
             .iter()
@@ -511,7 +512,6 @@ fn process_children(
             // Use the same recursion function as MutationPathBuilder
             let mut child_paths = builder::recurse_mutation_paths(child_type_kind, &child_ctx)?;
 
-            // ==================== NEW: POPULATE applicable_variants ====================
             // Track which variants make these child paths valid
             // Only populate for DIRECT children (not grandchildren nested deeper)
             for child_path in &mut child_paths {
@@ -527,7 +527,6 @@ fn process_children(
                     }
                 }
             }
-            // ==================== END NEW CODE ====================
 
             // Extract example from first path
             // For enum children: use enum_example_for_parent (the concrete variant example)
@@ -571,8 +570,8 @@ fn process_children(
             );
             child_examples.insert(child_descriptor, child_example);
 
-            // Collect ALL child paths for the final result
-            all_child_paths.extend(child_paths);
+            // Collect THIS signature's child paths
+            signature_child_paths.extend(child_paths);
         }
 
         // NEW: Determine mutation status for this signature
@@ -581,8 +580,8 @@ fn process_children(
             MutationStatus::Mutable
         } else {
             // Aggregate field statuses from direct children at this depth
-            // Filter all_child_paths to get only the direct children for this signature
-            let signature_field_statuses: Vec<MutationStatus> = all_child_paths
+            // Use ONLY this signature's children (not all_child_paths from other signatures)
+            let signature_field_statuses: Vec<MutationStatus> = signature_child_paths
                 .iter()
                 .filter(|p| p.is_direct_child_at_depth(*ctx.depth))
                 .map(|p| p.mutation_status)
@@ -620,6 +619,9 @@ fn process_children(
             example,                           // Now Option<Value>
             mutation_status: signature_status, // NEW FIELD
         });
+
+        // Add this signature's children to the combined collection
+        all_child_paths.extend(signature_child_paths);
     }
 
     // Build partial roots using assembly during ascent
@@ -940,50 +942,37 @@ fn create_result_paths(
 
     let enum_mutation_status = builder::aggregate_mutation_statuses(&signature_statuses);
 
-    // NEW: Build reason for partially_mutable or not_mutable enums
+    // NEW: Build reason for partially_mutable or not_mutable enums using unified approach
     let mutation_status_reason = match enum_mutation_status {
         MutationStatus::PartiallyMutable => {
-            // Group variants by their mutation status
-            let mut mutable = Vec::new();
-            let mut partially_mutable = Vec::new();
-            let mut not_mutable = Vec::new();
+            // Create PathSummary<VariantName> for each variant
+            let summaries: Vec<PathSummary<VariantName>> = enum_examples
+                .iter()
+                .flat_map(|eg| {
+                    eg.applicable_variants.iter().map(|variant| PathSummary {
+                        full_mutation_path: variant.clone(),
+                        type_name:          ctx.type_name().clone(),
+                        status:             eg.mutation_status,
+                        reason:             None,
+                    })
+                })
+                .collect();
 
-            for eg in &enum_examples {
-                match eg.mutation_status {
-                    MutationStatus::Mutable => mutable.extend(eg.applicable_variants.clone()),
-                    MutationStatus::PartiallyMutable => {
-                        partially_mutable.extend(eg.applicable_variants.clone());
-                    }
-                    MutationStatus::NotMutable => {
-                        not_mutable.extend(eg.applicable_variants.clone());
-                    }
-                }
-            }
+            // Use unified NotMutableReason with TypeKind-based message
+            let message = "Some variants are mutable while others are not".to_string();
 
-            // Build reason object with only non-empty arrays
-            let mut reason = serde_json::Map::new();
-            reason.insert("reason".to_string(), json!("enum_partial_mutability"));
-            reason.insert(
-                "message".to_string(),
-                json!("Some variants are mutable while others are not"),
-            );
-
-            if !mutable.is_empty() {
-                reason.insert("mutable".to_string(), json!(mutable));
-            }
-            if !partially_mutable.is_empty() {
-                reason.insert("partially_mutable".to_string(), json!(partially_mutable));
-            }
-            if !not_mutable.is_empty() {
-                reason.insert("not_mutable".to_string(), json!(not_mutable));
-            }
-
-            Some(Value::Object(reason))
+            Some(
+                Option::<Value>::from(&super::NotMutableReason::from_partial_mutability(
+                    ctx.type_name().clone(),
+                    summaries,
+                    message,
+                ))
+                .unwrap(),
+            )
         }
         MutationStatus::NotMutable => {
             // All variants are not mutable
             Some(json!({
-                "reason": "enum_no_mutable_variants",
                 "message": "No variants in this enum can be mutated"
             }))
         }

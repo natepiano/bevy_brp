@@ -120,7 +120,7 @@ pub enum PathAction {
 }
 
 /// Status of whether a mutation path can be mutated
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MutationStatus {
     /// Path can be fully mutated
@@ -241,9 +241,12 @@ impl MutationPathInternal {
 }
 
 /// Summary of a mutation path for reason reporting
+///
+/// Generic over the path type to support both `FullMutationPath` (for structs/lists)
+/// and `VariantName` (for enums) without requiring early string conversion.
 #[derive(Debug, Clone)]
-pub struct PathSummary {
-    pub full_mutation_path: FullMutationPath,
+pub struct PathSummary<T = FullMutationPath> {
+    pub full_mutation_path: T,
     pub type_name:          BrpTypeName,
     pub status:             MutationStatus,
     pub reason:             Option<Value>,
@@ -356,7 +359,8 @@ impl MutationPath {
         let description = match path.mutation_status {
             MutationStatus::PartiallyMutable => {
                 format!(
-                    "This path is not mutable due to some of its {} not being mutable",
+                    "This {} path is partially mutable due to some of its {} not being mutable",
+                    type_kind.as_ref().to_lowercase(),
                     type_kind.child_terminology()
                 )
             }

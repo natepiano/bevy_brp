@@ -259,10 +259,19 @@ pub fn determine_parent_mutation_status(
                 .iter()
                 .map(MutationPathInternal::to_path_summary)
                 .collect();
+
+            // Get TypeKind to generate appropriate message
+            let schema = ctx.registry.get(ctx.type_name()).unwrap_or(&Value::Null);
+            let type_kind = TypeKind::from_schema(schema);
+            let message = format!(
+                "Some {} are mutable while others are not",
+                type_kind.child_terminology()
+            );
+
             Some(NotMutableReason::from_partial_mutability(
                 ctx.type_name().clone(),
                 summaries,
-                &ctx.registry,
+                message,
             ))
         }
         MutationStatus::NotMutable => Some(ctx.create_no_mutable_children_error()),

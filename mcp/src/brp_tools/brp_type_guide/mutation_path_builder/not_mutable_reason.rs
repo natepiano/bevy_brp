@@ -22,30 +22,12 @@
 //! - Rich diagnostic information in the final output
 //! - Clear separation between system errors and expected "not mutable" states
 //! - Consistent formatting of all "not mutable" paths
-use std::collections::HashMap;
 use std::fmt::Display;
 
-use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::super::brp_type_name::BrpTypeName;
-use super::super::type_kind::TypeKind;
-use super::types::{FullMutationPath, MutationStatus, PathSummary};
-
-/// Path detail for mutable paths
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PathDetail {
-    pub full_mutation_path: FullMutationPath,
-    pub type_name:          BrpTypeName,
-}
-
-/// Path detail with reason for not/partially mutable paths
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PathDetailWithReason {
-    pub full_mutation_path: FullMutationPath,
-    pub type_name:          BrpTypeName,
-    pub reason:             String,
-}
+use super::types::{MutationStatus, PathSummary};
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,10 +49,11 @@ pub enum NotMutableReason {
     NoExampleAvailable(BrpTypeName),
     /// Some children are mutable, others are not (results in `PartiallyMutable`)
     PartialChildMutability {
-        parent_type:             BrpTypeName,
-        mutable_paths:           Vec<PathDetail>,
-        not_mutable_paths:       Vec<PathDetailWithReason>,
-        partially_mutable_paths: Vec<PathDetailWithReason>,
+        parent_type:       BrpTypeName,
+        message:           String,
+        mutable:           Vec<String>,
+        not_mutable:       Vec<String>,
+        partially_mutable: Vec<String>,
     },
 }
 
@@ -89,91 +72,68 @@ impl NotMutableReason {
     }
 
     /// Construct `PartialChildMutability` from path summaries
-    pub fn from_partial_mutability(
+    ///
+    /// Generic over the path type to support both `FullMutationPath` (for structs/lists)
+    /// and `VariantName` (for enums) without requiring early string conversion.
+    ///
+    /// # Deduplication Logic
+    ///
+    /// When the same path string appears multiple times with different statuses (which happens
+    /// with enum variants where the same child path exists in multiple variants), this function
+    /// deduplicates them and categorizes as `partially_mutable`.
+    ///
+    /// Example: `Handle<Image>` enum has two variants at `.0`:
+    /// - `Strong` variant: `.0` is `not_mutable` (Arc<StrongHandle> not in registry)
+    /// - `Uuid` variant: `.0` is `mutable` (Uuid has hardcoded knowledge)
+    ///
+    /// Both create the same path string `.color_lut.0.0`, so this function detects the
+    /// conflict and correctly marks it as `partially_mutable`.
+    pub fn from_partial_mutability<T: ToString>(
         parent_type: BrpTypeName,
-        summaries: Vec<PathSummary>,
-        registry: &HashMap<BrpTypeName, Value>,
+        summaries: Vec<PathSummary<T>>,
+        message: String,
     ) -> Self {
-        let mut mutable_paths = Vec::new();
-        let mut not_mutable_paths = Vec::new();
-        let mut partially_mutable_paths = Vec::new();
+        use std::collections::{HashMap, HashSet};
+
+        // First pass: Collect all statuses for each unique path string
+        // This detects when the same path appears with different statuses across variants
+        let mut path_statuses: HashMap<String, HashSet<MutationStatus>> = HashMap::new();
 
         for summary in summaries {
-            match summary.status {
-                MutationStatus::Mutable => {
-                    mutable_paths.push(PathDetail {
-                        full_mutation_path: summary.full_mutation_path.clone(),
-                        type_name:          summary.type_name,
-                    });
-                }
-                MutationStatus::NotMutable => {
-                    // Extract reason string from Value if present
-                    let reason = summary
-                        .reason
-                        .and_then(|v| v.as_str().map(String::from))
-                        .unwrap_or_else(|| "unknown".to_string());
+            let path_str = summary.full_mutation_path.to_string();
+            path_statuses
+                .entry(path_str)
+                .or_insert_with(HashSet::new)
+                .insert(summary.status);
+        }
 
-                    not_mutable_paths.push(PathDetailWithReason {
-                        full_mutation_path: summary.full_mutation_path.clone(),
-                        type_name: summary.type_name,
-                        reason,
-                    });
-                }
-                MutationStatus::PartiallyMutable => {
-                    // Look up TypeKind for type-specific terminology
-                    let type_schema = registry.get(&summary.type_name).unwrap_or(&Value::Null);
-                    let type_kind = TypeKind::from_schema(type_schema);
-                    let default_message = format!(
-                        "Has both mutable and non-mutable {}",
-                        type_kind.child_terminology()
-                    );
+        // Second pass: Categorize each unique path based on its status diversity
+        let mut mutable = Vec::new();
+        let mut not_mutable = Vec::new();
+        let mut partially_mutable = Vec::new();
 
-                    // Extract reason string from Value if present
-                    let reason = summary.reason.map_or_else(
-                        || default_message.clone(),
-                        |reason_value| {
-                            reason_value.as_str().map_or_else(
-                                || {
-                                    // Try to extract "message" field from structured reason
-                                    reason_value.as_object().map_or_else(
-                                        || default_message.clone(),
-                                        |obj| {
-                                            obj.get("message").and_then(|v| v.as_str()).map_or_else(
-                                                || {
-                                                    obj.get("reason").and_then(|v| v.as_str()).map_or_else(
-                                                        || default_message.clone(),
-                                                        |reason_field| {
-                                                            format!(
-                                                                "{reason_field}: Has both mutable and \
-                                                                         non-mutable {}", type_kind.child_terminology()
-                                                            )
-                                                        },
-                                                    )
-                                                },
-                                                |message| (*message).to_string(),
-                                            )
-                                        },
-                                    )
-                                },
-                                std::string::ToString::to_string,
-                            )
-                        },
-                    );
-
-                    partially_mutable_paths.push(PathDetailWithReason {
-                        full_mutation_path: summary.full_mutation_path.clone(),
-                        type_name: summary.type_name,
-                        reason,
-                    });
+        for (path_str, statuses) in path_statuses {
+            if statuses.len() > 1 {
+                // Path has conflicting statuses across different variants → partially_mutable
+                // Example: `.color_lut.0.0` is mutable in Uuid variant but not_mutable in Strong
+                // variant
+                partially_mutable.push(path_str);
+            } else if let Some(&status) = statuses.iter().next() {
+                // Path has consistent status across all variants → use that status
+                match status {
+                    MutationStatus::Mutable => mutable.push(path_str),
+                    MutationStatus::NotMutable => not_mutable.push(path_str),
+                    MutationStatus::PartiallyMutable => partially_mutable.push(path_str),
                 }
             }
         }
 
         Self::PartialChildMutability {
             parent_type,
-            mutable_paths,
-            not_mutable_paths,
-            partially_mutable_paths,
+            message,
+            mutable,
+            not_mutable,
+            partially_mutable,
         }
     }
 }
@@ -227,14 +187,26 @@ impl From<&NotMutableReason> for Option<Value> {
             // PartialChildMutability returns structured JSON
             NotMutableReason::PartialChildMutability {
                 parent_type: _,
-                mutable_paths,
-                not_mutable_paths,
-                partially_mutable_paths,
-            } => Some(json!({
-                "mutable": mutable_paths,
-                "not_mutable": not_mutable_paths,
-                "partially_mutable": partially_mutable_paths,
-            })),
+                message,
+                mutable,
+                not_mutable,
+                partially_mutable,
+            } => {
+                let mut reason = serde_json::Map::new();
+                reason.insert("message".to_string(), json!(message));
+
+                if !mutable.is_empty() {
+                    reason.insert("mutable".to_string(), json!(mutable));
+                }
+                if !not_mutable.is_empty() {
+                    reason.insert("not_mutable".to_string(), json!(not_mutable));
+                }
+                if !partially_mutable.is_empty() {
+                    reason.insert("partially_mutable".to_string(), json!(partially_mutable));
+                }
+
+                Some(Value::Object(reason))
+            }
         }
     }
 }
