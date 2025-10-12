@@ -180,7 +180,8 @@
       "Bash(.claude/scripts/extras_test_poll_screenshot.sh:*)",
       "Bash(mcp__brp__brp_launch_bevy_example:*)",
       "WebFetch(domain:rust-lang.github.io)",
-      "Bash(claude --version)"
+      "Bash(claude --version)",
+      "Bash(do python3 .claude/scripts/create_mutation_test_json/read_comparison.py structural_next)"
     ],
     "deny": [
       "Bash(sed:*)",
