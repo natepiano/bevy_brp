@@ -64,15 +64,12 @@ impl TypeGuide {
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Result<Self> {
         // Look up the type in the registry
-        let registry_schema = match registry.get(&brp_type_name) {
-            Some(schema) => schema,
-            None => {
-                // Not found is a valid result, not an error
-                return Ok(Self::not_found_in_registry(
-                    brp_type_name,
-                    "Type not found in registry".to_string(),
-                ));
-            }
+        let Some(registry_schema) = registry.get(&brp_type_name) else {
+            // Not found is a valid result, not an error
+            return Ok(Self::not_found_in_registry(
+                brp_type_name,
+                "Type not found in registry".to_string(),
+            ));
         };
 
         // Build mutation paths to determine actual mutation capability
@@ -86,7 +83,7 @@ impl TypeGuide {
             Self::extract_spawn_format_if_spawnable(registry_schema, &mutation_paths);
 
         // Extract schema info from registry
-        let schema_info = Self::extract_schema_info(registry_schema);
+        let schema_info = Some(Self::extract_schema_info(registry_schema));
 
         // Generate agent guidance (with Entity warning if needed)
         let agent_guidance = Self::generate_agent_guidance(&mutation_paths)?;
@@ -246,7 +243,7 @@ impl TypeGuide {
     }
 
     /// Extract schema information from registry schema
-    fn extract_schema_info(registry_schema: &Value) -> Option<SchemaInfo> {
+    fn extract_schema_info(registry_schema: &Value) -> SchemaInfo {
         let type_kind = registry_schema
             .get_field_str(SchemaField::Kind)
             .and_then(|s| TypeKind::from_str(s).ok());
@@ -266,13 +263,13 @@ impl TypeGuide {
             .get_field_array(SchemaField::ReflectTypes)
             .map(|arr| arr.iter().filter_map(Value::as_str).into_strings());
 
-        Some(SchemaInfo {
+        SchemaInfo {
             type_kind,
             properties,
             required,
             module_path,
             crate_name,
             reflect_traits,
-        })
+        }
     }
 }

@@ -22,12 +22,14 @@
 //! - Rich diagnostic information in the final output
 //! - Clear separation between system errors and expected "not mutable" states
 //! - Consistent formatting of all "not mutable" paths
+use std::collections::HashMap;
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::super::brp_type_name::BrpTypeName;
+use super::super::type_kind::TypeKind;
 use super::types::{FullMutationPath, MutationStatus, PathSummary};
 
 /// Path detail for mutable paths
@@ -87,7 +89,11 @@ impl NotMutableReason {
     }
 
     /// Construct `PartialChildMutability` from path summaries
-    pub fn from_partial_mutability(parent_type: BrpTypeName, summaries: Vec<PathSummary>) -> Self {
+    pub fn from_partial_mutability(
+        parent_type: BrpTypeName,
+        summaries: Vec<PathSummary>,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Self {
         let mut mutable_paths = Vec::new();
         let mut not_mutable_paths = Vec::new();
         let mut partially_mutable_paths = Vec::new();
@@ -114,11 +120,45 @@ impl NotMutableReason {
                     });
                 }
                 MutationStatus::PartiallyMutable => {
+                    // Look up TypeKind for type-specific terminology
+                    let type_schema = registry.get(&summary.type_name).unwrap_or(&Value::Null);
+                    let type_kind = TypeKind::from_schema(type_schema);
+                    let default_message = format!(
+                        "Has both mutable and non-mutable {}",
+                        type_kind.child_terminology()
+                    );
+
                     // Extract reason string from Value if present
-                    let reason = summary
-                        .reason
-                        .and_then(|v| v.as_str().map(String::from))
-                        .unwrap_or_else(|| "partial".to_string());
+                    let reason = summary.reason.map_or_else(
+                        || default_message.clone(),
+                        |reason_value| {
+                            reason_value.as_str().map_or_else(
+                                || {
+                                    // Try to extract "message" field from structured reason
+                                    reason_value.as_object().map_or_else(
+                                        || default_message.clone(),
+                                        |obj| {
+                                            obj.get("message").and_then(|v| v.as_str()).map_or_else(
+                                                || {
+                                                    obj.get("reason").and_then(|v| v.as_str()).map_or_else(
+                                                        || default_message.clone(),
+                                                        |reason_field| {
+                                                            format!(
+                                                                "{reason_field}: Has both mutable and \
+                                                                         non-mutable {}", type_kind.child_terminology()
+                                                            )
+                                                        },
+                                                    )
+                                                },
+                                                |message| (*message).to_string(),
+                                            )
+                                        },
+                                    )
+                                },
+                                std::string::ToString::to_string,
+                            )
+                        },
+                    );
 
                     partially_mutable_paths.push(PathDetailWithReason {
                         full_mutation_path: summary.full_mutation_path.clone(),
@@ -178,32 +218,19 @@ impl Display for NotMutableReason {
 impl From<&NotMutableReason> for Option<Value> {
     fn from(reason: &NotMutableReason) -> Self {
         match reason {
-            NotMutableReason::NonMutableHandle { .. } => {
-                Some(Value::String(format!("handle_wrapper_component: {reason}")))
-            }
-            NotMutableReason::NotInRegistry(_) => {
-                Some(Value::String(format!("not_in_registry: {reason}")))
-            }
-            NotMutableReason::RecursionLimitExceeded(_) => {
-                Some(Value::String(format!("recursion_limit_exceeded: {reason}")))
-            }
-            NotMutableReason::ComplexCollectionKey(_) => {
-                Some(Value::String(format!("complex_collection_key: {reason}")))
-            }
-            NotMutableReason::NoMutableChildren { .. } => {
-                Some(Value::String(format!("no_mutable_children: {reason}")))
-            }
-            NotMutableReason::NoExampleAvailable(_) => {
-                Some(Value::String(format!("no_example_available: {reason}")))
-            }
+            NotMutableReason::NonMutableHandle { .. }
+            | NotMutableReason::NotInRegistry(_)
+            | NotMutableReason::RecursionLimitExceeded(_)
+            | NotMutableReason::ComplexCollectionKey(_)
+            | NotMutableReason::NoMutableChildren { .. }
+            | NotMutableReason::NoExampleAvailable(_) => Some(Value::String(format!("{reason}"))),
             // PartialChildMutability returns structured JSON
             NotMutableReason::PartialChildMutability {
-                parent_type,
+                parent_type: _,
                 mutable_paths,
                 not_mutable_paths,
                 partially_mutable_paths,
             } => Some(json!({
-                "parent_type": parent_type,
                 "mutable": mutable_paths,
                 "not_mutable": not_mutable_paths,
                 "partially_mutable": partially_mutable_paths,

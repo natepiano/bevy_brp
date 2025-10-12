@@ -6,10 +6,8 @@ Multi-instance launching:
 - When instance_count > 1, launches multiple instances on sequential ports
 - Example: port=15702, instance_count=3 launches on ports 15702, 15703, 15704
 - Each instance gets its own log file with port in filename
-- Useful for parallel testing and load simulation
 
 Notes:
-- App must be built first. Check with list_bevy_apps. View logs with list_logs/read_log.
-- If multiple apps with the same name exist in different paths, you must specify the path parameter. The error message will list available paths.
+- If multiple apps with the same name exist in different paths, you must specify the path parameter.
 - Path matching supports: full relative paths (e.g., "bevy_brp/my-app"), partial paths (e.g., "my-app"), or workspace names for disambiguation.
 - When specifying a port, bevy_brp_extras is required to support listening on the environment variable `BRP_EXTRAS_PORT`.

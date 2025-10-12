@@ -57,7 +57,8 @@ pub struct SchemaInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub crate_name:     Option<String>,
     /// Reflection traits available on this type (Component, Resource, Serialize, Deserialize,
-    /// Default, FromReflect, etc.) Clients can check this array to determine supported operations:
+    /// Default, `FromReflect`, etc.) Clients can check this array to determine supported
+    /// operations:
     /// - Contains "Component" → supports Query, Get, Spawn, Insert (+ Mutate if mutable)
     /// - Contains "Resource" → supports Query, Get, Insert (+ Mutate if mutable)
     /// - Contains "Serialize"/"Deserialize" → type can be serialized (informational only)

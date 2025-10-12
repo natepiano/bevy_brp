@@ -211,6 +211,34 @@ pub fn recurse_mutation_paths(
     }
 }
 
+/// Aggregate multiple mutation statuses into a single status
+///
+/// Logic:
+/// - If any `PartiallyMutable` OR (has both `Mutable` and `NotMutable`) → `PartiallyMutable`
+/// - Else if any `NotMutable` → `NotMutable`
+/// - Else → `Mutable`
+pub fn aggregate_mutation_statuses(statuses: &[MutationStatus]) -> MutationStatus {
+    let has_partially_mutable = statuses
+        .iter()
+        .any(|s| matches!(s, MutationStatus::PartiallyMutable));
+
+    let has_mutable = statuses
+        .iter()
+        .any(|s| matches!(s, MutationStatus::Mutable));
+
+    let has_not_mutable = statuses
+        .iter()
+        .any(|s| matches!(s, MutationStatus::NotMutable));
+
+    if has_partially_mutable || (has_mutable && has_not_mutable) {
+        MutationStatus::PartiallyMutable
+    } else if has_not_mutable {
+        MutationStatus::NotMutable
+    } else {
+        MutationStatus::Mutable
+    }
+}
+
 /// Determine parent's mutation status based on children's statuses and return detailed reasons
 ///
 /// This is a shared helper function used by both non-enum types (via `MutationPathBuilder`)
@@ -219,27 +247,10 @@ pub fn determine_parent_mutation_status(
     ctx: &RecursionContext,
     child_paths: &[MutationPathInternal],
 ) -> (MutationStatus, Option<NotMutableReason>) {
-    // Check for any partially mutable children
-    let has_partially_mutable = child_paths
-        .iter()
-        .any(|p| matches!(p.mutation_status, MutationStatus::PartiallyMutable));
+    // Extract statuses and aggregate
+    let statuses: Vec<MutationStatus> = child_paths.iter().map(|p| p.mutation_status).collect();
 
-    let has_mutable = child_paths
-        .iter()
-        .any(|p| matches!(p.mutation_status, MutationStatus::Mutable));
-
-    let has_not_mutable = child_paths
-        .iter()
-        .any(|p| matches!(p.mutation_status, MutationStatus::NotMutable));
-
-    // Determine status
-    let status = if has_partially_mutable || (has_mutable && has_not_mutable) {
-        MutationStatus::PartiallyMutable
-    } else if has_not_mutable {
-        MutationStatus::NotMutable
-    } else {
-        MutationStatus::Mutable
-    };
+    let status = aggregate_mutation_statuses(&statuses);
 
     // Build detailed reason if not fully mutable
     let reason = match status {
@@ -251,6 +262,7 @@ pub fn determine_parent_mutation_status(
             Some(NotMutableReason::from_partial_mutability(
                 ctx.type_name().clone(),
                 summaries,
+                &ctx.registry,
             ))
         }
         MutationStatus::NotMutable => Some(ctx.create_no_mutable_children_error()),

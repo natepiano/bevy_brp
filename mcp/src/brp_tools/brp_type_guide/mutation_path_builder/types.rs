@@ -281,10 +281,13 @@ pub struct PathInfo {
 pub struct ExampleGroup {
     /// List of variants that share this signature
     pub applicable_variants: Vec<VariantName>,
-    /// Example value for this group
-    pub example:             Value,
+    /// Example value for this group (omitted for `NotMutable` variants)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub example:             Option<Value>,
     /// The variant signature as a string
     pub signature:           String,
+    /// Mutation status for this signature/variant group
+    pub mutation_status:     MutationStatus,
 }
 
 /// Entry describing a variant requirement at a specific path
@@ -348,17 +351,29 @@ impl MutationPath {
         let type_kind = TypeKind::from_schema(field_schema);
 
         // Generate description - override for partially_mutable paths
+        // Use type-specific terminology (fields, elements, entries, variants) instead of generic
+        // "descendants"
         let description = match path.mutation_status {
             MutationStatus::PartiallyMutable => {
-                "This path is not mutable due to some of its descendants not being mutable"
-                    .to_string()
+                format!(
+                    "This path is not mutable due to some of its {} not being mutable",
+                    type_kind.child_terminology()
+                )
             }
             _ => path.path_kind.description(&type_kind),
         };
 
         let (examples, example) = match path.mutation_status {
-            MutationStatus::PartiallyMutable | MutationStatus::NotMutable => {
-                // PartiallyMutable and NotMutable: no example at all (not even null)
+            MutationStatus::PartiallyMutable => {
+                // PartiallyMutable enums: show examples array with per-variant status
+                // PartiallyMutable non-enums: no examples
+                path.enum_example_groups.as_ref().map_or_else(
+                    || (vec![], None),
+                    |enum_examples| (enum_examples.clone(), None),
+                )
+            }
+            MutationStatus::NotMutable => {
+                // NotMutable: no example at all (not even null)
                 (vec![], None)
             }
             MutationStatus::Mutable => {
@@ -377,18 +392,39 @@ impl MutationPath {
             }
         };
 
-        // NEW: Extract applicable_variants and root_example from enum_data
-        let (applicable_variants, root_example) =
+        // Extract enum-specific fields (instructions, variants, examples) only for paths that
+        // can actually be mutated. This prevents contradictory output where a `not_mutable`
+        // path shows instructions on how to mutate it.
+        //
+        // For example, `.main_animation.0` might be `not_mutable` because `NodeIndex` has no
+        // example value. Without this check, we'd show:
+        //   - `mutation_status: "not_mutable"` (can't be mutated)
+        //   - `enum_instructions: "First, set root to..."` (here's how to mutate it!)
+        //
+        // This is confusing. Instead, we only include enum metadata for mutable/partially
+        // mutable paths where the instructions are actually useful.
+        let (enum_instructions, applicable_variants, root_example) = if matches!(
+            path.mutation_status,
+            MutationStatus::Mutable | MutationStatus::PartiallyMutable
+        ) {
             path.enum_path_data
                 .as_ref()
-                .map_or((None, None), |enum_data| {
+                .map_or((None, None, None), |enum_data| {
+                    let instructions = Some(super::enum_path_builder::generate_enum_instructions(
+                        enum_data,
+                        &path.full_mutation_path,
+                    ));
                     let variants = if enum_data.applicable_variants.is_empty() {
                         None
                     } else {
                         Some(enum_data.applicable_variants.clone())
                     };
-                    (variants, enum_data.root_example.clone())
-                });
+                    (instructions, variants, enum_data.root_example.clone())
+                })
+        } else {
+            // NotMutable paths: omit enum instructions, variants, and examples
+            (None, None, None)
+        };
 
         Self {
             description,
@@ -398,12 +434,7 @@ impl MutationPath {
                 type_kind,
                 mutation_status: path.mutation_status,
                 mutation_status_reason: path.mutation_status_reason.clone(),
-                enum_instructions: path.enum_path_data.as_ref().map(|ed| {
-                    super::enum_path_builder::generate_enum_instructions(
-                        ed,
-                        &path.full_mutation_path,
-                    )
-                }),
+                enum_instructions,
                 applicable_variants,
                 root_example,
             },

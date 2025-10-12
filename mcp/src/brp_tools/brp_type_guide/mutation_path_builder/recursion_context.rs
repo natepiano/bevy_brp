@@ -70,7 +70,7 @@
 //!   └─ scale: Vec3 (path: ".scale")
 //! ```
 //!
-//! Each node gets a RecursionContext with its exact position, enabling correct
+//! Each node gets a `RecursionContext` with its exact position, enabling correct
 //! mutation path generation during the ascent phase.
 use std::collections::HashMap;
 use std::ops::Deref;

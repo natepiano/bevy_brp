@@ -13,10 +13,4 @@ Examples:
 {"keys": ["Space"], "duration_ms": 2000} // Hold space 2 sec
 {"keys": ["ShiftLeft", "KeyA"]}         // Shift+A combo
 ```
-
-Returns:
-- status: "success" or "error"
-- keys_sent: Array of sent keys
-- duration_ms: Hold duration used
-
 Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

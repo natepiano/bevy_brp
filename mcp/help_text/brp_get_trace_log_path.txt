@@ -1,16 +1,8 @@
-Get the path to the comprehensive BRP diagnostic trace log file.
+Get the path to the BRP diagnostic trace log file. Useful only for debugging the mcp tool itself. You have to have trace logs in the code for anything to show up here.
 
 Returns information about the trace log file including:
-- log_path: Full path to the trace log file in the system temp directory
-- exists: Boolean indicating whether the log file currently exists
-- file_size_bytes: Size of the log file in bytes (only included if file exists)
+- log_path:
+- exists:
+- file_size_bytes:
 
-The trace log file contains detailed diagnostic information about all BRP operations when tracing is enabled through brp_set_tracing_level. This includes:
-- Parameter extraction and validation details
-- Method resolution processes  
-- Request processing steps
-- Error diagnostics and stack traces
-
-The log file is created automatically when tracing is initialized and persists across BRP sessions. Use this tool to locate the file for analysis, troubleshooting, or integration with external logging systems.
-
-This is particularly useful for debugging BRP operations, understanding request processing pipelines, and diagnosing complex interaction issues.
+The log file is created automatically when tracing level is set via `mcp__brp__brp_set_tracing_level`.

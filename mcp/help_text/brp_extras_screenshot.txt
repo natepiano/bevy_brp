@@ -1,20 +1,9 @@
-Capture screenshots from running Bevy applications using bevy_brp_extras for debugging, documentation, automated testing, or building screenshot-based testing workflows.
+Capture screenshots from running Bevy applications using bevy_brp_extras.
 
 Behavior:
 - Captures current frame via bevy_brp_extras/screenshot
 - Saves to specified path
-- Supports common image formats (PNG, JPEG, etc.)
-- Path must be writable by Bevy application
-
-Returns:
-- status: "success" or "error"
-- path: File path where saved
-- port: Port used
-- message: Result description
 
 Prerequisites:
 - bevy_brp_extras dependency required
 - BrpExtrasPlugin must be registered
-- Camera and rendering pipeline must be active
-
-IMPORTANT: Requires bevy_brp_extras - standard BRP alone won't work.

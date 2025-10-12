@@ -9,6 +9,8 @@
 //!
 //! Used by the test suite to validate all extras functionality.
 
+#![allow(clippy::used_underscore_binding)] // False positive on enum struct variant fields
+
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
@@ -284,8 +286,9 @@ struct TestTupleStruct(pub f32, pub String, pub bool);
 /// Test component that exceeds recursion depth (11 nested Options exceeds limit of 10)
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
+#[allow(clippy::type_complexity)]
 struct RecursionDepthTestComponent {
-    /// 11 levels of nesting: Option->Option->...->f32 (exceeds MAX_TYPE_RECURSION_DEPTH of 10)
+    /// 11 levels of nesting: Option->Option->...->f32 (exceeds `MAX_TYPE_RECURSION_DEPTH` of 10)
     pub deeply_nested:
         Option<Option<Option<Option<Option<Option<Option<Option<Option<Option<Option<f32>>>>>>>>>>>,
 }
@@ -762,9 +765,16 @@ fn spawn_shadow_test_entities(commands: &mut Commands, asset_server: &AssetServe
     ));
 }
 
-#[allow(clippy::too_many_lines)]
 fn spawn_test_component_entities(commands: &mut Commands) {
-    // Entity with TestArrayField component
+    spawn_array_and_tuple_test_entities(commands);
+    spawn_collection_test_entities(commands);
+    spawn_enum_test_entities(commands);
+    spawn_gltf_test_entities(commands);
+    spawn_mixed_mutability_test_entities(commands);
+    spawn_recursion_test_entity(commands);
+}
+
+fn spawn_array_and_tuple_test_entities(commands: &mut Commands) {
     commands.spawn((
         TestArrayField {
             vertices: [
@@ -777,7 +787,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestArrayFieldEntity"),
     ));
 
-    // Entity with TestTupleField component
     commands.spawn((
         TestTupleField {
             coords:    (10.0, 20.0),
@@ -786,13 +795,11 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestTupleFieldEntity"),
     ));
 
-    // Entity with TestTupleStruct component
     commands.spawn((
         TestTupleStruct(42.0, "test".to_string(), true),
         Name::new("TestTupleStructEntity"),
     ));
 
-    // Entity with TestComplexTuple component for testing tuple recursion
     commands.spawn((
         TestComplexTuple {
             complex_tuple: (
@@ -803,15 +810,15 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         },
         Name::new("TestComplexTupleEntity"),
     ));
+}
 
-    // Entity with SimpleSetComponent for testing HashSet mutations
+fn spawn_collection_test_entities(commands: &mut Commands) {
     let mut simple_set = SimpleSetComponent::default();
     simple_set.string_set.insert("hello".to_string());
     simple_set.string_set.insert("world".to_string());
     simple_set.string_set.insert("test".to_string());
     commands.spawn((simple_set, Name::new("SimpleSetEntity")));
 
-    // Entity with TestMapComponent for testing HashMap mutations
     let mut test_map = TestMapComponent::default();
     test_map
         .strings
@@ -840,7 +847,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
 
     commands.spawn((test_map, Name::new("TestMapEntity")));
 
-    // Entity with TestEnumKeyedMap for testing NotMutable paths with complex keys
     let mut enum_keyed_map = TestEnumKeyedMap::default();
     enum_keyed_map
         .enum_keyed
@@ -854,7 +860,13 @@ fn spawn_test_component_entities(commands: &mut Commands) {
 
     commands.spawn((enum_keyed_map, Name::new("TestEnumKeyedMapEntity")));
 
-    // Entity with TestComplexComponent using the struct variant
+    commands.spawn((
+        TestCollectionComponent::default(),
+        Name::new("TestCollectionEntity"),
+    ));
+}
+
+fn spawn_enum_test_entities(commands: &mut Commands) {
     commands.spawn((
         TestComplexComponent {
             transform:      Transform::from_xyz(5.0, 10.0, 15.0),
@@ -866,13 +878,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestComplexEntity"),
     ));
 
-    // Entity with TestCollectionComponent for testing List and Set recursion
-    commands.spawn((
-        TestCollectionComponent::default(),
-        Name::new("TestCollectionEntity"),
-    ));
-
-    // Entity with TestVariantChainEnum to test variant chain propagation through non-enum levels
     commands.spawn((
         TestVariantChainEnum::WithMiddleStruct {
             middle_struct: MiddleStruct {
@@ -884,13 +889,11 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestVariantChainEntity"),
     ));
 
-    // Entity with SimpleNestedEnum for testing enum recursion
     commands.spawn((
         SimpleNestedEnum::WithVec2(Vec2::new(10.0, 20.0)),
         Name::new("SimpleNestedEnumEntity"),
     ));
 
-    // Entity with TestEnumWithArray for testing array wrapping
     commands.spawn((
         TestEnumWithArray::WithVec2Array([
             Vec2::new(0.0, 0.0),
@@ -900,66 +903,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestEnumWithArrayEntity"),
     ));
 
-    // Entity with TestStructNoSerDe
-    commands.spawn((
-        TestStructNoSerDe {
-            value:   123.45,
-            name:    "test_struct".to_string(),
-            enabled: true,
-        },
-        Name::new("TestStructNoSerDeEntity"),
-    ));
-
-    // Entity with Gamepad for testing mutations
-    commands.spawn((Gamepad::default(), Name::new("GamepadTestEntity")));
-
-    // Entity with GamepadSettings for testing mutations
-    commands.spawn((
-        GamepadSettings::default(),
-        Name::new("GamepadSettingsTestEntity"),
-    ));
-
-    // Entity with GltfExtras for testing mutations
-    commands.spawn((
-        bevy::gltf::GltfExtras {
-            value: "test gltf extras".to_string(),
-        },
-        Name::new("GltfExtrasTestEntity"),
-    ));
-
-    // Entity with GltfMaterialExtras for testing mutations
-    commands.spawn((
-        bevy::gltf::GltfMaterialExtras {
-            value: "test material extras".to_string(),
-        },
-        Name::new("GltfMaterialExtrasTestEntity"),
-    ));
-
-    // Entity with GltfMaterialName for testing mutations
-    commands.spawn((
-        bevy::gltf::GltfMaterialName("test material name".to_string()),
-        Name::new("GltfMaterialNameTestEntity"),
-    ));
-
-    // Entity with GltfMeshExtras for testing mutations
-    commands.spawn((
-        bevy::gltf::GltfMeshExtras {
-            value: "test mesh extras".to_string(),
-        },
-        Name::new("GltfMeshExtrasTestEntity"),
-    ));
-
-    // Entity with GltfSceneExtras for testing mutations
-    commands.spawn((
-        bevy::gltf::GltfSceneExtras {
-            value: "test scene extras".to_string(),
-        },
-        Name::new("GltfSceneExtrasTestEntity"),
-    ));
-
-    // Enum recursion test entities
-
-    // SimpleNestedEnum with different variants
     commands.spawn((
         SimpleNestedEnum::WithVec2(Vec2::new(10.0, 20.0)),
         Name::new("SimpleNestedEnumVec2Entity"),
@@ -978,7 +921,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("SimpleNestedEnumStructEntity"),
     ));
 
-    // OptionTestEnum with Option variants
     commands.spawn((
         OptionTestEnum::MaybeVec2(Some(Vec2::new(100.0, 200.0))),
         Name::new("OptionTestEnumVec2Entity"),
@@ -989,7 +931,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("OptionTestEnumTransformEntity"),
     ));
 
-    // WrapperEnum variants
     commands.spawn((
         WrapperEnum::WithSimpleEnum(SimpleNestedEnum::WithVec2(Vec2::new(50.0, 75.0))),
         Name::new("WrapperEnumSimpleEntity"),
@@ -1001,12 +942,62 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         ))),
         Name::new("WrapperEnumOptionalEntity"),
     ));
+}
 
-    // Entity with Gamepad component for testing Set/Map types with enums
-    // Note: Gamepad fields are private, so we use Default
+fn spawn_gltf_test_entities(commands: &mut Commands) {
+    commands.spawn((
+        TestStructNoSerDe {
+            value:   123.45,
+            name:    "test_struct".to_string(),
+            enabled: true,
+        },
+        Name::new("TestStructNoSerDeEntity"),
+    ));
+
+    commands.spawn((Gamepad::default(), Name::new("GamepadTestEntity")));
+
+    commands.spawn((
+        GamepadSettings::default(),
+        Name::new("GamepadSettingsTestEntity"),
+    ));
+
+    commands.spawn((
+        bevy::gltf::GltfExtras {
+            value: "test gltf extras".to_string(),
+        },
+        Name::new("GltfExtrasTestEntity"),
+    ));
+
+    commands.spawn((
+        bevy::gltf::GltfMaterialExtras {
+            value: "test material extras".to_string(),
+        },
+        Name::new("GltfMaterialExtrasTestEntity"),
+    ));
+
+    commands.spawn((
+        bevy::gltf::GltfMaterialName("test material name".to_string()),
+        Name::new("GltfMaterialNameTestEntity"),
+    ));
+
+    commands.spawn((
+        bevy::gltf::GltfMeshExtras {
+            value: "test mesh extras".to_string(),
+        },
+        Name::new("GltfMeshExtrasTestEntity"),
+    ));
+
+    commands.spawn((
+        bevy::gltf::GltfSceneExtras {
+            value: "test scene extras".to_string(),
+        },
+        Name::new("GltfSceneExtrasTestEntity"),
+    ));
+
     commands.spawn((Gamepad::default(), Name::new("TestGamepad")));
+}
 
-    // Helper function to create a TestMixedMutabilityCore instance
+fn spawn_mixed_mutability_test_entities(commands: &mut Commands) {
     let create_mixed_core = |suffix: &str| TestMixedMutabilityCore {
         mutable_string:           format!("test_string_{suffix}"),
         mutable_float:            42.5,
@@ -1035,7 +1026,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         },
     };
 
-    // Entity with TestMixedMutabilityVec (List parent)
     commands.spawn((
         TestMixedMutabilityVec {
             items: vec![
@@ -1047,7 +1037,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestMixedMutabilityVecEntity"),
     ));
 
-    // Entity with TestMixedMutabilityArray (Array parent)
     commands.spawn((
         TestMixedMutabilityArray {
             items: [create_mixed_core("array_0"), create_mixed_core("array_1")],
@@ -1055,13 +1044,11 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestMixedMutabilityArrayEntity"),
     ));
 
-    // Entity with TestMixedMutabilityTuple (TupleStruct parent)
     commands.spawn((
         TestMixedMutabilityTuple(create_mixed_core("tuple"), 99.9, "tuple_string".to_string()),
         Name::new("TestMixedMutabilityTupleEntity"),
     ));
 
-    // Entity with TestMixedMutabilityEnum (Enum parent)
     commands.spawn((
         TestMixedMutabilityEnum::Multiple {
             name:  "enum_multiple".to_string(),
@@ -1070,8 +1057,9 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         },
         Name::new("TestMixedMutabilityEnumEntity"),
     ));
+}
 
-    // Entity with RecursionDepthTestComponent (exceeds recursion depth limit)
+fn spawn_recursion_test_entity(commands: &mut Commands) {
     commands.spawn((
         RecursionDepthTestComponent::default(),
         Name::new("RecursionDepthTestEntity"),

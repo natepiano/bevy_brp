@@ -57,7 +57,7 @@ async fn handle_impl(params: TypeGuideParams) -> Result<TypeGuideResult> {
     let engine = TypeGuideEngine::new(params.port).await?;
 
     // Run the engine to produce the typed response
-    let response = engine.generate_response(&params.types)?;
+    let response = engine.generate_response(&params.types);
     let type_count = response.discovered_count;
 
     Ok(TypeGuideResult::new(response, type_count)
@@ -105,7 +105,7 @@ impl TypeGuideEngine {
     }
 
     /// Generate response for requested types
-    pub fn generate_response(&self, requested_types: &[String]) -> Result<TypeGuideResponse> {
+    pub fn generate_response(&self, requested_types: &[String]) -> TypeGuideResponse {
         // Build the type_guide HashMap functionally
         let type_guide: HashMap<BrpTypeName, TypeGuide> = requested_types
             .iter()
@@ -136,7 +136,7 @@ impl TypeGuideEngine {
             .filter(|tg| !tg.in_registry || tg.error.is_some())
             .count();
 
-        Ok(TypeGuideResponse {
+        TypeGuideResponse {
             discovered_count: successful_discoveries,
             requested_types: requested_types.to_vec(),
             summary: TypeGuideSummary {
@@ -145,6 +145,6 @@ impl TypeGuideEngine {
                 total_requested: requested_types.len(),
             },
             type_guide,
-        })
+        }
     }
 }

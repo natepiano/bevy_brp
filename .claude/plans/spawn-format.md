@@ -15,7 +15,9 @@ Tested 27 PartiallyMutable + Default types:
 
 ## Changes
 
-### 1. Add constants (constants.rs)
+### 1. Add constants (mcp/src/brp_tools/brp_type_guide/constants.rs)
+
+**File location**: `mcp/src/brp_tools/brp_type_guide/constants.rs` (parent directory of mutation_path_builder)
 
 Add after `REFLECT_TRAIT_RESOURCE`:
 
@@ -48,6 +50,12 @@ use serde_json::Value;
 use serde_json::{Value, json};
 ```
 
+Add the `JsonObjectAccess` trait import (required for `get_field_array` method):
+
+```rust
+use crate::json_object::JsonObjectAccess;
+```
+
 Add constants import after the existing module imports:
 
 ```rust
@@ -57,6 +65,8 @@ use super::super::constants::{
 ```
 
 Note: `SchemaField` is already imported via `use crate::json_schema::SchemaField;` - no changes needed.
+
+**Important**: No changes to `mutation_path_builder/mod.rs` are needed. The constants are imported from the parent directory (`brp_type_guide/constants.rs`) using `super::super::constants`, so no module declaration is required in the mutation_path_builder module.
 
 ### 3. Check for Default trait once (mutation_path_builder/types.rs)
 
@@ -137,7 +147,17 @@ let (examples, example) = match path.mutation_status {
         (vec![], example)
     }
     MutationStatus::Mutable => {
-        // ... handles mutable paths
+        // PRESERVE EXISTING LOGIC - do not modify this branch
+        path.enum_example_groups.as_ref().map_or_else(
+            || {
+                // Mutable paths: use the example value
+                (vec![], Some(path.example.clone()))
+            },
+            |enum_examples| {
+                // Enum root: use the examples array
+                (enum_examples.clone(), None)
+            },
+        )
     }
 };
 ```

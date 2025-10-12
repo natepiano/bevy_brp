@@ -51,4 +51,18 @@ impl TypeKind {
             .and_then(|s| s.parse().ok())
             .unwrap_or(Self::Value)
     }
+
+    /// Returns appropriate terminology for child elements of this type
+    ///
+    /// Used in descriptions to provide type-specific language instead of generic "descendants".
+    /// For example, a Struct has "fields", an Array has "elements", a Map has "entries", etc.
+    pub const fn child_terminology(&self) -> &'static str {
+        match self {
+            Self::Struct => "fields",
+            Self::Enum => "variants",
+            Self::Map => "entries",
+            Self::Array | Self::List | Self::Set | Self::Tuple | Self::TupleStruct => "elements",
+            Self::Value => "components",
+        }
+    }
 }

@@ -1,3 +1,1 @@
 Execute any Bevy Remote Protocol (BRP) method on a running Bevy app to send arbitrary commands and receive responses.
-
-Note: If you get a "Framework error: Unable to extract parameters" when calling with just a method name, try adding the port parameter to make it work.

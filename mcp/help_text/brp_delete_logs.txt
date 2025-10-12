@@ -4,4 +4,4 @@ Returns: Count of deleted files.
 
 Note: Use list_logs first to preview. Only bevy_brp_mcp logs can be deleted for safety.
 
-Note: Currently watch logs cannot be deleted exclusively. You can delete _all_ logs including watch logsby not specifying app_name or older_than_seconds. You can also delete all logs older than a certain age by specifying older_than_seconds.
+Note: Currently watch logs cannot be deleted exclusively. You can delete _all_ logs including watch logs by not specifying app_name or older_than_seconds. You can also delete all logs older than a certain age by specifying older_than_seconds.

@@ -1,13 +1,12 @@
 Set the tracing level for comprehensive BRP diagnostic logging to file.
 
 Tracing levels (from least to most verbose):
-- error: Only error messages
-- warn: Warnings and errors  
-- info: General information, warnings, and errors (default)
-- debug: Debug information plus all above levels
-- trace: Most detailed tracing plus all above levels
+- error
+- warn (default)
+- info
+- debug
+- trace
 
 All tracing output is written to 'bevy_brp_mcp_trace.log' in the system temp directory. The file-based logging allows detailed diagnostic information without cluttering the MCP response stream.
 
-
-This is particularly useful for troubleshooting BRP operations, understanding request processing pipelines, and diagnosing parameter parsing or method resolution issues.
+Every new session sets the tracing level back to default
