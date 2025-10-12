@@ -39,7 +39,7 @@ use bevy::light::cluster::ClusterConfig;
 use bevy::light::{
     CascadeShadowConfig, Cascades, ClusteredDecal, DirectionalLightTexture, FogVolume,
     GeneratedEnvironmentMapLight, IrradianceVolume, NotShadowCaster, NotShadowReceiver,
-    PointLightTexture, ShadowFilteringMethod, VolumetricFog, VolumetricLight,
+    PointLightTexture, ShadowFilteringMethod, SpotLightTexture, VolumetricFog, VolumetricLight,
 };
 use bevy::mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy::mesh::skinning::SkinnedMesh;
@@ -710,6 +710,9 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
         },
         Transform::from_xyz(0.0, 4.0, 0.0),
         Name::new("SpotLightTestEntity"),
+        SpotLightTexture {
+            image: asset_server.load("lightmaps/caustic_directional_texture.png"),
+        },
     ));
 
     // Entity with DistanceFog for testing mutations
