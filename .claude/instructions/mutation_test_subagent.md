@@ -18,57 +18,30 @@
 **CRITICAL RESPONSE LIMIT**: Return ONLY the JSON array result. NO explanations, NO commentary, NO test steps, NO summaries.
 
 <ErrorRecoveryProtocol>
-═══════════════════════════════════════════════════════════════════════════════
-🚨 MANDATORY ERROR RECOVERY PROTOCOL - READ THIS FIRST 🚨
-═══════════════════════════════════════════════════════════════════════════════
+**CRITICAL - READ THIS SECTION FIRST**
 
-**BEFORE YOU REPORT ANY FAILURE, YOU MUST CHECK IF IT'S A PRIMITIVE QUOTING ERROR**
+IF any mutation error contains `"invalid type: string"`:
+1. This means YOU stringified the value (your bug, not BRP)
+2. Immediately retry with proper JSON type (unquoted)
+3. Increment `retry_count`
+4. Only report failure if retry also fails with DIFFERENT error
 
-**IF YOU SEE THIS ERROR**: `invalid type: string "X", expected [number/boolean type]`
+**Example (Lightmap .uv_rect.max failure from testing)**:
+- Sent: `{"value": "[1.0, 2.0]"}` (string)
+- Error: `invalid type: string "[1.0, 2.0]", expected a sequence of 2 f32 values`
+- Fix: Retry with `{"value": [1.0, 2.0]}` (array)
+- Result: If retry succeeds → mark PASSED; if retry fails with different error → mark FAILED
 
-**THIS MEANS**:
-- ❌ YOU sent "X" as a quoted string (YOUR BUG, not BRP bug)
-- ❌ This is NOT a test failure - it's YOUR serialization error
-- ✅ You MUST retry immediately with unquoted primitive
-- ✅ ONLY report as failure if retry fails with DIFFERENT error
+**Error patterns → Fix**:
+- `expected a sequence` or `expected reflected list` → Unquoted array
+- `expected a boolean` → Unquoted boolean
+- `expected f32/i32/u32` → Unquoted number
+- `expected reflected struct` → Unquoted object
 
-**CONCRETE EXAMPLE - FOLLOW THESE EXACT STEPS**:
-
-1. **You send**: `{"method": "world_mutate_components", "params": {"value": "true"}}`
-   - ⚠️ ERROR: You quoted the boolean!
-
-2. **You receive**: `invalid type: string "true", expected a boolean`
-   - 🔍 RECOGNIZE: This error means YOU sent "true" (string) instead of true (boolean)
-
-3. **YOU MUST DO THIS IMMEDIATELY**:
-   - **STEP 1:** DO NOT report this as a test failure
-   - **STEP 2:** Verify your value: true is a BOOLEAN, not a STRING
-   - **STEP 3:** Retry the SAME mutation with: {"value": true}  (no quotes!)
-   - **STEP 4:** If retry succeeds → mark mutation as PASSED
-   - **STEP 5:** If retry fails with DIFFERENT error → then report as failure
-
-4. **ONLY REPORT FAILURE IF**:
-   - The retry ALSO fails AND the error is NOT about string quoting
-
-**VERIFICATION CHECKLIST - COMPLETE BEFORE EVERY MUTATION**:
-□ My value is a number (like 42)? → Ensure params shows `"value": 42` NOT `"value": "42"`
-□ My value is a boolean (like true)? → Ensure params shows `"value": true` NOT `"value": "true"`
-□ I see quotes around my number/boolean? → STOP! Remove the quotes!
-□ I received "invalid type: string" error? → Follow ERROR RECOVERY PROTOCOL above!
-
-═══════════════════════════════════════════════════════════════════════════════
+**Tracking**: Keep `retry_count` variable starting at 0, increment for each "invalid type: string" error you retry. Include in final output.
 
 **IF YOU GET STUCK IN A LOOP CALLING TOOLS WITH EMPTY PARAMETERS**:
-
-**SYMPTOM**: You find yourself repeatedly calling MCP tools (like `mcp__brp__world_mutate_components`) with empty or incomplete parameter lists, unable to construct the full parameters.
-
-**SOLUTION**: **REORDER THE PARAMETERS** in your tool call and try again. This will break you out of the mental loop.
- Parameter order doesn't matter for the MCP tool - reordering just helps you break the loop
-
-**EXAMPLE**:
-- ❌ STUCK: Calling `mcp__brp__world_mutate_components(entity=123, component="type", path=".field", value=42)`
-- ✅ UNSTUCK: Reorder to `mcp__brp__world_mutate_components(component="type", entity=123, value=42, path=".field")`
-
+Reorder parameters in your tool call - parameter order doesn't matter, but reordering breaks mental loops.
 </ErrorRecoveryProtocol>
 
 <JsonPrimitiveRules>
@@ -137,23 +110,7 @@ Before EVERY mutation request:
 - ❌ WRONG: `{"value": "{\"x\": 1.0, \"y\": 2.0}"}` - This is a STRING
 - ✅ CORRECT: `{"value": {"x": 1.0, "y": 2.0}}` - This is an OBJECT
 
-**ERROR RECOVERY PROTOCOL**:
-If you receive error containing: `invalid type: string "X", expected [any type]`:
-1. **RECOGNIZE**: This means you DEFINITELY sent the value as a quoted string
-2. **DO NOT** report this as a test failure - this is YOUR bug, not a BRP bug
-3. **IDENTIFY THE TYPE**:
-   - "expected reflected list value" → You stringified an array
-   - "expected a boolean" → You stringified a boolean
-   - "expected f32" → You stringified a number
-   - "expected reflected struct" → You stringified an object
-4. **FIX IMMEDIATELY**: Retry the SAME mutation with the value in proper JSON form:
-   - Arrays: Remove outer quotes, send as native JSON array
-   - Objects: Remove outer quotes, send as native JSON object
-   - Primitives: Remove quotes, send as native JSON number/boolean
-5. **VERIFY**: Before retry, inspect your params structure - ensure NO outer quotes
-6. **ONLY FAIL**: If the retry also fails with a DIFFERENT error message
-
-**VALIDATION**: Before sending ANY mutation, verify the entire value is in native JSON form (not a string representation)
+**ERROR RECOVERY**: If error contains `"invalid type: string"`, follow <ErrorRecoveryProtocol/> immediately - retry with unquoted value before reporting failure.
 </JsonPrimitiveRules>
 
 <SubagentContext>
@@ -397,9 +354,7 @@ For each type name string in your `type_names` array:
 3. **CAPTURE ALL ERROR DETAILS**: When ANY operation fails, record the COMPLETE request and response
 4. NEVER test types not provided in your assignment data
 
-**IMPORTANT**: Follow <JsonPrimitiveRules/> - validate every `"value"` field before sending mutations.
-**ERROR SIGNAL**: "invalid type: string" means you quoted a primitive.
-**IF YOU GET THIS ERROR**: Follow the ERROR RECOVERY PROTOCOL in <JsonPrimitiveRules/> - retry immediately with the unquoted value, do NOT report as test failure unless retry fails with a different error.
+**AFTER EACH MUTATION**: If error contains "invalid type: string", follow <ErrorRecoveryProtocol/> immediately.
 </TestAllTypes>
 
 <ResourceTestingProtocol>
@@ -471,33 +426,21 @@ For each type name string in your `type_names` array:
 </ComponentTestingProtocol>
 
 <PreFailureCheck>
-═══════════════════════════════════════════════════════════════════════════════
-🛑 MANDATORY PRE-FAILURE-REPORT CHECK 🛑
-═══════════════════════════════════════════════════════════════════════════════
+**BEFORE REPORTING ANY FAILURE**:
 
-**BEFORE YOU REPORT status: "FAIL" FOR ANY TYPE, ANSWER THESE QUESTIONS**:
+1. Count "invalid type: string" errors received: _____
+2. Does this match your `retry_count`? (must be equal)
+3. Are you reporting ANY failures that had "invalid type: string"?
+   - If YES → Protocol violation - those must be retried first per <ErrorRecoveryProtocol/>
 
-1. ❓ Did ANY mutation fail with error: `invalid type: string "X", expected [type]`?
-   - ✅ YES → Did you retry with unquoted primitive? If NO, you MUST retry now!
-   - ✅ NO → Proceed to report failure
-
-2. ❓ After retrying with unquoted primitive, did the mutation succeed?
-   - ✅ YES → Mark mutation as PASSED, DO NOT report as failure
-   - ✅ NO → Proceed to report failure (only if retry also failed)
-
-3. ❓ Are you 100% certain this is NOT a primitive quoting error on your part?
-   - ✅ YES → Proceed to report failure
-   - ✅ NO → Review ERROR RECOVERY PROTOCOL at top of this prompt
-
-**IF YOU SKIP THESE CHECKS, YOUR RESULTS WILL BE INVALID**
-
-═══════════════════════════════════════════════════════════════════════════════
+If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 </PreFailureCheck>
 
 <ReturnResults>
 **CRITICAL FIELD REQUIREMENTS**:
 - `type`: Extract from the `type_name` field returned by `get_type_guide.sh` - this is the AUTHORITATIVE type name
 - `tested_type`: The exact type name string you passed to BRP queries - MUST be identical to `type`
+- `retry_count`: Number of "invalid type: string" errors you retried (required for validation)
 - Purpose: Detects if you hallucinated or modified a type name (CRITICAL BUG if they differ)
 - **BOTH MUST MATCH**: The string from assignment's `type_names` array = type guide's `type_name` = what you used in BRP calls
 
@@ -508,6 +451,7 @@ For each type name string in your `type_names` array:
   "tested_type": "[actual type used in queries - MUST match 'type']",
   "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
   "entity_id": 123,  // Entity ID if created, null otherwise
+  "retry_count": 0,  // How many "invalid type: string" errors you retried
   "operations_completed": {
     "spawn_insert": true|false,  // Did spawn/insert succeed?
     "entity_query": true|false,   // Did query find entity?
@@ -549,24 +493,12 @@ For each type name string in your `type_names` array:
 </ReturnResults>
 
 <FinalValidation>
-═══════════════════════════════════════════════════════════════════════════════
-🚨 FINAL VALIDATION BEFORE OUTPUT 🚨
-═══════════════════════════════════════════════════════════════════════════════
+**VERIFY BEFORE OUTPUT**:
+- `retry_count` matches number of "invalid type: string" errors received
+- No failures reported with "invalid type: string" in error_message
+- All failure values are proper JSON types (not strings)
 
-**STOP! Before you output your JSON, answer YES/NO to each**:
-
-1. ❓ Did I follow ERROR RECOVERY PROTOCOL for ANY "invalid type: string" errors?
-   - If you got this error and did NOT retry with unquoted primitive, YOUR RESULTS ARE INVALID
-
-2. ❓ Did I complete the MANDATORY PRE-FAILURE-REPORT CHECK above?
-   - If you reported ANY failure without completing the check, YOUR RESULTS ARE INVALID
-
-3. ❓ Are ALL my failure reports legitimate (not primitive quoting errors)?
-   - If ANY failure is actually a primitive quoting error, YOUR RESULTS ARE INVALID
-
-**IF YOU CANNOT ANSWER YES TO ALL THREE, DO NOT OUTPUT YOUR JSON - GO BACK AND FIX IT**
-
-═══════════════════════════════════════════════════════════════════════════════
+If any fail: Review <ErrorRecoveryProtocol/> and fix before output.
 </FinalValidation>
 
 <TypeNameValidation>
