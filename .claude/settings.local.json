@@ -179,7 +179,8 @@
       "Bash(killall:*)",
       "Bash(.claude/scripts/extras_test_poll_screenshot.sh:*)",
       "Bash(mcp__brp__brp_launch_bevy_example:*)",
-      "WebFetch(domain:rust-lang.github.io)"
+      "WebFetch(domain:rust-lang.github.io)",
+      "Bash(claude --version)"
     ],
     "deny": [
       "Bash(sed:*)",
