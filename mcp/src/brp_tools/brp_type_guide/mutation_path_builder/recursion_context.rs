@@ -73,19 +73,50 @@
 //! Each node gets a RecursionContext with its exact position, enabling correct
 //! mutation path generation during the ascent phase.
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::sync::Arc;
 
 use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
-use super::super::constants::RecursionDepth;
-use super::NotMutableReason;
+use super::super::constants::MAX_TYPE_RECURSION_DEPTH;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
 use super::types::{FullMutationPath, PathAction, VariantPath};
+use super::{BuilderError, NotMutableReason};
 use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
+
+/// Type-safe wrapper for recursion depth tracking
+///
+/// The `increment()` and `exceeds_limit()` methods are intentionally private to this module,
+/// ensuring they can only be called from `RecursionContext::create_recursion_context()`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RecursionDepth(usize);
+
+impl RecursionDepth {
+    pub const ZERO: Self = Self(0);
+
+    /// Increment depth - private to this module
+    const fn increment(self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    /// Check if depth exceeds limit - private to this module
+    const fn exceeds_limit(self) -> bool {
+        self.0 > MAX_TYPE_RECURSION_DEPTH
+    }
+}
+
+// Allow direct comparison with integers
+impl Deref for RecursionDepth {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 /// Context for mutation path building operations
 ///
@@ -150,15 +181,31 @@ impl RecursionContext {
 
     /// Create a new context for recursion
     ///
-    /// Increments depth for the child context. Depth limit checking should be done
-    /// by the caller before calling this method.
+    /// Increments depth and automatically checks depth limit, returning an error if exceeded.
+    /// This ensures depth checking cannot be accidentally skipped.
+    ///
+    /// The `increment()` and `exceeds_limit()` methods are private to this module, ensuring
+    /// they can only be called here.
     pub fn create_recursion_context(
         &self,
         path_kind: PathKind,
         child_path_action: PathAction,
-    ) -> Self {
+    ) -> std::result::Result<Self, BuilderError> {
         // Increment depth for child context
         let new_depth = self.depth.increment();
+
+        // Check depth limit immediately after increment
+        if new_depth.exceeds_limit() {
+            tracing::debug!(
+                "RECURSION LIMIT EXCEEDED: type={}, depth={}, path={}",
+                path_kind.type_name(),
+                *new_depth,
+                self.full_mutation_path
+            );
+            return Err(BuilderError::NotMutable(
+                NotMutableReason::RecursionLimitExceeded(path_kind.type_name().clone()),
+            ));
+        }
 
         let new_path_prefix = FullMutationPath::from(format!(
             "{}{}",
@@ -175,14 +222,14 @@ impl RecursionContext {
             child_path_action
         };
 
-        Self {
+        Ok(Self {
             path_kind,
             registry: Arc::clone(&self.registry),
             full_mutation_path: new_path_prefix,
             path_action,
             variant_chain: self.variant_chain.clone(), // Inherit parent's variant chain
             depth: new_depth,
-        }
+        })
     }
 
     /// Extract all element types from Tuple/TupleStruct schema

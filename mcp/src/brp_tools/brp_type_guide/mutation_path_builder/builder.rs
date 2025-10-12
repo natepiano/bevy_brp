@@ -24,7 +24,7 @@
 //! Types inside enum variants inherit variant chains but don't populate them - parent enums
 //! handle all variant path population through `update_child_variant_paths`.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use error_stack::Report;
 use serde_json::{Value, json};
@@ -103,17 +103,12 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             .iter()
             .filter(|p| child_examples.contains_key(&p.path_kind.to_mutation_path_descriptor()))
             .collect();
-        let assembled_partial_roots_new =
-            Self::assemble_partial_roots_new(&self.inner, ctx, direct_children.as_slice())?;
+        let partial_root_examples =
+            Self::assemble_partial_root_examples(&self.inner, ctx, direct_children.as_slice())?;
 
         // Use knowledge example if available (for Teach types), otherwise use assembled example
-        let final_example = knowledge_example.map_or(assembled_example, |knowledge_example| {
-            tracing::debug!(
-                "Using knowledge example for {} instead of assembled value",
-                ctx.type_name()
-            );
-            knowledge_example
-        });
+        let final_example =
+            knowledge_example.map_or(assembled_example, |knowledge_example| knowledge_example);
 
         // Compute parent's mutation status from children's statuses
         let (parent_status, reason_enum) = determine_parent_mutation_status(ctx, &all_paths);
@@ -163,7 +158,7 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
                     example_to_use,
                     parent_status,
                     mutation_status_reason,
-                    assembled_partial_roots_new,
+                    partial_root_examples,
                 ))
             }
         }
@@ -179,29 +174,19 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
 ///
 /// With the removal of `EnumContext`, the `RecursionContext` is now immutable throughout
 /// the recursion. Each type handles its own behavior without needing to coordinate context states.
+///
+/// # Depth Limit Checking
+///
+/// Depth limit checking is now automatic in `RecursionContext::create_recursion_context()`.
+/// The check happens at the point where depth is incremented, ensuring developers cannot
+/// accidentally skip the check.
 pub fn recurse_mutation_paths(
     type_kind: TypeKind,
     ctx: &RecursionContext,
 ) -> Result<Vec<MutationPathInternal>> {
-    // Check depth limit for ALL types (enum and non-enum) at single dispatch point
-    if ctx.depth.exceeds_limit() {
-        return Ok(vec![
-            MutationPathBuilder::<ValueMutationBuilder>::build_not_mutable_path(
-                ctx,
-                NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
-            ),
-        ]);
-    }
-
     let mutation_result = match type_kind {
         // Enum is distinct from the rest but now returns MutationResult too
-        TypeKind::Enum => {
-            tracing::debug!(
-                "[DISPATCH] Dispatching to enum_path_builder::process_enum for {}",
-                ctx.type_name()
-            );
-            enum_path_builder::process_enum(ctx)
-        }
+        TypeKind::Enum => enum_path_builder::process_enum(ctx),
         TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx),
         TypeKind::Tuple | TypeKind::TupleStruct => {
             MutationPathBuilder::new(TupleMutationBuilder).build_paths(ctx)
@@ -297,7 +282,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         // Recurse to each child (they handle their own protocol)
         for path_kind in child_items {
             let child_ctx =
-                ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
+                ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action())?;
 
             // Extract descriptor from PathKind for HashMap
             let child_key = path_kind.to_mutation_path_descriptor();
@@ -327,9 +312,11 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         child_ctx: &RecursionContext,
     ) -> Result<(Vec<MutationPathInternal>, Value)> {
         tracing::debug!(
-            "MutationPathBuilder recursing to child '{}' of type '{}'",
+            "PROCESS_CHILD: descriptor='{}', type='{}', path='{}', depth={}",
             &**descriptor,
-            child_ctx.type_name()
+            child_ctx.type_name(),
+            child_ctx.full_mutation_path,
+            *child_ctx.depth
         );
 
         // Check if child type is in registry first
@@ -345,7 +332,17 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
         let child_kind = TypeKind::from_schema(child_schema);
 
+        tracing::debug!(
+            "PROCESS_CHILD: calling recurse_mutation_paths, type_kind={:?}",
+            child_kind
+        );
+
         let child_paths = recurse_mutation_paths(child_kind, child_ctx)?;
+
+        tracing::debug!(
+            "PROCESS_CHILD: recurse returned {} paths",
+            child_paths.len()
+        );
 
         // Extract child's example - handle both simple and enum root cases
         let child_example = child_paths.first().map_or(json!(null), |p| {
@@ -400,28 +397,21 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
     }
 
-    /// NEW: Assemble `partial_root_examples` from children using same bottom-up approach
+    /// Assemble `partial_root_examples` from children using same bottom-up approach
     ///
     /// For each variant chain present in any child:
     /// 1. Collect each child's value for that chain
     /// 2. Assemble them using the builder's assembly logic (struct/tuple/etc)
     /// 3. Store the assembled value for that chain
-    fn assemble_partial_roots_new(
+    fn assemble_partial_root_examples(
         builder: &B,
         ctx: &RecursionContext,
         child_paths: &[&MutationPathInternal],
     ) -> std::result::Result<Option<BTreeMap<Vec<VariantName>, Value>>, BuilderError> {
-        use std::collections::BTreeSet;
-
         // Collect all unique variant chains from all children
         let mut all_chains = BTreeSet::new();
         for child in child_paths {
             if let Some(child_partials) = &child.partial_root_examples {
-                tracing::debug!(
-                    "[BUILDER] Child {} has partial_roots_new with {} chains",
-                    child.full_mutation_path,
-                    child_partials.len()
-                );
                 for chain in child_partials.keys() {
                     all_chains.insert(chain.clone());
                 }
@@ -429,18 +419,8 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
 
         if all_chains.is_empty() {
-            tracing::debug!(
-                "[BUILDER] No partial roots found in children of {}",
-                ctx.type_name()
-            );
             return Ok(None);
         }
-
-        tracing::debug!(
-            "[BUILDER] Assembling partial_roots_new for {} from {} chains",
-            ctx.type_name(),
-            all_chains.len()
-        );
 
         let mut assembled_partials = BTreeMap::new();
 
@@ -458,39 +438,16 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                     && let Some(child_value) = child_partials.get(&chain)
                 {
                     examples_for_chain.insert(descriptor, child_value.clone());
-                    tracing::debug!(
-                        "[BUILDER]   Got VARIANT-SPECIFIC value for chain {:?} from child {}",
-                        chain
-                            .iter()
-                            .map(super::types::VariantName::as_str)
-                            .collect::<Vec<_>>(),
-                        child.full_mutation_path
-                    );
                     continue;
                 }
 
                 // No variant-specific value, use regular example
                 examples_for_chain.insert(descriptor, child.example.clone());
-                tracing::debug!(
-                    "[BUILDER]   Got REGULAR value for chain {:?} from child {}",
-                    chain
-                        .iter()
-                        .map(super::types::VariantName::as_str)
-                        .collect::<Vec<_>>(),
-                    child.full_mutation_path
-                );
             }
 
             // Assemble from all children
             let assembled = builder.assemble_from_children(ctx, examples_for_chain)?;
-            tracing::debug!(
-                "[BUILDER]   Assembled for chain {:?} -> {}",
-                chain
-                    .iter()
-                    .map(super::types::VariantName::as_str)
-                    .collect::<Vec<_>>(),
-                serde_json::to_string(&assembled).unwrap_or_else(|_| "???".to_string())
-            );
+
             assembled_partials.insert(chain, assembled);
         }
 
@@ -507,19 +464,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
     ) -> Vec<MutationPathInternal> {
         if let Some(ref partials) = partial_root_examples {
-            tracing::debug!(
-                "[BUILDER] Storing {} partial_roots_new chains in path {}",
-                partials.len(),
-                ctx.full_mutation_path
-            );
-
             // Propagate assembled partial_root_examples to all children
             for child in &mut paths_to_expose {
                 child.partial_root_examples = Some(partials.clone());
-                tracing::debug!(
-                    "[BUILDER] Propagated assembled partial_roots_new to child {}",
-                    child.full_mutation_path
-                );
             }
         }
 

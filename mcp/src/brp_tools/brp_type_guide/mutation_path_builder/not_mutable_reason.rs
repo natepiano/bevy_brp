@@ -159,10 +159,9 @@ impl Display for NotMutableReason {
                 f,
                 "HashMap type {type_name} has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet"
             ),
-            Self::NoMutableChildren { parent_type } => write!(
-                f,
-                "Type {parent_type} has no mutable child paths - all children lack required traits"
-            ),
+            Self::NoMutableChildren { parent_type } => {
+                write!(f, "Type {parent_type} has no mutable child paths")
+            }
             Self::NoExampleAvailable(type_name) => write!(
                 f,
                 "Type {type_name} is a leaf type registered in the schema but has no hardcoded example value available for mutations"

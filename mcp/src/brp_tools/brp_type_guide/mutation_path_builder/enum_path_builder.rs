@@ -175,6 +175,13 @@ impl EnumVariantInfo {
 pub fn process_enum(
     ctx: &RecursionContext,
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
+    tracing::debug!(
+        "ENUM_PROCESS: type={}, path={}, depth={}",
+        ctx.type_name(),
+        ctx.full_mutation_path,
+        *ctx.depth
+    );
+
     // Use shared function to get variant information
     let variant_groups = extract_and_group_variants(ctx)?;
 
@@ -481,7 +488,7 @@ fn process_children(
 
         // Process each path
         for path in paths.into_iter().flatten() {
-            let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create);
+            let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create)?;
 
             // Set up enum context for children
             if let Some(representative_variant) = applicable_variants.first() {

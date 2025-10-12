@@ -9,11 +9,6 @@
 //!
 //! Used by the test suite to validate all extras functionality.
 
-// NOTE: Clippy false positive - incorrectly flags `TestEnumWithSerDe::Custom` variant fields
-// (`name`, `value`, `enabled`) as "underscore-prefixed bindings" when they clearly don't start
-// with underscores. Remove this allow attribute when clippy/rustc is fixed.
-#![allow(clippy::used_underscore_binding)]
-
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
@@ -61,7 +56,6 @@ use bevy::window::{CursorIcon, PrimaryWindow};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
-use serde::{Deserialize, Serialize};
 
 /// Resource to track keyboard input history
 #[derive(Resource, Default)]
@@ -88,43 +82,30 @@ struct KeyboardInputHistory {
 #[derive(Component)]
 struct KeyboardDisplayText;
 
-/// Test resource WITH Serialize/Deserialize support for BRP operations
-#[derive(Resource, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Resource)]
+/// Test resource for BRP operations
+#[derive(Resource, Default, Reflect)]
 struct TestConfigResource {
     pub setting_a: f32,
     pub setting_b: String,
     pub enabled:   bool,
 }
 
-/// Test resource WITHOUT Serialize/Deserialize support (only Reflect)
+/// Test resource for runtime statistics
 #[derive(Resource, Default, Reflect)]
-#[reflect(Resource)]
 struct RuntimeStatsResource {
     pub frame_count: u32,
     pub total_time:  f32,
     pub debug_mode:  bool,
 }
 
-/// Test component struct WITH Serialize/Deserialize
-#[derive(Component, Default, Reflect, Serialize, Deserialize, Hash, Eq, PartialEq)]
-#[reflect(Component, Serialize, Deserialize, Hash)]
-struct TestStructWithSerDe {
-    pub value:   i32,
-    pub name:    String,
-    pub enabled: bool,
-}
-
 /// Simple `HashSet` test component with just strings
 #[derive(Component, Default, Reflect)]
-#[reflect(Component)]
 struct SimpleSetComponent {
     pub string_set: HashSet<String>,
 }
 
 /// Test component with `HashMap` for testing map mutations
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 struct TestMapComponent {
     /// String to String map
     pub strings:    HashMap<String, String>,
@@ -135,15 +116,14 @@ struct TestMapComponent {
 }
 
 /// Test component with enum-keyed `HashMap` (`NotMutable` due to complex key)
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 struct TestEnumKeyedMap {
     /// Enum to String map (should be `NotMutable` due to complex key)
     pub enum_keyed: HashMap<SimpleTestEnum, String>,
 }
 
 /// Simple test enum for `HashMap` key testing
-#[derive(Reflect, Serialize, Deserialize, Hash, Eq, PartialEq, Clone)]
+#[derive(Reflect, Hash, Eq, PartialEq, Clone)]
 enum SimpleTestEnum {
     Variant1,
     Variant2,
@@ -156,43 +136,15 @@ impl Default for SimpleTestEnum {
     }
 }
 
-/// Test component struct WITHOUT Serialize/Deserialize (only Reflect)
+/// Test component struct for testing
 #[derive(Component, Default, Reflect)]
-#[reflect(Component, FromReflect)]
 struct TestStructNoSerDe {
     pub value:   f32,
     pub name:    String,
     pub enabled: bool,
 }
 
-/// Test component enum WITH Serialize/Deserialize
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
-enum TestEnumWithSerDe {
-    /// Unit variant 1
-    Active,
-    /// Unit variant 2 (default)
-    #[default]
-    Inactive,
-    /// Tuple variant with multiple fields
-    Special(String, u32),
-    /// Same signature as Special
-    AlsoSpecial(String, u32),
-    /// Struct variant with named fields
-    Custom {
-        name:    String,
-        value:   f32,
-        enabled: bool,
-    },
-    /// basic nested example
-    Nested {
-        nested_config: NestedConfigEnum,
-        other_field:   String,
-    },
-}
-
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 enum NestedConfigEnum {
     /// Unit Variant 1
     #[default]
@@ -204,8 +156,7 @@ enum NestedConfigEnum {
 }
 
 /// Simple nested enum for testing enum recursion - like Option<Vec2>
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 enum SimpleNestedEnum {
     #[default]
     None,
@@ -218,8 +169,7 @@ enum SimpleNestedEnum {
 }
 
 /// Test enum with Option variant (generic enum)
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 enum OptionTestEnum {
     #[default]
     Nothing,
@@ -230,8 +180,7 @@ enum OptionTestEnum {
 }
 
 /// Test concrete enum that wraps other enums (simulating generics)
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 enum WrapperEnum {
     #[default]
     Empty,
@@ -243,8 +192,7 @@ enum WrapperEnum {
 
 /// Test enum for verifying variant chain propagation through non-enum intermediate levels
 /// This tests: Enum -> Struct (no variant requirement) -> Enum (needs variant)
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 enum TestVariantChainEnum {
     #[default]
     Empty,
@@ -253,7 +201,7 @@ enum TestVariantChainEnum {
 }
 
 /// Intermediate struct that contains an enum but doesn't require any variant itself
-#[derive(Default, Reflect, Serialize, Deserialize)]
+#[derive(Default, Reflect)]
 struct MiddleStruct {
     /// Regular field with no special requirements
     some_field:  String,
@@ -264,7 +212,7 @@ struct MiddleStruct {
 }
 
 /// Bottom-level enum that requires variant selection for its fields
-#[derive(Default, Reflect, Serialize, Deserialize)]
+#[derive(Default, Reflect)]
 enum BottomEnum {
     VariantA(u32),
     VariantB {
@@ -276,8 +224,7 @@ enum BottomEnum {
 }
 
 /// Test enum with array field for testing array wrapping in enum variants
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 enum TestEnumWithArray {
     #[default]
     Empty,
@@ -290,8 +237,7 @@ enum TestEnumWithArray {
 }
 
 /// Test component with array field
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 struct TestArrayField {
     /// Fixed-size array field
     pub vertices: [Vec2; 3],
@@ -300,16 +246,14 @@ struct TestArrayField {
 }
 
 /// Test component with array of Transforms
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 struct TestArrayTransforms {
     /// Array of Transform components
     pub transforms: [Transform; 2],
 }
 
 /// Test component with tuple field
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 struct TestTupleField {
     /// Tuple field with two elements
     pub coords:    (f32, f32),
@@ -318,13 +262,19 @@ struct TestTupleField {
 }
 
 /// Test tuple struct component
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 struct TestTupleStruct(pub f32, pub String, pub bool);
 
+/// Test component that exceeds recursion depth (11 nested Options exceeds limit of 10)
+#[derive(Component, Default, Reflect)]
+struct RecursionDepthTestComponent {
+    /// 11 levels of nesting: Option->Option->...->f32 (exceeds MAX_TYPE_RECURSION_DEPTH of 10)
+    pub deeply_nested:
+        Option<Option<Option<Option<Option<Option<Option<Option<Option<Option<Option<f32>>>>>>>>>>>,
+}
+
 /// Test component with complex tuple types for testing tuple recursion
-#[derive(Component, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Reflect)]
 struct TestComplexTuple {
     /// Tuple with complex types that should recurse
     pub complex_tuple: (Transform, Vec3),
@@ -333,34 +283,30 @@ struct TestComplexTuple {
 }
 
 /// Core type with mixed mutability for `mutation_status_reason` testing
-/// This type demonstrates all three mutation states:
-/// - fully mutable fields (with Serialize/Deserialize)
-/// - `not_mutable` fields (without serialization traits)
-/// - `partially_mutable` fields (nested types with mixed traits)
+/// This type demonstrates mixed mutation states with various field types
 #[derive(Default, Reflect)]
 struct TestMixedMutabilityCore {
-    /// Fully mutable field - has Serialize/Deserialize
+    /// Mutable string field
     pub mutable_string: String,
 
-    /// Fully mutable field - primitive type
+    /// Mutable float field
     pub mutable_float: f32,
 
-    /// Not mutable field - Arc type without serialization
+    /// Not mutable field - Arc type
     pub not_mutable_arc: std::sync::Arc<String>,
 
-    /// Partially mutable field - nested struct with mixed mutability
+    /// Partially mutable field - nested struct
     pub partially_mutable_nested: TestPartiallyMutableNested,
 
-    /// Fully mutable nested field - has all traits
+    /// Mutable nested Transform field
     pub mutable_transform: Transform,
 
-    /// Not mutable field - missing serialization traits
+    /// Not mutable struct field
     pub not_mutable_struct: TestStructNoSerDe,
 }
 
 /// Vec parent containing mixed mutability items
 #[derive(Component, Default, Reflect)]
-#[reflect(Component)]
 struct TestMixedMutabilityVec {
     /// Vec of mixed mutability items
     pub items: Vec<TestMixedMutabilityCore>,
@@ -368,7 +314,6 @@ struct TestMixedMutabilityVec {
 
 /// Array parent containing mixed mutability items
 #[derive(Component, Default, Reflect)]
-#[reflect(Component)]
 struct TestMixedMutabilityArray {
     /// Fixed-size array of mixed mutability items
     pub items: [TestMixedMutabilityCore; 2],
@@ -376,12 +321,10 @@ struct TestMixedMutabilityArray {
 
 /// `TupleStruct` parent containing mixed mutability item
 #[derive(Component, Default, Reflect)]
-#[reflect(Component)]
 struct TestMixedMutabilityTuple(pub TestMixedMutabilityCore, pub f32, pub String);
 
 /// Enum parent containing mixed mutability variants
 #[derive(Component, Default, Reflect)]
-#[reflect(Component)]
 enum TestMixedMutabilityEnum {
     #[default]
     None,
@@ -438,13 +381,12 @@ impl Default for TestComplexTuple {
 }
 
 /// Complex nested component with various field types
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect)]
 struct TestComplexComponent {
     /// Nested struct field (will have .transform.translation.x paths)
     pub transform:      Transform,
     /// Enum field
-    pub mode:           TestEnumWithSerDe,
+    pub mode:           SimpleNestedEnum,
     /// Array field
     pub points:         [Vec3; 2],
     /// Tuple field
@@ -454,33 +396,20 @@ struct TestComplexComponent {
 }
 
 /// Test component with List and Set collection types containing complex elements
-#[derive(Component, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Reflect)]
 struct TestCollectionComponent {
     /// Vec<Transform> - should trigger `ListMutationBuilder` with complex recursion
     pub transform_list: Vec<Transform>,
-    /// `HashSet`<TestStructWithSerDe> - should trigger `SetMutationBuilder` with complex recursion
-    pub struct_set:     HashSet<TestStructWithSerDe>,
+    /// `HashSet`<String> - should trigger `SetMutationBuilder`
+    pub struct_set:     HashSet<String>,
 }
 
 impl Default for TestCollectionComponent {
     fn default() -> Self {
         let mut struct_set = HashSet::new();
-        struct_set.insert(TestStructWithSerDe {
-            value:   42,
-            name:    "first_struct".to_string(),
-            enabled: true,
-        });
-        struct_set.insert(TestStructWithSerDe {
-            value:   99,
-            name:    "second_struct".to_string(),
-            enabled: false,
-        });
-        struct_set.insert(TestStructWithSerDe {
-            value:   123,
-            name:    "third_struct".to_string(),
-            enabled: true,
-        });
+        struct_set.insert("first_item".to_string());
+        struct_set.insert("second_item".to_string());
+        struct_set.insert("third_item".to_string());
 
         Self {
             transform_list: vec![
@@ -905,11 +834,7 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     commands.spawn((
         TestComplexComponent {
             transform:      Transform::from_xyz(5.0, 10.0, 15.0),
-            mode:           TestEnumWithSerDe::Custom {
-                name:    "test_custom".to_string(),
-                value:   42.5,
-                enabled: true,
-            },
+            mode:           SimpleNestedEnum::WithVec2(Vec2::new(10.0, 20.0)),
             points:         [Vec3::new(1.0, 2.0, 3.0), Vec3::new(4.0, 5.0, 6.0)],
             range:          (0.0, 100.0),
             optional_value: Some(50.0),
@@ -922,9 +847,6 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         TestCollectionComponent::default(),
         Name::new("TestCollectionEntity"),
     ));
-
-    // Entity with TestEnumWithSerDe standalone for easy testing
-    commands.spawn((TestEnumWithSerDe::Active, Name::new("TestEnumEntity")));
 
     // Entity with TestVariantChainEnum to test variant chain propagation through non-enum levels
     commands.spawn((
@@ -1123,6 +1045,12 @@ fn spawn_test_component_entities(commands: &mut Commands) {
             value: 123.45,
         },
         Name::new("TestMixedMutabilityEnumEntity"),
+    ));
+
+    // Entity with RecursionDepthTestComponent (exceeds recursion depth limit)
+    commands.spawn((
+        RecursionDepthTestComponent::default(),
+        Name::new("RecursionDepthTestEntity"),
     ));
 }
 
