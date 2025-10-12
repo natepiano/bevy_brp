@@ -79,8 +79,6 @@ Displays comprehensive JSON formatted output showing:
 ```json
 {
   "type_name": "full::type::path",
-  "has_serialize": bool,
-  "has_deserialize": bool,
   "in_registry": bool,
   "supported_operations": [...],
   "mutation_paths": {

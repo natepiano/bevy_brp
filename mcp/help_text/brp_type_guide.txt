@@ -10,4 +10,3 @@ Returns:
 Check schema_info.reflect_types array to determine type capabilities:
 - Contains "Component" → supports Query, Get, Spawn, Insert operations (+ Mutate if mutable fields exist)
 - Contains "Resource" → supports Query, Get, Insert operations (+ Mutate if mutable fields exist)
-- Contains "Serialize"/"Deserialize" → type can be serialized (informational only)

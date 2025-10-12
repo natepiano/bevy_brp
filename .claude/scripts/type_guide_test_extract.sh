@@ -40,7 +40,7 @@ case "$OPERATION" in
             echo "Error: type_name required for type_info operation"
             exit 1
         fi
-        jq --arg type "$TYPE_NAME" '.type_guide[$type] | {type_name, in_registry, has_serialize, has_deserialize, supported_operations}' "$FILE_PATH"
+        jq --arg type "$TYPE_NAME" '.type_guide[$type] | {type_name, in_registry, supported_operations}' "$FILE_PATH"
         ;;
     "mutation_paths")
         if [ -z "$TYPE_NAME" ]; then

@@ -72,7 +72,6 @@ Use extraction script ONLY (no direct jq/bash commands):
 # Get Sprite schema info
 .claude/scripts/type_guide_test_extract.sh <file_path> schema_info "bevy_sprite::sprite::Sprite"
 # Expected: type_kind: "Struct", properties with color/flip_x/etc, module_path: "bevy_sprite::sprite", crate_name: "bevy_sprite"
-# Expected: reflect_types contains "Component" (may or may not contain "Serialize"/"Deserialize")
 ```
 
 ### 5. Validate Transform Component (Standard Nested)

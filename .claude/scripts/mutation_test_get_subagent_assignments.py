@@ -10,11 +10,13 @@ Usage:
   # Get single assignment (subagent)
   python3 mutation_test_get_subagent_assignments.py --batch 1 --max-subagents 10 --types-per-subagent 2 --subagent-index 4
 """
+
 import json
 import sys
 import os
 import argparse
 from typing import Any, TypedDict, cast
+
 
 # Type definitions for JSON structures
 class MutationPathData(TypedDict, total=False):
@@ -22,26 +24,28 @@ class MutationPathData(TypedDict, total=False):
     example: Any  # pyright: ignore[reportExplicitAny] - arbitrary JSON value
     path_info: dict[str, str]
 
+
 class TypeData(TypedDict):
     type_name: str  # Required field
     # Optional fields
     spawn_format: Any | None  # pyright: ignore[reportExplicitAny] - arbitrary JSON structure
     mutation_paths: dict[str, MutationPathData] | None
     supported_operations: list[str] | None
-    has_serialize: bool | None
-    has_deserialize: bool | None
     in_registry: bool | None
     schema_info: dict[str, Any] | None  # pyright: ignore[reportExplicitAny] - JSON schema
     batch_number: int | None
     mutation_type: str | None  # "Component" or "Resource"
 
+
 class TypeGuideRoot(TypedDict):
     type_guide: dict[str, TypeData]
+
 
 class SubagentAssignment(TypedDict):
     subagent: int
     port: int
     types: list[TypeData]
+
 
 class SingleSubagentOutput(TypedDict):
     batch_number: int
@@ -50,6 +54,7 @@ class SingleSubagentOutput(TypedDict):
     port: int
     type_names: list[str]
 
+
 class AllAssignmentsOutput(TypedDict):
     batch_number: int
     max_subagents: int
@@ -57,16 +62,29 @@ class AllAssignmentsOutput(TypedDict):
     total_types: int
     assignments: list[SubagentAssignment]
 
+
 # Parse command line arguments
-parser = argparse.ArgumentParser(description='Get subagent assignments for mutation testing')
-_ = parser.add_argument('--batch', type=int, required=True,
-                        help='Batch number to get assignments for')
-_ = parser.add_argument('--max-subagents', type=int, required=True,
-                        help='Maximum number of subagents')
-_ = parser.add_argument('--types-per-subagent', type=int, required=True,
-                        help='Number of types each subagent should test')
-_ = parser.add_argument('--subagent-index', type=int, required=False,
-                        help='Optional: Get assignment for specific subagent (0-based index)')
+parser = argparse.ArgumentParser(
+    description="Get subagent assignments for mutation testing"
+)
+_ = parser.add_argument(
+    "--batch", type=int, required=True, help="Batch number to get assignments for"
+)
+_ = parser.add_argument(
+    "--max-subagents", type=int, required=True, help="Maximum number of subagents"
+)
+_ = parser.add_argument(
+    "--types-per-subagent",
+    type=int,
+    required=True,
+    help="Number of types each subagent should test",
+)
+_ = parser.add_argument(
+    "--subagent-index",
+    type=int,
+    required=False,
+    help="Optional: Get assignment for specific subagent (0-based index)",
+)
 
 args = parser.parse_args()
 
@@ -76,62 +94,74 @@ types_per_subagent: int = cast(int, args.types_per_subagent)
 subagent_index: int | None = cast(int | None, args.subagent_index)
 
 if max_subagents <= 0:
-    print(f"Error: max_subagents must be positive, got: {max_subagents}", file=sys.stderr)
+    print(
+        f"Error: max_subagents must be positive, got: {max_subagents}", file=sys.stderr
+    )
     sys.exit(1)
 
 if types_per_subagent <= 0:
-    print(f"Error: types_per_subagent must be positive, got: {types_per_subagent}", file=sys.stderr)
+    print(
+        f"Error: types_per_subagent must be positive, got: {types_per_subagent}",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 if subagent_index is not None:
     if subagent_index < 0:
-        print(f"Error: subagent_index must be non-negative, got: {subagent_index}", file=sys.stderr)
+        print(
+            f"Error: subagent_index must be non-negative, got: {subagent_index}",
+            file=sys.stderr,
+        )
         sys.exit(1)
+
 
 def extract_mutation_type(schema_info: dict[str, object] | None) -> str | None:
     """Extract mutation_type from schema_info.reflect_types."""
     if not schema_info:
         return None
 
-    reflect_types = schema_info.get('reflect_types')
+    reflect_types = schema_info.get("reflect_types")
     if not reflect_types or not isinstance(reflect_types, list):
         return None
 
     # Check for Component or Resource in reflect_types
-    if 'Component' in reflect_types:
-        return 'Component'
-    if 'Resource' in reflect_types:
-        return 'Resource'
+    if "Component" in reflect_types:
+        return "Component"
+    if "Resource" in reflect_types:
+        return "Resource"
 
     return None
 
+
 # Get the JSON file path from .claude/transient
-json_file = '.claude/transient/all_types.json'
+json_file = ".claude/transient/all_types.json"
 
 if not os.path.exists(json_file):
     print(f"Error: {json_file} not found!", file=sys.stderr)
     sys.exit(1)
 
 try:
-    with open(json_file, 'r') as f:
+    with open(json_file, "r") as f:
         data = cast(TypeGuideRoot, json.load(f))
 except json.JSONDecodeError as e:
     print(f"Error parsing JSON: {e}", file=sys.stderr)
     sys.exit(1)
 
 # Expect type_guide at root
-if 'type_guide' not in data:
+if "type_guide" not in data:
     print(f"Error: Expected dict with 'type_guide' at root", file=sys.stderr)
     sys.exit(1)
 
-type_guide: dict[str, TypeData] = data['type_guide']
+type_guide: dict[str, TypeData] = data["type_guide"]
 
 # Get types for the specified batch - type_guide is a dict
 batch_types: list[TypeData] = []
 for type_name, type_info in type_guide.items():
-    if type_info.get('batch_number') == batch_num:
+    if type_info.get("batch_number") == batch_num:
         # Add type_name to the dict for consistency
-        type_item: TypeData = cast(TypeData, cast(object, {'type_name': type_name, **type_info}))
+        type_item: TypeData = cast(
+            TypeData, cast(object, {"type_name": type_name, **type_info})
+        )
         batch_types.append(type_item)
 
 if not batch_types:
@@ -169,27 +199,31 @@ for subagent_num in range(1, actual_subagents_needed + 1):
     for _ in range(types_for_this_subagent):
         if type_index < len(batch_types):
             type_item = batch_types[type_index]
-            schema_info = type_item.get('schema_info')
+            schema_info = type_item.get("schema_info")
             mutation_type = extract_mutation_type(schema_info)
-            type_data: TypeData = cast(TypeData, cast(object, {
-                'type_name': type_item['type_name'],
-                'spawn_format': type_item.get('spawn_format'),
-                'mutation_paths': type_item.get('mutation_paths'),
-                'supported_operations': type_item.get('supported_operations'),
-                'has_serialize': type_item.get('has_serialize'),
-                'has_deserialize': type_item.get('has_deserialize'),
-                'in_registry': type_item.get('in_registry'),
-                'schema_info': schema_info,
-                'mutation_type': mutation_type
-            }))
+            type_data: TypeData = cast(
+                TypeData,
+                cast(
+                    object,
+                    {
+                        "type_name": type_item["type_name"],
+                        "spawn_format": type_item.get("spawn_format"),
+                        "mutation_paths": type_item.get("mutation_paths"),
+                        "supported_operations": type_item.get("supported_operations"),
+                        "in_registry": type_item.get("in_registry"),
+                        "schema_info": schema_info,
+                        "mutation_type": mutation_type,
+                    },
+                ),
+            )
             subagent_types.append(type_data)
             type_index += 1
 
     if subagent_types:  # Only create assignment if there are types
         assignment: SubagentAssignment = {
-            'subagent': subagent_num,
-            'port': 30000 + subagent_num,
-            'types': subagent_types
+            "subagent": subagent_num,
+            "port": 30000 + subagent_num,
+            "types": subagent_types,
         }
         assignments.append(assignment)
 
@@ -197,7 +231,10 @@ for subagent_num in range(1, actual_subagents_needed + 1):
 if subagent_index is not None:
     # Validate subagent_index against actual assignments
     if subagent_index >= len(assignments):
-        print(f"Error: subagent_index {subagent_index} is out of range. This batch has {len(assignments)} subagents (indices 0-{len(assignments)-1})", file=sys.stderr)
+        print(
+            f"Error: subagent_index {subagent_index} is out of range. This batch has {len(assignments)} subagents (indices 0-{len(assignments) - 1})",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Return single assignment for the specified subagent
@@ -206,31 +243,34 @@ if subagent_index is not None:
 
     # Find the assignment for this subagent
     for assignment in assignments:
-        if assignment['subagent'] == subagent_num:
+        if assignment["subagent"] == subagent_num:
             # Extract just the type names from the assignment
-            type_names: list[str] = [t['type_name'] for t in assignment['types']]
+            type_names: list[str] = [t["type_name"] for t in assignment["types"]]
 
             # Output format for single subagent
             single_output: SingleSubagentOutput = {
-                'batch_number': batch_num,
-                'subagent_index': subagent_index,
-                'subagent_number': subagent_num,
-                'port': assignment['port'],
-                'type_names': type_names
+                "batch_number": batch_num,
+                "subagent_index": subagent_index,
+                "subagent_number": subagent_num,
+                "port": assignment["port"],
+                "type_names": type_names,
             }
             print(json.dumps(single_output, indent=2))
             sys.exit(0)
 
     # Should not reach here if validation was correct
-    print(f"Error: Could not find assignment for subagent index {subagent_index}", file=sys.stderr)
+    print(
+        f"Error: Could not find assignment for subagent index {subagent_index}",
+        file=sys.stderr,
+    )
     sys.exit(1)
 else:
     # Return all assignments (original behavior for main agent)
     output: AllAssignmentsOutput = {
-        'batch_number': batch_num,
-        'max_subagents': len(assignments),  # Report actual subagents used
-        'types_per_subagent': types_per_subagent,  # Keep original for reference
-        'total_types': total_available_types,
-        'assignments': assignments
+        "batch_number": batch_num,
+        "max_subagents": len(assignments),  # Report actual subagents used
+        "types_per_subagent": types_per_subagent,  # Keep original for reference
+        "total_types": total_available_types,
+        "assignments": assignments,
     }
     print(json.dumps(output, indent=2))

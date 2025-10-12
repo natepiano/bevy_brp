@@ -14,7 +14,7 @@
     },
     {
       "type_name": "bevy_ui::ui_node::CalculatedClip",
-      "reason": "Auto-generated internal component. Only created by Bevy's UI clipping system on child nodes when parent has overflow clipping enabled. Cannot be spawned/inserted (no Serialize/Deserialize traits). Requires specific UI hierarchy not present in test scene."
+      "reason": "Auto-generated internal component. Only created by Bevy's UI clipping system on child nodes when parent has overflow clipping enabled. Cannot be spawned/inserted. Requires specific UI hierarchy not present in test scene."
     },
     {
       "type_name": "bevy_anti_alias::contrast_adaptive_sharpening::DenoiseCas",

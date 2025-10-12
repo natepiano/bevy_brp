@@ -8,7 +8,7 @@ REQUIRED Filter Examples:
 - Game components: with_crates=["my_game"], with_types=["Component"]
 
 Common crates: bevy_transform, bevy_render, bevy_pbr, bevy_sprite, bevy_ui
-Common types: Component, Resource, Default, Serialize
+Common traits: Component, Resource, Default, Serialize
 
 Returns: Schema objects with shortPath, typePath, reflectTypes, properties
 Note: Only registered types with reflection available.

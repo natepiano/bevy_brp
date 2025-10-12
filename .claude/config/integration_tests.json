@@ -53,7 +53,7 @@
     "test_file": ".claude/tests/resource.md",
     "app_name": "extras_plugin",
     "app_type": "example",
-    "test_objective": "Test insert_resource with/without Serialize/Deserialize traits"
+    "test_objective": "Test insert_resource"
   },
   {
     "test_name": "shutdown",

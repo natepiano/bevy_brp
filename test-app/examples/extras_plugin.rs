@@ -84,6 +84,7 @@ struct KeyboardDisplayText;
 
 /// Test resource for BRP operations
 #[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
 struct TestConfigResource {
     pub setting_a: f32,
     pub setting_b: String,
@@ -92,6 +93,7 @@ struct TestConfigResource {
 
 /// Test resource for runtime statistics
 #[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
 struct RuntimeStatsResource {
     pub frame_count: u32,
     pub total_time:  f32,
@@ -100,12 +102,14 @@ struct RuntimeStatsResource {
 
 /// Simple `HashSet` test component with just strings
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct SimpleSetComponent {
     pub string_set: HashSet<String>,
 }
 
 /// Test component with `HashMap` for testing map mutations
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestMapComponent {
     /// String to String map
     pub strings:    HashMap<String, String>,
@@ -117,6 +121,7 @@ struct TestMapComponent {
 
 /// Test component with enum-keyed `HashMap` (`NotMutable` due to complex key)
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestEnumKeyedMap {
     /// Enum to String map (should be `NotMutable` due to complex key)
     pub enum_keyed: HashMap<SimpleTestEnum, String>,
@@ -138,6 +143,7 @@ impl Default for SimpleTestEnum {
 
 /// Test component struct for testing
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestStructNoSerDe {
     pub value:   f32,
     pub name:    String,
@@ -145,6 +151,7 @@ struct TestStructNoSerDe {
 }
 
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 enum NestedConfigEnum {
     /// Unit Variant 1
     #[default]
@@ -157,6 +164,7 @@ enum NestedConfigEnum {
 
 /// Simple nested enum for testing enum recursion - like Option<Vec2>
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 enum SimpleNestedEnum {
     #[default]
     None,
@@ -170,6 +178,7 @@ enum SimpleNestedEnum {
 
 /// Test enum with Option variant (generic enum)
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 enum OptionTestEnum {
     #[default]
     Nothing,
@@ -181,6 +190,7 @@ enum OptionTestEnum {
 
 /// Test concrete enum that wraps other enums (simulating generics)
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 enum WrapperEnum {
     #[default]
     Empty,
@@ -193,6 +203,7 @@ enum WrapperEnum {
 /// Test enum for verifying variant chain propagation through non-enum intermediate levels
 /// This tests: Enum -> Struct (no variant requirement) -> Enum (needs variant)
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 enum TestVariantChainEnum {
     #[default]
     Empty,
@@ -225,6 +236,7 @@ enum BottomEnum {
 
 /// Test enum with array field for testing array wrapping in enum variants
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 enum TestEnumWithArray {
     #[default]
     Empty,
@@ -238,6 +250,7 @@ enum TestEnumWithArray {
 
 /// Test component with array field
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestArrayField {
     /// Fixed-size array field
     pub vertices: [Vec2; 3],
@@ -247,6 +260,7 @@ struct TestArrayField {
 
 /// Test component with array of Transforms
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestArrayTransforms {
     /// Array of Transform components
     pub transforms: [Transform; 2],
@@ -254,6 +268,7 @@ struct TestArrayTransforms {
 
 /// Test component with tuple field
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestTupleField {
     /// Tuple field with two elements
     pub coords:    (f32, f32),
@@ -263,10 +278,12 @@ struct TestTupleField {
 
 /// Test tuple struct component
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestTupleStruct(pub f32, pub String, pub bool);
 
 /// Test component that exceeds recursion depth (11 nested Options exceeds limit of 10)
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct RecursionDepthTestComponent {
     /// 11 levels of nesting: Option->Option->...->f32 (exceeds MAX_TYPE_RECURSION_DEPTH of 10)
     pub deeply_nested:
@@ -275,6 +292,7 @@ struct RecursionDepthTestComponent {
 
 /// Test component with complex tuple types for testing tuple recursion
 #[derive(Component, Reflect)]
+#[reflect(Component)]
 struct TestComplexTuple {
     /// Tuple with complex types that should recurse
     pub complex_tuple: (Transform, Vec3),
@@ -307,6 +325,7 @@ struct TestMixedMutabilityCore {
 
 /// Vec parent containing mixed mutability items
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestMixedMutabilityVec {
     /// Vec of mixed mutability items
     pub items: Vec<TestMixedMutabilityCore>,
@@ -314,6 +333,7 @@ struct TestMixedMutabilityVec {
 
 /// Array parent containing mixed mutability items
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestMixedMutabilityArray {
     /// Fixed-size array of mixed mutability items
     pub items: [TestMixedMutabilityCore; 2],
@@ -321,10 +341,12 @@ struct TestMixedMutabilityArray {
 
 /// `TupleStruct` parent containing mixed mutability item
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestMixedMutabilityTuple(pub TestMixedMutabilityCore, pub f32, pub String);
 
 /// Enum parent containing mixed mutability variants
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 enum TestMixedMutabilityEnum {
     #[default]
     None,
@@ -382,6 +404,7 @@ impl Default for TestComplexTuple {
 
 /// Complex nested component with various field types
 #[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 struct TestComplexComponent {
     /// Nested struct field (will have .transform.translation.x paths)
     pub transform:      Transform,
@@ -397,6 +420,7 @@ struct TestComplexComponent {
 
 /// Test component with List and Set collection types containing complex elements
 #[derive(Component, Reflect)]
+#[reflect(Component)]
 struct TestCollectionComponent {
     /// Vec<Transform> - should trigger `ListMutationBuilder` with complex recursion
     pub transform_list: Vec<Transform>,
