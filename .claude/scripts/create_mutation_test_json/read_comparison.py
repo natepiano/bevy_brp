@@ -14,7 +14,7 @@ from collections import defaultdict
 # JSON value type - recursive definition for arbitrary JSON
 JsonValue = str | int | float | bool | None | dict[str, "JsonValue"] | list["JsonValue"]
 
-# Type definitions for new categorized JSON structure
+# Type definitions for comparison JSON structure
 class ChangeData(TypedDict):
     type_name: str
     path: str
@@ -22,96 +22,105 @@ class ChangeData(TypedDict):
     description: str
     baseline: JsonValue
     current: JsonValue
+    mutation_path: str | None
 
-class ExpectedMatchData(TypedDict):
-    pattern_name: str
-    description: str
-    count: int
-    expected_id: int
-    changes: list[ChangeData]
+class MetadataDict(TypedDict):
+    generated_at: str
+    output_version: str
 
-class CategorizedComparisonData(TypedDict):
-    summary: dict[str, JsonValue]
-    expected_matches: dict[str, ExpectedMatchData]
-    unexpected_changes: list[ChangeData]
+class FileStatsDict(TypedDict):
+    total_types: int
+    spawn_supported: int
+    types_with_mutations: int
+    total_mutation_paths: int
+
+class SummaryDict(TypedDict):
+    total_changes: int
+    types_modified: int
+    types_added: int
+    types_removed: int
+
+class ComparisonData(TypedDict):
+    metadata: MetadataDict
+    current_file_stats: FileStatsDict
+    comparison_summary: SummaryDict
+    all_changes: list[ChangeData]
 
 def get_comparison_file() -> Path:
     """Get the path to the comparison file using TMPDIR."""
     tmpdir = os.environ.get('TMPDIR', '/tmp')
     return Path(tmpdir) / 'mutation_comparison_full.json'
 
-def load_comparison_data() -> CategorizedComparisonData:
-    """Load the categorized comparison data file."""
+def load_comparison_data() -> ComparisonData:
+    """Load the comparison data file."""
     filepath = get_comparison_file()
 
     if not filepath.exists():
         print(f"❌ Comparison file not found: {filepath}")
-        print("   Run create_mutation_test_json_compare.py first")
+        print("   Run compare.py first")
         sys.exit(1)
 
     with open(filepath) as f:
-        data = cast(CategorizedComparisonData, json.load(f))
+        data = cast(ComparisonData, json.load(f))
         return data
 
-def show_summary(data: CategorizedComparisonData) -> None:
-    """Show the categorized comparison summary."""
-    summary = data.get("summary", {})
-    expected_matches = data.get("expected_matches", {})
-    unexpected_changes = data.get("unexpected_changes", [])
+def show_summary(data: ComparisonData) -> None:
+    """Show the comparison summary."""
+    summary = data.get("comparison_summary", {})
+    stats = data.get("current_file_stats", {})
+    all_changes = data.get("all_changes", [])
 
-    print("📊 CATEGORIZED COMPARISON SUMMARY")
+    print("📊 COMPARISON SUMMARY")
     print("=" * 60)
     print(f"Total changes: {summary.get('total_changes', 0)}")
     print(f"Types modified: {summary.get('types_modified', 0)}")
     print(f"Types added: {summary.get('types_added', 0)}")
     print(f"Types removed: {summary.get('types_removed', 0)}")
     print()
+    print("Current File Statistics:")
+    print(f"  Types registered: {stats.get('total_types', 0)}")
+    print(f"  Spawn-supported: {stats.get('spawn_supported', 0)}")
+    print(f"  Types with mutations: {stats.get('types_with_mutations', 0)}")
+    print(f"  Total mutation paths: {stats.get('total_mutation_paths', 0)}")
+    print()
 
-    if expected_matches:
-        print(f"✅ EXPECTED MATCHES: {len(expected_matches)}")
-        for pattern_name, match_info in expected_matches.items():
-            print(f"   {pattern_name}: {match_info.get('count', 0)} changes")
-            print(f"      {match_info.get('description', '')}")
-        print()
-
-    unexpected_count = len(unexpected_changes)
-    print(f"⚠️  UNEXPECTED CHANGES: {unexpected_count}")
-    if unexpected_count > 0:
-        print("   Use 'next' command to review unexpected changes one by one")
+    if all_changes:
+        print(f"⚠️  {len(all_changes)} CHANGES DETECTED")
+        print("   Use 'structural' command to review by type+path")
     else:
-        print("   All changes match expected patterns!")
+        print("✅ No changes detected!")
 
-def show_expected_details(data: CategorizedComparisonData) -> None:
-    """Show detailed breakdown of expected matches."""
-    expected_matches = data.get("expected_matches", {})
+def show_stats(data: ComparisonData) -> None:
+    """Show statistics about all changes."""
+    all_changes = data.get("all_changes", [])
 
-    if not expected_matches:
-        print("✅ No expected matches found")
+    if not all_changes:
+        print("✅ No changes!")
         return
 
-    print("✅ EXPECTED MATCHES DETAILS")
+    print(f"📊 CHANGE STATISTICS")
     print("=" * 60)
+    print(f"Total changes: {len(all_changes)}")
 
-    for i, (pattern_name, match_info) in enumerate(expected_matches.items(), 1):
-        print(f"{i}. {pattern_name}")
-        print(f"   Description: {match_info.get('description', '')}")
-        print(f"   Count: {match_info.get('count', 0)} changes")
-        print(f"   Expected ID: {match_info.get('expected_id', 'unknown')}")
+    # Group by change type
+    by_change_type: dict[str, int] = {}
+    by_type_name: dict[str, int] = {}
 
-        # Show first few examples
-        changes = match_info.get('changes', [])
-        if changes:
-            print("   Examples:")
-            for change in changes[:3]:
-                baseline_val = change['baseline']
-                current_val = change['current']
-                baseline = str(baseline_val) if len(str(baseline_val)) < 30 else str(baseline_val)[:27] + "..."
-                current = str(current_val) if len(str(current_val)) < 30 else str(current_val)[:27] + "..."
-                print(f"      • {change['type_name']}")
-                print(f"        {baseline} → {current}")
-            if len(changes) > 3:
-                print(f"      ... and {len(changes) - 3} more")
-        print()
+    for change in all_changes:
+        change_type = change.get('change_type', 'unknown')
+        type_name = change.get('type_name', 'unknown')
+
+        by_change_type[change_type] = by_change_type.get(change_type, 0) + 1
+        by_type_name[type_name] = by_type_name.get(type_name, 0) + 1
+
+    print("\nBy change type:")
+    for change_type, count in sorted(by_change_type.items(), key=lambda x: x[1], reverse=True):
+        print(f"   {change_type}: {count}")
+
+    print(f"\nTop 10 affected types:")
+    for type_name, count in sorted(by_type_name.items(), key=lambda x: x[1], reverse=True)[:10]:
+        display_name = type_name if len(type_name) < 50 else type_name[:47] + "..."
+        print(f"   {display_name}: {count}")
 
 def get_session_state() -> dict[str, int]:
     """Get the current review session state."""
@@ -134,23 +143,23 @@ def save_session_state(change_index: int) -> None:
     with open(session_file, 'w') as f:
         json.dump({"change_index": change_index}, f)
 
-def show_next_unexpected(data: CategorizedComparisonData) -> None:
-    """Show the next unexpected change for review."""
-    unexpected_changes = data.get("unexpected_changes", [])
+def show_next_change(data: ComparisonData) -> None:
+    """Show the next change for review."""
+    all_changes = data.get("all_changes", [])
 
-    if not unexpected_changes:
-        print("✅ No unexpected changes to review!")
+    if not all_changes:
+        print("✅ No changes to review!")
         return
 
     state = get_session_state()
     change_index = state["change_index"]
 
-    if change_index >= len(unexpected_changes):
-        print("✅ Finished reviewing all unexpected changes!")
+    if change_index >= len(all_changes):
+        print("✅ Finished reviewing all changes!")
         print("   Use 'reset' to start over")
         return
 
-    change = unexpected_changes[change_index]
+    change = all_changes[change_index]
 
     # Format exactly as specified in FormatComparison
     print("## Mutation Path Comparison")
@@ -202,7 +211,7 @@ def show_next_unexpected(data: CategorizedComparisonData) -> None:
     print("```")
     print()
 
-    print(f"[Change {change_index + 1} of {len(unexpected_changes)}]")
+    print(f"[Change {change_index + 1} of {len(all_changes)}]")
 
     # Save state for next time
     save_session_state(change_index + 1)
@@ -212,46 +221,14 @@ def reset_session() -> None:
     save_session_state(0)
     print("🔄 Review session reset to beginning")
 
-def show_unexpected_stats(data: CategorizedComparisonData) -> None:
-    """Show statistics about unexpected changes."""
-    unexpected_changes = data.get("unexpected_changes", [])
 
-    if not unexpected_changes:
-        print("✅ No unexpected changes!")
-        return
-
-    print(f"⚠️  UNEXPECTED CHANGES STATISTICS")
-    print("=" * 60)
-    print(f"Total unexpected changes: {len(unexpected_changes)}")
-
-    # Group by change type
-    by_change_type: dict[str, int] = {}
-    by_type_name: dict[str, int] = {}
-
-    for change in unexpected_changes:
-        change_type = change.get('change_type', 'unknown')
-        type_name = change.get('type_name', 'unknown')
-
-        by_change_type[change_type] = by_change_type.get(change_type, 0) + 1
-        by_type_name[type_name] = by_type_name.get(type_name, 0) + 1
-
-    print("\nBy change type:")
-    for change_type, count in sorted(by_change_type.items(), key=lambda x: x[1], reverse=True):
-        print(f"   {change_type}: {count}")
-
-    print(f"\nTop 10 affected types:")
-    for type_name, count in sorted(by_type_name.items(), key=lambda x: x[1], reverse=True)[:10]:
-        # Shorten long type names
-        display_name = type_name if len(type_name) < 50 else type_name[:47] + "..."
-        print(f"   {display_name}: {count}")
-
-def get_structural_combinations(data: CategorizedComparisonData) -> dict[str, dict[str, list[ChangeData]]]:
+def get_structural_combinations(data: ComparisonData) -> dict[str, dict[str, list[ChangeData]]]:
     """Group changes by type and mutation path for structural review."""
     type_path_changes = defaultdict(lambda: defaultdict(list))
 
-    # Process unexpected changes
-    unexpected_changes = data.get("unexpected_changes", [])
-    for change in unexpected_changes:
+    # Process all changes
+    all_changes = data.get("all_changes", [])
+    for change in all_changes:
         type_name = change.get('type_name', 'unknown')
         mutation_path = change.get('mutation_path')
 
@@ -260,21 +237,9 @@ def get_structural_combinations(data: CategorizedComparisonData) -> dict[str, di
             display_path = 'Root Path ("")' if mutation_path == "" else f'Mutation Path "{mutation_path}"'
             type_path_changes[type_name][display_path].append(change)
 
-    # Process expected changes too
-    expected_matches = data.get("expected_matches", {})
-    for match_info in expected_matches.values():
-        changes = match_info.get('changes', [])
-        for change in changes:
-            type_name = change.get('type_name', 'unknown')
-            mutation_path = change.get('mutation_path')
-
-            if mutation_path is not None:
-                display_path = 'Root Path ("")' if mutation_path == "" else f'Mutation Path "{mutation_path}"'
-                type_path_changes[type_name][display_path].append(change)
-
     return dict(type_path_changes)
 
-def show_structural_summary(data: CategorizedComparisonData) -> None:
+def show_structural_summary(data: ComparisonData) -> None:
     """Show structural differences grouped by type and mutation path."""
     type_path_changes = get_structural_combinations(data)
 
@@ -355,7 +320,7 @@ def get_full_mutation_path_data(type_name: str, mutation_path: str, file_path: s
 
     return mutation_paths[mutation_path]
 
-def show_next_structural(data: CategorizedComparisonData) -> None:
+def show_next_structural(data: ComparisonData) -> None:
     """Show the next type+path combination for structural review."""
     type_path_changes = get_structural_combinations(data)
 
@@ -450,23 +415,23 @@ def reset_structural_session() -> None:
     save_structural_session_state(0)
     print("🔄 Structural review session reset to beginning")
 
-def show_filtered_changes(data: CategorizedComparisonData, filter_type: str, limit: int = 10) -> None:
-    """Show unexpected changes filtered by change type."""
-    unexpected_changes = data.get("unexpected_changes", [])
+def show_filtered_changes(data: ComparisonData, filter_type: str, limit: int = 10) -> None:
+    """Show changes filtered by change type."""
+    all_changes = data.get("all_changes", [])
 
-    if not unexpected_changes:
-        print("✅ No unexpected changes!")
+    if not all_changes:
+        print("✅ No changes!")
         return
 
     # Filter by change type
     filtered_changes = [
-        change for change in unexpected_changes
+        change for change in all_changes
         if change.get('change_type', '').lower() == filter_type.lower()
     ]
 
     if not filtered_changes:
         print(f"❌ No changes found with type '{filter_type}'")
-        available_types = set(change.get('change_type', 'unknown') for change in unexpected_changes)
+        available_types = set(change.get('change_type', 'unknown') for change in all_changes)
         print(f"Available types: {', '.join(sorted(available_types))}")
         return
 
@@ -508,15 +473,14 @@ def show_filtered_changes(data: CategorizedComparisonData, filter_type: str, lim
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("📖 CATEGORIZED COMPARISON DETAIL READER")
+        print("📖 COMPARISON DETAIL READER")
         print("=" * 60)
         print(f"Reads from: $TMPDIR/mutation_comparison_full.json")
         print()
         print("Commands:")
-        print("  summary           Show categorized comparison summary")
-        print("  expected          Show expected matches details")
-        print("  next              Show next unexpected change for review")
-        print("  stats             Show unexpected changes statistics")
+        print("  summary           Show comparison summary")
+        print("  next              Show next change for review")
+        print("  stats             Show change statistics")
         print("  filter TYPE       Show first 10 changes of specific type")
         print("  reset             Reset review session to beginning")
         print()
@@ -527,7 +491,6 @@ def main() -> None:
         print()
         print("Examples:")
         print("  read_comparison.py summary")
-        print("  read_comparison.py expected")
         print("  read_comparison.py next")
         print("  read_comparison.py stats")
         print("  read_comparison.py filter removed")
@@ -540,12 +503,10 @@ def main() -> None:
 
     if command == "summary":
         show_summary(data)
-    elif command == "expected":
-        show_expected_details(data)
     elif command == "next":
-        show_next_unexpected(data)
+        show_next_change(data)
     elif command == "stats":
-        show_unexpected_stats(data)
+        show_stats(data)
     elif command == "filter":
         if len(sys.argv) < 3:
             print("❌ Filter command requires a change type")

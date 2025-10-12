@@ -29,6 +29,9 @@ use bevy::camera::visibility::{NoFrustumCulling, RenderLayers, VisibilityRange};
 use bevy::core_pipeline::Skybox;
 use bevy::core_pipeline::prepass::MotionVectorPrepass;
 use bevy::ecs::relationship::RelatedSpawnerCommands;
+use bevy::gizmos::GizmoAsset;
+use bevy::gizmos::config::GizmoLineConfig;
+use bevy::gizmos::retained::Gizmo;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input_focus::tab_navigation::{TabGroup, TabIndex};
@@ -38,6 +41,8 @@ use bevy::light::{
     GeneratedEnvironmentMapLight, IrradianceVolume, NotShadowCaster, NotShadowReceiver,
     PointLightTexture, ShadowFilteringMethod, VolumetricFog, VolumetricLight,
 };
+use bevy::mesh::morph::{MeshMorphWeights, MorphWeights};
+use bevy::mesh::skinning::SkinnedMesh;
 use bevy::pbr::decal::ForwardDecalMaterialExt;
 use bevy::pbr::{ExtendedMaterial, Lightmap, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections};
 use bevy::post_process::auto_exposure::AutoExposure;
@@ -56,8 +61,6 @@ use bevy::ui::widget::{Button, Label};
 use bevy::ui::{CalculatedClip, FocusPolicy, Interaction, Outline, UiTargetCamera, ZIndex};
 use bevy::window::{CursorIcon, PrimaryWindow};
 use bevy_brp_extras::BrpExtrasPlugin;
-use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
-use bevy_mesh::skinning::SkinnedMesh;
 
 /// Resource to track keyboard input history
 #[derive(Resource, Default)]
@@ -567,6 +570,7 @@ fn setup_test_entities(
     asset_server: Res<AssetServer>,
     port: Res<CurrentPort>,
     mut animation_graphs: ResMut<Assets<AnimationGraph>>,
+    mut gizmo_assets: ResMut<Assets<GizmoAsset>>,
 ) {
     info!("Setting up test entities...");
 
@@ -575,6 +579,7 @@ fn setup_test_entities(
     spawn_test_component_entities(&mut commands);
     spawn_animation_and_audio_entities(&mut commands, &mut animation_graphs);
     spawn_render_entities(&mut commands);
+    spawn_retained_gizmo_entities(&mut commands, &mut gizmo_assets);
 
     info!(
         "Test entities spawned (including Sprite and test components). BRP server running on http://localhost:{}",
@@ -1064,6 +1069,33 @@ fn spawn_recursion_test_entity(commands: &mut Commands) {
         RecursionDepthTestComponent::default(),
         Name::new("RecursionDepthTestEntity"),
     ));
+}
+
+fn spawn_retained_gizmo_entities(
+    commands: &mut Commands,
+    gizmo_assets: &mut ResMut<Assets<GizmoAsset>>,
+) {
+    // Create a gizmo asset with a simple sphere
+    let mut gizmo_asset = GizmoAsset::default();
+    gizmo_asset.sphere(Vec3::ZERO, 1.0, Color::srgb(1.0, 0.0, 0.0));
+
+    let gizmo_handle = gizmo_assets.add(gizmo_asset);
+
+    // Spawn entity with Gizmo component
+    commands.spawn((
+        Gizmo {
+            handle:      gizmo_handle,
+            line_config: GizmoLineConfig {
+                width: 2.0,
+                perspective: true,
+                ..default()
+            },
+            depth_bias:  0.0,
+        },
+        Name::new("RetainedGizmoTestEntity"),
+    ));
+
+    info!("Retained Gizmo test entity created");
 }
 
 fn spawn_animation_and_audio_entities(

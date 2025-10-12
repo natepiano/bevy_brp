@@ -383,18 +383,58 @@ fn build_variant_example(
 }
 
 /// Select the preferred example from a collection of `ExampleGroups`.
-/// Prefers non-unit variants for richer examples, falling back to unit variants if needed.
+///
+/// This function is critical for handling partially mutable enums where some variants
+/// are `not_mutable` and have `example: None`.
+///
+/// # Why This Matters
+///
+/// When an enum has mixed mutability:
+/// - Mutable/PartiallyMutable variants have `example: Some(Value)`
+/// - NotMutable variants have `example: None` (see process_children:221-222)
+///
+/// If we select a NotMutable variant's `None` example, it propagates up as the
+/// `enum_example_for_parent`, causing parent enums to build invalid examples.
+///
+/// ## Example Problem Case
+///
+/// For `Option<Handle<Image>>` where `Handle<Image>` has:
+/// - `Strong` variant → not_mutable, example: None
+/// - `Uuid` variant → mutable, example: Some({"Uuid": "..."})
+///
+/// If we pick `Strong` first (because it's non-unit), we get:
+/// 1. `Strong`'s example is `None`
+/// 2. This becomes `enum_example_for_parent: None` for `Handle<Image>`
+/// 3. Parent `Option<Handle<Image>>::Some` uses this to build: `{"Some": null}`
+/// 4. Result: `.color_lut.0` gets `root_example: null` instead of proper `{"Some": {"Uuid":
+///    "..."}}`
+///
+/// # Selection Strategy
+///
+/// 1. **First priority**: Non-unit variant WITH an actual example
+///    - Provides rich examples for tuple/struct variants
+///    - Skips not_mutable variants that have `None`
+///
+/// 2. **Second priority**: ANY variant WITH an example (including unit)
+///    - Handles enums where all non-unit variants are not_mutable
+///    - Unit variants always have examples (simple string values)
+///
+/// 3. **Fallback**: Return `None` if no examples exist
+///    - Happens when all variants are not_mutable (rare case)
 pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
-    // Try to find a non-unit variant first
+    // First priority: Find a non-unit variant that HAS an actual example
+    // This ensures we get rich examples while avoiding not_mutable variants with None
     examples
         .iter()
-        .find(|example_group| example_group.signature != "unit")
-        .and_then(|example_group| example_group.example.clone())
+        .find(|eg| eg.signature != "unit" && eg.example.is_some())
+        .and_then(|eg| eg.example.clone())
         .or_else(|| {
-            // Fall back to first example (likely unit variant) if no non-unit variants exist
+            // Second priority: Fall back to ANY variant with an example (including unit)
+            // This handles cases where all non-unit variants are not_mutable
             examples
-                .first()
-                .and_then(|example_group| example_group.example.clone())
+                .iter()
+                .find(|eg| eg.example.is_some())
+                .and_then(|eg| eg.example.clone())
         })
 }
 
@@ -823,12 +863,43 @@ fn build_partial_roots(
 
                     let descriptor = child.path_kind.to_mutation_path_descriptor();
 
+                    // Get the appropriate value for this child to assemble into parent's partial
+                    // root
+                    //
+                    // Priority order:
+                    // 1. Variant-specific value from partial_root_examples (for deeply nested
+                    //    enums)
+                    // 2. enum_example_for_parent (for direct enum children)
+                    // 3. example (for non-enum children like structs/primitives)
+                    //
+                    // Critical: For enum children, we MUST prefer `enum_example_for_parent` over
+                    // `example` because enum paths always have `example: null`.
+                    // Using `example` would cause parent enums to build invalid
+                    // examples like `{"Some": null}` instead of valid ones like
+                    // `{"Some": {"Uuid": "..."}}`.
+                    //
+                    // Example case: `Option<Handle<Image>>` at `.color_lut`
+                    // - Child: `Handle<Image>` at `.color_lut.0`
+                    //   - Has `example: null` (all enums have null)
+                    //   - Has `enum_example_for_parent: Some({"Uuid": "..."})` (selected by
+                    //     select_preferred_example)
+                    // - Without this fix: Parent builds `{"Some": null}` using child.example
+                    // - With this fix: Parent builds `{"Some": {"Uuid": "..."}}` using
+                    //   child.enum_example_for_parent
                     let value = child
                         .partial_root_examples
                         .as_ref()
                         .and_then(|partials| partials.get(&child_chain))
                         .cloned()
-                        .unwrap_or_else(|| child.example.clone());
+                        .unwrap_or_else(|| {
+                            // Fallback: Use enum_example_for_parent for enums, example for
+                            // non-enums
+                            child.enum_example_for_parent.as_ref().map_or_else(
+                                || child.example.clone(), // Non-enum child: use regular example
+                                |enum_ex| enum_ex.clone(), /* Enum child: use selected variant
+                                                           * example */
+                            )
+                        });
 
                     children.insert(descriptor, value);
                 }
@@ -856,7 +927,24 @@ fn build_partial_roots(
                     }
 
                     let descriptor = child.path_kind.to_mutation_path_descriptor();
-                    children.insert(descriptor, child.example.clone());
+
+                    // CRITICAL: Use same priority order as child-chain building above
+                    // For enum children, we MUST use `enum_example_for_parent` instead of `example`
+                    // because enums always have `example: null`.
+                    //
+                    // This fixes the n-variant chain (e.g., `["Option<Handle<Image>>::Some"]`)
+                    // which is used by nested enum paths like `.color_lut.0` to populate their
+                    // `root_example` field.
+                    //
+                    // Without this fix: Parent builds `{"Some": null}` using child.example
+                    // With this fix: Parent builds `{"Some": {"Uuid": "..."}}` using
+                    // child.enum_example_for_parent
+                    let value = child.enum_example_for_parent.as_ref().map_or_else(
+                        || child.example.clone(),  // Non-enum child: use regular example
+                        |enum_ex| enum_ex.clone(), // Enum child: use selected variant example
+                    );
+
+                    children.insert(descriptor, value);
                 }
 
                 // Wrap with this variant using regular child examples
@@ -1028,7 +1116,15 @@ fn create_result_paths(
 
     // If we're at the actual root level (empty variant chain),
     // propagate and populate
+    tracing::debug!(
+        "[ENUM] create_result_paths for {}: variant_chain.len()={}, is_empty={}",
+        ctx.type_name(),
+        ctx.variant_chain.len(),
+        ctx.variant_chain.is_empty()
+    );
+
     if ctx.variant_chain.is_empty() {
+        tracing::debug!("[ENUM] At root level - propagating and populating");
         // Propagate to children (overwriting struct-level propagations)
         for child in &mut child_paths {
             child.partial_root_examples = Some(partial_roots.clone());
@@ -1039,6 +1135,11 @@ fn create_result_paths(
         }
 
         populate_root_example(&mut child_paths);
+    } else {
+        tracing::debug!(
+            "[ENUM] NOT at root level (variant_chain has {} entries) - skipping propagate/populate",
+            ctx.variant_chain.len()
+        );
     }
     // ==================== END NEW CODE ====================
 

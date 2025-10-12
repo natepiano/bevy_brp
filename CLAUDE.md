@@ -28,6 +28,39 @@ Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `
 ./claude/transient/ - transient .gitignore'd test output
 ./claude/types/ - transient .gitignore'd test output
 
+## all_types.json structure
+The `.claude/transient/all_types.json` file stores complete BRP type guides with test metadata.
+
+**Top-level structure**:
+```json
+{
+  "discovered_count": 252,
+  "requested_types": [...],
+  "summary": {...},
+  "type_guide": {
+    "bevy_camera::camera::Camera": {
+      "type_name": "bevy_camera::camera::Camera",
+      "spawn_format": {...},
+      "mutation_paths": {
+        ".field_name": {
+          "description": "...",
+          "examples": [...],
+          "path_info": {...}
+        }
+      },
+      "schema_info": {...},
+      "batch_number": 1,
+      "test_status": "passed",
+      "fail_reason": ""
+    }
+  }
+}
+```
+
+**Accessing types**: `all_types['type_guide'][type_name]`
+**Accessing mutation paths**: `all_types['type_guide'][type_name]['mutation_paths'][path]`
+**Test metadata fields**: `batch_number`, `test_status`, `fail_reason` (added by augmentation script)
+
 <context_window_management>
 Your context window will be automatically compacted as it approaches its limit, allowing you to continue working indefinitely from where you left off. Therefore, do not stop tasks early due to token budget concerns. As you approach your token budget limit, save your current progress and state to memory before the context window refreshes. Always be as persistent and autonomous as possible and complete tasks fully, even if the end of your budget is approaching. Never artificially stop any task early regardless of the context remaining.
 </context_window_management>

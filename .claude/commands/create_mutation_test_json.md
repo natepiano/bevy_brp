@@ -35,7 +35,7 @@ MODE = ${ARGUMENTS:-preserve}
 - **promote** - Mark this version as the new good baseline
 - **skip** - Keep existing baseline, don't promote this version
 - **investigate** - Launch deeper investigation of the differences
-- **comparison_review** - Review unexpected patterns with examples
+- **comparison_review** - Review change patterns with examples
 - **check_type** - Check mutation paths for a specific type
 - **summarize** - Summarize test results from a JSON file
 </CreateKeywords>
@@ -43,7 +43,6 @@ MODE = ${ARGUMENTS:-preserve}
 <ComparisonReviewKeywords>
 **Pattern Review Keywords:**
 - **continue** - Move to next pattern without any changes
-- **add_expected** - Add this pattern to expected changes JSON
 - **stop** - End the review now
 </ComparisonReviewKeywords>
 
@@ -57,15 +56,6 @@ MODE = ${ARGUMENTS:-preserve}
     **skip**: Keep existing baseline, document decision, continue
     **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus
     **comparison_review**: Execute <ComparisonReviewWorkflow/>
-    **add_expected**: Add pattern to expected changes JSON:
-    1. Extract from current pattern: pattern_type (e.g., "FIELD_REMOVED"), field name, and affected type names
-    2. Ask user for human-readable reason/description for this expected change
-    3. Generate next available ID and add entry to `.claude/config/create_mutation_test_json_expected_changes.json` with:
-       - `pattern_type`: Pattern type from comparison (e.g., "FIELD_REMOVED", "FIELD_ADDED")
-       - `field`: Field name from pattern (e.g., "example", "examples")
-       - `affected_types`: Array of actual type names from current pattern
-       - `reason`: Human-readable explanation for why this change is expected
-    4. Continue to next pattern in review
     **check_type**: Ask user "Which type would you like me to check?", then use:
     ```bash
     python3 .claude/scripts/create_mutation_test_json/read_comparison.py structural
@@ -73,34 +63,6 @@ MODE = ${ARGUMENTS:-preserve}
     ```
     to explore type+path combinations for that type in the structural review.
 </KeywordExecution>
-
-## AFTER BASELINE PROMOTION
-
-When you promote a baseline with the **promote** keyword, the expected_changes.json file is automatically reset to `{"expected_changes": []}`. This is intentional to start fresh, but you need to know how to rebuild expected changes.
-
-### Recovery Instructions
-
-1. **Get format documentation**:
-   ```bash
-   python3 .claude/scripts/create_mutation_test_json/compare.py --help-expected-changes
-   ```
-
-2. **Copy from template**:
-   View examples in `.claude/config/expected_changes_template.json` (this file is preserved in git)
-
-3. **Rebuild through review**:
-   - Run comparison: `python3 .claude/scripts/create_mutation_test_json/compare.py baseline.json current.json`
-   - Use **comparison_review** keyword to systematically review unexpected patterns
-   - Use **add_expected** keyword to add patterns to expected_changes.json
-   - Build up the expected changes through manual categorization
-
-4. **Pattern examples preserved**:
-   - Enum variant qualified names pattern (most common)
-   - Field addition/removal patterns
-   - Type change patterns
-   - All examples with proper regex and value conditions
-
-The template file and help system ensure you can quickly rebuild expected changes even after a complete reset.
 
 ## MAIN WORKFLOW
 
@@ -260,27 +222,7 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 ## STEP 6: USER VALIDATION
 
 <UserValidation>
-    **STEP 6A: CATEGORIZE CHANGES**
-
-    **Automatically categorize changes using the expected changes JSON**:
-
-    The comparison script handles everything internally:
-    ```bash
-    python3 .claude/scripts/create_mutation_test_json/compare.py .claude/transient/all_types_baseline.json .claude/transient/all_types.json
-    ```
-
-    This will automatically:
-    - Run the structured comparison
-    - Display the comparison results
-    - If expected changes file exists, run categorization and output:
-      - `expected_matches`: Changes that match expected patterns with their IDs and counts
-      - `unexpected_patterns`: Changes that don't match any expected pattern or are below thresholds
-
-    **STEP 6B: PRESENT SUMMARY**
-
     Present the final summary using the exact template below:
-
-    The comparison script now provides all statistics including excluded types. Extract and present them in this format:
 
 ## Mutation Test File Generation Complete
 - **File created**: ${TARGET_FILE}
@@ -291,27 +233,12 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 - **Excluded types**: [extract from comparison output]
 
 ### Comparison with Baseline:
-[Present the comparison results including:
+[Present the comparison results from the compare.py script including:
  - If files are identical: Simple confirmation
  - If metadata only differs: Count differences
- - If structural changes exist: Full deep analysis output with two sections:]
+ - If structural changes exist: Report the total changes, types modified, types added, types removed]
 
-#### Expected Changes:
-[Use the categorization JSON output to list each matched expected change:
-- Expected Change #N: [Name from expected_matches]
-- Occurrences: [count from expected_matches]
-- Types Affected: [if available from expected_matches]]
-
-#### Unexpected Changes (need review):
-[Use the categorization JSON output to list unexpected patterns:
-- Pattern: [from unexpected_patterns]
-- Occurrences: [count]
-- Types Affected: [count if available]
-- Reason: [why it's unexpected from the JSON output]]
-
-   [IF NO unexpected_patterns in JSON: State "None - all detected patterns map to expected changes"]
-
-    **STEP 6C: PRESENT DECISION PROMPT**
+    **PRESENT DECISION PROMPT**
 
 ### Baseline Promotion Decision
 Based on the comparison results above, should I mark this version as the new good baseline?
@@ -320,7 +247,7 @@ Based on the comparison results above, should I mark this version as the new goo
 - **promote** - Mark this version as the new good baseline
 - **skip** - Keep existing baseline, don't promote this version
 - **investigate** - Launch deeper investigation of the differences
-- **comparison_review** - Show actual JSON examples for each unexpected change pattern, one type at a time, for user examination and testing decisions
+- **comparison_review** - Show actual JSON examples for each change pattern, one type at a time, for user examination and testing decisions
 
     **CRITICAL**: STOP and wait for user's keyword response before proceeding.
 
@@ -400,7 +327,7 @@ Patterns: `.field.0` (variant), `.field[0]` (array), `.field.0.nested` (nested i
        This shows all type+path combinations that have changes, grouped by type.
 
     2. **CREATE TODOS FOR REVIEW**:
-       Create todos for reviewing unexpected structural combinations identified in the overview.
+       Create todos for reviewing structural combinations identified in the overview.
 
     3. **INTERACTIVE STRUCTURAL REVIEW**:
        Walk through type+path combinations one at a time:
@@ -444,12 +371,10 @@ Patterns: `.field.0` (variant), `.field[0]` (array), `.field.0.nested` (nested i
 
           ## Available Actions
           - **continue** - Move to next combination without any changes
-          - **add_expected** - Add this pattern to expected changes JSON, then continue to next combination
           - **stop** - End the review now
 
           - **DO NOT PROCEED** until user responds with one of the keywords
           - If "continue": Continue to next combination
-          - If "add_expected": Add pattern to expected changes JSON, then continue to next combination
           - If "stop": End review and return to main decision prompt
 
     4. **SESSION MANAGEMENT**:
