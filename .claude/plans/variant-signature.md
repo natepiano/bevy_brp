@@ -138,6 +138,8 @@ fn from_schema_variant(
 }
 ```
 
+**Note on `extract_variant_qualified_name()`**: This function already exists in the file at lines 243-256 and returns `Option<VariantName>`. It does **NOT** need any changes - the rewritten `from_schema_variant()` can use it as-is.
+
 ### 4. Helper Functions (`enum_path_builder.rs:152-195`)
 
 **Rename and update `extract_tuple_variant_kind` → `extract_tuple_variant_signature`**:
@@ -202,7 +204,9 @@ struct EnumFieldInfo {
 
 ### 6. Update `group_variants_by_signature()` (`enum_path_builder.rs:276-288`)
 
-Change from calling `.signature()` method to accessing `.signature` field:
+**Decision**: Use direct field access instead of method call for clarity.
+
+Change from calling `.signature()` method to accessing `.signature` field directly:
 
 **Before**:
 ```rust
@@ -214,7 +218,7 @@ let signature = variant.signature();
 let signature = variant.signature.clone();
 ```
 
-Or even better, change to use references:
+Updated function:
 ```rust
 fn group_variants_by_signature(
     variants: Vec<EnumVariantKind>,
@@ -222,7 +226,7 @@ fn group_variants_by_signature(
     let mut groups = BTreeMap::new();
     for variant in variants {
         groups
-            .entry(variant.signature.clone())
+            .entry(variant.signature.clone())  // Direct field access
             .or_insert_with(Vec::new)
             .push(variant);
     }
@@ -230,11 +234,11 @@ fn group_variants_by_signature(
 }
 ```
 
+**Rationale**: Since `EnumVariantKind` fields are public and we're changing from an enum to a struct, direct field access is clearer than maintaining a getter method that just returns a reference.
+
 ### 7. Update All `.signature()` Calls
 
-Search for `variant.signature()` and replace with `&variant.signature` or `variant.signature.clone()` as appropriate.
-
-**Location**: `enum_path_builder.rs:281`
+The `.signature()` method at line 281 in `group_variants_by_signature()` is the only call site. It's handled in Section 6 above - use direct field access `variant.signature.clone()`.
 
 ## Files to Modify
 
@@ -272,6 +276,20 @@ After refactoring:
    - Verify mixed signature enums (unit + tuple + struct variants)
    - Verify signature grouping still works correctly
    - Check mutation knowledge lookup still functions
+
+4. **Verify all transformations complete**:
+   ```bash
+   # Check no pattern matching remains on EnumVariantKind
+   rg "Self::(Unit|Tuple|Struct)" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs
+
+   # Verify no orphaned EnumFieldInfo references
+   rg "EnumFieldInfo" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs
+
+   # Check all construction uses struct literals
+   rg "EnumVariantKind::(Unit|Tuple|Struct)" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs
+   ```
+
+   All three commands should return **no matches** after successful refactoring.
 
 ## Benefits
 
