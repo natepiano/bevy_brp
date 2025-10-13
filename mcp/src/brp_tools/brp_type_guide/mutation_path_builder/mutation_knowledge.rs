@@ -26,27 +26,30 @@ use crate::brp_tools::brp_type_guide::constants::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum KnowledgeKey {
     /// Exact type name match (current behavior)
-    Exact(String),
+    Exact(BrpTypeName),
     /// Struct field-specific match for providing appropriate field values
     StructField {
         /// e.g., `bevy_window::window::WindowResolution`
-        struct_type: String,
+        struct_type: BrpTypeName,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
 }
 
 impl KnowledgeKey {
     /// Create an exact match key
-    pub fn exact(s: impl Into<String>) -> Self {
+    pub fn exact(s: impl Into<BrpTypeName>) -> Self {
         Self::Exact(s.into())
     }
 
     /// Create a struct field match key
-    pub fn struct_field(struct_type: impl Into<String>, field_name: impl Into<String>) -> Self {
+    pub fn struct_field(
+        struct_type: impl Into<BrpTypeName>,
+        field_name: impl Into<String>,
+    ) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
     }
 }
@@ -58,7 +61,7 @@ pub enum MutationKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }
@@ -86,7 +89,7 @@ impl MutationKnowledge {
 
     /// Get simplified name for a type if it has `TreatAsRootValue` knowledge
     pub fn get_simplified_name(type_name: &BrpTypeName) -> Option<BrpTypeName> {
-        let knowledge_key = KnowledgeKey::exact(type_name.as_str());
+        let knowledge_key = KnowledgeKey::exact(type_name);
         if let Some(Self::TreatAsRootValue {
             simplified_type, ..
         }) = BRP_MUTATION_KNOWLEDGE.get(&knowledge_key)

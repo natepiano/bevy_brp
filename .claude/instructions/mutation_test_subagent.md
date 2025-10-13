@@ -32,6 +32,13 @@ IF any mutation error contains `"invalid type: string"`:
 - Fix: Retry with `{"value": [1.0, 2.0]}` (array)
 - Result: If retry succeeds → mark PASSED; if retry fails with different error → mark FAILED
 
+ **Example (Sprite .image_mode.stretch_value failure from testing)**:
+  - Sent: `{"value": "3.1415927410125732"}` (string)
+  - Error: `invalid type: string "3.1415927410125732", expected f32`
+  - Fix: Retry with `{"value": 3.1415927410125732}` (number, no quotes)
+  - Result: If retry succeeds → mark PASSED; if retry fails with different error → mark
+   FAILED
+
 **Error patterns → Fix**:
 - `expected a sequence` or `expected reflected list` → Unquoted array
 - `expected a boolean` → Unquoted boolean

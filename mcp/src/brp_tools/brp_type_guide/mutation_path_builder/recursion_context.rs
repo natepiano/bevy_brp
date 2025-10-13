@@ -125,19 +125,19 @@ impl Deref for RecursionDepth {
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind:          PathKind,
+    pub path_kind: PathKind,
     /// Reference to the type registry
-    pub registry:           Arc<HashMap<BrpTypeName, Value>>,
+    pub registry: Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
     pub full_mutation_path: FullMutationPath,
     /// Action to take regarding path creation (set by `MutationPathBuilder`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action:        PathAction,
+    pub path_action: PathAction,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
-    pub variant_chain:      Vec<VariantName>,
+    pub variant_chain: Vec<VariantName>,
     /// Recursion depth tracking to prevent infinite loops
-    pub depth:              RecursionDepth,
+    pub depth: RecursionDepth,
 }
 
 impl RecursionContext {
@@ -263,8 +263,7 @@ impl RecursionContext {
             } => {
                 // Try struct field-specific knowledge first - this overrides generic type knowledge
                 // Example: Camera3d.depth_texture_usages needs value 20, not generic u32 value
-                let key =
-                    KnowledgeKey::struct_field(parent_type.type_string(), field_name.as_str());
+                let key = KnowledgeKey::struct_field(parent_type, field_name.as_str());
                 tracing::debug!("Trying struct field match with key: {:?}", key);
                 if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&key) {
                     tracing::debug!(
@@ -296,7 +295,7 @@ impl RecursionContext {
         }
 
         // Try exact type match as fallback - this handles most cases
-        let exact_key = KnowledgeKey::exact(self.type_name().type_string());
+        let exact_key = KnowledgeKey::exact(self.type_name());
         BRP_MUTATION_KNOWLEDGE
             .get(&exact_key)
             .map_or_else(|| None, Some)

@@ -32,12 +32,6 @@ impl BrpTypeName {
         &self.0
     }
 
-    /// Get the type string for comparison
-    /// This is an alias for `as_str()` but with clearer intent
-    pub fn type_string(&self) -> &str {
-        &self.0
-    }
-
     /// Extract the base type name by stripping generic parameters
     /// For example: `Vec<String>` returns `Some("Vec")`
     pub fn base_type(&self) -> Option<&str> {
@@ -147,6 +141,12 @@ impl From<String> for BrpTypeName {
 impl From<&String> for BrpTypeName {
     fn from(s: &String) -> Self {
         Self(s.clone())
+    }
+}
+
+impl From<&BrpTypeName> for BrpTypeName {
+    fn from(type_name: &BrpTypeName) -> Self {
+        type_name.clone()
     }
 }
 

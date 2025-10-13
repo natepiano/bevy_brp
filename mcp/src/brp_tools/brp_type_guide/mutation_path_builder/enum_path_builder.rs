@@ -186,7 +186,8 @@ pub fn process_enum(
     let variant_groups = extract_and_group_variants(ctx)?;
 
     // Process children - now builds examples immediately to avoid HashMap overwrites
-    let (enum_examples, child_paths, partial_roots) = process_children(&variant_groups, ctx)?;
+    let (enum_examples, child_paths, partial_root_examples) =
+        process_children(&variant_groups, ctx)?;
 
     // Select default example from the generated examples
     let default_example = select_preferred_example(&enum_examples).unwrap_or(json!(null));
@@ -197,7 +198,7 @@ pub fn process_enum(
         enum_examples,
         default_example,
         child_paths,
-        partial_roots,
+        partial_root_examples,
     ))
 }
 
@@ -468,11 +469,148 @@ pub fn generate_enum_instructions(
     )
 }
 
+/// Process a single path within a signature group, recursively building child paths
+fn process_signature_path(
+    path: PathKind,
+    applicable_variants: &[VariantName],
+    ctx: &RecursionContext,
+    child_examples: &mut HashMap<MutationPathDescriptor, Value>,
+) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
+    let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create)?;
+
+    // Set up enum context for children - just push the variant name
+    if let Some(representative_variant) = applicable_variants.first() {
+        child_ctx.variant_chain.push(representative_variant.clone());
+    }
+
+    // Recursively process child and collect paths
+    let child_descriptor = path.to_mutation_path_descriptor();
+    let child_schema = child_ctx.require_registry_schema()?;
+    let child_type_kind = TypeKind::from_schema(child_schema);
+
+    // Use the same recursion function as `MutationPathBuilder`
+    let mut child_paths = builder::recurse_mutation_paths(child_type_kind, &child_ctx)?;
+
+    // Track which variants make these child paths valid
+    // Only populate for DIRECT children (not grandchildren nested deeper)
+    for child_path in &mut child_paths {
+        if let Some(enum_data) = &mut child_path.enum_path_data {
+            // Check if this path is a direct child of the current enum level
+            // Direct children have variant_chain.len() == ctx.variant_chain.len() + 1
+            if enum_data.variant_chain.len() == ctx.variant_chain.len() + 1 {
+                // Add all variants from this signature group
+                // (all variants in a group share the same signature/structure)
+                for variant_name in applicable_variants {
+                    enum_data.applicable_variants.push(variant_name.clone());
+                }
+            }
+        }
+    }
+
+    // Extract example from first path
+    // For enum children: use enum_example_for_parent (the concrete variant example)
+    // For non-enum children: use example (works for structs/values)
+    tracing::debug!(
+        "process_children: about to extract example for descriptor={child_descriptor:?}, child_paths.len()={}",
+        child_paths.len()
+    );
+
+    let child_example = child_paths
+        .first()
+        .ok_or_else(|| {
+            tracing::error!("Empty child_paths for descriptor {child_descriptor:?}");
+            Report::new(Error::InvalidState(format!(
+                "Empty child_paths returned for descriptor {child_descriptor:?}"
+            )))
+        })
+        .map(|p| {
+            tracing::debug!(
+                "First path: full_mutation_path={}, has_enum_example_for_parent={}, example={:?}",
+                p.full_mutation_path,
+                p.enum_example_for_parent.is_some(),
+                p.example
+            );
+            // For enum children, use enum_example_for_parent
+            p.enum_example_for_parent.as_ref().map_or_else(
+                || {
+                    // For non-enum children, use example
+                    tracing::debug!("Using example (no enum_example_for_parent)");
+                    p.example.clone()
+                },
+                |enum_example| {
+                    tracing::debug!("Using enum_example_for_parent: {enum_example:?}");
+                    enum_example.clone()
+                },
+            )
+        })?;
+
+    tracing::debug!(
+        "process_children: inserting child_descriptor={child_descriptor:?}, child_example={child_example:?}"
+    );
+    child_examples.insert(child_descriptor, child_example);
+
+    Ok(child_paths)
+}
+
+/// Determine the mutation status for a signature based on its child paths
+fn determine_signature_mutation_status(
+    signature: &VariantSignature,
+    signature_child_paths: &[MutationPathInternal],
+    ctx: &RecursionContext,
+) -> MutationStatus {
+    if matches!(signature, VariantSignature::Unit) {
+        // Unit variants are always mutable (no fields to construct)
+        return MutationStatus::Mutable;
+    }
+
+    // Aggregate field statuses from direct children at this depth
+    // Use ONLY this signature's children (not all_child_paths from other signatures)
+    let signature_field_statuses: Vec<MutationStatus> = signature_child_paths
+        .iter()
+        .filter(|p| p.is_direct_child_at_depth(*ctx.depth))
+        .map(|p| p.mutation_status)
+        .collect();
+
+    if signature_field_statuses.is_empty() {
+        // No fields (shouldn't happen, but handle gracefully)
+        MutationStatus::Mutable
+    } else {
+        builder::aggregate_mutation_statuses(&signature_field_statuses)
+    }
+}
+
+/// Build an example for a variant group based on mutation status
+fn build_variant_group_example(
+    signature: &VariantSignature,
+    variants_in_group: &[EnumVariantInfo],
+    child_examples: &HashMap<MutationPathDescriptor, Value>,
+    signature_status: MutationStatus,
+    ctx: &RecursionContext,
+) -> std::result::Result<Option<Value>, BuilderError> {
+    let representative = variants_in_group
+        .first()
+        .ok_or_else(|| Report::new(Error::InvalidState("Empty variant group".to_string())))?;
+
+    // Only build example for mutable variants
+    // `NotMutable` variants get None (field omitted from JSON)
+    let example = if matches!(signature_status, MutationStatus::NotMutable) {
+        None // Omit example field entirely for unmutable variants
+    } else {
+        Some(build_variant_example(
+            signature,
+            representative.name(),
+            child_examples,
+            ctx.type_name(),
+        ))
+    };
+
+    Ok(example)
+}
+
 /// Process child paths - simplified version of `MutationPathBuilder`'s child processing
 ///
 /// Now builds examples immediately for each variant group to avoid `HashMap` collision issues
 /// where multiple variant groups with the same signature would overwrite each other's examples.
-#[allow(clippy::too_many_lines)]
 fn process_children(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     ctx: &RecursionContext,
@@ -482,7 +620,7 @@ fn process_children(
 
     // Process each variant group
     for (signature, variants_in_group) in variant_groups {
-        // Create FRESH child_examples HashMap for each variant group to avoid overwrites
+        // Create FRESH child_examples `HashMap` for each variant group to avoid overwrites
         let mut child_examples = HashMap::new();
         // Collect THIS signature's children separately to avoid mixing with other variants
         let mut signature_child_paths = Vec::new();
@@ -497,128 +635,29 @@ fn process_children(
 
         // Process each path
         for path in paths.into_iter().flatten() {
-            let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create)?;
-
-            // Set up enum context for children - just push the variant name
-            if let Some(representative_variant) = applicable_variants.first() {
-                child_ctx.variant_chain.push(representative_variant.clone());
-            }
-            // Recursively process child and collect paths
-            let child_descriptor = path.to_mutation_path_descriptor();
-            let child_schema = child_ctx.require_registry_schema()?;
-            let child_type_kind = TypeKind::from_schema(child_schema);
-
-            // No enum context needed - each type handles its own behavior
-
-            // Use the same recursion function as MutationPathBuilder
-            let mut child_paths = builder::recurse_mutation_paths(child_type_kind, &child_ctx)?;
-
-            // Track which variants make these child paths valid
-            // Only populate for DIRECT children (not grandchildren nested deeper)
-            for child_path in &mut child_paths {
-                if let Some(enum_data) = &mut child_path.enum_path_data {
-                    // Check if this path is a direct child of the current enum level
-                    // Direct children have variant_chain.len() == ctx.variant_chain.len() + 1
-                    if enum_data.variant_chain.len() == ctx.variant_chain.len() + 1 {
-                        // Add all variants from this signature group
-                        // (all variants in a group share the same signature/structure)
-                        for variant_name in &applicable_variants {
-                            enum_data.applicable_variants.push(variant_name.clone());
-                        }
-                    }
-                }
-            }
-
-            // Extract example from first path
-            // For enum children: use enum_example_for_parent (the concrete variant example)
-            // For non-enum children: use example (works for structs/values)
-            tracing::debug!(
-                "process_children: about to extract example for descriptor={child_descriptor:?}, child_paths.len()={}",
-                child_paths.len()
-            );
-
-            let child_example = child_paths
-                .first()
-                .ok_or_else(|| {
-                    tracing::error!("Empty child_paths for descriptor {child_descriptor:?}");
-                    Report::new(Error::InvalidState(format!(
-                        "Empty child_paths returned for descriptor {child_descriptor:?}"
-                    )))
-                })
-                .map(|p| {
-                    tracing::debug!(
-                        "First path: full_mutation_path={}, has_enum_example_for_parent={}, example={:?}",
-                        p.full_mutation_path,
-                        p.enum_example_for_parent.is_some(),
-                        p.example
-                    );
-                    // For enum children, use enum_example_for_parent
-                    p.enum_example_for_parent.as_ref().map_or_else(
-                        || {
-                            // For non-enum children, use example
-                            tracing::debug!("Using example (no enum_example_for_parent)");
-                            p.example.clone()
-                        },
-                        |enum_example| {
-                            tracing::debug!("Using enum_example_for_parent: {enum_example:?}");
-                            enum_example.clone()
-                        },
-                    )
-                })?;
-
-            tracing::debug!(
-                "process_children: inserting child_descriptor={child_descriptor:?}, child_example={child_example:?}"
-            );
-            child_examples.insert(child_descriptor, child_example);
-
-            // Collect THIS signature's child paths
+            let child_paths =
+                process_signature_path(path, &applicable_variants, ctx, &mut child_examples)?;
             signature_child_paths.extend(child_paths);
         }
 
-        // NEW: Determine mutation status for this signature
-        let signature_status = if matches!(signature, VariantSignature::Unit) {
-            // Unit variants are always mutable (no fields to construct)
-            MutationStatus::Mutable
-        } else {
-            // Aggregate field statuses from direct children at this depth
-            // Use ONLY this signature's children (not all_child_paths from other signatures)
-            let signature_field_statuses: Vec<MutationStatus> = signature_child_paths
-                .iter()
-                .filter(|p| p.is_direct_child_at_depth(*ctx.depth))
-                .map(|p| p.mutation_status)
-                .collect();
-
-            if signature_field_statuses.is_empty() {
-                // No fields (shouldn't happen, but handle gracefully)
-                MutationStatus::Mutable
-            } else {
-                builder::aggregate_mutation_statuses(&signature_field_statuses)
-            }
-        };
+        // Determine mutation status for this signature
+        let signature_status =
+            determine_signature_mutation_status(signature, &signature_child_paths, ctx);
 
         // Build example for this variant group
-        let representative = variants_in_group
-            .first()
-            .ok_or_else(|| Report::new(Error::InvalidState("Empty variant group".to_string())))?;
-
-        // NEW: Only build example for mutable variants
-        // NotMutable variants get None (field omitted from JSON)
-        let example = if matches!(signature_status, MutationStatus::NotMutable) {
-            None // Omit example field entirely for unmutable variants
-        } else {
-            Some(build_variant_example(
-                signature,
-                representative.name(),
-                &child_examples,
-                ctx.type_name(),
-            ))
-        };
+        let example = build_variant_group_example(
+            signature,
+            variants_in_group,
+            &child_examples,
+            signature_status,
+            ctx,
+        )?;
 
         all_examples.push(ExampleGroup {
             applicable_variants,
             signature: signature.to_string(),
-            example,                           // Now Option<Value>
-            mutation_status: signature_status, // NEW FIELD
+            example,
+            mutation_status: signature_status,
         });
 
         // Add this signature's children to the combined collection
@@ -626,9 +665,10 @@ fn process_children(
     }
 
     // Build partial roots using assembly during ascent
-    let partial_roots = build_partial_roots(variant_groups, &all_examples, &all_child_paths, ctx);
+    let partial_root_examples =
+        build_partial_root_examples(variant_groups, &all_examples, &all_child_paths, ctx);
 
-    Ok((all_examples, all_child_paths, partial_roots))
+    Ok((all_examples, all_child_paths, partial_root_examples))
 }
 
 /// Create `PathKind` objects for a signature
@@ -674,12 +714,120 @@ fn create_paths_for_signature(
     }
 }
 
+/// Check if a child's `variant_chain` is compatible with a target chain
+///
+/// Compatibility means the child's `variant_chain` must be a prefix of the target `child_chain`.
+fn is_variant_chain_compatible(child: &MutationPathInternal, child_chain: &[VariantName]) -> bool {
+    if let Some(child_enum_data) = &child.enum_path_data {
+        // Child's variant_chain cannot be longer than target chain
+        if child_enum_data.variant_chain.len() > child_chain.len() {
+            return false;
+        }
+
+        // Check prefix compatibility: all elements must match
+        child_enum_data
+            .variant_chain
+            .iter()
+            .zip(child_chain.iter())
+            .all(|(child_v, chain_v)| child_v == chain_v)
+    } else {
+        true // Non-enum children are always compatible
+    }
+}
+
+/// Extract the appropriate value from a child path for assembly
+///
+/// Priority order:
+/// 1. Variant-specific value from `partial_root_examples` (for deeply nested enums)
+/// 2. `enum_example_for_parent` (for direct enum children)
+/// 3. `example` (for non-enum children like structs/primitives)
+fn extract_child_value_for_chain(
+    child: &MutationPathInternal,
+    child_chain: Option<&[VariantName]>,
+) -> Value {
+    child_chain.map_or_else(
+        || extract_child_fallback_value(child),
+        |chain| {
+            child
+                .partial_root_examples
+                .as_ref()
+                .and_then(|partials| partials.get(chain))
+                .cloned()
+                .unwrap_or_else(|| extract_child_fallback_value(child))
+        },
+    )
+}
+
+/// Extract fallback value when no variant-specific value exists
+fn extract_child_fallback_value(child: &MutationPathInternal) -> Value {
+    // For enum children, use `enum_example_for_parent` instead of `example`
+    // because enum paths always have `example: null`
+    child.enum_example_for_parent.as_ref().map_or_else(
+        || child.example.clone(), // Non-enum child: use regular example
+        Clone::clone,             // Enum child: use selected variant example
+    )
+}
+
+/// Collect children values for a specific variant chain
+fn collect_children_for_chain(
+    child_paths: &[MutationPathInternal],
+    ctx: &RecursionContext,
+    target_chain: Option<&[VariantName]>,
+) -> HashMap<MutationPathDescriptor, Value> {
+    let mut children = HashMap::new();
+
+    for child in child_paths {
+        // Skip grandchildren - only process direct children
+        if !child.is_direct_child_at_depth(*ctx.depth) {
+            continue;
+        }
+
+        // Filter by variant_chain compatibility if we have a target chain
+        if let Some(chain) = target_chain
+            && !is_variant_chain_compatible(child, chain)
+        {
+            continue;
+        }
+
+        let descriptor = child.path_kind.to_mutation_path_descriptor();
+        let value = extract_child_value_for_chain(child, target_chain);
+        children.insert(descriptor, value);
+    }
+
+    children
+}
+
+/// Collect all unique child chains that extend a given variant chain
+fn collect_child_chains_to_wrap(
+    child_paths: &[MutationPathInternal],
+    our_chain: &[VariantName],
+    ctx: &RecursionContext,
+) -> BTreeSet<Vec<VariantName>> {
+    let mut child_chains_to_wrap = BTreeSet::new();
+
+    for child in child_paths {
+        // Skip grandchildren - only process direct children
+        if !child.is_direct_child_at_depth(*ctx.depth) {
+            continue;
+        }
+
+        if let Some(child_partials) = &child.partial_root_examples {
+            for child_chain in child_partials.keys() {
+                if child_chain.starts_with(our_chain) {
+                    child_chains_to_wrap.insert(child_chain.clone());
+                }
+            }
+        }
+    }
+
+    child_chains_to_wrap
+}
+
 /// Build partial root examples using assembly during ascent
 ///
 /// Builds partial roots IMMEDIATELY during recursion by wrapping child partial roots
 /// as we receive them during the ascent phase.
-#[allow(clippy::too_many_lines)]
-fn build_partial_roots(
+fn build_partial_root_examples(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     enum_examples: &[ExampleGroup],
     child_paths: &[MutationPathInternal],
@@ -693,7 +841,6 @@ fn build_partial_roots(
             let our_variant = variant.variant_name().clone();
 
             // Build our variant chain by extending parent's chain
-            // Since variant_chain is now Vec<VariantName>, we can directly clone it
             let mut our_chain = ctx.variant_chain.clone();
             our_chain.push(our_variant.clone());
 
@@ -705,21 +852,7 @@ fn build_partial_roots(
                 .unwrap_or(json!(null));
 
             // Collect all unique child chains that start with our_chain
-            let mut child_chains_to_wrap = BTreeSet::new();
-            for child in child_paths {
-                // Skip grandchildren - only process direct children
-                if !child.is_direct_child_at_depth(*ctx.depth) {
-                    continue;
-                }
-
-                if let Some(child_partials) = &child.partial_root_examples {
-                    for child_chain in child_partials.keys() {
-                        if child_chain.starts_with(&our_chain) {
-                            child_chains_to_wrap.insert(child_chain.clone());
-                        }
-                    }
-                }
-            }
+            let child_chains_to_wrap = collect_child_chains_to_wrap(child_paths, &our_chain, ctx);
 
             // Build wrapped examples for each child variant chain
             //
@@ -747,121 +880,23 @@ fn build_partial_roots(
             // `root_example` values: `{"Weak": {"Uuid": {"uuid": "..."}}}` rather than
             // `{"Weak": null}`.
             let mut found_child_chains = false;
-            for child_chain in child_chains_to_wrap {
-                let mut children = HashMap::new();
+            for child_chain in &child_chains_to_wrap {
+                let children = collect_children_for_chain(child_paths, ctx, Some(child_chain));
 
-                // Collect children with variant-specific or regular values
-                for child in child_paths {
-                    // Skip grandchildren - only process direct children
-                    if !child.is_direct_child_at_depth(*ctx.depth) {
-                        continue;
-                    }
-
-                    // Filter by variant_chain compatibility: child's variant_chain must be a
-                    // prefix of the child_chain we're building for
-                    if let Some(child_enum_data) = &child.enum_path_data {
-                        // Child's variant_chain cannot be longer than target chain
-                        if child_enum_data.variant_chain.len() > child_chain.len() {
-                            continue;
-                        }
-
-                        // Check prefix compatibility: all elements must match
-                        let is_compatible = child_enum_data
-                            .variant_chain
-                            .iter()
-                            .zip(child_chain.iter())
-                            .all(|(child_v, chain_v)| child_v == chain_v);
-
-                        if !is_compatible {
-                            continue;
-                        }
-                    }
-
-                    let descriptor = child.path_kind.to_mutation_path_descriptor();
-
-                    // Get the appropriate value for this child to assemble into parent's partial
-                    // root
-                    //
-                    // Priority order:
-                    // 1. Variant-specific value from partial_root_examples (for deeply nested
-                    //    enums)
-                    // 2. enum_example_for_parent (for direct enum children)
-                    // 3. example (for non-enum children like structs/primitives)
-                    //
-                    // Critical: For enum children, we MUST prefer `enum_example_for_parent` over
-                    // `example` because enum paths always have `example: null`.
-                    // Using `example` would cause parent enums to build invalid
-                    // examples like `{"Some": null}` instead of valid ones like
-                    // `{"Some": {"Uuid": "..."}}`.
-                    //
-                    // Example case: `Option<Handle<Image>>` at `.color_lut`
-                    // - Child: `Handle<Image>` at `.color_lut.0`
-                    //   - Has `example: null` (all enums have null)
-                    //   - Has `enum_example_for_parent: Some({"Uuid": "..."})` (selected by
-                    //     select_preferred_example)
-                    // - Without this fix: Parent builds `{"Some": null}` using child.example
-                    // - With this fix: Parent builds `{"Some": {"Uuid": "..."}}` using
-                    //   child.enum_example_for_parent
-                    let value = child
-                        .partial_root_examples
-                        .as_ref()
-                        .and_then(|partials| partials.get(&child_chain))
-                        .cloned()
-                        .unwrap_or_else(|| {
-                            // Fallback: Use enum_example_for_parent for enums, example for
-                            // non-enums
-                            child.enum_example_for_parent.as_ref().map_or_else(
-                                || child.example.clone(), // Non-enum child: use regular example
-                                Clone::clone,             /* Enum child: use selected variant
-                                                           * example */
-                            )
-                        });
-
-                    children.insert(descriptor, value);
-                }
-
-                // Use existing build_variant_example with SHORT variant name
+                // Use existing `build_variant_example` with SHORT variant name
                 let wrapped =
                     build_variant_example(signature, variant.name(), &children, ctx.type_name());
 
-                partial_roots.insert(child_chain, wrapped);
+                partial_roots.insert(child_chain.clone(), wrapped);
                 found_child_chains = true;
             }
 
             // After processing all child chains, also create entry for n-variant chain
             // This handles paths that only specify the outer variant(s)
             if found_child_chains {
-                // Build n-variant entry using SAME approach as child chains:
-                // Assemble from ALL children with their REGULAR (non-variant-specific) examples
-                // This gives us a representative nested structure without tying to specific inner
-                // variants
-                let mut children = HashMap::new();
-                for child in child_paths {
-                    // Skip grandchildren - only process direct children
-                    if !child.is_direct_child_at_depth(*ctx.depth) {
-                        continue;
-                    }
-
-                    let descriptor = child.path_kind.to_mutation_path_descriptor();
-
-                    // CRITICAL: Use same priority order as child-chain building above
-                    // For enum children, we MUST use `enum_example_for_parent` instead of `example`
-                    // because enums always have `example: null`.
-                    //
-                    // This fixes the n-variant chain (e.g., `["Option<Handle<Image>>::Some"]`)
-                    // which is used by nested enum paths like `.color_lut.0` to populate their
-                    // `root_example` field.
-                    //
-                    // Without this fix: Parent builds `{"Some": null}` using child.example
-                    // With this fix: Parent builds `{"Some": {"Uuid": "..."}}` using
-                    // child.enum_example_for_parent
-                    let value = child.enum_example_for_parent.as_ref().map_or_else(
-                        || child.example.clone(), // Non-enum child: use regular example
-                        Clone::clone,             // Enum child: use selected variant example
-                    );
-
-                    children.insert(descriptor, value);
-                }
+                // Build n-variant entry: Assemble from ALL children with their REGULAR
+                // (non-variant-specific) examples
+                let children = collect_children_for_chain(child_paths, ctx, None);
 
                 // Wrap with this variant using regular child examples
                 let wrapped =
@@ -932,25 +967,15 @@ fn populate_root_example(paths: &mut [MutationPathInternal]) {
     }
 }
 
-/// Create final result paths - includes both root and child paths
-#[allow(clippy::too_many_lines)]
-fn create_result_paths(
+/// Build mutation status reason for enums based on variant mutability
+fn build_enum_mutation_status_reason(
+    enum_mutation_status: MutationStatus,
+    enum_examples: &[ExampleGroup],
     ctx: &RecursionContext,
-    enum_examples: Vec<ExampleGroup>,
-    default_example: Value,
-    mut child_paths: Vec<MutationPathInternal>,
-    partial_roots: BTreeMap<Vec<VariantName>, Value>,
-) -> Vec<MutationPathInternal> {
-    // NEW: Determine enum mutation status by aggregating signature statuses
-    let signature_statuses: Vec<MutationStatus> =
-        enum_examples.iter().map(|eg| eg.mutation_status).collect();
-
-    let enum_mutation_status = builder::aggregate_mutation_statuses(&signature_statuses);
-
-    // NEW: Build reason for partially_mutable or not_mutable enums using unified approach
-    let mutation_status_reason = match enum_mutation_status {
+) -> Option<Value> {
+    match enum_mutation_status {
         MutationStatus::PartiallyMutable => {
-            // Create PathSummary<VariantName> for each variant
+            // Create `PathSummary<VariantName>` for each variant
             let summaries: Vec<PathSummary<VariantName>> = enum_examples
                 .iter()
                 .flat_map(|eg| {
@@ -963,7 +988,7 @@ fn create_result_paths(
                 })
                 .collect();
 
-            // Use unified NotMutableReason with TypeKind-based message
+            // Use unified `NotMutableReason` with TypeKind-based message
             let message = "Some variants are mutable while others are not".to_string();
 
             Option::<Value>::from(&super::NotMutableReason::from_partial_mutability(
@@ -979,8 +1004,17 @@ fn create_result_paths(
             }))
         }
         MutationStatus::Mutable => None,
-    };
+    }
+}
 
+/// Build the root `MutationPathInternal` for an enum
+fn build_enum_root_path(
+    ctx: &RecursionContext,
+    enum_examples: Vec<ExampleGroup>,
+    default_example: Value,
+    enum_mutation_status: MutationStatus,
+    mutation_status_reason: Option<Value>,
+) -> MutationPathInternal {
     // Generate enum data only if we have a variant chain (nested in another enum)
     let enum_data = if ctx.variant_chain.is_empty() {
         None
@@ -993,7 +1027,7 @@ fn create_result_paths(
     };
 
     // Direct field assignment - enums ALWAYS generate examples arrays
-    let mut root_mutation_path = MutationPathInternal {
+    MutationPathInternal {
         full_mutation_path: ctx.full_mutation_path.clone(),
         example: json!(null), /* Enums always use null for the example field -
                                * they use
@@ -1007,17 +1041,21 @@ fn create_result_paths(
         enum_path_data: enum_data,
         depth: *ctx.depth,
         partial_root_examples: None,
-    };
+    }
+}
 
-    // Build partial root examples using assembly during ascent
-    // Store partial_roots built during ascent in process_children
-    root_mutation_path.partial_root_examples = Some(partial_roots.clone());
+/// Propagate partial root examples to child paths at the root level
+fn propagate_partial_roots_to_children(
+    child_paths: &mut [MutationPathInternal],
+    partial_root_examples: &BTreeMap<Vec<VariantName>, Value>,
+    ctx: &RecursionContext,
+) {
     tracing::debug!(
         "[ENUM] Built partial_roots for {} with {} chains",
         ctx.type_name(),
-        partial_roots.len()
+        partial_root_examples.len()
     );
-    for (chain, value) in &partial_roots {
+    for (chain, value) in partial_root_examples {
         tracing::debug!(
             "[ENUM]   Chain {:?} -> {}",
             chain
@@ -1040,24 +1078,57 @@ fn create_result_paths(
     if ctx.variant_chain.is_empty() {
         tracing::debug!("[ENUM] At root level - propagating and populating");
         // Propagate to children (overwriting struct-level propagations)
-        for child in &mut child_paths {
-            child.partial_root_examples = Some(partial_roots.clone());
+        for child in child_paths.iter_mut() {
+            child.partial_root_examples = Some(partial_root_examples.clone());
             tracing::debug!(
                 "[ENUM] Propagated partial_roots to child {}",
                 child.full_mutation_path
             );
         }
 
-        populate_root_example(&mut child_paths);
+        populate_root_example(child_paths);
     } else {
         tracing::debug!(
             "[ENUM] NOT at root level (variant_chain has {} entries) - skipping propagate/populate",
             ctx.variant_chain.len()
         );
     }
-    // ==================== END NEW CODE ====================
+}
 
-    // Return root path plus all child paths (like MutationPathBuilder does)
+/// Create final result paths - includes both root and child paths
+fn create_result_paths(
+    ctx: &RecursionContext,
+    enum_examples: Vec<ExampleGroup>,
+    default_example: Value,
+    mut child_paths: Vec<MutationPathInternal>,
+    partial_root_examples: BTreeMap<Vec<VariantName>, Value>,
+) -> Vec<MutationPathInternal> {
+    // Determine enum mutation status by aggregating signature statuses
+    let signature_statuses: Vec<MutationStatus> =
+        enum_examples.iter().map(|eg| eg.mutation_status).collect();
+
+    let enum_mutation_status = builder::aggregate_mutation_statuses(&signature_statuses);
+
+    // Build reason for partially_mutable or not_mutable enums using unified approach
+    let mutation_status_reason =
+        build_enum_mutation_status_reason(enum_mutation_status, &enum_examples, ctx);
+
+    // Build root mutation path
+    let mut root_mutation_path = build_enum_root_path(
+        ctx,
+        enum_examples,
+        default_example,
+        enum_mutation_status,
+        mutation_status_reason,
+    );
+
+    // Store partial_roots built during ascent in process_children
+    root_mutation_path.partial_root_examples = Some(partial_root_examples.clone());
+
+    // Propagate partial root examples to children and populate root examples
+    propagate_partial_roots_to_children(&mut child_paths, &partial_root_examples, ctx);
+
+    // Return root path plus all child paths (like `MutationPathBuilder` does)
     let mut result = vec![root_mutation_path];
     result.extend(child_paths);
     result

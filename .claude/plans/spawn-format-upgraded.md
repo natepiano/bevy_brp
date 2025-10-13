@@ -51,7 +51,7 @@ For each step in the implementation sequence:
 - `mcp/src/brp_tools/brp_type_guide/constants.rs`
 
 **Changes**:
-Add three new constants to support Default trait detection and spawn format guidance.
+Add two new constants to support Default trait detection and spawn format guidance.
 
 **Expected impact**:
 - Constants are added but not yet used
@@ -178,12 +178,11 @@ pub const REFLECT_TRAIT_DEFAULT: &str = "Default";
 Add after existing description constants:
 
 ```rust
-/// Description for partially mutable paths
-pub const PARTIALLY_MUTABLE_DESCRIPTION: &str = "This path is partially mutable, some child paths are mutable and some are not";
-
 /// Guidance appended to root path description for Default trait spawning
-pub const DEFAULT_SPAWN_GUIDANCE: &str = " However this type implements Default and accepts empty object {} for spawn, insert, or mutate operations on the root path.";
+pub const DEFAULT_SPAWN_GUIDANCE: &str = " However this type implements Default and accepts empty object {} for spawn, insert, or mutate operations on the root path";
 ```
+
+**Note**: The `PARTIALLY_MUTABLE_DESCRIPTION` constant from the original plan is no longer needed because commit dfc77aa already implemented type-specific partial mutability messages using `type_kind.child_terminology()` (e.g., "fields", "elements", "entries", "variants").
 
 ### Step 2 Details: Update imports (mutation_path_builder/types.rs)
 
@@ -208,9 +207,7 @@ use crate::json_object::JsonObjectAccess;
 Add constants import after the existing module imports:
 
 ```rust
-use super::super::constants::{
-    DEFAULT_SPAWN_GUIDANCE, PARTIALLY_MUTABLE_DESCRIPTION, REFLECT_TRAIT_DEFAULT,
-};
+use super::super::constants::{DEFAULT_SPAWN_GUIDANCE, REFLECT_TRAIT_DEFAULT};
 ```
 
 Note: `SchemaField` is already imported via `use crate::json_schema::SchemaField;` - no changes needed.
@@ -240,14 +237,17 @@ let has_default_for_root = if matches!(path.path_kind, PathKind::RootValue) {
 
 ### Step 3 Details: Update description logic (mutation_path_builder/types.rs)
 
-In `from_mutation_path_internal` function, locate the `let description = match path.mutation_status` block:
+In `from_mutation_path_internal` function, locate the `let description = match path.mutation_status` block (around line 334):
 
 **Current code**:
 ```rust
 let description = match path.mutation_status {
     MutationStatus::PartiallyMutable => {
-        "This path is not mutable due to some of its descendants not being mutable"
-            .to_string()
+        format!(
+            "This {} path is partially mutable due to some of its {} not being mutable",
+            type_kind.as_ref().to_lowercase(),
+            type_kind.child_terminology()
+        )
     }
     _ => path.path_kind.description(&type_kind),
 };
@@ -257,10 +257,15 @@ let description = match path.mutation_status {
 ```rust
 let description = match path.mutation_status {
     MutationStatus::PartiallyMutable => {
+        let base_msg = format!(
+            "This {} path is partially mutable due to some of its {} not being mutable",
+            type_kind.as_ref().to_lowercase(),
+            type_kind.child_terminology()
+        );
         if has_default_for_root {
-            format!("{PARTIALLY_MUTABLE_DESCRIPTION}.{DEFAULT_SPAWN_GUIDANCE}")
+            format!("{base_msg}.{DEFAULT_SPAWN_GUIDANCE}")
         } else {
-            PARTIALLY_MUTABLE_DESCRIPTION.to_string()
+            base_msg
         }
     }
     _ => path.path_kind.description(&type_kind),
@@ -316,12 +321,12 @@ let (examples, example) = match path.mutation_status {
 ### For PartiallyMutable types WITH Default trait:
 - `spawn_format: {}` is set and available for extraction
 - Description becomes:
-  > "This path is partially mutable, some child paths are mutable and some are not. However this type implements Default and accepts empty object {} for spawn, insert, or mutate operations on the root path."
+  > "This struct path is partially mutable due to some of its fields not being mutable. However this type implements Default and accepts empty object {} for spawn, insert, or mutate operations on the root path"
 
 ### For PartiallyMutable types WITHOUT Default trait:
 - `spawn_format` remains `None` (absent)
 - Description is:
-  > "This path is partially mutable, some child paths are mutable and some are not"
+  > "This struct path is partially mutable due to some of its fields not being mutable"
 
 ### Example: `bevy_sprite::sprite::Sprite`
 ```json
@@ -329,7 +334,7 @@ let (examples, example) = match path.mutation_status {
   "spawn_format": {},
   "mutation_paths": {
     "": {
-      "description": "This path is partially mutable, some child paths are mutable and some are not. However this type implements Default and accepts empty object {} for spawn, insert, or mutate operations on the root path.",
+      "description": "This struct path is partially mutable due to some of its fields not being mutable. However this type implements Default and accepts empty object {} for spawn, insert, or mutate operations on the root path",
       "path_info": {
         "mutation_status": "partially_mutable"
       }
