@@ -182,24 +182,19 @@ Replace the raw `Value` types with proper Rust structs that mirror Bevy's BRP ty
 
 ```rust
 /// Selector for optional components in a query (mirrors Bevy's ComponentSelector)
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ComponentSelector {
     /// Select all components present on the entity
     All,
     /// Select specific components by their full type paths
     #[serde(untagged)]
+    #[default]
     Paths(Vec<String>),
 }
 
-impl Default for ComponentSelector {
-    fn default() -> Self {
-        Self::Paths(Vec::default())
-    }
-}
-
 /// Query data specification - what component data to retrieve
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
 pub struct BrpQuery {
     /// Required components - entities must have all of these
     #[serde(default)]
