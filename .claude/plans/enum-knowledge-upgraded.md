@@ -1,5 +1,86 @@
 # Plan: Add Enum Variant Signature Knowledge Support
 
+## EXECUTION PROTOCOL
+
+<Instructions>
+For each step in the implementation sequence:
+
+1. **DESCRIBE**: Present the changes with:
+   - Summary of what will change and why
+   - Code examples showing before/after
+   - List of files to be modified
+   - Expected impact on the system
+
+2. **AWAIT APPROVAL**: Stop and wait for user confirmation ("go ahead" or similar)
+
+3. **IMPLEMENT**: Make the changes and stop
+
+4. **BUILD & VALIDATE**: Execute the build process:
+   ```bash
+   cargo build && cargo +nightly fmt
+   ```
+
+5. **CONFIRM**: Wait for user to confirm the build succeeded
+
+6. **MARK COMPLETE**: Update this document to mark the step as ✅ COMPLETED
+
+7. **PROCEED**: Move to next step only after confirmation
+</Instructions>
+
+<ExecuteImplementation>
+Find the next ⏳ PENDING step in the INTERACTIVE IMPLEMENTATION SEQUENCE below.
+
+For the current step:
+1. Follow the <Instructions/> above for executing the step
+2. When step is complete, use Edit tool to mark it as ✅ COMPLETED
+3. Continue to next PENDING step
+
+If all steps are COMPLETED:
+    Display: "✅ Implementation complete! All steps have been executed."
+</ExecuteImplementation>
+
+## INTERACTIVE IMPLEMENTATION SEQUENCE
+
+### Step 1: Implement Enum Variant Signature Knowledge Support ⏳ PENDING
+
+**Objective:** Add signature-level knowledge targeting to fix the `AlphaMode2d::Mask(f32)` crash issue.
+
+**Changes:**
+1. Add `EnumVariantSignature` variant to `KnowledgeKey` enum
+2. Add knowledge entry for `AlphaMode2d::Mask` targeting index 0 with value 0.5
+3. Add `check_signature_element_knowledge` helper function with bounds validation
+4. Modify `build_variant_group_example` to apply signature knowledge
+5. Add `VariantSignature` import
+
+**Files:**
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_knowledge.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs`
+
+**Change Type:** Additive (all changes are new additions, no breaking changes)
+
+**Build Command:**
+```bash
+cargo build && cargo +nightly fmt
+```
+
+**Expected Impact:**
+- `AlphaMode2d::Mask(f32)` will use 0.5 instead of π (3.14159...)
+- Other f32 fields remain unaffected
+- Mutation test for `TilemapChunk` should pass without crash
+
+### Step 2: Complete Validation ⏳ PENDING
+
+**Objective:** Verify the implementation works correctly.
+
+**Validation Steps:**
+1. Run mutation test for `TilemapChunk` - should pass without crash
+2. Generate type guide and verify `.alpha_mode` example shows `{"Mask": 0.5}`
+3. Verify other f32 fields (e.g., `Transform.translation.x`) still use π
+
+**Expected Result:** All tests pass, knowledge is applied correctly and surgically.
+
+---
+
 ## Design Review Skip Notes
 
 ### DESIGN-1: Inconsistent type usage: BrpTypeName vs String in KnowledgeKey - **Verdict**: REJECTED
@@ -57,6 +138,12 @@ pub enum KnowledgeKey {
 1. **Matches by signature, not variant name**: Any variant in `AlphaMode2d` with signature `Tuple(vec![f32])` will match
 2. **Doesn't affect other f32 usage**: Only f32 in this specific enum signature is affected
 3. **Natural integration point**: The enum builder already groups by signature and has all needed context
+
+## Migration Strategy
+
+**Migration Strategy: Phased**
+
+This collaborative plan uses phased implementation by design. The Collaborative Execution Protocol above defines the phase boundaries with validation checkpoints between each step.
 
 ## Implementation Steps
 
