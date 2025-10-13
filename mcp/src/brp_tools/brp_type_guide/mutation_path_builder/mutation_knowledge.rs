@@ -9,6 +9,7 @@ use std::sync::LazyLock;
 
 use serde_json::{Value, json};
 
+use super::types::VariantSignature;
 use crate::brp_tools::BrpTypeName;
 use crate::brp_tools::brp_type_guide::constants::{
     TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_ENTITY, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2,
@@ -34,6 +35,12 @@ pub enum KnowledgeKey {
         /// e.g., `physical_width`
         field_name:  String,
     },
+    /// Match an indexed element within enum variants that share a signature
+    EnumVariantSignature {
+        enum_type: BrpTypeName,
+        signature: VariantSignature,
+        index:     usize,
+    },
 }
 
 impl KnowledgeKey {
@@ -50,6 +57,19 @@ impl KnowledgeKey {
         Self::StructField {
             struct_type: struct_type.into(),
             field_name:  field_name.into(),
+        }
+    }
+
+    /// Create an enum variant signature match key
+    pub fn enum_variant_signature(
+        enum_type: impl Into<BrpTypeName>,
+        signature: VariantSignature,
+        index: usize,
+    ) -> Self {
+        Self::EnumVariantSignature {
+            enum_type: enum_type.into(),
+            signature,
+            index,
         }
     }
 }
@@ -525,6 +545,17 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         map.insert(
             KnowledgeKey::exact("core::num::NonZeroIsize"),
             MutationKnowledge::as_root_value(json!(1), "NonZeroIsize"),
+        );
+
+        // ===== AlphaMode2d enum variant signatures =====
+        // Mask(f32) variant requires alpha threshold in 0.0-1.0 range
+        map.insert(
+            KnowledgeKey::enum_variant_signature(
+                "bevy_sprite_render::mesh2d::material::AlphaMode2d",
+                VariantSignature::Tuple(vec![BrpTypeName::from("f32")]),
+                0,
+            ),
+            MutationKnowledge::as_root_value(json!(0.5), TYPE_F32),
         );
 
         map
