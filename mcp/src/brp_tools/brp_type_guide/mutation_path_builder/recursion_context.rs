@@ -82,7 +82,7 @@ use super::super::brp_type_name::BrpTypeName;
 use super::super::constants::MAX_TYPE_RECURSION_DEPTH;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
-use super::types::{FullMutationPath, PathAction, VariantName};
+use super::types::{FullMutationPath, PathAction, VariantName, VariantSignature};
 use super::{BuilderError, NotMutableReason};
 use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
@@ -125,19 +125,22 @@ impl Deref for RecursionDepth {
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind:          PathKind,
+    pub path_kind:                PathKind,
     /// Reference to the type registry
-    pub registry:           Arc<HashMap<BrpTypeName, Value>>,
+    pub registry:                 Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
-    pub full_mutation_path: FullMutationPath,
+    pub full_mutation_path:       FullMutationPath,
     /// Action to take regarding path creation (set by `MutationPathBuilder`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action:        PathAction,
+    pub path_action:              PathAction,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
-    pub variant_chain:      Vec<VariantName>,
+    pub variant_chain:            Vec<VariantName>,
     /// Recursion depth tracking to prevent infinite loops
-    pub depth:              RecursionDepth,
+    pub depth:                    RecursionDepth,
+    /// Parent enum variant signature (only set when processing enum variant children)
+    /// The enum type is available via path_kind.parent_type - no need to store it redundantly
+    pub parent_variant_signature: Option<VariantSignature>,
 }
 
 impl RecursionContext {
@@ -150,6 +153,7 @@ impl RecursionContext {
             path_action: PathAction::Create, // Default to creating paths
             variant_chain: Vec::new(),       // Start with empty variant chain
             depth: RecursionDepth::ZERO,     // Start at depth 0
+            parent_variant_signature: None,  // NEW
         }
     }
 
@@ -229,6 +233,8 @@ impl RecursionContext {
             path_action,
             variant_chain: self.variant_chain.clone(), // Inherit parent's variant chain
             depth: new_depth,
+            parent_variant_signature: self.parent_variant_signature.clone(), /* NEW: inherit from
+                                                                              * parent */
         })
     }
 
@@ -251,9 +257,14 @@ impl RecursionContext {
     /// Lookup order:
     /// 1. Struct field match (for field-specific values like `Camera3d.depth_texture_usages`) -
     ///    highest priority
-    /// 2. Exact type match (handles most primitive and simple types) - fallback
-    /// 3. Future: Enum signature match (for newtype variants - see plan-enum-variant-knowledge.md)
-    pub fn find_knowledge(&self) -> Option<&'static super::mutation_knowledge::MutationKnowledge> {
+    /// 2. Enum signature match (for variant element values like `AlphaMode2d::Mask(f32).0`)
+    /// 3. Exact type match (handles most primitive and simple types) - fallback
+    pub fn find_knowledge(
+        &self,
+    ) -> std::result::Result<
+        Option<&'static super::mutation_knowledge::MutationKnowledge>,
+        BuilderError,
+    > {
         // Try context-specific matches based on PathKind FIRST - these have higher priority
         match &self.path_kind {
             PathKind::StructField {
@@ -272,7 +283,7 @@ impl RecursionContext {
                         field_name,
                         knowledge.example()
                     );
-                    return Some(knowledge);
+                    return Ok(Some(knowledge));
                 }
                 tracing::debug!(
                     "No struct field match found for {}.{}, falling back to exact type match",
@@ -282,23 +293,55 @@ impl RecursionContext {
 
                 // Fall through to exact type match for struct fields without specific knowledge
             }
-            PathKind::RootValue { .. }
-            | PathKind::IndexedElement { .. }
-            | PathKind::ArrayElement { .. } => {
-                tracing::debug!(
-                    "PathKind {:?} - checking exact type match only",
-                    self.path_kind
-                );
+            PathKind::IndexedElement {
+                index, parent_type, ..
+            } => {
+                // Check if we're a child of an enum variant signature
+                if let Some(signature) = &self.parent_variant_signature {
+                    match signature {
+                        VariantSignature::Tuple(_types) => {
+                            // Architectural guarantee: The index was created by enumerating
+                            // this signature's types, so bounds are guaranteed valid
+
+                            let key = KnowledgeKey::enum_variant_signature(
+                                parent_type.clone(), // enum type from PathKind
+                                signature.clone(),
+                                *index,
+                            );
+
+                            if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&key) {
+                                tracing::debug!(
+                                    "Found enum signature knowledge for {parent_type}[{index}]: {:?}",
+                                    knowledge.example()
+                                );
+                                return Ok(Some(knowledge));
+                            }
+                        }
+                        VariantSignature::Struct(_) | VariantSignature::Unit => {
+                            // ARCHITECTURAL INVARIANT VIOLATION
+                            // IndexedElement should only occur with Tuple signatures
+                            // create_paths_for_signature() creates StructField for Struct, nothing
+                            // for Unit
+                            use error_stack::Report;
+                            return Err(BuilderError::SystemError(Report::new(
+                                Error::InvalidState(format!(
+                                    "IndexedElement path kind with {signature:?} variant signature for type {}. This indicates a bug in path generation logic.",
+                                    parent_type.display_name()
+                                )),
+                            )));
+                        }
+                    }
+                }
+                // Fall through to exact type match
+            }
+            PathKind::RootValue { .. } | PathKind::ArrayElement { .. } => {
                 // For these path kinds, only exact type matching applies
-                // IndexedElement will be handled by enum signature matching in the future
             }
         }
 
         // Try exact type match as fallback - this handles most cases
         let exact_key = KnowledgeKey::exact(self.type_name());
-        BRP_MUTATION_KNOWLEDGE
-            .get(&exact_key)
-            .map_or_else(|| None, Some)
+        Ok(BRP_MUTATION_KNOWLEDGE.get(&exact_key))
     }
 
     /// Creates a `NoMutableChildren` error with this context's type name

@@ -46,11 +46,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -236,6 +236,27 @@ pub fn aggregate_mutation_statuses(statuses: &[MutationStatus]) -> MutationStatu
         MutationStatus::NotMutable
     } else {
         MutationStatus::Mutable
+    }
+}
+
+/// Populate `root_example` from `partial_root_examples` for enum paths
+///
+/// Iterates through mutation paths and populates the `root_example` field for any paths
+/// that have enum variant requirements (non-empty `variant_chain`).
+///
+/// This is shared between `builder.rs` and `enum_path_builder.rs` to avoid code duplication.
+pub fn populate_root_examples_from_partials(
+    paths: &mut [MutationPathInternal],
+    partials: &BTreeMap<Vec<VariantName>, Value>,
+) {
+    for path in paths {
+        if let Some(enum_data) = &mut path.enum_path_data {
+            if !enum_data.variant_chain.is_empty() {
+                if let Some(root_example) = partials.get(&enum_data.variant_chain) {
+                    enum_data.root_example = Some(root_example.clone());
+                }
+            }
+        }
     }
 }
 
@@ -441,9 +462,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain:       ctx.variant_chain.clone(),
+                variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example:        None,
+                root_example: None,
             })
         };
 
@@ -476,8 +497,8 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         // Collect all unique variant chains from all children
         let mut all_chains = BTreeSet::new();
         for child in child_paths {
-            if let Some(child_partials) = &child.partial_root_examples {
-                for chain in child_partials.keys() {
+            if let Some(partial_root_example) = &child.partial_root_examples {
+                for chain in partial_root_example.keys() {
                     all_chains.insert(chain.clone());
                 }
             }
@@ -487,7 +508,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             return Ok(None);
         }
 
-        let mut assembled_partials = BTreeMap::new();
+        let mut assembled_partial_root_examples = BTreeMap::new();
 
         // For each variant chain, assemble wrapped example from ALL children
         for chain in all_chains {
@@ -499,8 +520,8 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 let descriptor = child.path_kind.to_mutation_path_descriptor();
 
                 // Try to get variant-specific value first
-                if let Some(child_partials) = &child.partial_root_examples
-                    && let Some(child_value) = child_partials.get(&chain)
+                if let Some(partial_root_example) = &child.partial_root_examples
+                    && let Some(child_value) = partial_root_example.get(&chain)
                 {
                     examples_for_chain.insert(descriptor, child_value.clone());
                     continue;
@@ -513,10 +534,10 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             // Assemble from all children
             let assembled = builder.assemble_from_children(ctx, examples_for_chain)?;
 
-            assembled_partials.insert(chain, assembled);
+            assembled_partial_root_examples.insert(chain, assembled);
         }
 
-        Ok(Some(assembled_partials))
+        Ok(Some(assembled_partial_root_examples))
     }
 
     /// Build final result based on `PathAction`
@@ -533,6 +554,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             for child in &mut paths_to_expose {
                 child.partial_root_examples = Some(partials.clone());
             }
+
+            // Populate root_example from partial_root_examples for children with enum_path_data
+            populate_root_examples_from_partials(&mut paths_to_expose, partials);
         }
 
         match ctx.path_action {
@@ -603,27 +627,35 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         Option<Value>,
     ) {
         // Use unified knowledge lookup that handles all cases
-        if let Some(knowledge) = ctx.find_knowledge() {
-            let example = knowledge.example().clone();
+        let knowledge_result = ctx.find_knowledge();
+        match knowledge_result {
+            Ok(Some(knowledge)) => {
+                let example = knowledge.example().clone();
 
-            // Only return early for TreatAsValue types - they should not recurse
-            if matches!(knowledge, MutationKnowledge::TreatAsRootValue { .. }) {
-                return (
-                    Some(Ok(vec![Self::build_mutation_path_internal(
-                        ctx,
-                        example,
-                        MutationStatus::Mutable,
+                // Only return early for TreatAsValue types - they should not recurse
+                if matches!(knowledge, MutationKnowledge::TreatAsRootValue { .. }) {
+                    return (
+                        Some(Ok(vec![Self::build_mutation_path_internal(
+                            ctx,
+                            example,
+                            MutationStatus::Mutable,
+                            None,
+                            None, // No partial roots for knowledge-based paths
+                        )])),
                         None,
-                        None, // No partial roots for knowledge-based paths
-                    )])),
-                    None,
-                );
+                    );
+                }
+
+                (None, Some(example))
             }
-
-            return (None, Some(example));
+            Ok(None) => {
+                // Continue with normal processing, no hard coded mutation knowledge found
+                (None, None)
+            }
+            Err(e) => {
+                // Propagate error from find_knowledge()
+                (Some(Err(e)), None)
+            }
         }
-
-        // Continue with normal processing, no hard coded mutation knowledge found
-        (None, None)
     }
 }

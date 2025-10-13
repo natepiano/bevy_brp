@@ -62,7 +62,7 @@ struct EnumFieldInfo {
     field_name: StructFieldName,
     /// Field type
     #[serde(rename = "type")]
-    type_name: BrpTypeName,
+    type_name:  BrpTypeName,
 }
 
 /// Type-safe enum variant information
@@ -479,10 +479,15 @@ pub fn generate_enum_instructions(
 fn process_signature_path(
     path: PathKind,
     applicable_variants: &[VariantName],
+    signature: &VariantSignature,
     ctx: &RecursionContext,
     child_examples: &mut HashMap<MutationPathDescriptor, Value>,
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
     let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create)?;
+
+    // NEW: Set parent variant signature context for the child
+    // Note: enum type is already in child_ctx.path_kind.parent_type
+    child_ctx.parent_variant_signature = Some(signature.clone());
 
     // Set up enum context for children - just push the variant name
     if let Some(representative_variant) = applicable_variants.first() {
@@ -585,42 +590,11 @@ fn determine_signature_mutation_status(
     }
 }
 
-/// Check if there's mutation knowledge for a specific signature element
-///
-/// Returns `Ok(Some(value))` if knowledge exists, `Ok(None)` if no knowledge,
-/// or `Err` if the knowledge index is out of bounds for the signature.
-fn check_signature_element_knowledge(
-    enum_type: &BrpTypeName,
-    signature: &VariantSignature,
-    index: usize,
-) -> std::result::Result<Option<Value>, BuilderError> {
-    use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-
-    // Validate index is within bounds for tuple signatures
-    if let VariantSignature::Tuple(types) = signature {
-        if index >= types.len() {
-            return Err(BuilderError::SystemError(Report::new(Error::InvalidState(
-                format!(
-                    "Knowledge index {index} out of bounds for enum {} tuple signature with {} elements",
-                    enum_type.display_name(),
-                    types.len()
-                ),
-            ))));
-        }
-    }
-
-    let key = KnowledgeKey::enum_variant_signature(enum_type.clone(), signature.clone(), index);
-
-    Ok(BRP_MUTATION_KNOWLEDGE
-        .get(&key)
-        .map(|knowledge| knowledge.example().clone()))
-}
-
 /// Build an example for a variant group based on mutation status
 fn build_variant_group_example(
     signature: &VariantSignature,
     variants_in_group: &[EnumVariantKind],
-    mut child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples: &HashMap<MutationPathDescriptor, Value>,
     signature_status: MutationStatus,
     ctx: &RecursionContext,
 ) -> std::result::Result<Option<Value>, BuilderError> {
@@ -633,23 +607,10 @@ fn build_variant_group_example(
     let example = if matches!(signature_status, MutationStatus::NotMutable) {
         None // Omit example field entirely for unmutable variants
     } else {
-        // Apply signature-specific knowledge to override child examples
-        // Mutate in place since we own child_examples now
-        if let VariantSignature::Tuple(types) = signature {
-            for (index, _type_name) in types.iter().enumerate() {
-                if let Some(knowledge_value) =
-                    check_signature_element_knowledge(ctx.type_name(), signature, index)?
-                {
-                    let descriptor = MutationPathDescriptor::from(index.to_string());
-                    child_examples.insert(descriptor, knowledge_value);
-                }
-            }
-        }
-
         Some(build_variant_example(
             signature,
             representative.name(),
-            &child_examples,
+            child_examples,
             ctx.type_name(),
         ))
     };
@@ -685,8 +646,13 @@ fn process_children(
 
         // Process each path
         for path in paths.into_iter().flatten() {
-            let child_paths =
-                process_signature_path(path, &applicable_variants, ctx, &mut child_examples)?;
+            let child_paths = process_signature_path(
+                path,
+                &applicable_variants,
+                signature,
+                ctx,
+                &mut child_examples,
+            )?;
             signature_child_paths.extend(child_paths);
         }
 
@@ -698,7 +664,7 @@ fn process_children(
         let example = build_variant_group_example(
             signature,
             variants_in_group,
-            child_examples,
+            &child_examples,
             signature_status,
             ctx,
         )?;
@@ -749,8 +715,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -977,9 +943,9 @@ fn build_enum_mutation_status_reason(
                 .flat_map(|eg| {
                     eg.applicable_variants.iter().map(|variant| PathSummary {
                         full_mutation_path: variant.clone(),
-                        type_name: ctx.type_name().clone(),
-                        status: eg.mutation_status,
-                        reason: None,
+                        type_name:          ctx.type_name().clone(),
+                        status:             eg.mutation_status,
+                        reason:             None,
                     })
                 })
                 .collect();
@@ -1016,9 +982,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathData {
-            variant_chain: ctx.variant_chain.clone(),
+            variant_chain:       ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example: None,
+            root_example:        None,
         })
     };
 
@@ -1052,19 +1018,8 @@ fn propagate_partial_root_examples_to_children(
             child.partial_root_examples = Some(partial_root_examples.clone());
         }
 
-        for child_path in child_paths {
-            if let Some(enum_data) = &mut child_path.enum_path_data
-                && !enum_data.variant_chain.is_empty()
-            {
-                // Use the partial_root_examples that was propagated to this path
-                if let Some(ref partials) = child_path.partial_root_examples {
-                    if let Some(root_example) = partials.get(&enum_data.variant_chain) {
-                        enum_data.root_example = Some(root_example.clone());
-                    } else {
-                    }
-                }
-            }
-        }
+        // Use shared helper function to populate root examples
+        builder::populate_root_examples_from_partials(child_paths, partial_root_examples);
     }
 }
 
