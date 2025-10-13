@@ -598,7 +598,7 @@ fn spawn_visual_entities(commands: &mut Commands, asset_server: &AssetServer) {
 }
 
 fn spawn_sprite_and_ui_components(commands: &mut Commands) {
-    // Entity with Sprite component for testing mutation paths
+    // Entity with Sprite component for testing mutation paths (includes Anchor enum)
     commands.spawn((
         Sprite {
             color: Color::srgb(1.0, 0.5, 0.25),
