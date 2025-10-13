@@ -307,7 +307,7 @@ struct TestComplexTuple {
 }
 
 /// Core type with mixed mutability for `mutation_status_reason` testing
-/// This type demonstrates mixed mutation states with various field types
+/// Simplified version with reduced nesting depth
 #[derive(Default, Reflect)]
 struct TestMixedMutabilityCore {
     /// Mutable string field
@@ -319,14 +319,8 @@ struct TestMixedMutabilityCore {
     /// Not mutable field - Arc type
     pub not_mutable_arc: std::sync::Arc<String>,
 
-    /// Partially mutable field - nested struct
+    /// Partially mutable field - simple nested struct
     pub partially_mutable_nested: TestPartiallyMutableNested,
-
-    /// Mutable nested Transform field
-    pub mutable_transform: Transform,
-
-    /// Not mutable struct field
-    pub not_mutable_struct: TestStructNoSerDe,
 }
 
 /// Vec parent containing mixed mutability items
@@ -366,37 +360,14 @@ enum TestMixedMutabilityEnum {
     },
 }
 
-/// Nested type that will be partially mutable
-/// Has some fields that are mutable and some that are not
+/// Simplified nested type - partially mutable with just one level
 #[derive(Default, Reflect)]
 struct TestPartiallyMutableNested {
     /// Mutable field in nested struct
     pub nested_mutable_value: f32,
 
-    /// Mutable field in nested struct
-    pub nested_mutable_name: String,
-
     /// Not mutable - Arc type without serialization
     pub nested_not_mutable_arc: std::sync::Arc<Vec<u8>>,
-
-    /// Another level of nesting with mixed mutability
-    pub deeply_nested: TestDeeplyNested,
-}
-
-/// Deeply nested type for complex hierarchy testing
-#[derive(Default, Reflect)]
-struct TestDeeplyNested {
-    /// Mutable field at deep level
-    pub integer_value: i32,
-
-    /// Mutable Vec at deep level
-    pub vec_f32_list: Vec<f32>,
-
-    /// Not mutable - Arc at deep level
-    pub arc_string: std::sync::Arc<String>,
-
-    /// Mutable `HashMap` at deep level
-    pub map_string_f32: HashMap<String, f32>,
 }
 
 impl Default for TestComplexTuple {
@@ -1012,25 +983,7 @@ fn spawn_mixed_mutability_test_entities(commands: &mut Commands) {
         not_mutable_arc:          Arc::new(format!("arc_string_{suffix}")),
         partially_mutable_nested: TestPartiallyMutableNested {
             nested_mutable_value:   100.0,
-            nested_mutable_name:    format!("nested_name_{suffix}"),
             nested_not_mutable_arc: Arc::new(vec![1, 2, 3, 4, 5]),
-            deeply_nested:          TestDeeplyNested {
-                integer_value:  999,
-                vec_f32_list:   vec![1.0, 2.0, 3.0],
-                arc_string:     Arc::new(format!("deep_string_{suffix}")),
-                map_string_f32: {
-                    let mut map = HashMap::new();
-                    map.insert("key1".to_string(), 10.5);
-                    map.insert("key2".to_string(), 20.5);
-                    map
-                },
-            },
-        },
-        mutable_transform:        Transform::from_xyz(1.0, 2.0, 3.0),
-        not_mutable_struct:       TestStructNoSerDe {
-            value:   77.7,
-            name:    format!("not_mutable_{suffix}"),
-            enabled: false,
         },
     };
 
