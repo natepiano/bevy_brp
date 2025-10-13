@@ -149,7 +149,7 @@ impl From<&String> for BrpTypeName {
 // useful for passing in &str and String
 // but we also want to be able to psas in a `&BrpTypeName`
 // hence this odd beast
-impl From<&BrpTypeName> for BrpTypeName {
+impl From<&Self> for BrpTypeName {
     fn from(type_name: &Self) -> Self {
         type_name.clone()
     }
