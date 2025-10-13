@@ -182,12 +182,18 @@ Replace the raw `Value` types with proper Rust structs that mirror Bevy's BRP ty
 
 ```rust
 /// Selector for optional components in a query (mirrors Bevy's ComponentSelector)
+///
+/// **Default Implementation**: Uses `#[derive(Default)]` with `#[default]` attribute on the
+/// `Paths` variant. This provides automatic Default implementation returning `Paths(vec![])`.
+/// Do NOT add a manual `impl Default` - it would conflict with the derived implementation.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ComponentSelector {
     /// Select all components present on the entity
     All,
     /// Select specific components by their full type paths
+    ///
+    /// This is the default variant - `ComponentSelector::default()` returns `Paths(vec![])`
     #[serde(untagged)]
     #[default]
     Paths(Vec<String>),
@@ -246,6 +252,92 @@ pub struct QueryParams {
 }
 ```
 
+#### 3. Verification of Serialization
+
+**Automatic Behavior (No Code Changes Needed):**
+- Serde's `#[derive(Serialize)]` handles nested `BrpQuery` and `BrpQueryFilter` recursively
+- The `BrpTools` macro calls `serde_json::to_value(&params)` (line 81 of `mcp_macros/src/brp_tools.rs`)
+- `BrpClient::prepare_params()` works on any `Serialize` type - no changes needed
+- `ComponentSelector` enum serializes correctly:
+  - `All` variant → `"all"` (via `#[serde(rename_all = "snake_case")]`)
+  - `Paths` variant → `["path1", "path2"]` (via `#[serde(untagged)]`)
+
+**How It Works:**
+1. `QueryParams` with `#[derive(Serialize)]` automatically includes nested struct serialization
+2. Serde recursively serializes:
+   - `QueryParams.data: BrpQuery` → `{"components": [...], "option": "all" | [...], "has": [...]}`
+   - `QueryParams.filter: Option<BrpQueryFilter>` → `{"with": [...], "without": [...]}` or omitted if None
+3. `BrpClient::prepare_params()` (line 43 of `mcp/src/brp_tools/brp_client/client.rs`) filters out the `port` field and passes the rest to BRP
+
+**Expected JSON Output:**
+```json
+// With ComponentSelector::All
+{
+  "data": {
+    "components": [],
+    "option": "all",
+    "has": []
+  },
+  "filter": {
+    "with": ["bevy_transform::components::transform::Transform"]
+  }
+}
+
+// With ComponentSelector::Paths (backward compatible)
+{
+  "data": {
+    "components": ["bevy_transform::components::transform::Transform"],
+    "option": ["bevy_sprite::sprite::Sprite"],
+    "has": []
+  }
+}
+```
+
+**Validation:**
+- Integration test `.claude/tests/query.md` validates all query formats against a live Bevy 0.17.2 app
+- Run with: `/test query`
+- For debugging: Enable `RUST_LOG=debug` to inspect BRP request logs
+
+#### 4. Update Help Text Documentation
+
+File: `mcp/help_text/world_query.txt`
+
+Update the `option` field documentation to reflect the new `ComponentSelector` enum:
+
+**Current text (lines 17-18):**
+```
+- `option`: Array of components to retrieve if present (optional components)
+```
+
+**Updated text:**
+```
+- `option`: Components to retrieve if present (optional components). Can be:
+  - Array of component paths: `["bevy_sprite::sprite::Sprite", "bevy_transform::components::transform::Transform"]`
+  - `"all"` to select all components on matching entities
+```
+
+**Add new example after line 56:**
+```json
+Get all components from entities with Transform:
+{
+  "data": {
+    "option": "all"
+  },
+  "filter": {
+    "with": ["bevy_transform::components::transform::Transform"]
+  }
+}
+```
+
+**Update the JSON example (lines 6-11) to show both formats:**
+```json
+{
+  "components": ["bevy_transform::components::transform::Transform"],
+  "option": ["bevy_sprite::sprite::Sprite"],  // or "all" to get all components
+  "has": ["bevy_render::camera::camera::Camera"]
+}
+```
+
 ### Benefits of This Approach
 
 1. **Type Safety**: Compile-time validation of query structure
@@ -257,12 +349,43 @@ pub struct QueryParams {
 
 ### Testing Strategy
 
-After implementing the changes:
+A comprehensive integration test has been created to validate all query functionality:
 
-1. Test with array syntax: `{"data": {"components": ["Transform"], "option": ["Sprite"]}}`
-2. Test with "all" syntax: `{"data": {"components": ["Transform"], "option": "all"}}`
-3. Test with empty option (default): `{"data": {"components": ["Transform"]}}`
-4. Verify JSON schema output includes proper documentation for `ComponentSelector` enum
+**Integration Test**: `.claude/tests/query.md`
+- Registered in `.claude/config/integration_tests.json`
+- Can be run with: `/test query` (single test) or `/test` (full suite)
+
+The test validates:
+
+1. **Backward Compatibility**: Array syntax for `option` field
+   - `{"data": {"option": ["bevy_sprite::sprite::Sprite"]}}`
+
+2. **New "all" Syntax**: ComponentSelector::All variant
+   - `{"data": {"option": "all"}}`
+
+3. **Default Behavior**: Empty/omitted option field
+   - `{"data": {"components": ["bevy_transform::components::transform::Transform"]}}`
+
+4. **Entity IDs Only**: Empty data object
+   - `{"data": {}}`
+
+5. **Filter Combinations**: with + without
+   - `{"filter": {"with": ["Transform"], "without": ["Camera"]}}`
+
+6. **Mixed Fields**: components + option + has together
+   - Tests all query data fields in combination
+
+7. **Filter Omission vs Empty**: Serialization equivalence
+   - Validates that omitted filter and empty object produce identical JSON
+
+8. **"all" with Filter**: New syntax combined with filtering
+   - `{"data": {"option": "all"}, "filter": {"with": ["Name"]}}`
+
+9. **Error Handling**: Invalid option values
+   - Tests deserialization error messages for invalid ComponentSelector formats
+
+10. **JSON Schema**: Verify schema output includes proper enum documentation
+    - Can be validated by examining MCP tool schema generation
 
 ### Version Compatibility
 
