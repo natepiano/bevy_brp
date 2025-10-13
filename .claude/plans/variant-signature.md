@@ -1,0 +1,294 @@
+# Refactor: Convert EnumVariantKind from Enum to Struct
+
+## Problem
+
+`EnumVariantKind` and `VariantSignature` contain redundant type information. Currently:
+
+- **`EnumVariantKind`** (enum): Stores variant name + type structure
+  - `Unit(VariantName)`
+  - `Tuple(VariantName, Vec<BrpTypeName>)`
+  - `Struct(VariantName, Vec<EnumFieldInfo>)`
+
+- **`VariantSignature`** (enum): Stores just the type structure
+  - `Unit`
+  - `Tuple(Vec<BrpTypeName>)`
+  - `Struct(Vec<(StructFieldName, BrpTypeName)>)`
+
+The type structure information (tuple types, struct fields) is duplicated. `EnumVariantKind::signature()` extracts the signature part, discarding the name.
+
+## Solution
+
+Convert `EnumVariantKind` from an enum to a struct that composes a name with a signature:
+
+```rust
+struct EnumVariantKind {
+    name: VariantName,
+    signature: VariantSignature,
+}
+```
+
+This eliminates the redundancy by storing the structure information once in the `signature` field.
+
+## Changes Required
+
+### 1. Type Definition (`enum_path_builder.rs:68-77`)
+
+**Before**:
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+enum EnumVariantKind {
+    Unit(VariantName),
+    Tuple(VariantName, Vec<BrpTypeName>),
+    Struct(VariantName, Vec<EnumFieldInfo>),
+}
+```
+
+**After**:
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct EnumVariantKind {
+    name: VariantName,
+    signature: VariantSignature,
+}
+```
+
+### 2. Implementation Methods (`enum_path_builder.rs:79-112`)
+
+**Update `variant_name()`**:
+```rust
+const fn variant_name(&self) -> &VariantName {
+    &self.name
+}
+```
+
+**Update `short_name()`**:
+```rust
+fn short_name(&self) -> &str {
+    self.name
+        .as_str()
+        .rsplit_once("::")
+        .map_or_else(|| self.name.as_str(), |(_, name)| name)
+}
+```
+
+**Update `name()` (compatibility)**:
+```rust
+fn name(&self) -> &str {
+    self.short_name()
+}
+```
+
+**Update `signature()`**:
+```rust
+fn signature(&self) -> &VariantSignature {
+    &self.signature
+}
+```
+
+### 3. Schema Extraction (`enum_path_builder.rs:115-149`)
+
+**`from_schema_variant()` - Complete rewrite**:
+
+The current implementation uses pattern matching on enum variants. Need to rewrite to construct the struct:
+
+```rust
+fn from_schema_variant(
+    v: &Value,
+    registry: &HashMap<BrpTypeName, Value>,
+    enum_type: &BrpTypeName,
+) -> Option<Self> {
+    // Handle Unit variants which show up as simple strings
+    if let Some(variant_str) = v.as_str() {
+        let type_name = enum_type
+            .as_str()
+            .rsplit("::")
+            .next()
+            .unwrap_or(enum_type.as_str());
+
+        let qualified_name = format!("{type_name}::{variant_str}");
+        return Some(Self {
+            name: VariantName::from(qualified_name),
+            signature: VariantSignature::Unit,
+        });
+    }
+
+    // Extract the fully qualified variant name
+    let variant_name = extract_variant_qualified_name(v)?;
+
+    // Check what type of variant this is
+    if let Some(signature) = extract_tuple_variant_signature(v, registry) {
+        return Some(Self {
+            name: variant_name,
+            signature,
+        });
+    }
+
+    if let Some(signature) = extract_struct_variant_signature(v, registry) {
+        return Some(Self {
+            name: variant_name,
+            signature,
+        });
+    }
+
+    // Unit variant (no fields)
+    Some(Self {
+        name: variant_name,
+        signature: VariantSignature::Unit,
+    })
+}
+```
+
+### 4. Helper Functions (`enum_path_builder.rs:152-195`)
+
+**Rename and update `extract_tuple_variant_kind` → `extract_tuple_variant_signature`**:
+
+```rust
+fn extract_tuple_variant_signature(
+    v: &Value,
+    _registry: &HashMap<BrpTypeName, Value>,
+) -> Option<VariantSignature> {
+    let prefix_items = v.get_field(SchemaField::PrefixItems)?;
+    let prefix_array = prefix_items.as_array()?;
+
+    let tuple_types: Vec<BrpTypeName> = prefix_array
+        .iter()
+        .filter_map(Value::extract_field_type)
+        .collect();
+
+    Some(VariantSignature::Tuple(tuple_types))
+}
+```
+
+**Rename and update `extract_struct_variant_kind` → `extract_struct_variant_signature`**:
+
+```rust
+fn extract_struct_variant_signature(
+    v: &Value,
+    _registry: &HashMap<BrpTypeName, Value>,
+) -> Option<VariantSignature> {
+    let properties = v.get_field(SchemaField::Properties)?;
+    let props_map = properties.as_object()?;
+
+    let struct_fields: Vec<(StructFieldName, BrpTypeName)> = props_map
+        .iter()
+        .filter_map(|(field_name, field_schema)| {
+            field_schema
+                .extract_field_type()
+                .map(|type_name| (StructFieldName::from(field_name.clone()), type_name))
+        })
+        .collect();
+
+    if struct_fields.is_empty() {
+        return None;
+    }
+
+    Some(VariantSignature::Struct(struct_fields))
+}
+```
+
+**Note**: Remove `EnumFieldInfo` struct - no longer needed since we build `VariantSignature::Struct` directly.
+
+### 5. Remove `EnumFieldInfo` (`enum_path_builder.rs:58-66`)
+
+Delete the entire struct - it's no longer needed:
+
+```rust
+// DELETE THIS:
+struct EnumFieldInfo {
+    field_name: StructFieldName,
+    type_name: BrpTypeName,
+}
+```
+
+### 6. Update `group_variants_by_signature()` (`enum_path_builder.rs:276-288`)
+
+Change from calling `.signature()` method to accessing `.signature` field:
+
+**Before**:
+```rust
+let signature = variant.signature();
+```
+
+**After**:
+```rust
+let signature = variant.signature.clone();
+```
+
+Or even better, change to use references:
+```rust
+fn group_variants_by_signature(
+    variants: Vec<EnumVariantKind>,
+) -> BTreeMap<VariantSignature, Vec<EnumVariantKind>> {
+    let mut groups = BTreeMap::new();
+    for variant in variants {
+        groups
+            .entry(variant.signature.clone())
+            .or_insert_with(Vec::new)
+            .push(variant);
+    }
+    groups
+}
+```
+
+### 7. Update All `.signature()` Calls
+
+Search for `variant.signature()` and replace with `&variant.signature` or `variant.signature.clone()` as appropriate.
+
+**Location**: `enum_path_builder.rs:281`
+
+## Files to Modify
+
+1. **`mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs`**
+   - Primary file with all changes above
+   - Remove `EnumFieldInfo` struct
+   - Convert `EnumVariantKind` enum → struct
+   - Update all methods
+   - Rewrite schema extraction
+   - Update helper functions
+
+2. **`mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`**
+   - No changes needed (VariantSignature remains unchanged)
+
+3. **`mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_knowledge.rs`**
+   - Check if there are any dependencies on `EnumVariantKind`
+   - Likely no changes needed
+
+## Testing Strategy
+
+After refactoring:
+
+1. **Build verification**:
+   ```bash
+   cargo build
+   ```
+
+2. **Type guide generation test**:
+   ```bash
+   /create_mutation_test_json
+   ```
+   Should produce identical output (241 types, 2200 paths)
+
+3. **Specific enum tests**:
+   - Verify mixed signature enums (unit + tuple + struct variants)
+   - Verify signature grouping still works correctly
+   - Check mutation knowledge lookup still functions
+
+## Benefits
+
+1. **Eliminates redundancy**: Type structure stored once, not twice
+2. **Clearer data model**: Explicit composition of name + signature
+3. **Simpler method implementations**: Direct field access instead of pattern matching
+4. **Same functionality**: All existing behavior preserved
+
+## Risks
+
+- Schema extraction logic becomes more imperative (less pattern-matching-based)
+- Need to carefully verify all call sites are updated
+- Must ensure signature comparison still works for grouping
+
+## Success Criteria
+
+- All tests pass
+- Mutation test generates identical output (zero changes)
+- No compilation errors or warnings
+- Code is clearer and more maintainable
