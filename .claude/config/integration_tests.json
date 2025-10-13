@@ -82,5 +82,12 @@
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test bevy_get strict parameter behavior with valid and invalid components"
+  },
+  {
+    "test_name": "query",
+    "test_file": ".claude/tests/query.md",
+    "app_name": "extras_plugin",
+    "app_type": "example",
+    "test_objective": "Test world.query with array syntax, \"all\" option, filters, and edge cases for Bevy 0.17.2 ComponentSelector"
   }
 ]
