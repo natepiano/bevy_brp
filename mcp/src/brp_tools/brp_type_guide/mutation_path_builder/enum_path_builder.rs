@@ -55,9 +55,19 @@ use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
+/// Information about a field in an enum struct variant
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct EnumFieldInfo {
+    /// Field name
+    field_name: StructFieldName,
+    /// Field type
+    #[serde(rename = "type")]
+    type_name: BrpTypeName,
+}
+
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-enum EnumVariantInfo {
+enum EnumVariantKind {
     /// Unit variant - qualified variant name (e.g., "`Color::Srgba`")
     Unit(VariantName),
     /// Tuple variant - qualified name and guaranteed tuple types
@@ -66,17 +76,7 @@ enum EnumVariantInfo {
     Struct(VariantName, Vec<EnumFieldInfo>),
 }
 
-/// Information about a field in an enum struct variant
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct EnumFieldInfo {
-    /// Field name
-    field_name: StructFieldName,
-    /// Field type
-    #[serde(rename = "type")]
-    type_name:  BrpTypeName,
-}
-
-impl EnumVariantInfo {
+impl EnumVariantKind {
     /// Get the fully qualified variant name (e.g., "`Color::Srgba`")
     const fn variant_name(&self) -> &VariantName {
         match self {
@@ -135,25 +135,63 @@ impl EnumVariantInfo {
         let variant_name = extract_variant_qualified_name(v)?;
 
         // Check what type of variant this is
-        if let Some(prefix_items) = v.get_field(SchemaField::PrefixItems) {
-            // Tuple variant
-            if let Some(prefix_array) = prefix_items.as_array() {
-                let tuple_types = extract_tuple_types(prefix_array, registry);
-                return Some(Self::Tuple(variant_name, tuple_types));
-            }
-        } else if let Some(properties) = v.get_field(SchemaField::Properties) {
-            // Struct variant
-            if let Some(props_map) = properties.as_object() {
-                let struct_fields = extract_struct_fields(props_map, registry);
-                if !struct_fields.is_empty() {
-                    return Some(Self::Struct(variant_name, struct_fields));
-                }
-            }
+        if let Some(tuple_variant) = extract_tuple_variant_kind(v, registry, variant_name.clone()) {
+            return Some(tuple_variant);
+        }
+
+        if let Some(struct_variant) = extract_struct_variant_kind(v, registry, variant_name.clone())
+        {
+            return Some(struct_variant);
         }
 
         // Unit variant (no fields)
         Some(Self::Unit(variant_name))
     }
+}
+
+/// Extract tuple variant kind from schema if it matches tuple pattern
+fn extract_tuple_variant_kind(
+    v: &Value,
+    _registry: &HashMap<BrpTypeName, Value>,
+    variant_name: VariantName,
+) -> Option<EnumVariantKind> {
+    let prefix_items = v.get_field(SchemaField::PrefixItems)?;
+    let prefix_array = prefix_items.as_array()?;
+
+    let tuple_types: Vec<BrpTypeName> = prefix_array
+        .iter()
+        .filter_map(Value::extract_field_type)
+        .collect();
+
+    Some(EnumVariantKind::Tuple(variant_name, tuple_types))
+}
+
+/// Extract struct variant kind from schema if it matches struct pattern
+fn extract_struct_variant_kind(
+    v: &Value,
+    _registry: &HashMap<BrpTypeName, Value>,
+    variant_name: VariantName,
+) -> Option<EnumVariantKind> {
+    let properties = v.get_field(SchemaField::Properties)?;
+    let props_map = properties.as_object()?;
+
+    let struct_fields: Vec<EnumFieldInfo> = props_map
+        .iter()
+        .filter_map(|(field_name, field_schema)| {
+            field_schema
+                .extract_field_type()
+                .map(|type_name| EnumFieldInfo {
+                    field_name: StructFieldName::from(field_name.clone()),
+                    type_name,
+                })
+        })
+        .collect();
+
+    if struct_fields.is_empty() {
+        return None;
+    }
+
+    Some(EnumVariantKind::Struct(variant_name, struct_fields))
 }
 
 /// Process enum type directly, bypassing `PathBuilder` trait
@@ -202,13 +240,6 @@ pub fn process_enum(
     ))
 }
 
-// Helper functions for variant processing
-fn extract_variant_name(v: &Value) -> Option<String> {
-    v.get_field(SchemaField::ShortPath)
-        .and_then(Value::as_str)
-        .map(ToString::to_string)
-}
-
 /// Extract the fully qualified variant name from schema (e.g., "`Color::Srgba`")
 fn extract_variant_qualified_name(v: &Value) -> Option<VariantName> {
     // First try to get the type path for the full qualified name
@@ -219,41 +250,16 @@ fn extract_variant_qualified_name(v: &Value) -> Option<VariantName> {
     }
 
     // Fallback to just the variant name if we can't parse it
-    extract_variant_name(v).map(VariantName::from)
-}
-
-fn extract_tuple_types(
-    prefix_items: &[Value],
-    _registry: &HashMap<BrpTypeName, Value>,
-) -> Vec<BrpTypeName> {
-    prefix_items
-        .iter()
-        .filter_map(Value::extract_field_type)
-        .collect()
-}
-
-fn extract_struct_fields(
-    properties: &serde_json::Map<String, Value>,
-    _registry: &HashMap<BrpTypeName, Value>,
-) -> Vec<EnumFieldInfo> {
-    properties
-        .iter()
-        .filter_map(|(field_name, field_schema)| {
-            field_schema
-                .extract_field_type()
-                .map(|type_name| EnumFieldInfo {
-                    field_name: StructFieldName::from(field_name.clone()),
-                    type_name,
-                })
-        })
-        .collect()
+    v.get_field(SchemaField::ShortPath)
+        .and_then(Value::as_str)
+        .map(|s| VariantName::from(s.to_string()))
 }
 
 fn extract_enum_variants(
     registry_schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
     enum_type: &BrpTypeName,
-) -> Vec<EnumVariantInfo> {
+) -> Vec<EnumVariantKind> {
     let one_of_field = registry_schema.get_field(SchemaField::OneOf);
 
     one_of_field
@@ -261,15 +267,15 @@ fn extract_enum_variants(
         .map(|variants| {
             variants
                 .iter()
-                .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry, enum_type))
+                .filter_map(|v| EnumVariantKind::from_schema_variant(v, registry, enum_type))
                 .collect()
         })
         .unwrap_or_default()
 }
 
 fn group_variants_by_signature(
-    variants: Vec<EnumVariantInfo>,
-) -> BTreeMap<VariantSignature, Vec<EnumVariantInfo>> {
+    variants: Vec<EnumVariantKind>,
+) -> BTreeMap<VariantSignature, Vec<EnumVariantKind>> {
     let mut groups = BTreeMap::new();
     for variant in variants {
         let signature = variant.signature();
@@ -447,7 +453,7 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
 /// This is the single source of truth for enum variant processing
 fn extract_and_group_variants(
     ctx: &RecursionContext,
-) -> Result<BTreeMap<VariantSignature, Vec<EnumVariantInfo>>> {
+) -> Result<BTreeMap<VariantSignature, Vec<EnumVariantKind>>> {
     let schema = ctx.require_registry_schema()?;
     let variants = extract_enum_variants(schema, &ctx.registry, ctx.type_name());
     Ok(group_variants_by_signature(variants))
@@ -579,11 +585,42 @@ fn determine_signature_mutation_status(
     }
 }
 
+/// Check if there's mutation knowledge for a specific signature element
+///
+/// Returns `Ok(Some(value))` if knowledge exists, `Ok(None)` if no knowledge,
+/// or `Err` if the knowledge index is out of bounds for the signature.
+fn check_signature_element_knowledge(
+    enum_type: &BrpTypeName,
+    signature: &VariantSignature,
+    index: usize,
+) -> std::result::Result<Option<Value>, BuilderError> {
+    use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
+
+    // Validate index is within bounds for tuple signatures
+    if let VariantSignature::Tuple(types) = signature {
+        if index >= types.len() {
+            return Err(BuilderError::SystemError(Report::new(Error::InvalidState(
+                format!(
+                    "Knowledge index {index} out of bounds for enum {} tuple signature with {} elements",
+                    enum_type.display_name(),
+                    types.len()
+                ),
+            ))));
+        }
+    }
+
+    let key = KnowledgeKey::enum_variant_signature(enum_type.clone(), signature.clone(), index);
+
+    Ok(BRP_MUTATION_KNOWLEDGE
+        .get(&key)
+        .map(|knowledge| knowledge.example().clone()))
+}
+
 /// Build an example for a variant group based on mutation status
 fn build_variant_group_example(
     signature: &VariantSignature,
-    variants_in_group: &[EnumVariantInfo],
-    child_examples: &HashMap<MutationPathDescriptor, Value>,
+    variants_in_group: &[EnumVariantKind],
+    mut child_examples: HashMap<MutationPathDescriptor, Value>,
     signature_status: MutationStatus,
     ctx: &RecursionContext,
 ) -> std::result::Result<Option<Value>, BuilderError> {
@@ -596,10 +633,23 @@ fn build_variant_group_example(
     let example = if matches!(signature_status, MutationStatus::NotMutable) {
         None // Omit example field entirely for unmutable variants
     } else {
+        // Apply signature-specific knowledge to override child examples
+        // Mutate in place since we own child_examples now
+        if let VariantSignature::Tuple(types) = signature {
+            for (index, _type_name) in types.iter().enumerate() {
+                if let Some(knowledge_value) =
+                    check_signature_element_knowledge(ctx.type_name(), signature, index)?
+                {
+                    let descriptor = MutationPathDescriptor::from(index.to_string());
+                    child_examples.insert(descriptor, knowledge_value);
+                }
+            }
+        }
+
         Some(build_variant_example(
             signature,
             representative.name(),
-            child_examples,
+            &child_examples,
             ctx.type_name(),
         ))
     };
@@ -612,7 +662,7 @@ fn build_variant_group_example(
 /// Now builds examples immediately for each variant group to avoid `HashMap` collision issues
 /// where multiple variant groups with the same signature would overwrite each other's examples.
 fn process_children(
-    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantKind>>,
     ctx: &RecursionContext,
 ) -> std::result::Result<ProcessChildrenResult, BuilderError> {
     let mut all_examples = Vec::new();
@@ -648,7 +698,7 @@ fn process_children(
         let example = build_variant_group_example(
             signature,
             variants_in_group,
-            &child_examples,
+            child_examples,
             signature_status,
             ctx,
         )?;
@@ -690,12 +740,6 @@ fn create_paths_for_signature(
                         type_name: type_name.clone(),
                         parent_type: ctx.type_name().clone(),
                     };
-                    tracing::debug!(
-                        "create_paths_for_signature TUPLE: index={}, type_name={}, path_descriptor={:?}",
-                        index,
-                        type_name,
-                        path.to_mutation_path_descriptor()
-                    );
                     path
                 })
                 .collect();
@@ -705,8 +749,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -828,7 +872,7 @@ fn collect_child_chains_to_wrap(
 /// Builds partial roots IMMEDIATELY during recursion by wrapping child partial roots
 /// as we receive them during the ascent phase.
 fn build_partial_root_examples(
-    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
+    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantKind>>,
     enum_examples: &[ExampleGroup],
     child_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
@@ -919,54 +963,6 @@ fn build_partial_root_examples(
     partial_root_examples
 }
 
-/// Populate `root_example` field using assembly approach
-///
-/// Uses the `partial_root_examples` already propagated to each path from its wrapping parent.
-fn populate_root_example(paths: &mut [MutationPathInternal]) {
-    for path in paths {
-        if let Some(enum_data) = &mut path.enum_path_data
-            && !enum_data.variant_chain.is_empty()
-        {
-            tracing::debug!(
-                "[POPULATE_ROOT] Path: {}, variant_chain: {:?}",
-                path.full_mutation_path,
-                enum_data
-                    .variant_chain
-                    .iter()
-                    .map(VariantName::as_str)
-                    .collect::<Vec<_>>()
-            );
-
-            // Use the partial_root_examples that was propagated to this path
-            if let Some(ref partials) = path.partial_root_examples {
-                tracing::debug!(
-                    "[POPULATE_ROOT]   Available keys in partial_root_examples: {:?}",
-                    partials
-                        .keys()
-                        .map(|k| k.iter().map(VariantName::as_str).collect::<Vec<_>>())
-                        .collect::<Vec<_>>()
-                );
-
-                if let Some(root_example) = partials.get(&enum_data.variant_chain) {
-                    tracing::debug!("[POPULATE_ROOT]   FOUND root_example: {root_example:?}");
-                    enum_data.root_example = Some(root_example.clone());
-                } else {
-                    tracing::debug!(
-                        "[POPULATE_ROOT]   NOT FOUND - no entry for chain {:?}",
-                        enum_data
-                            .variant_chain
-                            .iter()
-                            .map(VariantName::as_str)
-                            .collect::<Vec<_>>()
-                    );
-                }
-            } else {
-                tracing::debug!("[POPULATE_ROOT]   NO partial_root_examples on path");
-            }
-        }
-    }
-}
-
 /// Build mutation status reason for enums based on variant mutability
 fn build_enum_mutation_status_reason(
     enum_mutation_status: MutationStatus,
@@ -981,9 +977,9 @@ fn build_enum_mutation_status_reason(
                 .flat_map(|eg| {
                     eg.applicable_variants.iter().map(|variant| PathSummary {
                         full_mutation_path: variant.clone(),
-                        type_name:          ctx.type_name().clone(),
-                        status:             eg.mutation_status,
-                        reason:             None,
+                        type_name: ctx.type_name().clone(),
+                        status: eg.mutation_status,
+                        reason: None,
                     })
                 })
                 .collect();
@@ -1020,9 +1016,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathData {
-            variant_chain:       ctx.variant_chain.clone(),
+            variant_chain: ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example:        None,
+            root_example: None,
         })
     };
 
@@ -1050,48 +1046,25 @@ fn propagate_partial_root_examples_to_children(
     partial_root_examples: &BTreeMap<Vec<VariantName>, Value>,
     ctx: &RecursionContext,
 ) {
-    tracing::debug!(
-        "[ENUM] Built partial_root_examples for {} with {} chains",
-        ctx.type_name(),
-        partial_root_examples.len()
-    );
-    for (chain, value) in partial_root_examples {
-        tracing::debug!(
-            "[ENUM]   Chain {:?} -> {}",
-            chain
-                .iter()
-                .map(super::types::VariantName::as_str)
-                .collect::<Vec<_>>(),
-            serde_json::to_string(value).unwrap_or_else(|_| "???".to_string())
-        );
-    }
-
-    // If we're at the actual root level (empty variant chain),
-    // propagate and populate
-    tracing::debug!(
-        "[ENUM] create_result_paths for {}: variant_chain.len()={}, is_empty={}",
-        ctx.type_name(),
-        ctx.variant_chain.len(),
-        ctx.variant_chain.is_empty()
-    );
-
     if ctx.variant_chain.is_empty() {
-        tracing::debug!("[ENUM] At root level - propagating and populating");
         // Propagate to children (overwriting struct-level propagations)
         for child in child_paths.iter_mut() {
             child.partial_root_examples = Some(partial_root_examples.clone());
-            tracing::debug!(
-                "[ENUM] Propagated partial_root_examples to child {}",
-                child.full_mutation_path
-            );
         }
 
-        populate_root_example(child_paths);
-    } else {
-        tracing::debug!(
-            "[ENUM] NOT at root level (variant_chain has {} entries) - skipping propagate/populate",
-            ctx.variant_chain.len()
-        );
+        for child_path in child_paths {
+            if let Some(enum_data) = &mut child_path.enum_path_data
+                && !enum_data.variant_chain.is_empty()
+            {
+                // Use the partial_root_examples that was propagated to this path
+                if let Some(ref partials) = child_path.partial_root_examples {
+                    if let Some(root_example) = partials.get(&enum_data.variant_chain) {
+                        enum_data.root_example = Some(root_example.clone());
+                    } else {
+                    }
+                }
+            }
+        }
     }
 }
 

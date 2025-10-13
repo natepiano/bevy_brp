@@ -41,7 +41,7 @@ If all steps are COMPLETED:
 
 ## INTERACTIVE IMPLEMENTATION SEQUENCE
 
-### Step 1: Implement Enum Variant Signature Knowledge Support ⏳ PENDING
+### Step 1: Implement Enum Variant Signature Knowledge Support ✅ COMPLETED
 
 **Objective:** Add signature-level knowledge targeting to fix the `AlphaMode2d::Mask(f32)` crash issue.
 
@@ -68,7 +68,7 @@ cargo build && cargo +nightly fmt
 - Other f32 fields remain unaffected
 - Mutation test for `TilemapChunk` should pass without crash
 
-### Step 2: Complete Validation ⏳ PENDING
+### Step 2: Complete Validation ✅ COMPLETED
 
 **Objective:** Verify the implementation works correctly.
 
