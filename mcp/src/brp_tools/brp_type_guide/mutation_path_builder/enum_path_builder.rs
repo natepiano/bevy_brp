@@ -391,15 +391,15 @@ fn build_variant_example(
 ///
 /// When an enum has mixed mutability:
 /// - Mutable/PartiallyMutable variants have `example: Some(Value)`
-/// - NotMutable variants have `example: None` (see process_children:221-222)
+/// - `NotMutable` variants have `example: None` (see process_children:221-222)
 ///
-/// If we select a NotMutable variant's `None` example, it propagates up as the
+/// If we select a `NotMutable` variant's `None` example, it propagates up as the
 /// `enum_example_for_parent`, causing parent enums to build invalid examples.
 ///
 /// ## Example Problem Case
 ///
 /// For `Option<Handle<Image>>` where `Handle<Image>` has:
-/// - `Strong` variant → not_mutable, example: None
+/// - `Strong` variant → `not_mutable`, example: None
 /// - `Uuid` variant → mutable, example: Some({"Uuid": "..."})
 ///
 /// If we pick `Strong` first (because it's non-unit), we get:
@@ -413,14 +413,14 @@ fn build_variant_example(
 ///
 /// 1. **First priority**: Non-unit variant WITH an actual example
 ///    - Provides rich examples for tuple/struct variants
-///    - Skips not_mutable variants that have `None`
+///    - Skips `not_mutable` variants that have `None`
 ///
 /// 2. **Second priority**: ANY variant WITH an example (including unit)
-///    - Handles enums where all non-unit variants are not_mutable
+///    - Handles enums where all non-unit variants are `not_mutable`
 ///    - Unit variants always have examples (simple string values)
 ///
 /// 3. **Fallback**: Return `None` if no examples exist
-///    - Happens when all variants are not_mutable (rare case)
+///    - Happens when all variants are `not_mutable` (rare case)
 pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
     // First priority: Find a non-unit variant that HAS an actual example
     // This ensures we get rich examples while avoiding not_mutable variants with None
@@ -472,6 +472,7 @@ pub fn generate_enum_instructions(
 ///
 /// Now builds examples immediately for each variant group to avoid `HashMap` collision issues
 /// where multiple variant groups with the same signature would overwrite each other's examples.
+#[allow(clippy::too_many_lines)]
 fn process_children(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantInfo>>,
     ctx: &RecursionContext,
@@ -811,7 +812,7 @@ fn build_partial_roots(
                             // non-enums
                             child.enum_example_for_parent.as_ref().map_or_else(
                                 || child.example.clone(), // Non-enum child: use regular example
-                                |enum_ex| enum_ex.clone(), /* Enum child: use selected variant
+                                Clone::clone,             /* Enum child: use selected variant
                                                            * example */
                             )
                         });
@@ -855,8 +856,8 @@ fn build_partial_roots(
                     // With this fix: Parent builds `{"Some": {"Uuid": "..."}}` using
                     // child.enum_example_for_parent
                     let value = child.enum_example_for_parent.as_ref().map_or_else(
-                        || child.example.clone(),  // Non-enum child: use regular example
-                        |enum_ex| enum_ex.clone(), // Enum child: use selected variant example
+                        || child.example.clone(), // Non-enum child: use regular example
+                        Clone::clone,             // Enum child: use selected variant example
                     );
 
                     children.insert(descriptor, value);
@@ -965,14 +966,11 @@ fn create_result_paths(
             // Use unified NotMutableReason with TypeKind-based message
             let message = "Some variants are mutable while others are not".to_string();
 
-            Some(
-                Option::<Value>::from(&super::NotMutableReason::from_partial_mutability(
-                    ctx.type_name().clone(),
-                    summaries,
-                    message,
-                ))
-                .unwrap(),
-            )
+            Option::<Value>::from(&super::NotMutableReason::from_partial_mutability(
+                ctx.type_name().clone(),
+                summaries,
+                message,
+            ))
         }
         MutationStatus::NotMutable => {
             // All variants are not mutable
@@ -1001,7 +999,7 @@ fn create_result_paths(
                                * they use
                                * Vec<ExampleGroup> */
         enum_example_groups: Some(enum_examples),
-        enum_example_for_parent: Some(default_example.clone()),
+        enum_example_for_parent: Some(default_example),
         type_name: ctx.type_name().display_name(),
         path_kind: ctx.path_kind.clone(),
         mutation_status: enum_mutation_status,

@@ -243,11 +243,58 @@ pub fn aggregate_mutation_statuses(statuses: &[MutationStatus]) -> MutationStatu
 ///
 /// This is a shared helper function used by both non-enum types (via `MutationPathBuilder`)
 /// and enum types (via `enum_path_builder::create_result_paths`).
+///
+/// ## Special Case: Maps and Sets
+///
+/// Maps and Sets require ALL children to be mutable for BRP operations:
+/// - `HashMap<K, V>` needs both K and V mutable (can't insert with non-serializable key)
+/// - `HashSet<T>` needs T mutable (can't insert non-serializable element)
+///
+/// Unlike Structs where some fields can be mutable and others not, collections are
+/// all-or-nothing: either you can perform operations or you can't.
 pub fn determine_parent_mutation_status(
     ctx: &RecursionContext,
     child_paths: &[MutationPathInternal],
 ) -> (MutationStatus, Option<NotMutableReason>) {
-    // Extract statuses and aggregate
+    // Get TypeKind for special case handling
+    let schema = ctx.registry.get(ctx.type_name()).unwrap_or(&Value::Null);
+    let type_kind = TypeKind::from_schema(schema);
+
+    // SPECIAL CASE: Map and Set require ALL children to be mutable
+    // Maps need both key AND value mutable for operations like insert(key, value)
+    // Sets need element mutable for operations like insert(element)
+    if matches!(type_kind, TypeKind::Map | TypeKind::Set) {
+        let has_not_mutable = child_paths
+            .iter()
+            .any(|p| matches!(p.mutation_status, MutationStatus::NotMutable));
+
+        if has_not_mutable {
+            // Map/Set is NotMutable if ANY child is NotMutable
+            let summaries: Vec<PathSummary> = child_paths
+                .iter()
+                .map(MutationPathInternal::to_path_summary)
+                .collect();
+
+            let collection_type = if matches!(type_kind, TypeKind::Map) {
+                "Maps"
+            } else {
+                "Sets"
+            };
+
+            let reason = NotMutableReason::from_partial_mutability(
+                ctx.type_name().clone(),
+                summaries,
+                format!(
+                    "{collection_type} require all {} to be mutable for BRP operations",
+                    type_kind.child_terminology()
+                ),
+            );
+
+            return (MutationStatus::NotMutable, Some(reason));
+        }
+    }
+
+    // Extract statuses and aggregate (normal logic for non-Map/Set types)
     let statuses: Vec<MutationStatus> = child_paths.iter().map(|p| p.mutation_status).collect();
 
     let status = aggregate_mutation_statuses(&statuses);
@@ -260,9 +307,6 @@ pub fn determine_parent_mutation_status(
                 .map(MutationPathInternal::to_path_summary)
                 .collect();
 
-            // Get TypeKind to generate appropriate message
-            let schema = ctx.registry.get(ctx.type_name()).unwrap_or(&Value::Null);
-            let type_kind = TypeKind::from_schema(schema);
             let message = format!(
                 "Some {} are mutable while others are not",
                 type_kind.child_terminology()

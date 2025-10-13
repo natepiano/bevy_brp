@@ -103,7 +103,7 @@ impl NotMutableReason {
             let path_str = summary.full_mutation_path.to_string();
             path_statuses
                 .entry(path_str)
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(summary.status);
         }
 
