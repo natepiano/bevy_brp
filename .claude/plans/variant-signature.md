@@ -75,12 +75,9 @@ fn name(&self) -> &str {
 
 **Note**: Remove `short_name()` method - it's redundant. The `name()` method is more semantically clear (extracts the variant name without enum prefix) and is already the preferred method in the codebase (3 call sites vs 0 direct calls to short_name).
 
-**Update `signature()`**:
-```rust
-fn signature(&self) -> &VariantSignature {
-    &self.signature
-}
-```
+**Remove `signature()` method**: Delete the entire method. Use direct field access `variant.signature` instead.
+
+**Rationale**: Since `EnumVariantKind` will have public fields and is a private internal struct, direct field access is idiomatic. The codebase pattern (see `RecursionContext`, `MutationPathInternal`, `ExampleGroup`) strongly favors public fields with direct access over trivial getters. The method has only one call site, making this change trivial.
 
 ### 3. Schema Extraction - from_schema_variant() method
 
@@ -136,6 +133,103 @@ fn from_schema_variant(
 ```
 
 **Note on `extract_variant_qualified_name()`**: This function already exists in the file and returns `Option<VariantName>`. It does **NOT** need any changes - the rewritten `from_schema_variant()` can use it as-is.
+
+### 3.5. Critical Transformation Details: Helper Function Architectural Change
+
+**IMPORTANT**: This is NOT a simple rename. These helper functions undergo a complete architectural transformation:
+
+#### Responsibility Separation
+
+**OLD (lines 153-195)**: Helper functions are **complete constructors**
+- Purpose: Build entire `EnumVariantKind` enum variants
+- Input: Schema data + variant name
+- Output: Complete `EnumVariantKind::Tuple(name, signature)` or `EnumVariantKind::Struct(name, fields)`
+- Role: Single function builds the complete variant object
+
+**NEW (plan lines 140-186)**: Helper functions become **signature extractors**
+- Purpose: Extract ONLY the signature information from schema
+- Input: Schema data (no variant name)
+- Output: ONLY the `VariantSignature` component
+- Role: Extract signature component; caller assembles with name into struct
+
+#### Function Signature Transformations
+
+**Tuple Helper Transformation**:
+```rust
+// BEFORE: Complete constructor
+fn extract_tuple_variant_kind(
+    v: &Value,
+    _registry: &HashMap<BrpTypeName, Value>,
+    variant_name: VariantName,              // ← Parameter 3: variant name
+) -> Option<EnumVariantKind>                // ← Returns complete variant
+
+// AFTER: Signature extractor
+fn extract_tuple_variant_signature(        // ← New function name
+    v: &Value,
+    _registry: &HashMap<BrpTypeName, Value>,
+    // ← Parameter 3 REMOVED (no variant name)
+) -> Option<VariantSignature>               // ← Returns ONLY signature
+```
+
+**Struct Helper Transformation**:
+```rust
+// BEFORE: Complete constructor
+fn extract_struct_variant_kind(
+    v: &Value,
+    _registry: &HashMap<BrpTypeName, Value>,
+    variant_name: VariantName,              // ← Parameter 3: variant name
+) -> Option<EnumVariantKind>                // ← Returns complete variant
+
+// AFTER: Signature extractor
+fn extract_struct_variant_signature(       // ← New function name
+    v: &Value,
+    _registry: &HashMap<BrpTypeName, Value>,
+    // ← Parameter 3 REMOVED (no variant name)
+) -> Option<VariantSignature>               // ← Returns ONLY signature
+```
+
+#### Return Value Construction Changes
+
+**Tuple Variant**:
+```rust
+// OLD: Builds complete EnumVariantKind enum variant
+Some(EnumVariantKind::Tuple(variant_name, tuple_types))
+
+// NEW: Builds only VariantSignature (no variant name)
+Some(VariantSignature::Tuple(tuple_types))
+```
+
+**Struct Variant**:
+```rust
+// OLD: Builds complete EnumVariantKind enum variant
+Some(EnumVariantKind::Struct(variant_name, struct_fields))
+
+// NEW: Builds only VariantSignature (no variant name)
+Some(VariantSignature::Struct(struct_fields))
+```
+
+#### Caller Responsibility Shift
+
+**OLD**: Helpers do everything
+```rust
+// Helpers return complete EnumVariantKind::Tuple(name, types)
+if let Some(tuple_variant) = extract_tuple_variant_kind(v, registry, variant_name.clone()) {
+    return Some(tuple_variant);  // Already has name + signature
+}
+```
+
+**NEW**: Caller assembles name + signature
+```rust
+// Helpers return only VariantSignature::Tuple(types)
+if let Some(signature) = extract_tuple_variant_signature(v, registry) {
+    return Some(Self {
+        name: variant_name,      // Caller adds name
+        signature,               // Helper provided signature
+    });
+}
+```
+
+This transformation enables the struct-based design where `EnumVariantKind { name, signature }` stores each component separately, with helpers focusing solely on signature extraction.
 
 ### 4. Helper Functions - extract_tuple_variant_signature and extract_struct_variant_signature
 
@@ -233,9 +327,15 @@ fn group_variants_by_signature(
 
 **Rationale**: Since `EnumVariantKind` fields are public and we're changing from an enum to a struct, direct field access is clearer than maintaining a getter method that just returns a reference.
 
-### 7. Update All `.signature()` Calls
+### 7. Verify No `.signature()` Method Calls Remain
 
-The `.signature()` method at line 281 in `group_variants_by_signature()` is the only call site. It's handled in Section 6 above - use direct field access `variant.signature.clone()`.
+After deletion of the `signature()` method, verify no orphaned calls remain:
+
+```bash
+rg "\.signature\(\)" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs
+```
+
+Should return **no matches** (all uses should be direct field access `.signature`).
 
 ## Files to Modify
 
