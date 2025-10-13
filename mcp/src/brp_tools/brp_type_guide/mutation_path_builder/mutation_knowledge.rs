@@ -32,7 +32,7 @@ pub enum KnowledgeKey {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: BrpTypeName,
         /// e.g., `physical_width`
-        field_name: String,
+        field_name:  String,
     },
 }
 
@@ -49,7 +49,7 @@ impl KnowledgeKey {
     ) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name: field_name.into(),
+            field_name:  field_name.into(),
         }
     }
 }
@@ -61,7 +61,7 @@ pub enum MutationKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example: Value,
+        example:         Value,
         simplified_type: String,
     },
 }

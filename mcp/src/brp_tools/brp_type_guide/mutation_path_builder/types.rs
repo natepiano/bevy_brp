@@ -162,17 +162,6 @@ impl std::fmt::Display for VariantSignature {
     }
 }
 
-/// A signature for grouping `PathKinds` that have similar structure
-/// Used as a `HashMap` key for deduplication in output stage grouping
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[allow(dead_code)] // Will be used in Plan 1 implementation
-pub enum PathSignature {
-    Root { type_name: BrpTypeName },
-    Field { type_name: BrpTypeName },
-    Index { type_name: BrpTypeName },
-    Array { type_name: BrpTypeName },
-}
-
 /// Mutation path information (internal representation)
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {

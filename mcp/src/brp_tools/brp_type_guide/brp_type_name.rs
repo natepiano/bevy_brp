@@ -144,8 +144,13 @@ impl From<&String> for BrpTypeName {
     }
 }
 
+// this one is because in `mutation_knowledge` we allow
+// passing in an impl Into<BrpTypeName>
+// useful for passing in &str and String
+// but we also want to be able to psas in a `&BrpTypeName`
+// hence this odd beast
 impl From<&BrpTypeName> for BrpTypeName {
-    fn from(type_name: &BrpTypeName) -> Self {
+    fn from(type_name: &Self) -> Self {
         type_name.clone()
     }
 }

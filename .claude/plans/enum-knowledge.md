@@ -118,7 +118,7 @@ map.insert(
 
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs`
 
-Add a new helper function before `process_children`:
+**Add two helper functions immediately before the `build_variant_group_example` function:**
 
 ```rust
 /// Check if there's mutation knowledge for a specific signature element
@@ -137,35 +137,7 @@ fn check_signature_element_knowledge(
         .get(&key)
         .map(|knowledge| knowledge.example().clone())
 }
-```
 
-Then modify `process_children` at **lines 604-613**:
-
-```rust
-// Only build example for mutable variants
-// NotMutable variants get None (field omitted from JSON)
-let example = if matches!(signature_status, MutationStatus::NotMutable) {
-    None
-} else {
-    // Check for signature-specific knowledge that overrides child examples
-    let example_with_knowledge = apply_signature_knowledge(
-        ctx.type_name(),
-        signature,
-        &child_examples,
-    );
-
-    Some(build_variant_example(
-        signature,
-        representative.name(),
-        &example_with_knowledge,
-        ctx.type_name(),
-    ))
-};
-```
-
-Add the helper function:
-
-```rust
 /// Apply signature-specific knowledge to child examples
 fn apply_signature_knowledge(
     enum_type: &BrpTypeName,
@@ -188,6 +160,47 @@ fn apply_signature_knowledge(
 }
 ```
 
+**Then modify the `build_variant_group_example` function** by replacing this code block:
+
+```rust
+// Only build example for mutable variants
+// `NotMutable` variants get None (field omitted from JSON)
+let example = if matches!(signature_status, MutationStatus::NotMutable) {
+    None // Omit example field entirely for unmutable variants
+} else {
+    Some(build_variant_example(
+        signature,
+        representative.name(),
+        child_examples,
+        ctx.type_name(),
+    ))
+};
+```
+
+**With this updated version that applies signature knowledge:**
+
+```rust
+// Only build example for mutable variants
+// `NotMutable` variants get None (field omitted from JSON)
+let example = if matches!(signature_status, MutationStatus::NotMutable) {
+    None
+} else {
+    // Check for signature-specific knowledge that overrides child examples
+    let example_with_knowledge = apply_signature_knowledge(
+        ctx.type_name(),
+        signature,
+        child_examples,
+    );
+
+    Some(build_variant_example(
+        signature,
+        representative.name(),
+        &example_with_knowledge,
+        ctx.type_name(),
+    ))
+};
+```
+
 ### 4. Import `VariantSignature` in `mutation_knowledge.rs`
 
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_knowledge.rs`
@@ -205,7 +218,10 @@ After implementation:
 1. Run type guide generation for `TilemapChunk`
 2. Verify `.alpha_mode` example shows `{"Mask": 0.5}` instead of `{"Mask": 3.14...}`
 3. Run mutation test on `TilemapChunk` - should pass without crash
-4. Verify other f32 fields still use π correctly
+4. Verify that f32 fields OUTSIDE the targeted enum signature still use π:
+   - Generate type guide for a type with regular f32 fields (e.g., `bevy_transform::components::transform::Transform`)
+   - Check that `.translation.x`, `.translation.y`, `.translation.z` examples use π (3.14159...)
+   - Verify that only `AlphaMode2d::Mask(f32)` uses 0.5, not all f32 fields globally
 
 ## Benefits
 

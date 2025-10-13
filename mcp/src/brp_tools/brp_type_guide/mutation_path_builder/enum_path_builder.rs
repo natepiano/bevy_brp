@@ -833,7 +833,7 @@ fn build_partial_root_examples(
     child_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
 ) -> BTreeMap<Vec<VariantName>, Value> {
-    let mut partial_roots = BTreeMap::new();
+    let mut partial_root_examples = BTreeMap::new();
 
     // For each variant at THIS level
     for (signature, variants) in variant_groups {
@@ -887,7 +887,7 @@ fn build_partial_root_examples(
                 let wrapped =
                     build_variant_example(signature, variant.name(), &children, ctx.type_name());
 
-                partial_roots.insert(child_chain.clone(), wrapped);
+                partial_root_examples.insert(child_chain.clone(), wrapped);
                 found_child_chains = true;
             }
 
@@ -901,7 +901,7 @@ fn build_partial_root_examples(
                 // Wrap with this variant using regular child examples
                 let wrapped =
                     build_variant_example(signature, variant.name(), &children, ctx.type_name());
-                partial_roots.insert(our_chain.clone(), wrapped);
+                partial_root_examples.insert(our_chain.clone(), wrapped);
                 tracing::debug!(
                     "[ENUM] Added n-variant chain entry for {:?}",
                     our_chain
@@ -911,12 +911,12 @@ fn build_partial_root_examples(
                 );
             } else {
                 // No child chains found, this is a leaf variant - store base example
-                partial_roots.insert(our_chain, base_example);
+                partial_root_examples.insert(our_chain, base_example);
             }
         }
     }
 
-    partial_roots
+    partial_root_examples
 }
 
 /// Populate `root_example` field using assembly approach
@@ -1045,13 +1045,13 @@ fn build_enum_root_path(
 }
 
 /// Propagate partial root examples to child paths at the root level
-fn propagate_partial_roots_to_children(
+fn propagate_partial_root_examples_to_children(
     child_paths: &mut [MutationPathInternal],
     partial_root_examples: &BTreeMap<Vec<VariantName>, Value>,
     ctx: &RecursionContext,
 ) {
     tracing::debug!(
-        "[ENUM] Built partial_roots for {} with {} chains",
+        "[ENUM] Built partial_root_examples for {} with {} chains",
         ctx.type_name(),
         partial_root_examples.len()
     );
@@ -1081,7 +1081,7 @@ fn propagate_partial_roots_to_children(
         for child in child_paths.iter_mut() {
             child.partial_root_examples = Some(partial_root_examples.clone());
             tracing::debug!(
-                "[ENUM] Propagated partial_roots to child {}",
+                "[ENUM] Propagated partial_root_examples to child {}",
                 child.full_mutation_path
             );
         }
@@ -1122,11 +1122,11 @@ fn create_result_paths(
         mutation_status_reason,
     );
 
-    // Store partial_roots built during ascent in process_children
+    // Store partial_root_examples built during ascent in process_children
     root_mutation_path.partial_root_examples = Some(partial_root_examples.clone());
 
     // Propagate partial root examples to children and populate root examples
-    propagate_partial_roots_to_children(&mut child_paths, &partial_root_examples, ctx);
+    propagate_partial_root_examples_to_children(&mut child_paths, &partial_root_examples, ctx);
 
     // Return root path plus all child paths (like `MutationPathBuilder` does)
     let mut result = vec![root_mutation_path];

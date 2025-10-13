@@ -125,19 +125,19 @@ impl Deref for RecursionDepth {
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind: PathKind,
+    pub path_kind:          PathKind,
     /// Reference to the type registry
-    pub registry: Arc<HashMap<BrpTypeName, Value>>,
+    pub registry:           Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
     pub full_mutation_path: FullMutationPath,
     /// Action to take regarding path creation (set by `MutationPathBuilder`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action: PathAction,
+    pub path_action:        PathAction,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
-    pub variant_chain: Vec<VariantName>,
+    pub variant_chain:      Vec<VariantName>,
     /// Recursion depth tracking to prevent infinite loops
-    pub depth: RecursionDepth,
+    pub depth:              RecursionDepth,
 }
 
 impl RecursionContext {
