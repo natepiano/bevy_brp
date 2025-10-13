@@ -154,28 +154,24 @@ pub fn find_knowledge(&self) -> Option<&'static super::mutation_knowledge::Mutat
         }
         PathKind::IndexedElement { index, parent_type, .. } => {
             // NEW: Check if we're a child of an enum variant signature
-            if let Some(parent_sig) = &self.parent_enum_signature {
+            if let Some(signature) = &self.parent_variant_signature {
                 // Validate index is within bounds for tuple signatures
-                if let VariantSignature::Tuple(types) = &parent_sig.signature {
+                if let VariantSignature::Tuple(types) = signature {
                     if *index >= types.len() {
                         tracing::warn!(
-                            "Knowledge index {} out of bounds for enum {} tuple signature with {} elements",
-                            index,
-                            parent_sig.enum_type.display_name(),
+                            "Knowledge index {index} out of bounds for enum {} tuple signature with {} elements",
+                            parent_type.display_name(),
                             types.len()
                         );
                     } else {
                         let key = KnowledgeKey::enum_variant_signature(
-                            parent_sig.enum_type.clone(),
-                            parent_sig.signature.clone(),
+                            parent_type.clone(),  // enum type from PathKind
+                            signature.clone(),
                             *index,
                         );
                         if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&key) {
                             tracing::debug!(
-                                "Found enum signature match for {}[{}] in enum {}: {:?}",
-                                parent_type.display_name(),
-                                index,
-                                parent_sig.enum_type.display_name(),
+                                "Found enum signature match for {parent_type}[{index}]: {:?}",
                                 knowledge.example()
                             );
                             return Some(knowledge);
@@ -196,16 +192,11 @@ pub fn find_knowledge(&self) -> Option<&'static super::mutation_knowledge::Mutat
 }
 ```
 
-Add import at top of file:
-```rust
-use super::types::ParentEnumSignature;
-```
-
-### Step 4: Set Parent Enum Signature in Enum Builder
+### Step 4: Set Parent Variant Signature in Enum Builder
 
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs`
 
-Update `process_signature_path` to set the parent enum signature when creating child contexts:
+Update `process_signature_path` to set the parent variant signature when creating child contexts:
 
 ```rust
 fn process_signature_path(
@@ -217,11 +208,9 @@ fn process_signature_path(
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
     let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create)?;
 
-    // NEW: Set parent enum signature context for the child
-    child_ctx.parent_enum_signature = Some(ParentEnumSignature {
-        enum_type: ctx.type_name().clone(),
-        signature: signature.clone(),
-    });
+    // NEW: Set parent variant signature context for the child
+    // Note: enum type is already in child_ctx.path_kind.parent_type
+    child_ctx.parent_variant_signature = Some(signature.clone());
 
     // Set up enum context for children - just push the variant name
     if let Some(representative_variant) = applicable_variants.first() {
@@ -246,11 +235,6 @@ for path in paths.into_iter().flatten() {
     )?;
     signature_child_paths.extend(child_paths);
 }
-```
-
-Add import at top of file:
-```rust
-use super::types::ParentEnumSignature;
 ```
 
 ## Testing
