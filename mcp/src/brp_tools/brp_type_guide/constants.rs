@@ -86,7 +86,7 @@ pub const REFLECT_TRAIT_RESOURCE: &str = "Resource";
 // ============================================================================
 
 /// Base warning message for AI agents about mutation paths
-pub const AGENT_GUIDANCE: &str = "The mutation_paths field provides valid 'path' arguments for mcp__brp__world_mutate_components and mcp__brp__world_mutate_resources tools, with example values suitable for testing.";
+pub const AGENT_GUIDANCE: &str = "The 'mutation_paths' field provides valid 'path' arguments for 'mcp__brp__world_mutate_components' and 'mcp__brp__world_mutate_resources' tools, with example values suitable for testing.";
 
 /// Additional warning when Entity fields are present (with placeholder for entity ID)
 pub const ENTITY_WARNING: &str = " CAUTION: This type contains bevy_ecs::entity::Entity fields - you must use valid Entity IDs from the running app to replace the example value '{}'. Invalid Entity values may crash the application.";
