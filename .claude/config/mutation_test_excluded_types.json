@@ -43,6 +43,10 @@
     {
       "type_name": "bevy_sprite_render::mesh2d::wireframe2d::Mesh2dWireframe",
       "reason": "Handle wrapper component. TupleStruct wrapper around Handle<Wireframe2dMaterial> which lacks ReflectDeserialize type data. Not mutable through BRP - mutation_status is 'not_mutable' due to handle_wrapper_component restriction. No mutation paths available for testing."
+    },
+    {
+      "type_name": "bevy_sprite_render::tilemap_chunk::TilemapChunk",
+      "reason": "Immutable component. Does not have #[reflect(Component)] configured to allow mutations through reflection. All mutation attempts panic with: 'Cannot call ReflectComponent::reflect_mut on component TilemapChunk. It is immutable, and cannot modified through reflection'."
     }
   ]
 }
