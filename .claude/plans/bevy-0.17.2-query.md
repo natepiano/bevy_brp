@@ -159,3 +159,126 @@ These changes affect internal Bevy code but not the BRP protocol itself:
 2. **BrpQuery.option** field changed from `Vec<String>` to `ComponentSelector` enum, allowing `"all"` to select all components
 
 **All other methods** retained the same argument structure despite being renamed from `bevy/*` to `world.*` or `registry.*` namespaces.
+
+---
+
+## Implementation Plan for MCP Tool
+
+### Current Status (Verified 2025-10-13)
+
+- **bevy_brp_mcp** is already using Bevy 0.17.2
+- **Both JSON formats already work** through the current implementation:
+  - Array format: `{"option": ["path1", "path2"]}`
+  - String format: `{"option": "all"}`
+- Current implementation uses `pub data: Value` which passes through raw JSON to Bevy's BRP
+
+### Recommended Changes
+
+#### 1. Add Explicit Type Definitions in `mcp/src/brp_tools/tools/world_query.rs`
+
+Replace the raw `Value` types with proper Rust structs that mirror Bevy's BRP types:
+
+**Note**: `ComponentSelector` and `BrpQuery` changes are required to properly expose the new 0.17.2 functionality. `BrpQueryFilter` is an additional improvement for type safety on the `filter` field (not related to version changes).
+
+```rust
+/// Selector for optional components in a query (mirrors Bevy's ComponentSelector)
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ComponentSelector {
+    /// Select all components present on the entity
+    All,
+    /// Select specific components by their full type paths
+    #[serde(untagged)]
+    Paths(Vec<String>),
+}
+
+impl Default for ComponentSelector {
+    fn default() -> Self {
+        Self::Paths(Vec::default())
+    }
+}
+
+/// Query data specification - what component data to retrieve
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+pub struct BrpQuery {
+    /// Required components - entities must have all of these
+    #[serde(default)]
+    pub components: Vec<String>,
+
+    /// Optional components - retrieve if present. Can be "all" or array of paths
+    #[serde(default)]
+    pub option: ComponentSelector,
+
+    /// Components to check for presence (returns boolean, not data)
+    #[serde(default)]
+    pub has: Vec<String>,
+}
+
+/// Query filter specification - which entities to include
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
+pub struct BrpQueryFilter {
+    /// Entities must have all of these components
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub with: Vec<String>,
+
+    /// Entities must NOT have any of these components
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub without: Vec<String>,
+}
+```
+
+#### 2. Update `QueryParams` struct
+
+Change from:
+```rust
+pub struct QueryParams {
+    pub data: Value,
+    pub filter: Option<Value>,
+    // ...
+}
+```
+
+To:
+```rust
+pub struct QueryParams {
+    /// Object specifying what component data to retrieve
+    pub data: BrpQuery,
+
+    /// Object specifying which entities to query
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter: Option<BrpQueryFilter>,
+    // ...
+}
+```
+
+### Benefits of This Approach
+
+1. **Type Safety**: Compile-time validation of query structure
+2. **Better IDE Support**: Autocomplete and type hints when using the MCP tool
+3. **Clear Documentation**: The enum makes it explicit that `option` accepts either "all" or an array
+4. **JSON Schema Generation**: The `JsonSchema` derive will generate proper schema showing both options
+5. **Validation**: Invalid query structures will be caught during deserialization
+6. **Maintainability**: Changes to Bevy's BRP types can be mirrored in our code
+
+### Testing Strategy
+
+After implementing the changes:
+
+1. Test with array syntax: `{"data": {"components": ["Transform"], "option": ["Sprite"]}}`
+2. Test with "all" syntax: `{"data": {"components": ["Transform"], "option": "all"}}`
+3. Test with empty option (default): `{"data": {"components": ["Transform"]}}`
+4. Verify JSON schema output includes proper documentation for `ComponentSelector` enum
+
+### Version Compatibility
+
+Since the changes are backward compatible (array syntax still works in 0.17.2), we can update the MCP tool to use explicit types without breaking existing usage. Users on Bevy 0.17.2+ will get the full benefits of both formats.
+
+### Scope Limitations
+
+**Other tools with `Value` fields are intentionally untyped:**
+
+- `world.mutate_components` - `value: Value` (arbitrary component field data)
+- `world.mutate_resources` - `value: Value` (arbitrary resource field data)
+- `world.insert_resources` - `value: Value` (arbitrary resource data)
+
+These remain as `Value` because they hold dynamic, type-dependent data that cannot be statically typed. The `world.query` case is unique because its structure (`data` and `filter` fields) is fixed and defined by Bevy's BRP specification, making it suitable for typed structs.
