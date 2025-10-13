@@ -1,5 +1,7 @@
 # Refactor: Convert EnumVariantKind from Enum to Struct
 
+**Migration Strategy: Atomic**
+
 ## Problem
 
 `EnumVariantKind` and `VariantSignature` contain redundant type information. Currently:
@@ -31,7 +33,7 @@ This eliminates the redundancy by storing the structure information once in the 
 
 ## Changes Required
 
-### 1. Type Definition (`enum_path_builder.rs:68-77`)
+### 1. Type Definition - EnumVariantKind in enum_path_builder.rs
 
 **Before**:
 ```rust
@@ -52,7 +54,7 @@ struct EnumVariantKind {
 }
 ```
 
-### 2. Implementation Methods (`enum_path_builder.rs:79-112`)
+### 2. Implementation Methods - EnumVariantKind impl block
 
 **Update `variant_name()`**:
 ```rust
@@ -61,9 +63,9 @@ const fn variant_name(&self) -> &VariantName {
 }
 ```
 
-**Update `short_name()`**:
+**Update `name()` method** (consolidate short_name into name):
 ```rust
-fn short_name(&self) -> &str {
+fn name(&self) -> &str {
     self.name
         .as_str()
         .rsplit_once("::")
@@ -71,12 +73,7 @@ fn short_name(&self) -> &str {
 }
 ```
 
-**Update `name()` (compatibility)**:
-```rust
-fn name(&self) -> &str {
-    self.short_name()
-}
-```
+**Note**: Remove `short_name()` method - it's redundant. The `name()` method is more semantically clear (extracts the variant name without enum prefix) and is already the preferred method in the codebase (3 call sites vs 0 direct calls to short_name).
 
 **Update `signature()`**:
 ```rust
@@ -85,9 +82,9 @@ fn signature(&self) -> &VariantSignature {
 }
 ```
 
-### 3. Schema Extraction (`enum_path_builder.rs:115-149`)
+### 3. Schema Extraction - from_schema_variant() method
 
-**`from_schema_variant()` - Complete rewrite**:
+**Complete rewrite of from_schema_variant()**:
 
 The current implementation uses pattern matching on enum variants. Need to rewrite to construct the struct:
 
@@ -138,9 +135,9 @@ fn from_schema_variant(
 }
 ```
 
-**Note on `extract_variant_qualified_name()`**: This function already exists in the file at lines 243-256 and returns `Option<VariantName>`. It does **NOT** need any changes - the rewritten `from_schema_variant()` can use it as-is.
+**Note on `extract_variant_qualified_name()`**: This function already exists in the file and returns `Option<VariantName>`. It does **NOT** need any changes - the rewritten `from_schema_variant()` can use it as-is.
 
-### 4. Helper Functions (`enum_path_builder.rs:152-195`)
+### 4. Helper Functions - extract_tuple_variant_signature and extract_struct_variant_signature
 
 **Rename and update `extract_tuple_variant_kind` → `extract_tuple_variant_signature`**:
 
@@ -190,7 +187,7 @@ fn extract_struct_variant_signature(
 
 **Note**: Remove `EnumFieldInfo` struct - no longer needed since we build `VariantSignature::Struct` directly.
 
-### 5. Remove `EnumFieldInfo` (`enum_path_builder.rs:58-66`)
+### 5. Remove EnumFieldInfo struct
 
 Delete the entire struct - it's no longer needed:
 
@@ -202,7 +199,7 @@ struct EnumFieldInfo {
 }
 ```
 
-### 6. Update `group_variants_by_signature()` (`enum_path_builder.rs:276-288`)
+### 6. Update group_variants_by_signature() function
 
 **Decision**: Use direct field access instead of method call for clarity.
 
