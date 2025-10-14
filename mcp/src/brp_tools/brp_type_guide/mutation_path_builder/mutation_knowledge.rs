@@ -328,21 +328,19 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // Matrices
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_MAT2),
-            MutationKnowledge::new(json!([[1.0, 0.0], [0.0, 1.0]])), /* Matrices don't have
-                                                                      * simple component
-                                                                      * access */
+            MutationKnowledge::new(json!([1.0, 0.0, 0.0, 1.0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT2),
-            MutationKnowledge::new(json!([[1.0, 0.0], [0.0, 1.0]])),
+            MutationKnowledge::new(json!([1.0, 0.0, 0.0, 1.0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_MAT3),
-            MutationKnowledge::new(json!([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])),
+            MutationKnowledge::new(json!([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT3),
-            MutationKnowledge::new(json!([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])),
+            MutationKnowledge::new(json!([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])),
         );
         // Mat3A - Used in GlobalTransform.0.matrix3, expects flat array not nested object
         // The error was: "invalid type: map, expected a sequence of 9 f32values"
