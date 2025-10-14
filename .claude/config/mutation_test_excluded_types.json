@@ -55,6 +55,10 @@
     {
       "type_name": "bevy_core_pipeline::skybox::Skybox",
       "reason": "Root path mutation to Default value causes app crash. The component contains Handle<Image> with Strong variant (Arc<StrongHandle>) that lacks ReflectSerialize registration, making it impossible to serialize/deserialize through BRP. Additionally, Default value creates invalid texture state - skybox shader expects Cube texture dimension but Default provides D2, causing wgpu validation panic: 'Texture binding 0 expects dimension = Cube, but given a view with dimension = D2' in prepare_skybox_bind_groups system."
+    },
+    {
+      "type_name": "bevy_text::pipeline::TextLayoutInfo",
+      "reason": "Contains AssetId<Image> and AssetId<TextureAtlasLayout> fields in nested glyphs array. Mutating these fields with invalid asset handles causes app to crash on next render frame when bevy_ui_render::extract_text_sections and extract_text_shadows systems attempt to dereference the invalid handles. Panic occurs at bevy_ui_render-0.17.2/src/lib.rs:973-1056. This is the ONLY Component out of 892 registered types that contains AssetId fields. Non-asset fields (.scale_factor, .size, .glyphs[0].position) work correctly."
     }
   ]
 }
