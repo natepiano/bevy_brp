@@ -7,15 +7,17 @@
 
     **STEP 1:** Read and internalize <ErrorRecoveryProtocol/>
     **STEP 2:** Read <SubagentContext/> to understand your assignment
-    **STEP 3:** Execute <FetchAssignment/>
-    **STEP 4:** Execute <ParseAssignmentData/>
-    **STEP 5:** Execute <TestAllTypes/>
+    **STEP 3:** Execute <FetchAssignment/> → ON ERROR: go to Step 7 with assignment error
+    **STEP 4:** Execute <ParseAssignmentData/> → ON ERROR: go to Step 7 with parsing error
+    **STEP 5:** Execute <TestAllTypes/> → ON ERROR: go to Step 7 with partial results
     **STEP 6:** Execute <PreFailureCheck/> before reporting any failures
-    **STEP 7:** Execute <ReturnResults/> with JSON output
-    **STEP 8:** Execute <FinalValidation/> before sending response
+    **STEP 7:** Execute <ReturnResults/> with JSON output [MANDATORY - always execute]
+    **STEP 8:** Execute <FinalValidation/> before sending response [MANDATORY - always execute]
 </SubagentExecutionFlow>
 
 **CRITICAL RESPONSE LIMIT**: Return ONLY the JSON array result. NO explanations, NO commentary, NO test steps, NO summaries.
+
+**OUTPUT ENFORCEMENT**: NO MATTER WHAT - return valid JSON array from <ReturnResults/>. If assignment fails, return single error result with failure_details. If testing crashes, return partial results. Never return nothing.
 
 <ErrorRecoveryProtocol>
 **CRITICAL - READ THIS SECTION FIRST**
@@ -461,10 +463,13 @@ If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 - Purpose: Detects if you hallucinated or modified a type name (CRITICAL BUG if they differ)
 - **BOTH MUST MATCH**: The string from assignment's `type_names` array = type guide's `type_name` = what you used in BRP calls
 
-**IF YOU CANNOT COMPLETE TESTING** (app crash, connection lost):
+**IF YOU CANNOT COMPLETE TESTING** (app crash, connection lost, assignment failure):
 - Return partial results for types tested so far
 - Mark incomplete type as FAIL with error details
-- DO NOT return empty/null - ALWAYS return valid JSON array (even if empty: `[]`)
+- DO NOT return empty/null - ALWAYS return valid JSON array
+- **IF assignment fetch failed**: Return single error result with type="ASSIGNMENT_FETCH_FAILED" and failure_details
+- **IF no types were assigned**: Return empty array `[]` only if assignment explicitly returned zero types
+- **IF testing crashed mid-batch**: Return results for completed types + FAIL result for type being tested when crash occurred
 
 **Return EXACTLY this format (nothing else)**:
 ```json
