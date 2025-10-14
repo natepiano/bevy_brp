@@ -55,60 +55,25 @@ use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
-/// Information about a field in an enum struct variant
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct EnumFieldInfo {
-    /// Field name
-    field_name: StructFieldName,
-    /// Field type
-    #[serde(rename = "type")]
-    type_name:  BrpTypeName,
-}
-
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-enum EnumVariantKind {
-    /// Unit variant - qualified variant name (e.g., "`Color::Srgba`")
-    Unit(VariantName),
-    /// Tuple variant - qualified name and guaranteed tuple types
-    Tuple(VariantName, Vec<BrpTypeName>),
-    /// Struct variant - qualified name and guaranteed struct fields
-    Struct(VariantName, Vec<EnumFieldInfo>),
+struct EnumVariantKind {
+    name:      VariantName,
+    signature: VariantSignature,
 }
 
 impl EnumVariantKind {
     /// Get the fully qualified variant name (e.g., "`Color::Srgba`")
     const fn variant_name(&self) -> &VariantName {
-        match self {
-            Self::Unit(name) | Self::Tuple(name, _) | Self::Struct(name, _) => name,
-        }
+        &self.name
     }
 
     /// Get just the variant name without the enum prefix (e.g., "Srgba" from "`Color::Srgba`")
-    fn short_name(&self) -> &str {
-        self.variant_name()
+    fn name(&self) -> &str {
+        self.name
             .as_str()
             .rsplit_once("::")
-            .map_or_else(|| self.variant_name().as_str(), |(_, name)| name)
-    }
-
-    /// Compatibility method - delegates to `short_name`
-    fn name(&self) -> &str {
-        self.short_name()
-    }
-
-    fn signature(&self) -> VariantSignature {
-        match self {
-            Self::Unit(_) => VariantSignature::Unit,
-            Self::Tuple(_, types) => VariantSignature::Tuple(types.clone()),
-            Self::Struct(_, fields) => {
-                let field_sig = fields
-                    .iter()
-                    .map(|f| (f.field_name.clone(), f.type_name.clone()))
-                    .collect();
-                VariantSignature::Struct(field_sig)
-            }
-        }
+            .map_or_else(|| self.name.as_str(), |(_, name)| name)
     }
 
     /// Extract variant information from a schema variant
@@ -128,33 +93,43 @@ impl EnumVariantKind {
                 .unwrap_or(enum_type.as_str());
 
             let qualified_name = format!("{type_name}::{variant_str}");
-            return Some(Self::Unit(VariantName::from(qualified_name)));
+            return Some(Self {
+                name:      VariantName::from(qualified_name),
+                signature: VariantSignature::Unit,
+            });
         }
 
         // Extract the fully qualified variant name
         let variant_name = extract_variant_qualified_name(v)?;
 
         // Check what type of variant this is
-        if let Some(tuple_variant) = extract_tuple_variant_kind(v, registry, variant_name.clone()) {
-            return Some(tuple_variant);
+        if let Some(signature) = extract_tuple_variant_signature(v, registry) {
+            return Some(Self {
+                name: variant_name,
+                signature,
+            });
         }
 
-        if let Some(struct_variant) = extract_struct_variant_kind(v, registry, variant_name.clone())
-        {
-            return Some(struct_variant);
+        if let Some(signature) = extract_struct_variant_signature(v, registry) {
+            return Some(Self {
+                name: variant_name,
+                signature,
+            });
         }
 
         // Unit variant (no fields)
-        Some(Self::Unit(variant_name))
+        Some(Self {
+            name:      variant_name,
+            signature: VariantSignature::Unit,
+        })
     }
 }
 
-/// Extract tuple variant kind from schema if it matches tuple pattern
-fn extract_tuple_variant_kind(
+/// Extract tuple variant signature from schema if it matches tuple pattern
+fn extract_tuple_variant_signature(
     v: &Value,
     _registry: &HashMap<BrpTypeName, Value>,
-    variant_name: VariantName,
-) -> Option<EnumVariantKind> {
+) -> Option<VariantSignature> {
     let prefix_items = v.get_field(SchemaField::PrefixItems)?;
     let prefix_array = prefix_items.as_array()?;
 
@@ -163,27 +138,23 @@ fn extract_tuple_variant_kind(
         .filter_map(Value::extract_field_type)
         .collect();
 
-    Some(EnumVariantKind::Tuple(variant_name, tuple_types))
+    Some(VariantSignature::Tuple(tuple_types))
 }
 
-/// Extract struct variant kind from schema if it matches struct pattern
-fn extract_struct_variant_kind(
+/// Extract struct variant signature from schema if it matches struct pattern
+fn extract_struct_variant_signature(
     v: &Value,
     _registry: &HashMap<BrpTypeName, Value>,
-    variant_name: VariantName,
-) -> Option<EnumVariantKind> {
+) -> Option<VariantSignature> {
     let properties = v.get_field(SchemaField::Properties)?;
     let props_map = properties.as_object()?;
 
-    let struct_fields: Vec<EnumFieldInfo> = props_map
+    let struct_fields: Vec<(StructFieldName, BrpTypeName)> = props_map
         .iter()
         .filter_map(|(field_name, field_schema)| {
             field_schema
                 .extract_field_type()
-                .map(|type_name| EnumFieldInfo {
-                    field_name: StructFieldName::from(field_name.clone()),
-                    type_name,
-                })
+                .map(|type_name| (StructFieldName::from(field_name.clone()), type_name))
         })
         .collect();
 
@@ -191,7 +162,7 @@ fn extract_struct_variant_kind(
         return None;
     }
 
-    Some(EnumVariantKind::Struct(variant_name, struct_fields))
+    Some(VariantSignature::Struct(struct_fields))
 }
 
 /// Process enum type directly, bypassing `PathBuilder` trait
@@ -278,9 +249,8 @@ fn group_variants_by_signature(
 ) -> BTreeMap<VariantSignature, Vec<EnumVariantKind>> {
     let mut groups = BTreeMap::new();
     for variant in variants {
-        let signature = variant.signature();
         groups
-            .entry(signature)
+            .entry(variant.signature.clone())
             .or_insert_with(Vec::new)
             .push(variant);
     }
