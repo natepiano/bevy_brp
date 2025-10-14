@@ -60,13 +60,24 @@ impl HandlerContext {
 
         serde_json::from_value(args_value).map_err(|e| {
             tracing::debug!("Serde deserialization error: {}", e);
-            error_stack::Report::new(Error::ParameterExtraction(format!(
-                "Failed to extract parameters for type: {}",
-                std::any::type_name::<T>()
-            )))
-            .attach("Parameter validation failed")
-            .attach(format!("Expected type: {}", std::any::type_name::<T>()))
-            .attach(format!("Serde error: {e}"))
+
+            // Extract simplified type name (last component after ::)
+            let type_name = std::any::type_name::<T>()
+                .rsplit("::")
+                .next()
+                .unwrap_or("parameters");
+
+            // Create user-friendly error message with serde details
+            let user_message = format!(
+                "Invalid parameter format for '{}': {}. Check the parameter types and structure match the tool's requirements",
+                type_name,
+                e
+            );
+
+            error_stack::Report::new(Error::ParameterExtraction(user_message))
+                .attach("Parameter validation failed")
+                .attach(format!("Full type path: {}", std::any::type_name::<T>()))
+                .attach(format!("Serde error details: {e}"))
         })
     }
 

@@ -51,6 +51,15 @@ IF any mutation error contains `"invalid type: string"`:
 Reorder parameters in your tool call - parameter order doesn't matter, but reordering breaks mental loops.
 </ErrorRecoveryProtocol>
 
+<EmergencyBailout>
+**IF ANY BRP tool fails with connection/timeout error:**
+1. App likely crashed - STOP testing immediately
+2. Return partial results with status "FAIL"
+3. Set failed_operation to last operation attempted
+4. Include error in failure_details
+**DO NOT** continue testing remaining types or mutations
+</EmergencyBailout>
+
 <JsonPrimitiveRules>
 **CRITICAL JSON VALUE REQUIREMENTS**:
 
@@ -301,7 +310,7 @@ For each type name string in your `type_names` array:
       - **YOU MUST**: Replace ALL instances of `8589934670` with REAL entity IDs from the running app
       - **HOW TO GET REAL ENTITY IDs**:
         1. First query for existing entities: `world_query` with appropriate filter
-        2. Use the entity IDs from query results
+        2. Use entity IDs from query results (if query fails → follow <EmergencyBailout>)
         3. If testing EntityHashMap types, use the queried entity ID as the map key
       - **EXAMPLE**: If mutation example shows `{"8589934670": [...]}` for an EntityHashMap:
         - Query for an entity with the component first
@@ -420,6 +429,7 @@ For each type name string in your `type_names` array:
    - Pass `data: {}` to get entity IDs only
    - Store entity ID for mutation testing
    - If 0 entities found → Report COMPONENT_NOT_FOUND status
+   - If query fails with error → Follow <EmergencyBailout> and return FAIL with error details
    - Set `entity_query: true` in operations_completed
 
 4. **MUTATION TESTING** (ALWAYS execute if entity found and mutation paths exist):
@@ -450,6 +460,11 @@ If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 - `retry_count`: Number of "invalid type: string" errors you retried (required for validation)
 - Purpose: Detects if you hallucinated or modified a type name (CRITICAL BUG if they differ)
 - **BOTH MUST MATCH**: The string from assignment's `type_names` array = type guide's `type_name` = what you used in BRP calls
+
+**IF YOU CANNOT COMPLETE TESTING** (app crash, connection lost):
+- Return partial results for types tested so far
+- Mark incomplete type as FAIL with error details
+- DO NOT return empty/null - ALWAYS return valid JSON array (even if empty: `[]`)
 
 **Return EXACTLY this format (nothing else)**:
 ```json

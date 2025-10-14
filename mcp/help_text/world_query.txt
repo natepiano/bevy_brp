@@ -5,7 +5,7 @@ Queries entities via world.query BRP method. Searches entities by components, ap
 ```json
 {
   "components": ["bevy_transform::components::transform::Transform"],
-  "option": ["bevy_sprite::sprite::Sprite"],
+  "option": ["bevy_sprite::sprite::Sprite"],  // or "all" to get all components
   "has": ["bevy_render::camera::camera::Camera"]
 }
 ```
@@ -14,7 +14,9 @@ Queries entities via world.query BRP method. Searches entities by components, ap
 
 Fields (all optional within the data object):
 - `components`: Array of components to always retrieve (query fails if not present)
-- `option`: Array of components to retrieve if present (optional components)
+- `option`: Components to retrieve if present (optional components). Can be:
+  - Array of component paths: `["bevy_sprite::sprite::Sprite", "bevy_transform::components::transform::Transform"]`
+  - `"all"` to select all components on matching entities
 - `has`: Array of components to check existence (returns true/false, not the data)
 
 ### notes on filter parameter
@@ -62,6 +64,18 @@ Find entities with Sprite but without UI nodes (entity IDs only):
   "filter": {
     "with": ["bevy_sprite::sprite::Sprite"],
     "without": ["bevy_ui::node::Node"]
+  }
+}
+```
+
+Get all components from entities with Transform:
+```json
+{
+  "data": {
+    "option": "all"
+  },
+  "filter": {
+    "with": ["bevy_transform::components::transform::Transform"]
   }
 }
 ```

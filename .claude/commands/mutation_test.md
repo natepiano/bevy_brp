@@ -297,42 +297,19 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 </LaunchSubagents>
 
 <ProcessBatchResults>
-    **Collect and merge batch results:**
+    **Collect and validate batch results:**
 
-    1. **Collect all subagent results** into single JSON array
+    1. **Collect Task outputs**: Extract JSON array from each subagent Task result
+       - **STOP IF** any Task returned empty/null: "Subagent [N] no output (see port [PORT] logs)"
 
-    2. **Write results to temp file** using Write tool (save partial progress even if validation fails):
-    ```python
-    Write(
-        file_path=".claude/transient/batch_results_[BATCH_NUMBER].json",
-        content=[collected_results_json]
-    )
-    ```
+    2. **Validate completeness**:
+       - **STOP IF** subagent_responses != assignments_count: "Missing [N] subagent responses"
+       - **STOP IF** total_type_results != batch_size: "Missing [N] type results"
+       - **STOP IF** any type != tested_type: "Subagent hallucinated type"
 
-    3. **Execute merge script** to save progress:
-    ```bash
-    ./.claude/scripts/mutation_test_merge_batch_results.sh \
-        .claude/transient/batch_results_[BATCH_NUMBER].json \
-        .claude/transient/all_types.json
-    ```
+    3. **Write and merge**: Save to `.claude/transient/batch_results_[BATCH_NUMBER].json`, execute merge script
 
-    4. **Cleanup temp file**:
-    ```bash
-    rm -f .claude/transient/batch_results_[BATCH_NUMBER].json
-    ```
-
-    5. **CRITICAL VALIDATION** of collected results:
-       - **STOP IF** number of subagent results != actual_assignments_count
-         - ERROR: "Expected {actual_assignments_count} subagent results, got {actual_count}"
-       - **STOP IF** total number of type results != total_types_in_batch
-         - ERROR: "Expected {total_types_in_batch} total type results, got {actual_count}"
-       - Each subagent result should contain 1-${TYPES_PER_SUBAGENT} type results
-         - **STOP IF** any subagent has wrong count: "Subagent {N} returned {actual} type results, expected {expected_for_this_subagent}"
-       - **HALLUCINATION CHECK**: For each type result, validate `type` == `tested_type`
-         - **STOP IF** any mismatch found:
-           - ERROR: "Subagent hallucinated type name"
-           - Show: "Assigned: {type}, Tested: {tested_type}"
-           - This indicates the subagent modified/invented the type name instead of using the exact assignment
+    4. **Cleanup**: Remove temp file
 </ProcessBatchResults>
 
 <CheckForFailures>
@@ -703,6 +680,8 @@ When failures occur, the system automatically:
 2. Look at `request_sent` to see exact parameters
 3. Review `mutations_passed` to identify working paths
 4. Use `response_received` error message for specific issue
+
+**Subagent non-response**: Check app logs at `/var/folders/.../bevy_brp_mcp_extras_plugin_port[PORT]_[timestamp].log` for assigned types' spawn crashes.
 </ErrorDiagnostics>
 
 ## REUSABLE PATTERNS

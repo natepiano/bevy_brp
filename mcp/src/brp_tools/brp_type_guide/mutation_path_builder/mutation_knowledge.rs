@@ -170,11 +170,11 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         );
         map.insert(
             KnowledgeKey::exact(TYPE_F32),
-            MutationKnowledge::as_root_value(json!(std::f32::consts::PI), TYPE_F32),
+            MutationKnowledge::as_root_value(json!(1.0_f32), TYPE_F32),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_F64),
-            MutationKnowledge::as_root_value(json!(std::f64::consts::PI), TYPE_F64),
+            MutationKnowledge::as_root_value(json!(1.0_f64), TYPE_F64),
         );
 
         // ===== Size types =====

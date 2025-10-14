@@ -5,26 +5,26 @@ Validate `world.query` BRP method functionality including the new Bevy 0.17.2 `C
 
 **NOTE**: The extras_plugin app is already running on the specified port - focus on testing query operations, not app management.
 
+## CRITICAL: Validation Script Usage
+
+**NEVER use jq, grep, or any bash commands directly to validate results.**
+
+All validation MUST use the pre-approved script: `.claude/scripts/integration_tests/query_validate.sh`
+
+Available validation commands:
+- `count_entities` - Count entities in result
+- `entity_ids_only` - Verify entity IDs only (no component data)
+- `validate_all_query` - Verify "all" query returns entities with multiple components
+- `has_camera_excluded` - Verify no Camera entities present
+- `validate_name_filter` - Verify all entities have Name and multiple components
+
+**Do NOT issue ANY bash commands for validation - use the script exclusively.**
+
 ## Test Steps
 
-### 1. Setup: Create Test Entities
-Spawn 3 entities with different component combinations for query testing:
+**Note**: The extras_plugin app already contains many test entities with Transform, Name, and other components. No entity creation needed.
 
-**Entity A** - Transform only:
-- Execute `mcp__brp__world_spawn_entity` with Transform: `{"translation": [1, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1]}`
-- Store entity ID as `entity_a`
-
-**Entity B** - Transform + Name:
-- Execute `mcp__brp__world_spawn_entity` with Transform: `{"translation": [2, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1]}`
-- Store entity ID as `entity_b`
-- Execute `mcp__brp__world_insert_components` to add Name: `{"bevy_ecs::name::Name": "EntityB"}`
-
-**Entity C** - Transform + Visibility:
-- Execute `mcp__brp__world_spawn_entity` with Transform: `{"translation": [3, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1]}`
-- Store entity ID as `entity_c`
-- Execute `mcp__brp__world_insert_components` to add Visibility: `{"bevy_render::view::visibility::Visibility": "Inherited"}`
-
-### 2. Query with Array Syntax (Backward Compatibility)
+### 1. Query with Array Syntax (Backward Compatibility)
 Test the traditional array format for `option` field:
 
 - Execute `mcp__brp__world_query`:
@@ -36,11 +36,14 @@ Test the traditional array format for `option` field:
     }
   }
   ```
-- Verify: Returns all 3 entities (A, B, C)
-- Verify: Entity B includes Name data, entities A and C show null/absent Name
-- Verify: All entities include Transform data
+- Verify by reading the JSON response directly (it's small enough to fit in context)
+- Check: Returns multiple entities with Transform
+- Check: Entities with Name component include Name data
+- Check: Entities without Name have null/absent Name field
+- Check: All entities include Transform data
+- **Do NOT use jq or bash commands** - the response is returned directly in the tool output
 
-### 3. Query with "all" Syntax (New in 0.17.2)
+### 2. Query with "all" Syntax (New in 0.17.2)
 Test the new `ComponentSelector::All` variant:
 
 - Execute `mcp__brp__world_query`:
@@ -51,11 +54,13 @@ Test the new `ComponentSelector::All` variant:
     }
   }
   ```
-- Verify: Returns many entities (including our 3 test entities plus existing app entities)
+- **Note**: Result will be written to temp file due to size
+- Validate using script: `.claude/scripts/integration_tests/query_validate.sh validate_all_query <result_file>`
+- Verify: Returns many entities from the app
 - Verify: Each entity includes ALL its components in the response
 - Verify: Response includes component data for all registered component types on each entity
 
-### 4. Query with Empty Option (Default)
+### 3. Query with Empty Option (Default)
 Test default behavior when `option` is omitted:
 
 - Execute `mcp__brp__world_query`:
@@ -66,10 +71,12 @@ Test default behavior when `option` is omitted:
     }
   }
   ```
-- Verify: Returns all entities with Transform
-- Verify: Only Transform component data is returned (no optional components)
+- Verify by reading the JSON response directly (it's small enough to fit in context)
+- Check: Returns all entities with Transform
+- Check: Only Transform component data is returned (no optional components)
+- **Do NOT use jq or bash commands** - the response is returned directly in the tool output
 
-### 5. Query with Empty Data Object (Entity IDs Only)
+### 4. Query with Empty Data Object (Entity IDs Only)
 Test the special case documented in help text:
 
 - Execute `mcp__brp__world_query`:
@@ -78,11 +85,12 @@ Test the special case documented in help text:
     "data": {}
   }
   ```
+- Validate using script: `.claude/scripts/integration_tests/query_validate.sh entity_ids_only <result_file>`
 - Verify: Returns entity IDs only
 - Verify: No component data included in response
 - Verify: Entity count matches expected total entities in app
 
-### 6. Query with Filter: with + without
+### 5. Query with Filter: with + without
 Test filter combinations:
 
 - Execute `mcp__brp__world_query`:
@@ -97,11 +105,11 @@ Test filter combinations:
     }
   }
   ```
+- Validate using script: `.claude/scripts/integration_tests/query_validate.sh has_camera_excluded <result_file>`
 - Verify: Returns entities with Transform but not Camera
-- Verify: Our test entities A, B, C are included
-- Verify: Camera entities are excluded
+- Verify: Camera entities are excluded from results
 
-### 7. Query with Mixed Fields (components + option + has)
+### 6. Query with Mixed Fields (components + option + has)
 Test all query data fields together:
 
 - Execute `mcp__brp__world_query`:
@@ -114,11 +122,13 @@ Test all query data fields together:
     }
   }
   ```
-- Verify: Returns entities with required Transform component
-- Verify: Optional Name and Visibility data included if present
-- Verify: `has` field returns boolean for Camera component presence (not component data)
+- Verify by reading the JSON response directly (it's small enough to fit in context)
+- Check: Returns entities with required Transform component
+- Check: Optional Name and Visibility data included if present
+- Check: `has` field returns boolean for Camera component presence (not component data)
+- **Do NOT use jq or bash commands** - the response is returned directly in the tool output
 
-### 8. Query with Filter Omitted vs Empty Object
+### 7. Query with Filter Omitted vs Empty Object
 Test serialization difference:
 
 **Test A - Filter omitted**:
@@ -142,9 +152,12 @@ Test serialization difference:
   }
   ```
 
-- Verify: Both produce identical results (omitted and empty object are equivalent)
+- Verify by comparing the two JSON responses directly (both are small enough to fit in context)
+- Check: Both produce identical results (omitted and empty object are equivalent)
+- Check: Same entity count and entity IDs in both results
+- **Do NOT use jq or bash commands** - compare the responses returned directly in the tool output
 
-### 9. Query with "all" Option and Filter
+### 8. Query with "all" Option and Filter
 Test combining the new "all" syntax with filtering:
 
 - Execute `mcp__brp__world_query`:
@@ -158,11 +171,12 @@ Test combining the new "all" syntax with filtering:
     }
   }
   ```
+- **Note**: Result will be written to temp file due to size
+- Validate using script: `.claude/scripts/integration_tests/query_validate.sh validate_name_filter <result_file>`
 - Verify: Returns only entities with Name component
-- Verify: Should return Entity B from our test entities
-- Verify: All components on Entity B are included in response
+- Verify: All components on matching entities are included in response
 
-### 10. Error Case: Invalid Option Value
+### 9. Error Case: Invalid Option Value
 Test error handling for invalid `option` values:
 
 **Note**: This test validates deserialization errors, not BRP errors. If the MCP tool successfully deserializes invalid values and sends them to BRP, the test should fail.
@@ -175,14 +189,10 @@ Test error handling for invalid `option` values:
     }
   }
   ```
-- Verify: Returns clear error message about invalid ComponentSelector format
-- Verify: Error indicates expected "all" or array of strings
-
-### 11. Cleanup: Remove Test Entities
-- Execute `mcp__brp__world_despawn_entity` for entity_a
-- Execute `mcp__brp__world_despawn_entity` for entity_b
-- Execute `mcp__brp__world_despawn_entity` for entity_c
-- Verify: All test entities are properly despawned
+- Verify by reading the error message directly from the tool output
+- Check: Returns clear error message about invalid ComponentSelector format
+- Check: Error indicates expected "all" or array of strings
+- **Do NOT use jq or bash commands** - the error is returned directly in the tool output
 
 ## Expected Results
 - ✅ Array syntax for `option` works (backward compatibility)
@@ -194,7 +204,6 @@ Test error handling for invalid `option` values:
 - ✅ Filter omission and empty object are equivalent
 - ✅ "all" option combined with filter works
 - ✅ Invalid option values produce clear error messages
-- ✅ Entity cleanup completes successfully
 
 ## Failure Criteria
 STOP if: Query returns incorrect data, serialization fails, backward compatibility breaks, or the new "all" option doesn't work as specified in Bevy 0.17.2.

@@ -181,7 +181,9 @@
       "Bash(mcp__brp__brp_launch_bevy_example:*)",
       "WebFetch(domain:rust-lang.github.io)",
       "Bash(claude --version)",
-      "Bash(do python3 .claude/scripts/create_mutation_test_json/read_comparison.py structural_next)"
+      "Bash(do python3 .claude/scripts/create_mutation_test_json/read_comparison.py structural_next)",
+      "Bash(.claude/scripts/integration_tests/query_validate.sh:*)",
+      "Bash(./.claude/scripts/integration_tests/query_validate.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",
