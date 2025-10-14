@@ -455,22 +455,7 @@ For each type name string in your `type_names` array:
 If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 </PreFailureCheck>
 
-<ReturnResults>
-**CRITICAL FIELD REQUIREMENTS**:
-- `type`: Extract from the `type_name` field returned by `get_type_guide.sh` - this is the AUTHORITATIVE type name
-- `tested_type`: The exact type name string you passed to BRP queries - MUST be identical to `type`
-- `retry_count`: Number of "invalid type: string" errors you retried (required for validation)
-- Purpose: Detects if you hallucinated or modified a type name (CRITICAL BUG if they differ)
-- **BOTH MUST MATCH**: The string from assignment's `type_names` array = type guide's `type_name` = what you used in BRP calls
-
-**IF YOU CANNOT COMPLETE TESTING** (app crash, connection lost, assignment failure):
-- Return partial results for types tested so far
-- Mark incomplete type as FAIL with error details
-- DO NOT return empty/null - ALWAYS return valid JSON array
-- **IF assignment fetch failed**: Return single error result with type="ASSIGNMENT_FETCH_FAILED" and failure_details
-- **IF no types were assigned**: Return empty array `[]` only if assignment explicitly returned zero types
-- **IF testing crashed mid-batch**: Return results for completed types + FAIL result for type being tested when crash occurred
-
+<SubagentOutputFormat>
 **Return EXACTLY this format (nothing else)**:
 ```json
 [{
@@ -515,6 +500,25 @@ If any check fails, go back and follow <ErrorRecoveryProtocol/>.
   }
 }]
 ```
+</SubagentOutputFormat>
+
+<ReturnResults>
+**CRITICAL FIELD REQUIREMENTS**:
+- `type`: Extract from the `type_name` field returned by `get_type_guide.sh` - this is the AUTHORITATIVE type name
+- `tested_type`: The exact type name string you passed to BRP queries - MUST be identical to `type`
+- `retry_count`: Number of "invalid type: string" errors you retried (required for validation)
+- Purpose: Detects if you hallucinated or modified a type name (CRITICAL BUG if they differ)
+- **BOTH MUST MATCH**: The string from assignment's `type_names` array = type guide's `type_name` = what you used in BRP calls
+
+**IF YOU CANNOT COMPLETE TESTING** (app crash, connection lost, assignment failure):
+- Return partial results for types tested so far
+- Mark incomplete type as FAIL with error details
+- DO NOT return empty/null - ALWAYS return valid JSON array
+- **IF assignment fetch failed**: Return single error result with type="ASSIGNMENT_FETCH_FAILED" and failure_details
+- **IF no types were assigned**: Return empty array `[]` only if assignment explicitly returned zero types
+- **IF testing crashed mid-batch**: Return results for completed types + FAIL result for type being tested when crash occurred
+
+<SubagentOutputFormat/>
 
 **PRE-OUTPUT VALIDATION**: Before generating your final JSON, follow <JsonPrimitiveRules/> and pay special attention to `"value"` fields in failure_details.
 </ReturnResults>

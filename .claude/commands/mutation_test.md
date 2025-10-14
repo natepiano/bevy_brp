@@ -285,6 +285,10 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     - TYPES_PER_SUBAGENT = ${TYPES_PER_SUBAGENT}
 
     CRITICAL: You MUST return ONLY the JSON array result. NO explanations, NO commentary, NO test steps.
+
+    Expected output format:
+    <SubagentOutputFormat/>
+    (See @.claude/instructions/mutation_test_subagent.md for the complete JSON structure)
     ```
 
     **CONSISTENCY GUARANTEE**:
