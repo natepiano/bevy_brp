@@ -11,13 +11,34 @@
     **STEP 4:** Execute <ParseAssignmentData/> → ON ERROR: go to Step 7 with parsing error
     **STEP 5:** Execute <TestAllTypes/> → ON ERROR: go to Step 7 with partial results
     **STEP 6:** Execute <PreFailureCheck/> before reporting any failures
-    **STEP 7:** Execute <ReturnResults/> with JSON output [MANDATORY - always execute]
-    **STEP 8:** Execute <FinalValidation/> before sending response [MANDATORY - always execute]
+    **STEP 7:** **[UNCONDITIONAL - ALWAYS EXECUTE]** Execute <ReturnResults/> with JSON output
+    **STEP 8:** **[UNCONDITIONAL - ALWAYS EXECUTE]** Execute <FinalValidation/> before sending response
+
+**CRITICAL PATH ENFORCEMENT**:
+- Steps 7-8 MUST execute whether previous steps succeed or fail
+- If Steps 3-6 succeed: Step 7 returns success results
+- If Steps 3-6 fail: Step 7 returns failure/partial results
+- **NO PATH SKIPS STEP 7** - it is the ONLY exit point from this workflow
 </SubagentExecutionFlow>
 
 **CRITICAL RESPONSE LIMIT**: Return ONLY the JSON array result. NO explanations, NO commentary, NO test steps, NO summaries.
 
-**OUTPUT ENFORCEMENT**: NO MATTER WHAT - return valid JSON array from <ReturnResults/>. If assignment fails, return single error result with failure_details. If testing crashes, return partial results. Never return nothing.
+**OUTPUT ENFORCEMENT - IMPLEMENTATION REQUIREMENTS**:
+
+**POLICY**: NO MATTER WHAT - return valid JSON array from <ReturnResults/>. If assignment fails, return single error result with failure_details. If testing crashes, return partial results. Never return nothing.
+
+**ENFORCEMENT MECHANISM**:
+1. <SubagentExecutionFlow/> Step 7 is UNCONDITIONAL - see lines 5-22
+2. ALL error handlers (EmergencyBailout, PreFailureCheck, FinalValidation) MUST route to Step 7
+3. NO code path may exit workflow without executing <ReturnResults/>
+4. If you cannot proceed with testing: go directly to Step 7 with error results
+5. If you detect yourself stuck in a loop: force-exit to Step 7 with partial results
+
+**SELF-CHECK BEFORE ANY RESPONSE**:
+- Have I executed <ReturnResults/>? If NO → execute it now
+- Did I output valid JSON? If NO → output minimal valid array: `[{"type": "ERROR", "tested_type": "ERROR", "status": "FAIL", "entity_id": null, "retry_count": 0, "operations_completed": {"spawn_insert": false, "entity_query": false, "mutations_passed": [], "total_mutations_attempted": 0}, "failure_details": {"failed_operation": "workflow", "error_message": "Subagent failed to complete workflow"}}]`
+
+**ABSOLUTE RULE**: The ONLY valid response is a JSON array. Empty string, null, error message text = protocol violation.
 
 <ErrorRecoveryProtocol>
 **CRITICAL - READ THIS SECTION FIRST**
@@ -56,9 +77,9 @@ Reorder parameters in your tool call - parameter order doesn't matter, but reord
 <EmergencyBailout>
 **IF ANY BRP tool fails with connection/timeout error:**
 1. App likely crashed - STOP testing immediately
-2. Return partial results with status "FAIL"
-3. Set failed_operation to last operation attempted
-4. Include error in failure_details
+2. **GO TO STEP 7 IMMEDIATELY** - return partial results array with FAIL status for current type
+3. For any completed types: include their results with actual status (PASS/FAIL)
+4. For the type being tested when error occurred: set status="FAIL", failed_operation=last operation attempted, include complete error in failure_details
 **DO NOT** continue testing remaining types or mutations
 </EmergencyBailout>
 
@@ -168,7 +189,15 @@ python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
     --subagent-index ${SUBAGENT_INDEX}
 ```
 
-**This returns a JSON object with a `type_names` array containing ONLY the literal type name strings**:
+**ERROR HANDLING**:
+- **IF** script fails to execute or returns non-zero exit code:
+  - Go directly to Step 7 (<ReturnResults/>)
+  - Return single error result: `[{"type": "ASSIGNMENT_FETCH_FAILED", "tested_type": "ASSIGNMENT_FETCH_FAILED", "status": "FAIL", "entity_id": null, "retry_count": 0, "operations_completed": {"spawn_insert": false, "entity_query": false, "mutations_passed": [], "total_mutations_attempted": 0}, "failure_details": {"failed_operation": "assignment_fetch", "error_message": "[script error message]"}}]`
+- **IF** script returns invalid JSON or missing `type_names` field:
+  - Go directly to Step 7 (<ReturnResults/>)
+  - Return single error result per above format with error_message="Invalid JSON in assignment response"
+
+**SUCCESS CASE - This returns a JSON object with a `type_names` array containing ONLY the literal type name strings**:
 ```json
 {
   "batch_number": 1,
