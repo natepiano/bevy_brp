@@ -414,8 +414,14 @@ For each type name string in your `type_names` array:
 **CRITICAL**: Do NOT use resource methods (`world_insert_resources`, `world_mutate_resources`)
 
 1. **SPAWN/INSERT CHECK**: If `guide.spawn_format` is NOT null:
-   - Use `world_spawn_entity` tool
-   - Pass `components` parameter with type name as key and `spawn_format` as value
+   - **FIRST**: Validate spawn_format for Entity ID placeholders
+     * Inspect spawn_format values for `8589934670` (placeholder Entity ID)
+     * **IF FOUND**: Query for any existing entity using `world_query` with `data: {}`
+       - Use first entity ID from results to replace ALL `8589934670` instances
+       - If query returns 0 entities, report FAIL with error "Cannot spawn type requiring Entity ID - no entities exist for substitution"
+     * **IF NOT FOUND**: Use spawn_format as-is
+   - **THEN**: Use `world_spawn_entity` tool
+   - Pass `components` parameter with type name as key and VALIDATED spawn_format as value
    - Set `spawn_insert: true` in operations_completed
    - Proceed to query for entity
 

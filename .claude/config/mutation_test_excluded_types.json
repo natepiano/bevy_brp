@@ -59,6 +59,10 @@
     {
       "type_name": "bevy_text::pipeline::TextLayoutInfo",
       "reason": "Contains AssetId<Image> and AssetId<TextureAtlasLayout> fields in nested glyphs array. Mutating these fields with invalid asset handles causes app to crash on next render frame when bevy_ui_render::extract_text_sections and extract_text_shadows systems attempt to dereference the invalid handles. Panic occurs at bevy_ui_render-0.17.2/src/lib.rs:973-1056. This is the ONLY Component out of 892 registered types that contains AssetId fields. Non-asset fields (.scale_factor, .size, .glyphs[0].position) work correctly."
+    },
+    {
+      "type_name": "bevy_ui::widget::viewport::ViewportNode",
+      "reason": "Complex setup requirements not justified for mutation testing. Requires: (1) creating a render texture with specific TextureUsages, (2) spawning a camera with RenderTarget::Image pointing to that texture, (3) spawning a UI Node with ViewportNode referencing the camera entity. The setup complexity and additional dependencies (images, cameras, render targets) don't justify inclusion in the standard mutation test suite."
     }
   ]
 }

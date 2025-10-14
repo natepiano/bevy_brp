@@ -21,6 +21,16 @@ Enable debug-level tracing using the BRP tool:
 Use the `mcp__brp__brp_set_tracing_level` tool with:
 - level: `"debug"`
 
+<UserOutput>
+After completing Steps 2 and 3, output:
+```
+✓ Trace log cleared
+✓ Debug tracing enabled
+
+Ready to execute test command.
+```
+</UserOutput>
+
 ### Step 4: Execute Test Command
 Run the command you want to debug. The trace log will capture detailed information about:
 - Parameter extraction and validation

@@ -297,24 +297,49 @@ fn apply_option_transformation(
     enum_type: &BrpTypeName,
 ) -> Value {
     let type_category = TypeCategory::from_type_name(enum_type);
+
+    tracing::debug!(
+        "apply_option_transformation: enum_type={}, variant_name={}, is_option={}, example={:?}",
+        enum_type.as_str(),
+        variant_name,
+        type_category.is_option(),
+        example
+    );
+
     if !type_category.is_option() {
+        tracing::debug!(
+            "apply_option_transformation: NOT an Option type, returning example unchanged"
+        );
         return example;
     }
 
     // Transform Option variants for BRP mutations
-    match variant_name {
-        "None" => json!(null),
+    let result = match variant_name {
+        "None" => {
+            tracing::debug!("apply_option_transformation: Transforming None variant to null");
+            json!(null)
+        }
         "Some" => {
             // Extract the inner value from {"Some": value}
             if let Some(obj) = example.as_object()
                 && let Some(value) = obj.get("Some")
             {
+                tracing::debug!(
+                    "apply_option_transformation: Extracting inner value from Some variant"
+                );
                 return value.clone();
             }
+            tracing::debug!("apply_option_transformation: Some variant but no extraction needed");
             example
         }
-        _ => example,
-    }
+        _ => {
+            tracing::debug!("apply_option_transformation: Other variant, returning unchanged");
+            example
+        }
+    };
+
+    tracing::debug!("apply_option_transformation: returning result={:?}", result);
+    result
 }
 
 /// Build a complete example for a variant with all its fields
@@ -324,6 +349,14 @@ fn build_variant_example(
     children: &HashMap<MutationPathDescriptor, Value>,
     enum_type: &BrpTypeName,
 ) -> Value {
+    tracing::debug!(
+        "build_variant_example: enum_type={}, variant_name={}, signature={:?}, children={:?}",
+        enum_type.as_str(),
+        variant_name,
+        signature,
+        children
+    );
+
     let example = match signature {
         VariantSignature::Unit => {
             json!(variant_name)
@@ -355,8 +388,20 @@ fn build_variant_example(
         }
     };
 
+    tracing::debug!(
+        "build_variant_example: built example before transformation: {:?}",
+        example
+    );
+
     // Apply `Option<T>` transformation only for actual Option types
-    apply_option_transformation(example, variant_name, enum_type)
+    let result = apply_option_transformation(example, variant_name, enum_type);
+
+    tracing::debug!(
+        "build_variant_example: final result after transformation: {:?}",
+        result
+    );
+
+    result
 }
 
 /// Select the preferred example from a collection of `ExampleGroups`.
@@ -827,6 +872,12 @@ fn build_partial_root_examples(
                 .find(|ex| ex.applicable_variants.contains(&our_variant))
                 .and_then(|ex| ex.example.clone())
                 .unwrap_or(json!(null));
+
+            tracing::debug!(
+                "build_partial_root_examples: variant={}, base_example={:?}",
+                our_variant.as_str(),
+                base_example
+            );
 
             // Collect all unique child chains that start with our_chain
             let child_chains_to_wrap = collect_child_chains_to_wrap(child_paths, &our_chain, ctx);

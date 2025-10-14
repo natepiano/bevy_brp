@@ -527,7 +527,13 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 }
 
                 // No variant-specific value, use regular example
-                examples_for_chain.insert(descriptor, child.example.clone());
+                // For enum children, use enum_example_for_parent instead of example
+                // (enum paths always have example: null)
+                let fallback_example = child
+                    .enum_example_for_parent
+                    .as_ref()
+                    .map_or_else(|| child.example.clone(), Clone::clone);
+                examples_for_chain.insert(descriptor, fallback_example);
             }
 
             // Assemble from all children
