@@ -5,6 +5,7 @@
 <SubagentExecutionFlow>
     **EXECUTE THESE STEPS IN ORDER:**
 
+    **STEP 0:** Execute <InitializeLogging/> - Initialize progress log file
     **STEP 1:** Read and internalize <ErrorRecoveryProtocol/>
     **STEP 2:** Read <SubagentContext/> to understand your assignment
     **STEP 3:** Execute <FetchAssignment/> → ON ERROR: go to Step 7 with assignment error
@@ -14,31 +15,32 @@
     **STEP 7:** **[UNCONDITIONAL - ALWAYS EXECUTE]** Execute <ReturnResults/> with JSON output
     **STEP 8:** **[UNCONDITIONAL - ALWAYS EXECUTE]** Execute <FinalValidation/> before sending response
 
-**CRITICAL PATH ENFORCEMENT**:
-- Steps 7-8 MUST execute whether previous steps succeed or fail
-- If Steps 3-6 succeed: Step 7 returns success results
-- If Steps 3-6 fail: Step 7 returns failure/partial results
-- **NO PATH SKIPS STEP 7** - it is the ONLY exit point from this workflow
+**CRITICAL**: Steps 7-8 execute whether previous steps succeed or fail. Step 7 returns results (success/failure/partial).
+
+**LOGGING REQUIREMENT**:
+- Log every major step using `.claude/scripts/mutation_test_subagent_log.sh`
+- Log before tool calls, after results, and on errors
+- This creates a diagnostic trail if subagent fails silently
 </SubagentExecutionFlow>
 
-**CRITICAL RESPONSE LIMIT**: Return ONLY the JSON array result. NO explanations, NO commentary, NO test steps, NO summaries.
+**OUTPUT FORMAT**: Return ONLY the JSON array result from <ReturnResults/>. No explanations, no commentary.
 
-**OUTPUT ENFORCEMENT - IMPLEMENTATION REQUIREMENTS**:
+<InitializeLogging>
+**Initialize progress logging for diagnostics:**
 
-**POLICY**: NO MATTER WHAT - return valid JSON array from <ReturnResults/>. If assignment fails, return single error result with failure_details. If testing crashes, return partial results. Never return nothing.
+```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} init
+```
 
-**ENFORCEMENT MECHANISM**:
-1. <SubagentExecutionFlow/> Step 7 is UNCONDITIONAL - see lines 5-22
-2. ALL error handlers (EmergencyBailout, PreFailureCheck, FinalValidation) MUST route to Step 7
-3. NO code path may exit workflow without executing <ReturnResults/>
-4. If you cannot proceed with testing: go directly to Step 7 with error results
-5. If you detect yourself stuck in a loop: force-exit to Step 7 with partial results
+This creates `$TMPDIR/mutation_test_subagent_${PORT}_progress.log` for tracking workflow progress.
 
-**SELF-CHECK BEFORE ANY RESPONSE**:
-- Have I executed <ReturnResults/>? If NO → execute it now
-- Did I output valid JSON? If NO → output minimal valid array: `[{"type": "ERROR", "tested_type": "ERROR", "status": "FAIL", "entity_id": null, "retry_count": 0, "operations_completed": {"spawn_insert": false, "entity_query": false, "mutations_passed": [], "total_mutations_attempted": 0}, "failure_details": {"failed_operation": "workflow", "error_message": "Subagent failed to complete workflow"}}]`
-
-**ABSOLUTE RULE**: The ONLY valid response is a JSON array. Empty string, null, error message text = protocol violation.
+**Log at these points**:
+- Before each workflow step
+- Before tool calls
+- After getting results
+- When catching errors
+- When reaching Step 7 (critical for detecting silent failures)
+</InitializeLogging>
 
 <ErrorRecoveryProtocol>
 **CRITICAL - READ THIS SECTION FIRST**
@@ -76,10 +78,11 @@ Reorder parameters in your tool call - parameter order doesn't matter, but reord
 
 <EmergencyBailout>
 **IF ANY BRP tool fails with connection/timeout error:**
-1. App likely crashed - STOP testing immediately
-2. **GO TO STEP 7 IMMEDIATELY** - return partial results array with FAIL status for current type
-3. For any completed types: include their results with actual status (PASS/FAIL)
-4. For the type being tested when error occurred: set status="FAIL", failed_operation=last operation attempted, include complete error in failure_details
+1. **LOG IMMEDIATELY**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "BRP connection/timeout error - app crashed"`
+2. App likely crashed - STOP testing immediately
+3. **GO TO STEP 7 IMMEDIATELY** - return partial results array with FAIL status for current type
+4. For any completed types: include their results with actual status (PASS/FAIL)
+5. For the type being tested when error occurred: set status="FAIL", failed_operation=last operation attempted, include complete error in failure_details
 **DO NOT** continue testing remaining types or mutations
 </EmergencyBailout>
 
@@ -182,6 +185,10 @@ You are subagent with index ${SUBAGENT_INDEX} (0-based) assigned to port ${PORT}
 **Execute the assignment script to get your assigned type names**:
 
 ```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 3: Fetching assignment"
+```
+
+```bash
 python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
     --batch ${BATCH_NUMBER} \
     --max-subagents ${MAX_SUBAGENTS} \
@@ -189,11 +196,18 @@ python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
     --subagent-index ${SUBAGENT_INDEX}
 ```
 
+**After tool result received**:
+```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Assignment fetch completed"
+```
+
 **ERROR HANDLING**:
 - **IF** script fails to execute or returns non-zero exit code:
+  - Log the error: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Assignment fetch failed: [error message]"`
   - Go directly to Step 7 (<ReturnResults/>)
   - Return single error result: `[{"type": "ASSIGNMENT_FETCH_FAILED", "tested_type": "ASSIGNMENT_FETCH_FAILED", "status": "FAIL", "entity_id": null, "retry_count": 0, "operations_completed": {"spawn_insert": false, "entity_query": false, "mutations_passed": [], "total_mutations_attempted": 0}, "failure_details": {"failed_operation": "assignment_fetch", "error_message": "[script error message]"}}]`
 - **IF** script returns invalid JSON or missing `type_names` field:
+  - Log the error: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Assignment JSON invalid"`
   - Go directly to Step 7 (<ReturnResults/>)
   - Return single error result per above format with error_message="Invalid JSON in assignment response"
 
@@ -221,6 +235,11 @@ python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
 </FetchAssignment>
 
 <ParseAssignmentData>
+**Log the step**:
+```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 4: Parsing assignment data"
+```
+
 **Parse the type_names array from assignment and fetch each type guide:**
 
 The assignment gives you a simple array of type names. For EACH type name, you MUST:
@@ -244,8 +263,14 @@ The assignment gives you a simple array of type names. For EACH type name, you M
 ```
 # Assignment returned: {"type_names": ["bevy_pbr::cluster::ClusterConfig", "bevy_input::gamepad::GamepadSettings"]}
 
+# Log before fetching:
+Bash: .claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Fetching type guide for bevy_pbr::cluster::ClusterConfig"
+
 # Call 1 - Fetch first type guide:
 Bash: ./.claude/scripts/get_type_guide.sh bevy_pbr::cluster::ClusterConfig --file .claude/transient/all_types.json
+
+# Log before fetching:
+Bash: .claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Fetching type guide for bevy_input::gamepad::GamepadSettings"
 
 # Call 2 - Fetch second type guide:
 Bash: ./.claude/scripts/get_type_guide.sh bevy_input::gamepad::GamepadSettings --file .claude/transient/all_types.json
@@ -293,9 +318,15 @@ Bash: ./.claude/scripts/get_type_guide.sh bevy_input::gamepad::GamepadSettings -
 </ParseAssignmentData>
 
 <TestAllTypes>
+**Log the step**:
+```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 5: Testing all assigned types"
+```
+
 **Testing Protocol**:
 
 For each type name string in your `type_names` array:
+   0. **LOG TYPE START**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Testing type: [type_name]"`
    1. **FETCH TYPE GUIDE**: Call `get_type_guide.sh <type_name> --file .claude/transient/all_types.json`
    2. **EXTRACT TYPE NAME**: Get the `type_name` field from the script output - this is your AUTHORITATIVE string
    3. **TEST THE TYPE**:
@@ -326,11 +357,13 @@ For each type name string in your `type_names` array:
       - **CHECK `mutation_type` field from assignment data**
       - **RESOURCE DETECTION**:
         * IF `mutation_type == "Resource"` → **THIS IS A RESOURCE**
+        * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Type is Resource, using ResourceTestingProtocol"`
         * Execute <ResourceTestingProtocol/> ONLY
         * **SKIP** all component testing steps completely
         * **NEVER** use `world_spawn_entity` or `world_mutate_components` for resources
       - **COMPONENT DETECTION**:
         * IF `mutation_type == "Component"` → **THIS IS A COMPONENT**
+        * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Type is Component, using ComponentTestingProtocol"`
         * Execute <ComponentTestingProtocol/> ONLY
         * **SKIP** all resource testing steps completely
         * **NEVER** use `world_insert_resources` or `world_mutate_resources` for components
@@ -381,16 +414,19 @@ For each type name string in your `type_names` array:
         First mutate path `""` with this complete value, THEN mutate `.middle_struct.nested_enum.name`
    f. **MUTATION TESTING**: For each path in mutation_paths, validate THEN test
       - **FOR EACH path in mutation_paths object:**
-        1. **CHECK mutation_status FIRST**: If `path_info.mutation_status == "not_mutable"` → SKIP path (don't count in total)
-        2. **CHECK for example**: If no `example` or `examples` field exists → SKIP path (cannot test without value)
-        3. **IF partially_mutable**: SKIP unless `example` or `examples` exists
-        4. **ONLY if checks pass**: Proceed to mutation
+        1. **LOG PATH START**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Testing mutation path: [path]"`
+        2. **CHECK mutation_status FIRST**: If `path_info.mutation_status == "not_mutable"` → SKIP path (don't count in total)
+        3. **CHECK for example**: If no `example` or `examples` field exists → SKIP path (cannot test without value)
+        4. **IF partially_mutable**: SKIP unless `example` or `examples` exists
+        5. **ONLY if checks pass**: Proceed to mutation
       - **CHOOSE MUTATION METHOD** based on type category:
         * **FOR COMPONENTS**: Use `world_mutate_components` with entity ID
         * **FOR RESOURCES**: Use `world_mutate_resources` (no entity ID needed)
+      - **LOG BEFORE TOOL**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Calling mutate for path: [path]"`
       - Apply Entity ID substitution BEFORE sending any mutation request (components only)
       - If a mutation uses Entity IDs and you don't have real ones, query for them first
       - **CRITICAL VALUE HANDLING**: Extract the `example` value from mutation_paths and follow <JsonPrimitiveRules/> when using it
+      - **LOG AFTER TOOL**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Mutation [path] result: [PASS/FAIL]"`
       - **ENUM TESTING REQUIREMENT**: When a mutation path contains an "examples" array (indicating enum variants), you MUST test each example individually:
         * For each entry in the "examples" array, perform a separate mutation using that specific "example" value
         * Example: If `.depth_load_op` has examples `[{"example": {"Clear": 3.14}}, {"example": "Load"}]`, test BOTH:
@@ -410,10 +446,12 @@ For each type name string in your `type_names` array:
 **CRITICAL**: Do NOT use component methods (`world_spawn_entity`, `world_mutate_components`) - these will CRASH the app
 
 1. **INSERT CHECK**: If `guide.spawn_format` is NOT null:
+   - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Inserting resource"`
    - Use `world_insert_resources` tool
    - Pass `resource` parameter with exact type name from type guide
    - Pass `value` parameter with `spawn_format` data
    - Then verify insertion with `world_get_resources`
+   - **LOG RESULT**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Resource insert result"`
    - Set `spawn_insert: true` in operations_completed
 
 2. **IF spawn_format IS null**:
@@ -443,6 +481,7 @@ For each type name string in your `type_names` array:
 **CRITICAL**: Do NOT use resource methods (`world_insert_resources`, `world_mutate_resources`)
 
 1. **SPAWN/INSERT CHECK**: If `guide.spawn_format` is NOT null:
+   - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Spawning component entity"`
    - **FIRST**: Validate spawn_format for Entity ID placeholders
      * Inspect spawn_format values for `8589934670` (placeholder Entity ID)
      * **IF FOUND**: Query for any existing entity using `world_query` with `data: {}`
@@ -461,10 +500,12 @@ For each type name string in your `type_names` array:
    - Proceed to query for EXISTING entities with this component
 
 3. **QUERY FOR ENTITY** (ALWAYS execute):
+   - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Querying for entities with component"`
    - Use `world_query` tool
    - Pass `filter: {"with": ["EXACT_TYPE_NAME"]}` to find entities
    - Pass `data: {}` to get entity IDs only
    - Store entity ID for mutation testing
+   - **LOG RESULT**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Query found [N] entities"`
    - If 0 entities found → Report COMPONENT_NOT_FOUND status
    - If query fails with error → Follow <EmergencyBailout> and return FAIL with error details
    - Set `entity_query: true` in operations_completed
@@ -538,6 +579,11 @@ If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 </SubagentOutputFormat>
 
 <ReturnResults>
+**CRITICAL - Log reaching Step 7**:
+```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 7: Returning results (CRITICAL - this proves subagent reached output stage)"
+```
+
 **CRITICAL FIELD REQUIREMENTS**:
 - `type`: Extract from the `type_name` field returned by `get_type_guide.sh` - this is the AUTHORITATIVE type name
 - `tested_type`: The exact type name string you passed to BRP queries - MUST be identical to `type`
@@ -559,12 +605,22 @@ If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 </ReturnResults>
 
 <FinalValidation>
+**Log validation step**:
+```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 8: Final validation before output"
+```
+
 **VERIFY BEFORE OUTPUT**:
 - `retry_count` matches number of "invalid type: string" errors received
 - No failures reported with "invalid type: string" in error_message
 - All failure values are proper JSON types (not strings)
 
 If any fail: Review <ErrorRecoveryProtocol/> and fix before output.
+
+**Log completion**:
+```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Subagent workflow complete - returning JSON"
+```
 </FinalValidation>
 
 <TypeNameValidation>
