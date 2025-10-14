@@ -16,8 +16,6 @@ pub struct InsertComponentsParams {
     pub entity: u64,
 
     /// Object containing component data to insert. Keys are component types, values are component
-    /// data. Note: Math types use array format - Vec2: [x,y], Vec3: [x,y,z], Vec4/Quat: [x,y,z,w],
-    /// not objects with named fields.
     pub components: HashMap<String, Value>,
 
     /// The BRP port (default: 15702)

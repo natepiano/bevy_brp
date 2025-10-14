@@ -13,8 +13,7 @@ pub struct InsertResourcesParams {
     /// The fully-qualified type name of the resource to insert or update
     pub resource: String,
 
-    /// The resource value to insert. Note: Math types use array format - Vec2: [x,y], Vec3:
-    /// [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.
+    /// The resource value to insert.
     pub value: Value,
 
     /// The BRP port (default: 15702)

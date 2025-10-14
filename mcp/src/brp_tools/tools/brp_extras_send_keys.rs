@@ -13,8 +13,7 @@ pub struct SendKeysParams {
     /// Array of key code names to send
     pub keys: Vec<String>,
 
-    /// Duration in milliseconds to hold the keys before releasing (default: 100ms, max: 60000ms/1
-    /// minute)
+    /// Duration in milliseconds to hold the keys before releasing (default: 100ms, max: 60000ms)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<u32>,
 

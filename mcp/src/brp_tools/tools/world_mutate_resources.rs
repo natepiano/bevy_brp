@@ -13,11 +13,10 @@ pub struct MutateResourcesParams {
     /// The fully-qualified type name of the resource to mutate
     pub resource: String,
 
-    /// The new value for the field. Note: Math types use array format - Vec2: [x,y], Vec3:
-    /// [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.
+    /// The new value for the field.
     pub value: Value,
 
-    /// The path to the field within the resource (e.g., 'settings.volume')
+    /// The mutation path to the field within the resource (e.g., 'settings.volume')
     #[serde(default)]
     pub path: String,
 

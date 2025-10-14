@@ -19,8 +19,7 @@ pub struct MutateComponentsParams {
     /// The fully-qualified type name of the component to mutate
     pub component: String,
 
-    /// The new value for the field. Note: Math types use array format - Vec2: [x,y], Vec3:
-    /// [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.
+    /// The new value for the mutation path
     pub value: Value,
 
     /// The path to the field within the component (e.g., 'translation.x')
@@ -107,11 +106,11 @@ impl<'de> Deserialize<'de> for MutateComponentsParams {
                 if let (Some(entity), Some(component), Some(value)) = (&entity, &component, &value)
                 {
                     Ok(MutateComponentsParams {
-                        entity:    *entity,
+                        entity: *entity,
                         component: component.clone(),
-                        value:     value.clone(),
-                        path:      path.unwrap_or_default(),
-                        port:      port.unwrap_or_default(),
+                        value: value.clone(),
+                        path: path.unwrap_or_default(),
+                        port: port.unwrap_or_default(),
                     })
                 } else {
                     // Collect missing required fields for better error message

@@ -12,7 +12,6 @@ use crate::brp_tools::Port;
 pub struct ScreenshotParams {
     /// File path where the screenshot should be saved
     pub path: String,
-
     /// The BRP port (default: 15702)
     #[serde(default)]
     pub port: Port,

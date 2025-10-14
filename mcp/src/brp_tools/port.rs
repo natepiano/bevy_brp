@@ -10,10 +10,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::brp_tools::constants::{DEFAULT_BRP_EXTRAS_PORT, VALID_PORT_RANGE};
 
-/// A validated port number for BRP connections
-///
-/// This type ensures port numbers are within the valid range and provides
-/// a default value of 15702 (the standard BRP port).
+/// Port number for BRP - defaults to 15702
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize)]
 pub struct Port(pub u16);
 

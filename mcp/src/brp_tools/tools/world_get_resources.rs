@@ -10,7 +10,7 @@ use crate::brp_tools::Port;
 /// Parameters for the `world.get_resources` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct GetResourcesParams {
-    /// The fully-qualified type name of the resource to get
+    /// The fully-qualified type name of the resource
     pub resource: String,
 
     /// The BRP port (default: 15702)

@@ -1,4 +1,4 @@
-Shutdown running Bevy applications for proper resource cleanup, stop resource-blocking apps, test shutdown behavior, and managing app lifecycle.
+Shutdown running Bevy applications for proper resource cleanup
 
 Shutdown behavior:
 1. Attempts bevy_brp_extras/shutdown for clean shutdown

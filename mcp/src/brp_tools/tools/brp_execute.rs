@@ -14,15 +14,13 @@ use crate::tool::{BrpMethod, ToolFn};
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ExecuteParams {
     /// The BRP method to execute (e.g., `rpc.discover`, `world.get_components`, `world.query`)
-    /// Note: `BrpMethod` deserializes from BRP method strings using `#[serde(rename)]`
-    /// attributes generated in `mcp_macros/src/brp_tools.rs`
     pub method: BrpMethod,
-    /// Optional parameters for the method, as a JSON object or array
+    /// Optional parameters for the method
     #[to_metadata(skip_if_none)]
     pub params: Option<serde_json::Value>,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    pub port:   Port,
+    pub port: Port,
 }
 
 /// Result type for the dynamic BRP execute tool

@@ -1,5 +1,2 @@
-Discovers all Bevy apps in workspace using cargo metadata. Returns app names, binary paths, build profiles with status, and full paths.
-
-Returns: Apps with name, path, and build status (debug/release).
-
-Note: Apps must be built before launching.
+Discovers all Bevy apps in workspace using cargo metadata.
+Returns app names, binary paths, build profiles, build status, and full paths.

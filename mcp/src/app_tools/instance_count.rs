@@ -15,10 +15,8 @@ pub const MAX_INSTANCE_COUNT: usize = 100;
 /// Valid range for instance count
 pub const VALID_INSTANCE_RANGE: RangeInclusive<usize> = MIN_INSTANCE_COUNT..=MAX_INSTANCE_COUNT;
 
-/// A validated count of instances to launch in sequence
-///
-/// This type ensures the count is within 1-100 range and provides
-/// a default value of 1 (single instance).
+/// Count of instances to launch in sequence
+/// Validates count is within 1-100 - defaults to 1
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize)]
 pub struct InstanceCount(pub usize);
 
