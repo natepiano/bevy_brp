@@ -279,12 +279,31 @@ In `from_mutation_path_internal` function, locate the `let (examples, example) =
 **Current code**:
 ```rust
 let (examples, example) = match path.mutation_status {
-    MutationStatus::PartiallyMutable | MutationStatus::NotMutable => {
-        // PartiallyMutable and NotMutable: no example at all (not even null)
+    MutationStatus::PartiallyMutable => {
+        // PartiallyMutable enums: show examples array with per-variant status
+        // PartiallyMutable non-enums: no examples
+        path.enum_example_groups.as_ref().map_or_else(
+            || (vec![], None),
+            |enum_examples| (enum_examples.clone(), None),
+        )
+    }
+    MutationStatus::NotMutable => {
+        // NotMutable: no example at all (not even null)
         (vec![], None)
     }
     MutationStatus::Mutable => {
-        // ... handles mutable paths
+        path.enum_example_groups.as_ref().map_or_else(
+            || {
+                // Mutable paths: use the example value
+                // This includes enum children (with embedded `applicable_variants`) and
+                // regular values
+                (vec![], Some(path.example.clone()))
+            },
+            |enum_examples| {
+                // Enum root: use the examples array
+                (enum_examples.clone(), None)
+            },
+        )
     }
 };
 ```
@@ -292,19 +311,31 @@ let (examples, example) = match path.mutation_status {
 **New code**:
 ```rust
 let (examples, example) = match path.mutation_status {
-    MutationStatus::PartiallyMutable | MutationStatus::NotMutable => {
-        let example = if has_default_for_root {
-            Some(json!({}))
-        } else {
-            None
-        };
-        (vec![], example)
+    MutationStatus::PartiallyMutable => {
+        // PartiallyMutable enums: show examples array with per-variant status
+        // PartiallyMutable non-enums: check for Default trait
+        path.enum_example_groups.as_ref().map_or_else(
+            || {
+                let example = if has_default_for_root {
+                    Some(json!({}))
+                } else {
+                    None
+                };
+                (vec![], example)
+            },
+            |enum_examples| (enum_examples.clone(), None),  // Enum: use examples array
+        )
+    }
+    MutationStatus::NotMutable => {
+        // NotMutable: no example (no NotMutable+Default types found in practice)
+        (vec![], None)
     }
     MutationStatus::Mutable => {
-        // PRESERVE EXISTING LOGIC - do not modify this branch
         path.enum_example_groups.as_ref().map_or_else(
             || {
                 // Mutable paths: use the example value
+                // This includes enum children (with embedded `applicable_variants`) and
+                // regular values
                 (vec![], Some(path.example.clone()))
             },
             |enum_examples| {
