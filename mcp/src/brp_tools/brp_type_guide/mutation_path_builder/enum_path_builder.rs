@@ -407,55 +407,65 @@ fn build_variant_example(
 /// Select the preferred example from a collection of `ExampleGroups`.
 ///
 /// This function is critical for handling partially mutable enums where some variants
-/// are `not_mutable` and have `example: None`.
+/// cannot be fully constructed.
+///
+/// # Invariant
+///
+/// After `build_variant_group_example`, only fully `Mutable` variants have `example: Some(value)`.
+/// Both `NotMutable` and `PartiallyMutable` variants will have `example: None` because:
+/// - `NotMutable`: The variant's fields cannot be serialized at all
+/// - `PartiallyMutable`: The variant's fields are incomplete (missing `Arc`/`Handle` fields)
+///
+/// This invariant ensures that any `Some(value)` we find is safe to use for spawning.
 ///
 /// # Why This Matters
 ///
-/// When an enum has mixed mutability:
-/// - Mutable/PartiallyMutable variants have `example: Some(Value)`
-/// - `NotMutable` variants have `example: None` (see process_children:221-222)
-///
-/// If we select a `NotMutable` variant's `None` example, it propagates up as the
-/// `enum_example_for_parent`, causing parent enums to build invalid examples.
+/// When an enum has mixed mutability, we must select a variant that can be fully constructed.
+/// If we select a variant with `example: None`, it propagates up as `enum_example_for_parent`,
+/// causing parent enums to build invalid examples.
 ///
 /// ## Example Problem Case
 ///
 /// For `Option<Handle<Image>>` where `Handle<Image>` has:
-/// - `Strong` variant → `not_mutable`, example: None
-/// - `Uuid` variant → mutable, example: Some({"Uuid": "..."})
+/// - `Strong` variant → `partially_mutable`, example: `None` (has non-serializable `Arc` field)
+/// - `Uuid` variant → `mutable`, example: `Some({"Uuid": "..."})`
 ///
 /// If we pick `Strong` first (because it's non-unit), we get:
 /// 1. `Strong`'s example is `None`
 /// 2. This becomes `enum_example_for_parent: None` for `Handle<Image>`
 /// 3. Parent `Option<Handle<Image>>::Some` uses this to build: `{"Some": null}`
-/// 4. Result: `.color_lut.0` gets `root_example: null` instead of proper `{"Some": {"Uuid":
-///    "..."}}`
+/// 4. Result: Invalid `spawn_format` that crashes when used
 ///
 /// # Selection Strategy
 ///
-/// 1. **First priority**: Non-unit variant WITH an actual example
+/// 1. **First priority**: Non-unit `Mutable` variant with a complete example
 ///    - Provides rich examples for tuple/struct variants
-///    - Skips `not_mutable` variants that have `None`
+///    - Explicitly checks `mutation_status` to ensure spawnability
 ///
-/// 2. **Second priority**: ANY variant WITH an example (including unit)
-///    - Handles enums where all non-unit variants are `not_mutable`
-///    - Unit variants always have examples (simple string values)
+/// 2. **Second priority**: ANY `Mutable` variant with an example (including unit)
+///    - Handles enums where all non-unit variants are `not_mutable`/`partially_mutable`
+///    - Unit variants are always `Mutable` (no fields to construct)
 ///
-/// 3. **Fallback**: Return `None` if no examples exist
-///    - Happens when all variants are `not_mutable` (rare case)
+/// 3. **Fallback**: Return `None` if no `Mutable` variants exist
+///    - The entire enum is not spawnable
 pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
-    // First priority: Find a non-unit variant that HAS an actual example
-    // This ensures we get rich examples while avoiding not_mutable variants with None
+    // First priority: Find a non-unit Mutable variant with a complete example
+    // Note: We check mutation_status explicitly for clarity and safety, even though
+    // example.is_some() now implies Mutable due to build_variant_group_example's logic
     examples
         .iter()
-        .find(|eg| eg.signature != "unit" && eg.example.is_some())
+        .find(|eg| {
+            eg.signature != "unit"
+                && eg.example.is_some()
+                && eg.mutation_status == MutationStatus::Mutable
+        })
         .and_then(|eg| eg.example.clone())
         .or_else(|| {
-            // Second priority: Fall back to ANY variant with an example (including unit)
-            // This handles cases where all non-unit variants are not_mutable
+            // Second priority: Fall back to ANY Mutable variant with an example (including unit)
+            // This handles cases where all non-unit variants are not_mutable/partially_mutable
             examples
                 .iter()
-                .find(|eg| eg.example.is_some())
+                .find(|eg| eg.example.is_some() && eg.mutation_status == MutationStatus::Mutable)
                 .and_then(|eg| eg.example.clone())
         })
 }
@@ -617,10 +627,27 @@ fn build_variant_group_example(
         .first()
         .ok_or_else(|| Report::new(Error::InvalidState("Empty variant group".to_string())))?;
 
-    // Only build example for mutable variants
-    // `NotMutable` variants get None (field omitted from JSON)
-    let example = if matches!(signature_status, MutationStatus::NotMutable) {
-        None // Omit example field entirely for unmutable variants
+    // Skip example generation for non-spawnable variants
+    //
+    // We omit examples for `NotMutable` and `PartiallyMutable` variants because:
+    // 1. `child_examples` only contains mutable fields (`Arc`/`Handle` fields are excluded)
+    // 2. Building an example with incomplete fields would create invalid `spawn_format` values
+    // 3. Attempting to spawn with incomplete examples causes Bevy reflection to panic
+    // 4. `select_preferred_example()` will automatically skip variants with `None` examples and
+    //    choose a fully `Mutable` variant (or return `None` if no `Mutable` variants exist)
+    //
+    // Example: `TestMixedMutabilityEnum::WithMixed(TestMixedMutabilityCore)` where `Core` has:
+    //   - `mutable_string: String` (in `child_examples`)
+    //   - `mutable_float: f32` (in `child_examples`)
+    //   - `not_mutable_arc: Arc<String>` (NOT in `child_examples` - missing!)
+    //   - `partially_mutable_nested: Nested` (NOT in `child_examples` - missing!)
+    // Building with only mutable fields would create `{"WithMixed": {"mutable_float": 1.0,
+    // "mutable_string": "..."}}` which crashes when spawned due to missing required fields.
+    let example = if matches!(
+        signature_status,
+        MutationStatus::NotMutable | MutationStatus::PartiallyMutable
+    ) {
+        None // Omit example field for variants that cannot be fully constructed
     } else {
         Some(build_variant_example(
             signature,
