@@ -183,7 +183,8 @@
       "Bash(claude --version)",
       "Bash(do python3 .claude/scripts/create_mutation_test_json/read_comparison.py structural_next)",
       "Bash(.claude/scripts/integration_tests/query_validate.sh:*)",
-      "Bash(./.claude/scripts/integration_tests/query_validate.sh:*)"
+      "Bash(./.claude/scripts/integration_tests/query_validate.sh:*)",
+      "Bash(.claude/scripts/mutation_test_subagent_log.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",
