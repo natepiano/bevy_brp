@@ -250,12 +250,11 @@ pub fn populate_root_examples_from_partials(
     partials: &BTreeMap<Vec<VariantName>, Value>,
 ) {
     for path in paths {
-        if let Some(enum_data) = &mut path.enum_path_data {
-            if !enum_data.variant_chain.is_empty() {
-                if let Some(root_example) = partials.get(&enum_data.variant_chain) {
-                    enum_data.root_example = Some(root_example.clone());
-                }
-            }
+        if let Some(enum_data) = &mut path.enum_path_data
+            && !enum_data.variant_chain.is_empty()
+            && let Some(root_example) = partials.get(&enum_data.variant_chain)
+        {
+            enum_data.root_example = Some(root_example.clone());
         }
     }
 }

@@ -139,7 +139,7 @@ pub struct RecursionContext {
     /// Recursion depth tracking to prevent infinite loops
     pub depth:                    RecursionDepth,
     /// Parent enum variant signature (only set when processing enum variant children)
-    /// The enum type is available via path_kind.parent_type - no need to store it redundantly
+    /// The enum type is available via `path_kind.parent_type` - no need to store it redundantly
     pub parent_variant_signature: Option<VariantSignature>,
 }
 

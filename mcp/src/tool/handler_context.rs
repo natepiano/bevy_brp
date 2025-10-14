@@ -69,9 +69,7 @@ impl HandlerContext {
 
             // Create user-friendly error message with serde details
             let user_message = format!(
-                "Invalid parameter format for '{}': {}. Check the parameter types and structure match the tool's requirements",
-                type_name,
-                e
+                "Invalid parameter format for '{type_name}': {e}. Check the parameter types and structure match the tool's requirements"
             );
 
             error_stack::Report::new(Error::ParameterExtraction(user_message))

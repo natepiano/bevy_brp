@@ -700,13 +700,10 @@ fn create_paths_for_signature(
             let paths: Vec<PathKind> = types
                 .iter()
                 .enumerate()
-                .map(|(index, type_name)| {
-                    let path = PathKind::IndexedElement {
-                        index,
-                        type_name: type_name.clone(),
-                        parent_type: ctx.type_name().clone(),
-                    };
-                    path
+                .map(|(index, type_name)| PathKind::IndexedElement {
+                    index,
+                    type_name: type_name.clone(),
+                    parent_type: ctx.type_name().clone(),
                 })
                 .collect();
             Some(paths)

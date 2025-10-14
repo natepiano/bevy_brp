@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Selector for optional components in a query (mirrors Bevy's ComponentSelector)
+/// Selector for optional components in a query (mirrors Bevy's `ComponentSelector`)
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ComponentSelector {
