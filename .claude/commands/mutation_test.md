@@ -12,7 +12,7 @@
 </TestContext>
 
 <TestConfiguration>
-TYPES_PER_SUBAGENT = 2                                  # Types each subagent tests
+TYPES_PER_SUBAGENT = 5                                  # Types each subagent tests
 MAX_SUBAGENTS = 10                                      # Parallel subagents per batch
 BATCH_SIZE = ${TYPES_PER_SUBAGENT * MAX_SUBAGENTS}      # Types per batch
 BASE_PORT = 30001                                       # Starting port for subagents
