@@ -63,6 +63,10 @@
     {
       "type_name": "bevy_ui::widget::viewport::ViewportNode",
       "reason": "Complex setup requirements not justified for mutation testing. Requires: (1) creating a render texture with specific TextureUsages, (2) spawning a camera with RenderTarget::Image pointing to that texture, (3) spawning a UI Node with ViewportNode referencing the camera entity. The setup complexity and additional dependencies (images, cameras, render targets) don't justify inclusion in the standard mutation test suite."
+    },
+    {
+      "type_name": "bevy_animation::transition::AnimationTransitions",
+      "reason": "Array element mutation paths cannot be tested. Type spawns with empty transitions array (spawn_format: {}), but type guide includes mutation paths for array elements (.transitions[0].current_weight, .transitions[0].weight_decline_per_sec). Cannot mutate array element [0] when array is empty - results in error: 'The list accessed doesn't have index `0`'. Would need non-empty spawn format or filtered mutation paths to be testable."
     }
   ]
 }
