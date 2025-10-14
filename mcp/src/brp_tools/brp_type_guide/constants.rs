@@ -81,6 +81,9 @@ pub const REFLECT_TRAIT_COMPONENT: &str = "Component";
 /// Reflection trait name for Bevy resources
 pub const REFLECT_TRAIT_RESOURCE: &str = "Resource";
 
+/// Reflection trait name for Default implementation
+pub const REFLECT_TRAIT_DEFAULT: &str = "Default";
+
 // ============================================================================
 // AGENT WARNING MESSAGES
 // ============================================================================
@@ -93,6 +96,9 @@ pub const ENTITY_WARNING: &str = " CAUTION: This type contains bevy_ecs::entity:
 
 /// Guidance for types that failed during processing
 pub const ERROR_GUIDANCE: &str = "This type was found in the registry but failed during processing. Check the 'error' field for details. No mutation paths or spawn format are available due to the processing failure.";
+
+/// Guidance appended to root path description for Default trait spawning
+pub const DEFAULT_SPAWN_GUIDANCE: &str = " However this type implements Default and accepts empty object {} for spawn, insert, or mutate operations on the root path";
 
 // ============================================================================
 // PATH PROCESSING CONSTANTS

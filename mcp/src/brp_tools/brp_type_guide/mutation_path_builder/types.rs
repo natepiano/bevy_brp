@@ -6,11 +6,13 @@ use std::collections::{BTreeMap, HashMap};
 use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use super::super::brp_type_name::BrpTypeName;
+use super::super::constants::{DEFAULT_SPAWN_GUIDANCE, REFLECT_TRAIT_DEFAULT};
 use super::super::type_kind::TypeKind;
 use super::path_kind::PathKind;
+use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
 /// Full mutation path for BRP operations (e.g., ".translation.x")
@@ -320,16 +322,35 @@ impl MutationPath {
         let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
         let type_kind = TypeKind::from_schema(field_schema);
 
+        // Check for Default trait once at the top for root paths
+        let has_default_for_root = if matches!(path.path_kind, PathKind::RootValue { .. }) {
+            field_schema
+                .get_field_array(SchemaField::ReflectTypes)
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(Value::as_str)
+                        .any(|t| t == REFLECT_TRAIT_DEFAULT)
+                })
+                .unwrap_or(false)
+        } else {
+            false
+        };
+
         // Generate description - override for partially_mutable paths
         // Use type-specific terminology (fields, elements, entries, variants) instead of generic
         // "descendants"
         let description = match path.mutation_status {
             MutationStatus::PartiallyMutable => {
-                format!(
+                let base_msg = format!(
                     "This {} path is partially mutable due to some of its {} not being mutable",
                     type_kind.as_ref().to_lowercase(),
                     type_kind.child_terminology()
-                )
+                );
+                if has_default_for_root {
+                    format!("{base_msg}.{DEFAULT_SPAWN_GUIDANCE}")
+                } else {
+                    base_msg
+                }
             }
             _ => path.path_kind.description(&type_kind),
         };
@@ -337,10 +358,17 @@ impl MutationPath {
         let (examples, example) = match path.mutation_status {
             MutationStatus::PartiallyMutable => {
                 // PartiallyMutable enums: show examples array with per-variant status
-                // PartiallyMutable non-enums: no examples
+                // PartiallyMutable non-enums: check for Default trait
                 path.enum_example_groups.as_ref().map_or_else(
-                    || (vec![], None),
-                    |enum_examples| (enum_examples.clone(), None),
+                    || {
+                        let example = if has_default_for_root {
+                            Some(json!({}))
+                        } else {
+                            None
+                        };
+                        (vec![], example)
+                    },
+                    |enum_examples| (enum_examples.clone(), None), // Enum: use examples array
                 )
             }
             MutationStatus::NotMutable => {
