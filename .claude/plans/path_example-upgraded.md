@@ -1,5 +1,252 @@
 # PathExample: Making Illegal States Unrepresentable
 
+## EXECUTION PROTOCOL
+
+<Instructions>
+For each step in the implementation sequence:
+
+1. **DESCRIBE**: Present the changes with:
+   - Summary of what will change and why
+   - Code examples showing before/after
+   - List of files to be modified
+   - Expected impact on the system
+
+2. **AWAIT APPROVAL**: Stop and wait for user confirmation ("go ahead" or similar)
+
+3. **IMPLEMENT**: Make the changes and stop
+
+4. **BUILD & VALIDATE**: Execute the build process:
+   ```bash
+   cargo build && cargo +nightly fmt
+   ```
+
+5. **CONFIRM**: Wait for user to confirm the build succeeded
+
+6. **MARK COMPLETE**: Update this document to mark the step as ✅ COMPLETED
+
+7. **PROCEED**: Move to next step only after confirmation
+</Instructions>
+
+<ExecuteImplementation>
+Find the next ⏳ PENDING step in the INTERACTIVE IMPLEMENTATION SEQUENCE below.
+
+For the current step:
+1. Follow the <Instructions/> above for executing the step
+2. When step is complete, use Edit tool to mark it as ✅ COMPLETED
+3. Continue to next PENDING step
+
+If all steps are COMPLETED:
+    Display: "✅ Implementation complete! All steps have been executed."
+</ExecuteImplementation>
+
+## INTERACTIVE IMPLEMENTATION SEQUENCE
+
+### Step 1: Add PathExample Type Definition ⏳ PENDING
+
+**Status**: ⏳ PENDING
+**Type**: SAFE (Additive change - compiles independently)
+**Build Status**: ✅ Will compile successfully
+
+**Objective**: Add the new `PathExample` enum type to make enum vs non-enum examples type-safe
+
+**Changes**:
+- Add `PathExample` enum with `Simple` and `EnumRoot` variants
+- Add `for_parent()` helper method
+- Place just before `MutationPathInternal` struct definition
+
+**Files Modified**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`
+
+**Implementation Details**: See "Code Changes - types.rs PathExample Definition" section below
+
+**Build Command**:
+```bash
+cargo build && cargo +nightly fmt
+```
+
+**Validation**: Confirm the build succeeds with no errors
+
+---
+
+### Step 2: Core Type System Migration ⏳ PENDING
+
+**Status**: ⏳ PENDING
+**Type**: ATOMIC GROUP - CRITICAL (Must be done together)
+**Build Status**: ✅ Will compile successfully after all changes
+
+**Objective**: Update the core `MutationPathInternal` struct and all code that constructs it
+
+**Changes**:
+1. **types.rs**: Update `MutationPathInternal` struct
+   - Change `example` field from `Value` to `PathExample`
+   - Remove `enum_example_groups` field
+   - Remove `enum_example_for_parent` field
+
+2. **builder.rs**: Update `build_mutation_path_internal()` signature
+   - Change parameter `example: Value` to `example: PathExample`
+
+3. **builder.rs**: Update all 4 call sites:
+   - `build_final_result` Create mode (line ~572): Wrap with `PathExample::Simple()`
+   - `build_final_result` Skip mode (line ~586): Wrap with `PathExample::Simple()`
+   - `build_not_mutable_path` (line ~607): Wrap with `PathExample::Simple()`
+   - `check_knowledge` TreatAsRootValue (line ~124): Wrap with `PathExample::Simple()`
+
+4. **enum_path_builder.rs**: Update `build_enum_root_path()` struct initialization
+   - Replace three-field pattern with `PathExample::EnumRoot { groups, for_parent }`
+   - Remove `enum_example_groups` and `enum_example_for_parent` field assignments
+
+**Files Modified**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs`
+
+**Implementation Details**: See sections below:
+- "Code Changes - build_mutation_path_internal Call Sites"
+- "Code Changes - enum_path_builder.rs Struct Initialization"
+
+**Build Command**:
+```bash
+cargo build && cargo +nightly fmt
+```
+
+**Validation**: Confirm the build succeeds - all struct construction sites now use the new field structure
+
+**⚠️ CRITICAL**: This step must be completed atomically. Do not commit partial changes - all construction sites must be updated together.
+
+---
+
+### Step 3: Update Field Access Patterns ⏳ PENDING
+
+**Status**: ⏳ PENDING
+**Type**: ATOMIC GROUP - CRITICAL (Must be done together)
+**Build Status**: ✅ Will compile successfully after all changes
+**Dependencies**: Requires Step 2
+
+**Objective**: Update all code that reads from the example field to use the new `for_parent()` method
+
+**Changes**:
+1. **builder.rs**: Update `process_child()` (lines 432-437)
+   - Replace nested `map_or_else` with `p.example.for_parent().clone()`
+
+2. **builder.rs**: Update `assemble_partial_root_examples()` (lines 529-536)
+   - Replace `enum_example_for_parent` access with `child.example.for_parent().clone()`
+
+3. **enum_path_builder.rs**: Update `process_signature_path()` (lines 570-580)
+   - Replace `enum_example_for_parent` access with `p.example.for_parent().clone()`
+
+4. **enum_path_builder.rs**: Update `extract_child_fallback_value()` (lines 811-818)
+   - Replace `enum_example_for_parent` access with `child.example.for_parent().clone()`
+
+**Files Modified**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_path_builder.rs`
+
+**Implementation Details**: See sections below:
+- "Code Changes - builder.rs Call Sites"
+- "Code Changes - enum_path_builder.rs Call Sites"
+
+**Build Command**:
+```bash
+cargo build && cargo +nightly fmt
+```
+
+**Validation**: Confirm the build succeeds - all field access now uses the `for_parent()` helper method
+
+---
+
+### Step 4: Update Serialization Logic ⏳ PENDING
+
+**Status**: ⏳ PENDING
+**Type**: ATOMIC GROUP (Breaking change)
+**Build Status**: ✅ Will compile successfully
+**Dependencies**: Requires Step 2
+
+**Objective**: Update the JSON serialization logic to pattern match on the new `PathExample` type
+
+**Changes**:
+- **types.rs**: Update `from_mutation_path_internal()` (lines 357-391)
+  - Replace `path.enum_example_groups.as_ref().map_or_else(...)` patterns
+  - Use explicit `match &path.example` with `PathExample::EnumRoot` and `PathExample::Simple` branches
+
+**Files Modified**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`
+
+**Implementation Details**: See "Code Changes - types.rs Conversion Logic" section below
+
+**Build Command**:
+```bash
+cargo build && cargo +nightly fmt
+```
+
+**Validation**: Confirm the build succeeds and serialization logic correctly handles both enum variants
+
+---
+
+### Step 5: Verify path_builder.rs Changes ⏳ PENDING
+
+**Status**: ⏳ PENDING
+**Type**: VALIDATION (Conditional - may not need changes)
+**Build Status**: ✅ Should already compile
+**Dependencies**: Requires Steps 2-4
+
+**Objective**: Check if `path_builder.rs` has any direct `MutationPathInternal` construction that needs updating
+
+**Changes**:
+- Search for any `MutationPathInternal { ... }` construction in `path_builder.rs`
+- If found, update to use `PathExample` enum instead of separate fields
+- If none found, mark step as complete
+
+**Files Modified**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs` (if needed)
+
+**Build Command**:
+```bash
+cargo build && cargo +nightly fmt
+```
+
+**Validation**: Confirm the build succeeds with no warnings
+
+---
+
+### Step 6: Final Validation ⏳ PENDING
+
+**Status**: ⏳ PENDING
+**Type**: VALIDATION
+**Build Status**: ✅ Should compile successfully
+**Dependencies**: Requires all previous steps
+
+**Objective**: Perform comprehensive validation of the completed refactoring
+
+**Validation Steps**:
+1. Run full build in release mode:
+   ```bash
+   cargo build --release && cargo +nightly fmt
+   ```
+
+2. Verify success criteria:
+   - ✅ No compilation errors
+   - ✅ No warnings about unused fields
+   - ✅ All enum cases handled exhaustively
+   - ✅ Code formatted with nightly rustfmt
+
+3. Review the changes:
+   - Confirm `MutationPathInternal` no longer has `enum_example_groups` or `enum_example_for_parent`
+   - Confirm all construction sites use `PathExample::Simple()` or `PathExample::EnumRoot {}`
+   - Confirm all access sites use `for_parent()` method or pattern matching
+
+**Build Command**:
+```bash
+cargo build --release && cargo +nightly fmt
+```
+
+**Success Criteria**:
+- All builds succeed with zero errors
+- All code properly formatted
+- Type system now prevents the enum field access bug class
+- Invalid state combinations are impossible by construction
+
+---
+
 ## Problem Statement
 
 The current `MutationPathInternal` structure uses multiple optional fields to represent examples, creating states that should be impossible:
@@ -650,32 +897,6 @@ Invalid state combinations are impossible by construction:
 - Can't have `example: 42` with `enum_example_groups: Some(...)`
 - Can't forget to set `enum_example_for_parent` when creating enum roots
 - Can't misinterpret `example: null` (is it enum? not-mutable? Option::None?)
-
-## Implementation Strategy
-
-### Phase 1: Add New Type (Non-Breaking)
-1. Add `PathExample` enum to `types.rs`
-2. Add it alongside existing fields temporarily
-3. Ensure it compiles
-
-### Phase 2: Update Constructors
-1. Change `enum_path_builder.rs` to construct `PathExample::EnumRoot`
-2. Change `builder.rs` to construct `PathExample::Simple`
-3. Keep old fields populated for compatibility
-
-### Phase 3: Update Consumers
-1. Update all code that reads `example`/`enum_example_groups`/`enum_example_for_parent`
-2. Replace with `PathExample` pattern matching or helper methods
-3. Verify all call sites handle both variants
-
-### Phase 4: Remove Old Fields
-1. Delete `enum_example_groups` and `enum_example_for_parent` from `MutationPathInternal`
-2. Fix any compilation errors (should be none if Phase 3 was thorough)
-
-### Phase 5: Simplify
-1. Look for repeated patterns that can use helper methods
-2. Add convenience methods to `PathExample` as needed
-3. Update documentation
 
 ## Future Improvements
 
