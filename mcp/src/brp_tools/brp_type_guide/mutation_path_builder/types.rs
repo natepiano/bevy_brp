@@ -326,12 +326,11 @@ impl MutationPath {
         let has_default_for_root = if matches!(path.path_kind, PathKind::RootValue { .. }) {
             field_schema
                 .get_field_array(SchemaField::ReflectTypes)
-                .map(|arr| {
+                .is_some_and(|arr| {
                     arr.iter()
                         .filter_map(Value::as_str)
                         .any(|t| t == REFLECT_TRAIT_DEFAULT)
                 })
-                .unwrap_or(false)
         } else {
             false
         };

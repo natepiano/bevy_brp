@@ -1,12 +1,14 @@
 //! `world.mutate_components` tool - Mutate component fields
 
-use crate::brp_tools::Port;
+use std::fmt;
+
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::de::{Error, MapAccess, Visitor};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fmt;
+
+use crate::brp_tools::Port;
 
 /// Parameters for the `world.mutate_components` tool
 #[derive(Clone, Serialize, JsonSchema, ParamStruct)]
@@ -61,11 +63,11 @@ impl<'de> Deserialize<'de> for MutateComponentsParams {
             where
                 V: MapAccess<'de>,
             {
-                let mut entity = None;
-                let mut component = None;
-                let mut value = None;
-                let mut path = None;
-                let mut port = None;
+                let mut entity: Option<u64> = None;
+                let mut component: Option<String> = None;
+                let mut value: Option<Value> = None;
+                let mut path: Option<String> = None;
+                let mut port: Option<Port> = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -102,35 +104,36 @@ impl<'de> Deserialize<'de> for MutateComponentsParams {
                     }
                 }
 
-                // Collect missing required fields for better error message
-                let mut missing = Vec::new();
-                if entity.is_none() {
-                    missing.push("entity");
-                }
-                if component.is_none() {
-                    missing.push("component");
-                }
-                if value.is_none() {
-                    missing.push("value");
-                }
+                if let (Some(entity), Some(component), Some(value)) = (&entity, &component, &value)
+                {
+                    Ok(MutateComponentsParams {
+                        entity:    *entity,
+                        component: component.clone(),
+                        value:     value.clone(),
+                        path:      path.unwrap_or_default(),
+                        port:      port.unwrap_or_default(),
+                    })
+                } else {
+                    // Collect missing required fields for better error message
+                    let mut missing = Vec::new();
+                    if entity.is_none() {
+                        missing.push("entity");
+                    }
+                    if component.is_none() {
+                        missing.push("component");
+                    }
+                    if value.is_none() {
+                        missing.push("value");
+                    }
 
-                if !missing.is_empty() {
-                    return Err(Error::custom(format!(
+                    Err(Error::custom(format!(
                         "Invalid parameter format for 'MutateComponentsParams': missing required \
                          fields: {}. All three parameters are required: entity (u64), component \
                          (string), value (any JSON value). Optional: path (string, defaults to \
                          empty), port (number, defaults to 15702)",
                         missing.join(", ")
-                    )));
+                    )))
                 }
-
-                Ok(MutateComponentsParams {
-                    entity: entity.unwrap(),
-                    component: component.unwrap(),
-                    value: value.unwrap(),
-                    path: path.unwrap_or_default(),
-                    port: port.unwrap_or_default(),
-                })
             }
         }
 
