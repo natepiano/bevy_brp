@@ -164,38 +164,76 @@ impl std::fmt::Display for VariantSignature {
     }
 }
 
+/// Example value for a mutation path
+///
+/// This enum ensures we cannot accidentally use the wrong example format for a path.
+/// Enum roots MUST use `EnumRoot` variant, non-enum paths MUST use `Simple` variant.
+#[derive(Debug, Clone)]
+pub enum PathExample {
+    /// Simple value example used by non-enum types
+    ///
+    /// Examples:
+    /// - Structs: `{"field1": value1, "field2": value2}`
+    /// - Primitives: `42`, `"text"`, `true`
+    /// - Arrays: `[1, 2, 3]`
+    /// - `Option::None`: `null` (special case for Option enum)
+    Simple(Value),
+
+    /// Enum root with variant groups and parent assembly value
+    ///
+    /// Only used for enum root paths.
+    /// The `for_parent` field provides the simplified example that parent types
+    /// use when assembling their own examples.
+    EnumRoot {
+        /// All variant groups for this enum (the `examples` array in JSON output)
+        groups:     Vec<ExampleGroup>,
+        /// Simplified example for parent assembly
+        for_parent: Value,
+    },
+}
+
+impl PathExample {
+    /// Get the value to use for parent assembly
+    ///
+    /// For `Simple`, returns the value directly.
+    /// For `EnumRoot`, returns the `for_parent` field.
+    ///
+    /// This is the ONLY helper method provided. All other usage should use explicit
+    /// pattern matching to maintain type safety and force exhaustive handling of both cases.
+    pub const fn for_parent(&self) -> &Value {
+        match self {
+            Self::Simple(val) => val,
+            Self::EnumRoot { for_parent, .. } => for_parent,
+        }
+    }
+}
+
 /// Mutation path information (internal representation)
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
-    /// Example value for this path
-    pub example:                 Value,
-    /// For enum roots only: the examples array with all variant groups
-    /// None for all other paths (including enum children and regular types)
-    pub enum_example_groups:     Option<Vec<ExampleGroup>>,
-    /// For enum roots only: simple example for parent assembly
-    /// None for all other paths (including enum children and regular types)
-    pub enum_example_for_parent: Option<Value>,
+    /// Example value for this path - now type-safe!
+    pub example:                PathExample,
     /// Path for mutation, e.g., ".translation.x"
-    pub full_mutation_path:      FullMutationPath,
+    pub full_mutation_path:     FullMutationPath,
     /// Type information for this path
-    pub type_name:               BrpTypeName,
+    pub type_name:              BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind:               PathKind,
+    pub path_kind:              PathKind,
     /// Status of whether this path can be mutated
-    pub mutation_status:         MutationStatus,
+    pub mutation_status:        MutationStatus,
     /// Reason if mutation is not possible
-    pub mutation_status_reason:  Option<Value>,
+    pub mutation_status_reason: Option<Value>,
     /// Consolidated enum-specific data (new approach)
-    pub enum_path_data:          Option<EnumPathData>,
+    pub enum_path_data:         Option<EnumPathData>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
-    pub depth:                   usize,
+    pub depth:                  usize,
 
     /// For enum root paths at each nesting level: Maps FULL variant chains to partial
     /// root examples built from this enum level down through all descendants.
     ///
-    /// **Populated for paths where `enum_example_groups.is_some()`** - meaning any path that
-    /// is the root of an enum type at ANY nesting level:
+    /// **Populated for paths where `matches!(example, PathExample::EnumRoot { .. })`** - meaning
+    /// any path that is the root of an enum type at ANY nesting level:
     /// - Path `""` (`TestVariantChainEnum`) has this field
     /// - Path `".middle_struct.nested_enum"` (`BottomEnum`) has this field
     /// - Leaf paths like `".middle_struct.nested_enum.name"` have None
@@ -358,35 +396,35 @@ impl MutationPath {
             MutationStatus::PartiallyMutable => {
                 // PartiallyMutable enums: show examples array with per-variant status
                 // PartiallyMutable non-enums: check for Default trait
-                path.enum_example_groups.as_ref().map_or_else(
-                    || {
+                match &path.example {
+                    PathExample::EnumRoot { groups, .. } => (groups.clone(), None),
+                    PathExample::Simple(_) => {
                         let example = if has_default_for_root {
                             Some(json!({}))
                         } else {
                             None
                         };
                         (vec![], example)
-                    },
-                    |enum_examples| (enum_examples.clone(), None), // Enum: use examples array
-                )
+                    }
+                }
             }
             MutationStatus::NotMutable => {
                 // NotMutable: no example at all (not even null)
                 (vec![], None)
             }
             MutationStatus::Mutable => {
-                path.enum_example_groups.as_ref().map_or_else(
-                    || {
+                match &path.example {
+                    PathExample::EnumRoot { groups, .. } => {
+                        // Enum root: use the examples array
+                        (groups.clone(), None)
+                    }
+                    PathExample::Simple(val) => {
                         // Mutable paths: use the example value
                         // This includes enum children (with embedded `applicable_variants`) and
                         // regular values
-                        (vec![], Some(path.example.clone()))
-                    },
-                    |enum_examples| {
-                        // Enum root: use the examples array
-                        (enum_examples.clone(), None)
-                    },
-                )
+                        (vec![], Some(val.clone()))
+                    }
+                }
             }
         };
 
@@ -408,9 +446,8 @@ impl MutationPath {
             path.enum_path_data
                 .as_ref()
                 .map_or((None, None, None), |enum_data| {
-                    let instructions = Some(super::enum_path_builder::generate_enum_instructions(
-                        enum_data,
-                        &path.full_mutation_path,
+                    let instructions = Some(format!(
+                        "First, set the root mutation path to 'root_example', then you can mutate the '{}' path. See 'applicable_variants' for which variants support this field.", &path.full_mutation_path
                     ));
                     let variants = if enum_data.applicable_variants.is_empty() {
                         None

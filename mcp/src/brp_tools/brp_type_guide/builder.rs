@@ -9,7 +9,7 @@
 //! The `TypeGuide` struct is the final assembled response sent to MCP clients.
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc; // unused import for testing // another unused import for testing
+use std::sync::Arc;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -18,9 +18,8 @@ use super::constants::{
     AGENT_GUIDANCE, ENTITY_WARNING, ERROR_GUIDANCE, REFLECT_TRAIT_COMPONENT,
     REFLECT_TRAIT_RESOURCE, TYPE_BEVY_ENTITY,
 };
-use super::mutation_path_builder;
 use super::mutation_path_builder::{
-    MutationPath, MutationPathInternal, PathKind, RecursionContext, recurse_mutation_paths,
+    self, MutationPath, MutationPathInternal, PathKind, RecursionContext, recurse_mutation_paths,
 };
 use super::response_types::{BrpTypeName, SchemaInfo};
 use super::type_kind::TypeKind;
@@ -130,8 +129,6 @@ impl TypeGuide {
             error: Some(error_msg),
         }
     }
-
-    // Private helper methods
 
     /// Generate agent guidance with Entity warning if type contains Entity fields
     ///

@@ -45,12 +45,11 @@ use super::super::type_kind::TypeKind;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
 use super::types::{
-    EnumPathData, ExampleGroup, MutationStatus, PathAction, PathSummary, StructFieldName,
-    VariantName, VariantSignature,
+    EnumPathData, ExampleGroup, MutationStatus, PathAction, PathExample, PathSummary,
+    StructFieldName, VariantName, VariantSignature,
 };
 use super::{BuilderError, MutationPathInternal, PathKind, builder};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
-use crate::brp_tools::brp_type_guide::mutation_path_builder::types::FullMutationPath;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -421,7 +420,7 @@ fn build_variant_example(
 /// # Why This Matters
 ///
 /// When an enum has mixed mutability, we must select a variant that can be fully constructed.
-/// If we select a variant with `example: None`, it propagates up as `enum_example_for_parent`,
+/// If we select a variant with `example: None`, it propagates up `PathExample.for_parent`,
 /// causing parent enums to build invalid examples.
 ///
 /// ## Example Problem Case
@@ -470,10 +469,6 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
         })
 }
 
-// ============================================================================
-// Public functions moved from enum_builder.rs
-// ============================================================================
-
 /// Extract all variants from schema and group them by signature
 /// This is the single source of truth for enum variant processing
 fn extract_and_group_variants(
@@ -482,22 +477,6 @@ fn extract_and_group_variants(
     let schema = ctx.require_registry_schema()?;
     let variants = extract_enum_variants(schema, &ctx.registry, ctx.type_name());
     Ok(group_variants_by_signature(variants))
-}
-
-/// Generate single-step mutation instructions for enum paths
-///
-/// Guides users to use the `root_example` field for single-step mutations
-/// instead of the old multi-step `enum_variant_path` approach.
-///
-/// Note: Don't duplicate `applicable_variants` in the instructions - it's already a separate
-/// field in the JSON output
-pub fn generate_enum_instructions(
-    _enum_data: &EnumPathData,
-    full_mutation_path: &FullMutationPath,
-) -> String {
-    format!(
-        "First, set the root mutation path to 'root_example', then you can mutate the '{full_mutation_path}' path. See 'applicable_variants' for which variants support this field."
-    )
 }
 
 /// Process a single path within a signature group, recursively building child paths
@@ -543,14 +522,6 @@ fn process_signature_path(
         }
     }
 
-    // Extract example from first path
-    // For enum children: use enum_example_for_parent (the concrete variant example)
-    // For non-enum children: use example (works for structs/values)
-    tracing::debug!(
-        "process_children: about to extract example for descriptor={child_descriptor:?}, child_paths.len()={}",
-        child_paths.len()
-    );
-
     let child_example = child_paths
         .first()
         .ok_or_else(|| {
@@ -559,30 +530,8 @@ fn process_signature_path(
                 "Empty child_paths returned for descriptor {child_descriptor:?}"
             )))
         })
-        .map(|p| {
-            tracing::debug!(
-                "First path: full_mutation_path={}, has_enum_example_for_parent={}, example={:?}",
-                p.full_mutation_path,
-                p.enum_example_for_parent.is_some(),
-                p.example
-            );
-            // For enum children, use enum_example_for_parent
-            p.enum_example_for_parent.as_ref().map_or_else(
-                || {
-                    // For non-enum children, use example
-                    tracing::debug!("Using example (no enum_example_for_parent)");
-                    p.example.clone()
-                },
-                |enum_example| {
-                    tracing::debug!("Using enum_example_for_parent: {enum_example:?}");
-                    enum_example.clone()
-                },
-            )
-        })?;
+        .map(|p| p.example.for_parent().clone())?;
 
-    tracing::debug!(
-        "process_children: inserting child_descriptor={child_descriptor:?}, child_example={child_example:?}"
-    );
     child_examples.insert(child_descriptor, child_example);
 
     Ok(child_paths)
@@ -809,12 +758,8 @@ fn extract_child_value_for_chain(
 
 /// Extract fallback value when no variant-specific value exists
 fn extract_child_fallback_value(child: &MutationPathInternal) -> Value {
-    // For enum children, use `enum_example_for_parent` instead of `example`
-    // because enum paths always have `example: null`
-    child.enum_example_for_parent.as_ref().map_or_else(
-        || child.example.clone(), // Non-enum child: use regular example
-        Clone::clone,             // Enum child: use selected variant example
-    )
+    // Use for_parent() method which handles both Simple and EnumRoot variants
+    child.example.for_parent().clone()
 }
 
 /// Collect children values for a specific variant chain
@@ -1036,11 +981,10 @@ fn build_enum_root_path(
     // Direct field assignment - enums ALWAYS generate examples arrays
     MutationPathInternal {
         full_mutation_path: ctx.full_mutation_path.clone(),
-        example: json!(null), /* Enums always use null for the example field -
-                               * they use
-                               * Vec<ExampleGroup> */
-        enum_example_groups: Some(enum_examples),
-        enum_example_for_parent: Some(default_example),
+        example: PathExample::EnumRoot {
+            groups:     enum_examples,
+            for_parent: default_example,
+        },
         type_name: ctx.type_name().display_name(),
         path_kind: ctx.path_kind.clone(),
         mutation_status: enum_mutation_status,

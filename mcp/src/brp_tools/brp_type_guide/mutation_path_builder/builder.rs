@@ -36,7 +36,7 @@ use super::builders::{
 };
 use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::PathBuilder;
-use super::types::{EnumPathData, PathAction, PathSummary, VariantName};
+use super::types::{EnumPathData, PathAction, PathExample, PathSummary, VariantName};
 use super::{
     BuilderError, MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason,
     PathKind, RecursionContext, enum_path_builder,
@@ -430,11 +430,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         );
 
         // Extract child's example - handle both simple and enum root cases
-        let child_example = child_paths.first().map_or(json!(null), |p| {
-            p.enum_example_for_parent
-                .as_ref()
-                .map_or_else(|| p.example.clone(), Clone::clone)
-        });
+        let child_example = child_paths
+            .first()
+            .map_or(json!(null), |p| p.example.for_parent().clone());
 
         Ok((child_paths, child_example))
     }
@@ -451,7 +449,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     /// selections are needed (based on `variant_chain` length) to reach this mutation path.
     fn build_mutation_path_internal(
         ctx: &RecursionContext,
-        example: Value,
+        example: PathExample,
         status: MutationStatus,
         mutation_status_reason: Option<Value>,
         partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
@@ -470,8 +468,6 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         MutationPathInternal {
             full_mutation_path: ctx.full_mutation_path.clone(),
             example,
-            enum_example_groups: None,
-            enum_example_for_parent: None,
             type_name: ctx.type_name().display_name(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: status,
@@ -527,12 +523,8 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 }
 
                 // No variant-specific value, use regular example
-                // For enum children, use enum_example_for_parent instead of example
-                // (enum paths always have example: null)
-                let fallback_example = child
-                    .enum_example_for_parent
-                    .as_ref()
-                    .map_or_else(|| child.example.clone(), Clone::clone);
+                // Use for_parent() which handles both Simple and EnumRoot variants
+                let fallback_example = child.example.for_parent().clone();
                 examples_for_chain.insert(descriptor, fallback_example);
             }
 
@@ -571,7 +563,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                     0,
                     Self::build_mutation_path_internal(
                         ctx,
-                        example_to_use,
+                        PathExample::Simple(example_to_use),
                         parent_status,
                         mutation_status_reason,
                         partial_root_examples,
@@ -585,7 +577,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 // but child paths aren't exposed in the final result
                 vec![Self::build_mutation_path_internal(
                     ctx,
-                    example_to_use,
+                    PathExample::Simple(example_to_use),
                     parent_status,
                     mutation_status_reason,
                     partial_root_examples,
@@ -604,7 +596,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     ) -> MutationPathInternal {
         Self::build_mutation_path_internal(
             ctx,
-            json!(null), // No example for NotMutable paths
+            PathExample::Simple(json!(null)), // No example for NotMutable paths
             MutationStatus::NotMutable,
             Option::<Value>::from(&reason),
             None, // No partial roots for NotMutable paths
@@ -642,7 +634,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                     return (
                         Some(Ok(vec![Self::build_mutation_path_internal(
                             ctx,
-                            example,
+                            PathExample::Simple(example),
                             MutationStatus::Mutable,
                             None,
                             None, // No partial roots for knowledge-based paths
