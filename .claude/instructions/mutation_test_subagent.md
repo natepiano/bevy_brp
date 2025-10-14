@@ -19,7 +19,7 @@
 
 **LOGGING REQUIREMENT**:
 - Log every major step using `.claude/scripts/mutation_test_subagent_log.sh`
-- Log before tool calls, after results, and on errors
+- Log before tool calls, and on errors
 - This creates a diagnostic trail if subagent fails silently
 </SubagentExecutionFlow>
 
@@ -37,7 +37,6 @@ This creates `$TMPDIR/mutation_test_subagent_${PORT}_progress.log` for tracking 
 **Log at these points**:
 - Before each workflow step
 - Before tool calls
-- After getting results
 - When catching errors
 - When reaching Step 7 (critical for detecting silent failures)
 </InitializeLogging>
@@ -581,7 +580,7 @@ If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 <ReturnResults>
 **CRITICAL - Log reaching Step 7**:
 ```bash
-.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 7: Returning results (CRITICAL - this proves subagent reached output stage)"
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 7: Returning results"
 ```
 
 **CRITICAL FIELD REQUIREMENTS**:
