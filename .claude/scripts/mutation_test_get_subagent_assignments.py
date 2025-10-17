@@ -53,6 +53,7 @@ class SingleSubagentOutput(TypedDict):
     subagent_number: int
     port: int
     type_names: list[str]
+    type_categories: list[str]  # "C" for Component, "R" for Resource
 
 
 class AllAssignmentsOutput(TypedDict):
@@ -116,18 +117,18 @@ if subagent_index is not None:
 
 
 def extract_mutation_type(schema_info: dict[str, object] | None) -> str | None:
-    """Extract mutation_type from schema_info.reflect_types."""
+    """Extract mutation_type from schema_info.reflect_traits."""
     if not schema_info:
         return None
 
-    reflect_types = schema_info.get("reflect_types")
-    if not reflect_types or not isinstance(reflect_types, list):
+    reflect_traits = schema_info.get("reflect_traits")
+    if not reflect_traits or not isinstance(reflect_traits, list):
         return None
 
-    # Check for Component or Resource in reflect_types
-    if "Component" in reflect_types:
+    # Check for Component or Resource in reflect_traits
+    if "Component" in reflect_traits:
         return "Component"
-    if "Resource" in reflect_types:
+    if "Resource" in reflect_traits:
         return "Resource"
 
     return None
@@ -244,8 +245,17 @@ if subagent_index is not None:
     # Find the assignment for this subagent
     for assignment in assignments:
         if assignment["subagent"] == subagent_num:
-            # Extract just the type names from the assignment
+            # Extract type names and categories from the assignment
             type_names: list[str] = [t["type_name"] for t in assignment["types"]]
+            type_categories: list[str] = []
+            for t in assignment["types"]:
+                mutation_type = t.get("mutation_type")
+                if mutation_type == "Component":
+                    type_categories.append("C")
+                elif mutation_type == "Resource":
+                    type_categories.append("R")
+                else:
+                    type_categories.append("")  # Unknown category
 
             # Output format for single subagent
             single_output: SingleSubagentOutput = {
@@ -254,6 +264,7 @@ if subagent_index is not None:
                 "subagent_number": subagent_num,
                 "port": assignment["port"],
                 "type_names": type_names,
+                "type_categories": type_categories,
             }
             print(json.dumps(single_output, indent=2))
             sys.exit(0)

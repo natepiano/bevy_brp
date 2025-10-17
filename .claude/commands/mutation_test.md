@@ -225,14 +225,15 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
            --subagent-index [SUBAGENT_INDEX]
        ```
 
-    2. **Extract type names from the result**:
+    2. **Extract type names and categories from the result**:
        - Parse the JSON output
-       - Extract the `type_names` array
-       - Extract short names (text after last "::")
+       - Extract the `type_names` array and `type_categories` array
+       - For each type: extract short name (text after last "::") and append category
+       - Format each as: "[ShortName] ([C|R])" where C=Component, R=Resource
        - Join with commas
 
     3. **Create window title**:
-       - Format: "Subagent [SUBAGENT_NUMBER]: [ShortName1], [ShortName2], ..."
+       - Format: "Subagent [SUBAGENT_NUMBER]: [ShortName1] ([C|R]), [ShortName2] ([C|R]), ..."
        - SUBAGENT_NUMBER = SUBAGENT_INDEX + 1 (for display purposes)
 
     **EXECUTE ALL WINDOW TITLE UPDATES IN PARALLEL:**
@@ -241,9 +242,12 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **Example**:
     ```
     For subagent_index=0:
-      Command output: {"type_names": ["bevy_pbr::light::CascadeShadowConfig", "bevy_pbr::light::AmbientLight"]}
-      Window title: "Subagent 1: CascadeShadowConfig, AmbientLight"
-      Tool call: mcp__brp__brp_extras_set_window_title(port=30001, title="Subagent 1: CascadeShadowConfig, AmbientLight")
+      Command output: {
+        "type_names": ["bevy_pbr::light::CascadeShadowConfig", "bevy_pbr::light::AmbientLight"],
+        "type_categories": ["C", "R"]
+      }
+      Window title: "Subagent 1: CascadeShadowConfig (C), AmbientLight (R)"
+      Tool call: mcp__brp__brp_extras_set_window_title(port=30001, title="Subagent 1: CascadeShadowConfig (C), AmbientLight (R)")
     ```
 </SetWindowTitles>
 
@@ -263,13 +267,14 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
            --subagent-index [SUBAGENT_INDEX]
        ```
 
-    2. **Extract type names** for task description:
-       - Parse `type_names` array
-       - Extract short names (text after last "::")
+    2. **Extract type names and categories** for task description:
+       - Parse `type_names` array and `type_categories` array
+       - For each type: extract short name (text after last "::") and append category
+       - Format each as: "[ShortName] ([C|R])" where C=Component, R=Resource
        - Join with commas
 
     3. **Create Task** with:
-       - description: "Test [TYPE_NAMES] ([SUBAGENT_NUMBER] of [TOTAL_SUBAGENTS])"
+       - description: "Test [TYPE_NAMES_WITH_CATEGORIES] ([SUBAGENT_NUMBER] of [TOTAL_SUBAGENTS])"
        - subagent_type: "general-purpose"
        - prompt: See template below
 
