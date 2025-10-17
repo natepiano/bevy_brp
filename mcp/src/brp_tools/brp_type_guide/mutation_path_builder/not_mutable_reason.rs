@@ -71,10 +71,7 @@ impl NotMutableReason {
         }
     }
 
-    /// Construct `PartialChildMutability` from path summaries
-    ///
-    /// Generic over the path type to support both `FullMutationPath` (for structs/lists)
-    /// and `VariantName` (for enums) without requiring early string conversion.
+    /// Construct `PartialChildMutability` from mutability issues
     ///
     /// # Deduplication Logic
     ///
@@ -88,9 +85,9 @@ impl NotMutableReason {
     ///
     /// Both create the same path string `.color_lut.0.0`, so this function detects the
     /// conflict and correctly marks it as `partially_mutable`.
-    pub fn from_partial_mutability<T: ToString>(
+    pub fn from_partial_mutability(
         parent_type: BrpTypeName,
-        mutability_issues: Vec<MutabilityIssue<T>>,
+        mutability_issues: Vec<MutabilityIssue>,
         message: String,
     ) -> Self {
         use std::collections::{HashMap, HashSet};
@@ -100,7 +97,7 @@ impl NotMutableReason {
         let mut path_statuses: HashMap<String, HashSet<MutationStatus>> = HashMap::new();
 
         for mutability_issue in mutability_issues {
-            let path_str = mutability_issue.full_mutation_path.to_string();
+            let path_str = mutability_issue.target.to_string();
             path_statuses
                 .entry(path_str)
                 .or_default()

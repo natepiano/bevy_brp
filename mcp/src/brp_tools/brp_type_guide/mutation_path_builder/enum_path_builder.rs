@@ -896,18 +896,17 @@ fn build_enum_mutation_status_reason(
 ) -> Option<Value> {
     match enum_mutation_status {
         MutationStatus::PartiallyMutable => {
-            // Create `MutabilityIssue<VariantName>` for each variant
-            let mutability_issues: Vec<MutabilityIssue<VariantName>> = enum_examples
+            // Create `MutabilityIssue` for each variant using `from_variant_name`
+            let mutability_issues: Vec<MutabilityIssue> = enum_examples
                 .iter()
                 .flat_map(|eg| {
-                    eg.applicable_variants
-                        .iter()
-                        .map(|variant| MutabilityIssue {
-                            full_mutation_path: variant.clone(),
-                            type_name:          ctx.type_name().clone(),
-                            status:             eg.mutation_status,
-                            reason:             None,
-                        })
+                    eg.applicable_variants.iter().map(|variant| {
+                        MutabilityIssue::from_variant_name(
+                            variant.clone(),
+                            ctx.type_name().clone(),
+                            eg.mutation_status,
+                        )
+                    })
                 })
                 .collect();
 

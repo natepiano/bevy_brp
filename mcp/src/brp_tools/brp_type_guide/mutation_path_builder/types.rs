@@ -253,32 +253,63 @@ pub struct MutationPathInternal {
 }
 
 impl MutationPathInternal {
-    /// Convert to summary for reason reporting
-    pub fn to_mutability_issue(&self) -> MutabilityIssue {
-        MutabilityIssue {
-            full_mutation_path: self.full_mutation_path.clone(),
-            type_name:          self.type_name.clone(),
-            status:             self.mutation_status,
-            reason:             self.mutation_status_reason.clone(),
-        }
-    }
-
     /// Check if this path is a direct child at the given parent depth
     pub const fn is_direct_child_at_depth(&self, parent_depth: usize) -> bool {
         self.depth == parent_depth + 1
     }
 }
 
-/// Summary of a mutation path for reason reporting
-///
-/// Generic over the path type to support both `FullMutationPath` (for structs/lists)
-/// and `VariantName` (for enums) without requiring early string conversion.
+/// Identifies what component has a mutability issue
 #[derive(Debug, Clone)]
-pub struct MutabilityIssue<T = FullMutationPath> {
-    pub full_mutation_path: T,
-    pub type_name:          BrpTypeName,
-    pub status:             MutationStatus,
-    pub reason:             Option<Value>,
+pub enum MutabilityTarget {
+    /// A mutation path within a type (e.g., ".translation.x")
+    MutationPath(FullMutationPath),
+    /// An enum variant name (e.g., "`Color::Srgba`")
+    Variant(VariantName),
+}
+
+impl std::fmt::Display for MutabilityTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MutationPath(path) => write!(f, "{path}"),
+            Self::Variant(name) => write!(f, "{name}"),
+        }
+    }
+}
+
+/// Summary of a mutation issue for diagnostic reporting
+#[derive(Debug, Clone)]
+pub struct MutabilityIssue {
+    pub target:    MutabilityTarget,
+    pub type_name: BrpTypeName,
+    pub status:    MutationStatus,
+    pub reason:    Option<Value>,
+}
+
+impl MutabilityIssue {
+    /// Create from a mutation path (for non-enum types)
+    pub fn from_mutation_path(path: &MutationPathInternal) -> Self {
+        Self {
+            target:    MutabilityTarget::MutationPath(path.full_mutation_path.clone()),
+            type_name: path.type_name.clone(),
+            status:    path.mutation_status,
+            reason:    path.mutation_status_reason.clone(),
+        }
+    }
+
+    /// Create from an enum variant name (for enum types)
+    pub const fn from_variant_name(
+        variant: VariantName,
+        type_name: BrpTypeName,
+        status: MutationStatus,
+    ) -> Self {
+        Self {
+            target: MutabilityTarget::Variant(variant),
+            type_name,
+            status,
+            reason: None,
+        }
+    }
 }
 
 /// Path information combining navigation and type metadata
