@@ -12,9 +12,7 @@
 //!
 //! 1. **Variant Processing**: Groups variants by signature and generates examples for each
 //! 2. **Variant Path Management**: Creates and populates the variant chain showing how to select
-//!    specific variants to reach a mutation target
-//! 3. **Child Path Updates**: Propagates variant examples down to children via
-//!    `update_child_variant_paths`
+//!    specific variants to reach a mutation target using the variant root_example
 //!
 //! ## Example
 //!
@@ -38,10 +36,13 @@ type ProcessChildrenResult = (
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use error_stack::Report;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
+use super::NotMutableReason;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
 use super::types::{
@@ -49,7 +50,6 @@ use super::types::{
     StructFieldName, VariantName, VariantSignature,
 };
 use super::{BuilderError, MutationPathInternal, PathKind, builder};
-use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -57,7 +57,7 @@ use crate::json_schema::SchemaField;
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct EnumVariantKind {
-    name:      VariantName,
+    name: VariantName,
     signature: VariantSignature,
 }
 
@@ -93,7 +93,7 @@ impl EnumVariantKind {
 
             let qualified_name = format!("{type_name}::{variant_str}");
             return Some(Self {
-                name:      VariantName::from(qualified_name),
+                name: VariantName::from(qualified_name),
                 signature: VariantSignature::Unit,
             });
         }
@@ -118,7 +118,7 @@ impl EnumVariantKind {
 
         // Unit variant (no fields)
         Some(Self {
-            name:      variant_name,
+            name: variant_name,
             signature: VariantSignature::Unit,
         })
     }
@@ -241,19 +241,6 @@ fn extract_enum_variants(
                 .collect()
         })
         .unwrap_or_default()
-}
-
-fn group_variants_by_signature(
-    variants: Vec<EnumVariantKind>,
-) -> BTreeMap<VariantSignature, Vec<EnumVariantKind>> {
-    let mut groups = BTreeMap::new();
-    for variant in variants {
-        groups
-            .entry(variant.signature.clone())
-            .or_insert_with(Vec::new)
-            .push(variant);
-    }
-    groups
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -475,8 +462,16 @@ fn extract_and_group_variants(
     ctx: &RecursionContext,
 ) -> Result<BTreeMap<VariantSignature, Vec<EnumVariantKind>>> {
     let schema = ctx.require_registry_schema()?;
-    let variants = extract_enum_variants(schema, &ctx.registry, ctx.type_name());
-    Ok(group_variants_by_signature(variants))
+    let mut variants = extract_enum_variants(schema, &ctx.registry, ctx.type_name());
+
+    variants.sort_by(|a, b| a.signature.cmp(&b.signature));
+
+    Ok(variants
+        .into_iter()
+        .chunk_by(|v| v.signature.clone())
+        .into_iter()
+        .map(|(signature, signature_group)| (signature, signature_group.collect()))
+        .collect())
 }
 
 /// Process a single path within a signature group, recursively building child paths
@@ -565,6 +560,14 @@ fn determine_signature_mutation_status(
 }
 
 /// Build an example for a variant group based on mutation status
+/// Skip example generation for non-spawnable variants
+
+/// We omit examples for `NotMutable` and `PartiallyMutable` variants because:
+/// 1. `child_examples` only contains mutable fields (`Arc`/`Handle` fields are excluded)
+/// 2. Building an example with incomplete fields would create invalid `spawn_format` values
+/// 3. Attempting to spawn with incomplete examples causes Bevy reflection to panic
+/// 4. `select_preferred_example()` will automatically skip variants with `None` examples and
+///    choose a fully `Mutable` variant (or return `None` if no `Mutable` variants exist)
 fn build_variant_group_example(
     signature: &VariantSignature,
     variants_in_group: &[EnumVariantKind],
@@ -576,22 +579,6 @@ fn build_variant_group_example(
         .first()
         .ok_or_else(|| Report::new(Error::InvalidState("Empty variant group".to_string())))?;
 
-    // Skip example generation for non-spawnable variants
-    //
-    // We omit examples for `NotMutable` and `PartiallyMutable` variants because:
-    // 1. `child_examples` only contains mutable fields (`Arc`/`Handle` fields are excluded)
-    // 2. Building an example with incomplete fields would create invalid `spawn_format` values
-    // 3. Attempting to spawn with incomplete examples causes Bevy reflection to panic
-    // 4. `select_preferred_example()` will automatically skip variants with `None` examples and
-    //    choose a fully `Mutable` variant (or return `None` if no `Mutable` variants exist)
-    //
-    // Example: `TestMixedMutabilityEnum::WithMixed(TestMixedMutabilityCore)` where `Core` has:
-    //   - `mutable_string: String` (in `child_examples`)
-    //   - `mutable_float: f32` (in `child_examples`)
-    //   - `not_mutable_arc: Arc<String>` (NOT in `child_examples` - missing!)
-    //   - `partially_mutable_nested: Nested` (NOT in `child_examples` - missing!)
-    // Building with only mutable fields would create `{"WithMixed": {"mutable_float": 1.0,
-    // "mutable_string": "..."}}` which crashes when spawned due to missing required fields.
     let example = if matches!(
         signature_status,
         MutationStatus::NotMutable | MutationStatus::PartiallyMutable
@@ -683,12 +670,10 @@ fn create_paths_for_signature(
     signature: &VariantSignature,
     ctx: &RecursionContext,
 ) -> Option<Vec<PathKind>> {
-    use VariantSignature;
-
     match signature {
         VariantSignature::Unit => None, // Unit variants have no paths
-        VariantSignature::Tuple(types) => {
-            let paths: Vec<PathKind> = types
+        VariantSignature::Tuple(types) => Some(
+            types
                 .iter()
                 .enumerate()
                 .map(|(index, type_name)| PathKind::IndexedElement {
@@ -696,15 +681,14 @@ fn create_paths_for_signature(
                     type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
-                .collect();
-            Some(paths)
-        }
+                .collect_vec(),
+        ),
         VariantSignature::Struct(fields) => Some(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -743,23 +727,18 @@ fn extract_child_value_for_chain(
     child: &MutationPathInternal,
     child_chain: Option<&[VariantName]>,
 ) -> Value {
-    child_chain.map_or_else(
-        || extract_child_fallback_value(child),
-        |chain| {
-            child
-                .partial_root_examples
-                .as_ref()
-                .and_then(|partials| partials.get(chain))
-                .cloned()
-                .unwrap_or_else(|| extract_child_fallback_value(child))
-        },
-    )
-}
+    let fallback = || child.example.for_parent().clone();
 
-/// Extract fallback value when no variant-specific value exists
-fn extract_child_fallback_value(child: &MutationPathInternal) -> Value {
-    // Use for_parent() method which handles both Simple and EnumRoot variants
-    child.example.for_parent().clone()
+    if let Some(chain) = child_chain {
+        child
+            .partial_root_examples
+            .as_ref()
+            .and_then(|partials| partials.get(chain))
+            .cloned()
+            .unwrap_or_else(fallback)
+    } else {
+        fallback()
+    }
 }
 
 /// Collect children values for a specific variant chain
@@ -768,27 +747,24 @@ fn collect_children_for_chain(
     ctx: &RecursionContext,
     target_chain: Option<&[VariantName]>,
 ) -> HashMap<MutationPathDescriptor, Value> {
-    let mut children = HashMap::new();
-
-    for child in child_paths {
-        // Skip grandchildren - only process direct children
-        if !child.is_direct_child_at_depth(*ctx.depth) {
-            continue;
-        }
-
-        // Filter by variant_chain compatibility if we have a target chain
-        if let Some(chain) = target_chain
-            && !is_variant_chain_compatible(child, chain)
-        {
-            continue;
-        }
-
-        let descriptor = child.path_kind.to_mutation_path_descriptor();
-        let value = extract_child_value_for_chain(child, target_chain);
-        children.insert(descriptor, value);
-    }
-
-    children
+    child_paths
+        .iter()
+        // Skip grandchildren
+        .filter(|child| child.is_direct_child_at_depth(*ctx.depth))
+        // Filter by variant-chain compatibility if needed
+        .filter(|child| {
+            target_chain
+                .map(|chain| is_variant_chain_compatible(child, chain))
+                .unwrap_or(true)
+        })
+        // Map to (descriptor, value) pairs
+        .map(|child| {
+            (
+                child.path_kind.to_mutation_path_descriptor(),
+                extract_child_value_for_chain(child, target_chain),
+            )
+        })
+        .collect()
 }
 
 /// Collect all unique child chains that extend a given variant chain
@@ -797,24 +773,25 @@ fn collect_child_chains_to_wrap(
     our_chain: &[VariantName],
     ctx: &RecursionContext,
 ) -> BTreeSet<Vec<VariantName>> {
-    let mut child_chains_to_wrap = BTreeSet::new();
-
-    for child in child_paths {
-        // Skip grandchildren - only process direct children
-        if !child.is_direct_child_at_depth(*ctx.depth) {
-            continue;
-        }
-
-        if let Some(child_partials) = &child.partial_root_examples {
-            for child_chain in child_partials.keys() {
-                if child_chain.starts_with(our_chain) {
-                    child_chains_to_wrap.insert(child_chain.clone());
-                }
-            }
-        }
-    }
-
-    child_chains_to_wrap
+    child_paths
+        .iter()
+        // Only process direct children
+        .filter(|child| child.is_direct_child_at_depth(*ctx.depth))
+        // Flatten all matching child chains
+        .flat_map(|child| {
+            child
+                .partial_root_examples
+                .as_ref()
+                .into_iter()
+                .flat_map(|partials| {
+                    partials.keys().filter_map(|child_chain| {
+                        child_chain
+                            .starts_with(our_chain)
+                            .then(|| child_chain.clone())
+                    })
+                })
+        })
+        .collect()
 }
 
 /// Build partial root examples using assembly during ascent
@@ -933,9 +910,9 @@ fn build_enum_mutation_status_reason(
                 .flat_map(|eg| {
                     eg.applicable_variants.iter().map(|variant| PathSummary {
                         full_mutation_path: variant.clone(),
-                        type_name:          ctx.type_name().clone(),
-                        status:             eg.mutation_status,
-                        reason:             None,
+                        type_name: ctx.type_name().clone(),
+                        status: eg.mutation_status,
+                        reason: None,
                     })
                 })
                 .collect();
@@ -943,7 +920,7 @@ fn build_enum_mutation_status_reason(
             // Use unified `NotMutableReason` with TypeKind-based message
             let message = "Some variants are mutable while others are not".to_string();
 
-            Option::<Value>::from(&super::NotMutableReason::from_partial_mutability(
+            Option::<Value>::from(&NotMutableReason::from_partial_mutability(
                 ctx.type_name().clone(),
                 summaries,
                 message,
@@ -972,9 +949,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathData {
-            variant_chain:       ctx.variant_chain.clone(),
+            variant_chain: ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example:        None,
+            root_example: None,
         })
     };
 
@@ -982,7 +959,7 @@ fn build_enum_root_path(
     MutationPathInternal {
         full_mutation_path: ctx.full_mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups:     enum_examples,
+            groups: enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),

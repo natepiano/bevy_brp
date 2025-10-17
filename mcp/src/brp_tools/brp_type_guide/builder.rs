@@ -35,9 +35,9 @@ pub struct TypeGuide {
     /// Guidance for AI agents about using mutation paths
     pub agent_guidance: String,
     /// Fully-qualified type name
-    pub type_name:      BrpTypeName,
+    pub type_name: BrpTypeName,
     /// Whether the type is registered in the Bevy registry
-    pub in_registry:    bool,
+    pub in_registry: bool,
     /// Mutation paths available for this type - using same format as V1
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub mutation_paths: HashMap<String, MutationPath>,
@@ -46,19 +46,19 @@ pub struct TypeGuide {
     pub example_values: HashMap<String, Value>,
     /// Example format for spawn/insert operations when supported
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub spawn_format:   Option<Value>,
+    pub spawn_format: Option<Value>,
     /// Schema information from the registry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schema_info:    Option<SchemaInfo>,
+    pub schema_info: Option<SchemaInfo>,
     /// Type information for direct fields (struct fields only, one level deep)
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error:          Option<String>,
+    pub error: Option<String>,
 }
 
 impl TypeGuide {
     /// Builder method to create ``TypeGuide`` from schema data
-    pub fn from_registry_schema(
+    pub fn build(
         brp_type_name: BrpTypeName,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Result<Self> {
@@ -229,12 +229,13 @@ impl TypeGuide {
     ) -> HashMap<String, MutationPath> {
         paths
             .iter()
-            .map(|path| {
-                let path_info = MutationPath::from_mutation_path_internal(path, registry);
+            .map(|mutation_path_internal| {
+                let mutation_path =
+                    MutationPath::from_mutation_path_internal(mutation_path_internal, registry);
                 // Keep empty path as empty for root mutations
                 // BRP expects empty string for root replacements, not "."
-                let key = (*path.full_mutation_path).clone();
-                (key, path_info)
+                let key = (*mutation_path_internal.full_mutation_path).clone();
+                (key, mutation_path)
             })
             .collect()
     }

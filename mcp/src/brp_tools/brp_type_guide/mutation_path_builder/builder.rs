@@ -19,11 +19,6 @@
 //! - `enum_path_builder::process_enum` for enum types
 //! - `MutationPathBuilder` with appropriate builder for all other types
 //!
-//! ## Integration
-//!
-//! Types inside enum variants inherit variant chains but don't populate them - parent enums
-//! handle all variant path population through `update_child_variant_paths`.
-
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use error_stack::Report;
@@ -46,11 +41,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -459,9 +454,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain:       ctx.variant_chain.clone(),
+                variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example:        None,
+                root_example: None,
             })
         };
 
