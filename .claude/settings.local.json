@@ -185,7 +185,8 @@
       "Bash(.claude/scripts/integration_tests/query_validate.sh:*)",
       "Bash(./.claude/scripts/integration_tests/query_validate.sh:*)",
       "Bash(.claude/scripts/mutation_test_subagent_log.sh:*)",
-      "Bash(~/.claude/scripts/post-tool-use-cargo-check.sh)"
+      "Bash(~/.claude/scripts/post-tool-use-cargo-check.sh)",
+      "Bash(/Users/natemccoy/.claude/scripts/post-tool-use-cargo-check.sh)"
     ],
     "deny": [
       "Bash(sed:*)",
