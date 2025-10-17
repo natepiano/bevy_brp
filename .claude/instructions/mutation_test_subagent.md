@@ -73,6 +73,24 @@ IF any mutation error contains `"invalid type: string"`:
 Reorder parameters in your tool call - parameter order doesn't matter, but reordering breaks mental loops.
 </ErrorRecoveryProtocol>
 
+<ContextWindowMonitoring>
+**DETECT APPROACHING CONTEXT LIMIT**:
+
+**Check Point**: After EVERY mutation operation in <TestAllTypes/>
+
+**Decision Logic**:
+1. **After each mutation completes** (success or failure):
+   - IF you sense context running low OR have difficulty continuing:
+     * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Context limit approaching - returning partial results"`
+     * **GO TO STEP 7 IMMEDIATELY**
+     * Return results for completed types + partial result for current type
+     * Add indicator in final result's failure_details: `"error_message": "Context window approaching limit - stopped testing after [N] mutations on [current_type]"`
+
+**Bailout Status**: Use existing FAIL status with `failed_operation: "context_limit"`
+
+**Purpose**: Ensure you reach Steps 7-8 before complete context exhaustion.
+</ContextWindowMonitoring>
+
 <EmergencyBailout>
 **IF ANY BRP tool fails with connection/timeout error:**
 
@@ -439,7 +457,9 @@ For each type name string in your `type_names` array:
 3. **CAPTURE ALL ERROR DETAILS**: When ANY operation fails, record the COMPLETE request and response
 4. NEVER test types not provided in your assignment data
 
-**AFTER EACH MUTATION**: If error contains "invalid type: string", follow <ErrorRecoveryProtocol/> immediately.
+**AFTER EACH MUTATION**:
+- If error contains "invalid type: string", follow <ErrorRecoveryProtocol/> immediately.
+- Check <ContextWindowMonitoring/> - if context limit approaching, bail out to Step 7 immediately.
 </TestAllTypes>
 
 <ResourceTestingProtocol>

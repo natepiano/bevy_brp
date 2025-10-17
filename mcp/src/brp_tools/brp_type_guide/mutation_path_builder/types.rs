@@ -186,7 +186,7 @@ pub enum PathExample {
     /// use when assembling their own examples.
     EnumRoot {
         /// All variant groups for this enum (the `examples` array in JSON output)
-        groups: Vec<ExampleGroup>,
+        groups:     Vec<ExampleGroup>,
         /// Simplified example for parent assembly
         for_parent: Value,
     },
@@ -208,26 +208,73 @@ impl PathExample {
     }
 }
 
+/// Custom serialization for `PathExample` that flattens into parent struct
+///
+/// This produces the correct JSON format for `MutationPathExternal`:
+/// - `Simple(value)` → `"example": <value>` (skipped if value is null)
+/// - `EnumRoot { groups, .. }` → `"examples": <groups>`
+impl Serialize for PathExample {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        match self {
+            Self::Simple(value) => {
+                // Skip serializing null examples to match V1 behavior
+                if value.is_null() {
+                    serializer.serialize_map(Some(0))?.end()
+                } else {
+                    let mut map = serializer.serialize_map(Some(1))?;
+                    map.serialize_entry("example", value)?;
+                    map.end()
+                }
+            }
+            Self::EnumRoot { groups, .. } => {
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("examples", groups)?;
+                map.end()
+            }
+        }
+    }
+}
+
+/// Stub `Deserialize` implementation for `PathExample`
+///
+/// This is required by serde's flatten attribute but never actually used
+/// since we only serialize `MutationPathExternal`, never deserialize it.
+impl<'de> Deserialize<'de> for PathExample {
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Err(serde::de::Error::custom(
+            "PathExample deserialization not implemented - this type is write-only",
+        ))
+    }
+}
+
 /// Mutation path information (internal representation)
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path - now type-safe!
-    pub example: PathExample,
+    pub example:           PathExample,
     /// Path for mutation, e.g., ".translation.x"
-    pub mutation_path: MutationPath,
+    pub mutation_path:     MutationPath,
     /// Type information for this path
-    pub type_name: BrpTypeName,
+    pub type_name:         BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind: PathKind,
+    pub path_kind:         PathKind,
     /// Whether this path can be mutated
-    pub mutability: Mutability,
+    pub mutability:        Mutability,
     /// Reason if mutation is not possible
     pub mutability_reason: Option<Value>,
     /// Consolidated enum-specific data (new approach)
-    pub enum_path_data: Option<EnumPathData>,
+    pub enum_path_data:    Option<EnumPathData>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
-    pub depth: usize,
+    pub depth:             usize,
 
     /// For enum root paths at each nesting level: Maps FULL variant chains to partial
     /// root examples built from this enum level down through all descendants.
@@ -280,20 +327,20 @@ impl std::fmt::Display for MutabilityTarget {
 /// Summary of a mutation issue for diagnostic reporting
 #[derive(Debug, Clone)]
 pub struct MutabilityIssue {
-    pub target: MutabilityTarget,
+    pub target:    MutabilityTarget,
     pub type_name: BrpTypeName,
-    pub status: Mutability,
-    pub reason: Option<Value>,
+    pub status:    Mutability,
+    pub reason:    Option<Value>,
 }
 
 impl MutabilityIssue {
     /// Create from a mutation path (for non-enum types)
     pub fn from_mutation_path(path: &MutationPathInternal) -> Self {
         Self {
-            target: MutabilityTarget::Path(path.mutation_path.clone()),
+            target:    MutabilityTarget::Path(path.mutation_path.clone()),
             type_name: path.type_name.clone(),
-            status: path.mutability,
-            reason: path.mutability_reason.clone(),
+            status:    path.mutability,
+            reason:    path.mutability_reason.clone(),
         }
     }
 
@@ -316,27 +363,27 @@ impl MutabilityIssue {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
-    pub path_kind: PathKind,
+    pub path_kind:           PathKind,
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
-    pub type_name: BrpTypeName,
+    pub type_name:           BrpTypeName,
     /// The kind of type this field contains (Struct, Enum, Array, etc.)
-    pub type_kind: TypeKind,
+    pub type_kind:           TypeKind,
     /// Status of whether this path can be mutated
-    pub mutability: Mutability,
+    pub mutability:          Mutability,
     /// Reason if mutation is not possible
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutability_reason: Option<Value>,
+    pub mutability_reason:   Option<Value>,
     /// Instructions for setting variants required for this mutation path (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_instructions: Option<String>,
+    pub enum_instructions:   Option<String>,
     /// Example: `["BottomEnum::VariantB"]`
     /// `VariantName` serializes as a string in JSON output
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applicable_variants: Option<Vec<VariantName>>,
     /// Only present for paths nested in enums - built using assembly during ascent
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub root_example: Option<Value>,
+    pub root_example:        Option<Value>,
 }
 
 /// Example group for enum variants
@@ -346,11 +393,11 @@ pub struct ExampleGroup {
     pub applicable_variants: Vec<VariantName>,
     /// Example value for this group (omitted for `NotMutable` variants)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example: Option<Value>,
+    pub example:             Option<Value>,
     /// The variant signature as a string
-    pub signature: String,
+    pub signature:           String,
     /// Mutation status for this signature/variant group
-    pub mutability: Mutability,
+    pub mutability:          Mutability,
 }
 
 /// Consolidated enum-specific data for mutation paths
@@ -370,15 +417,12 @@ pub struct EnumPathData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPathExternal {
     /// Human-readable description of what this path mutates
-    pub description: String,
+    pub description:  String,
     /// Combined path navigation and type metadata
-    pub path_info: PathInfo,
-    /// Array of example groups with variants, signatures, and examples (for enums)
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub examples: Vec<ExampleGroup>,
-    /// Single example value (for non-enum types)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub example: Option<Value>,
+    pub path_info:    PathInfo,
+    /// Example data (either single value or enum variant groups)
+    #[serde(flatten)]
+    pub path_example: PathExample,
 }
 
 impl MutationPathExternal {
@@ -423,40 +467,26 @@ impl MutationPathExternal {
             _ => path.path_kind.description(&type_kind),
         };
 
-        let (examples, example) = match path.mutability {
-            Mutability::PartiallyMutable => {
-                // PartiallyMutable enums: show examples array with per-variant status
-                // PartiallyMutable non-enums: check for Default trait
-                match &path.example {
-                    PathExample::EnumRoot { groups, .. } => (groups.clone(), None),
-                    PathExample::Simple(_) => {
-                        let example = if has_default_for_root {
-                            Some(json!({}))
-                        } else {
-                            None
-                        };
-                        (vec![], example)
-                    }
-                }
-            }
+        // Handle PathExample based on mutability status
+        let path_example = match path.mutability {
             Mutability::NotMutable => {
-                // NotMutable: no example at all (not even null)
-                (vec![], None)
+                // NotMutable: no example at all (use Simple with null)
+                PathExample::Simple(Value::Null)
             }
-            Mutability::Mutable => {
+            Mutability::PartiallyMutable => {
+                // PartiallyMutable: check for Default trait on non-enum types
                 match &path.example {
-                    PathExample::EnumRoot { groups, .. } => {
-                        // Enum root: use the examples array
-                        (groups.clone(), None)
-                    }
-                    PathExample::Simple(val) => {
-                        // Mutable paths: use the example value
-                        // This includes enum children (with embedded `applicable_variants`) and
-                        // regular values
-                        (vec![], Some(val.clone()))
+                    PathExample::EnumRoot { .. } => path.example.clone(),
+                    PathExample::Simple(_) => {
+                        if has_default_for_root {
+                            PathExample::Simple(json!({}))
+                        } else {
+                            PathExample::Simple(Value::Null)
+                        }
                     }
                 }
             }
+            Mutability::Mutable => path.example.clone(),
         };
 
         // Extract enum-specific fields (instructions, variants, examples) only for paths that
@@ -504,8 +534,121 @@ impl MutationPathExternal {
                 applicable_variants,
                 root_example,
             },
-            examples,
-            example,
+            path_example,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_path_example_simple_non_null_serialization() {
+        let example = PathExample::Simple(json!({"x": 1.0, "y": 2.0}));
+        let serialized = serde_json::to_value(&example).unwrap();
+
+        // Should serialize as {"example": <value>}
+        assert_eq!(
+            serialized,
+            json!({
+                "example": {"x": 1.0, "y": 2.0}
+            })
+        );
+    }
+
+    #[test]
+    fn test_path_example_simple_null_serialization() {
+        let example = PathExample::Simple(Value::Null);
+        let serialized = serde_json::to_value(&example).unwrap();
+
+        // Should serialize as empty object (no "example" field)
+        assert_eq!(serialized, json!({}));
+    }
+
+    #[test]
+    fn test_path_example_enum_root_serialization() {
+        let groups = vec![ExampleGroup {
+            applicable_variants: vec![VariantName::from("SomeVariant".to_string())],
+            example:             Some(json!(42)),
+            signature:           "tuple(i32)".to_string(),
+            mutability:          Mutability::Mutable,
+        }];
+
+        let example = PathExample::EnumRoot {
+            groups:     groups.clone(),
+            for_parent: json!(42),
+        };
+
+        let serialized = serde_json::to_value(&example).unwrap();
+
+        // Should serialize as {"examples": <groups>}
+        assert_eq!(
+            serialized,
+            json!({
+                "examples": groups
+            })
+        );
+    }
+
+    #[test]
+    fn test_mutation_path_external_with_null_example() {
+        // Create a minimal MutationPathExternal with null example
+        let path_external = MutationPathExternal {
+            description:  "Test path".to_string(),
+            path_info:    PathInfo {
+                path_kind:           PathKind::RootValue {
+                    type_name: BrpTypeName::from("test::Type"),
+                },
+                type_name:           BrpTypeName::from("test::Type"),
+                type_kind:           TypeKind::Struct,
+                mutability:          Mutability::NotMutable,
+                mutability_reason:   Some(json!("missing trait")),
+                enum_instructions:   None,
+                applicable_variants: None,
+                root_example:        None,
+            },
+            path_example: PathExample::Simple(Value::Null),
+        };
+
+        let serialized = serde_json::to_value(&path_external).unwrap();
+
+        // Verify that "example" field is NOT present in the serialized output
+        assert!(
+            !serialized.as_object().unwrap().contains_key("example"),
+            "NotMutable path should not have 'example' field"
+        );
+    }
+
+    #[test]
+    fn test_mutation_path_external_with_non_null_example() {
+        // Create a minimal MutationPathExternal with non-null example
+        let path_external = MutationPathExternal {
+            description:  "Test path".to_string(),
+            path_info:    PathInfo {
+                path_kind:           PathKind::RootValue {
+                    type_name: BrpTypeName::from("test::Type"),
+                },
+                type_name:           BrpTypeName::from("test::Type"),
+                type_kind:           TypeKind::Struct,
+                mutability:          Mutability::Mutable,
+                mutability_reason:   None,
+                enum_instructions:   None,
+                applicable_variants: None,
+                root_example:        None,
+            },
+            path_example: PathExample::Simple(json!({"field": "value"})),
+        };
+
+        let serialized = serde_json::to_value(&path_external).unwrap();
+
+        // Verify that "example" field IS present with the correct value
+        assert_eq!(
+            serialized.get("example").unwrap(),
+            &json!({"field": "value"}),
+            "Mutable path should have 'example' field with correct value"
+        );
     }
 }

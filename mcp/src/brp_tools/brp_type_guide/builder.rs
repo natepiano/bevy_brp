@@ -19,7 +19,7 @@ use super::constants::{
     REFLECT_TRAIT_RESOURCE, TYPE_BEVY_ENTITY,
 };
 use super::mutation_path_builder::{
-    self, MutationPathExternal, MutationPathInternal, PathKind, RecursionContext,
+    self, MutationPathExternal, MutationPathInternal, PathExample, PathKind, RecursionContext,
     recurse_mutation_paths,
 };
 use super::response_types::{BrpTypeName, SchemaInfo};
@@ -36,9 +36,9 @@ pub struct TypeGuide {
     /// Guidance for AI agents about using mutation paths
     pub agent_guidance: String,
     /// Fully-qualified type name
-    pub type_name: BrpTypeName,
+    pub type_name:      BrpTypeName,
     /// Whether the type is registered in the Bevy registry
-    pub in_registry: bool,
+    pub in_registry:    bool,
     /// Mutation paths available for this type - using same format as V1
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub mutation_paths: HashMap<String, MutationPathExternal>,
@@ -47,14 +47,14 @@ pub struct TypeGuide {
     pub example_values: HashMap<String, Value>,
     /// Example format for spawn/insert operations when supported
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub spawn_format: Option<Value>,
+    pub spawn_format:   Option<Value>,
     /// Schema information from the registry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schema_info: Option<SchemaInfo>,
+    pub schema_info:    Option<SchemaInfo>,
     /// Type information for direct fields (struct fields only, one level deep)
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
+    pub error:          Option<String>,
 }
 
 impl TypeGuide {
@@ -194,16 +194,14 @@ impl TypeGuide {
     fn extract_spawn_format_from_paths(
         mutation_paths: &HashMap<String, MutationPathExternal>,
     ) -> Option<Value> {
-        mutation_paths.get("").and_then(|root_path| {
-            // Handle both the new `example` field and the legacy `examples` array
-            root_path.example.as_ref().map_or_else(
-                || {
-                    // Use the shared utility to prefer non-unit variants
-                    mutation_path_builder::select_preferred_example(&root_path.examples)
-                },
-                |example| Some(example.clone()),
-            )
-        })
+        mutation_paths
+            .get("")
+            .and_then(|root_path| match &root_path.path_example {
+                PathExample::Simple(val) => Some(val.clone()),
+                PathExample::EnumRoot { groups, .. } => {
+                    mutation_path_builder::select_preferred_example(groups)
+                }
+            })
     }
 
     /// Build mutation paths for a type

@@ -27,7 +27,7 @@ use std::fmt::Display;
 use serde_json::{Value, json};
 
 use super::super::brp_type_name::BrpTypeName;
-use super::types::{MutabilityIssue, Mutability};
+use super::types::{Mutability, MutabilityIssue};
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +35,7 @@ pub enum NotMutableReason {
     /// Container type has non-mutable element type
     NonMutableHandle {
         container_type: BrpTypeName,
-        element_type: BrpTypeName,
+        element_type:   BrpTypeName,
     },
     /// Type not found in registry
     NotInRegistry(BrpTypeName),
@@ -49,10 +49,10 @@ pub enum NotMutableReason {
     NoExampleAvailable(BrpTypeName),
     /// Some children are mutable, others are not (results in `PartiallyMutable`)
     PartialChildMutability {
-        parent_type: BrpTypeName,
-        message: String,
-        mutable: Vec<String>,
-        not_mutable: Vec<String>,
+        parent_type:       BrpTypeName,
+        message:           String,
+        mutable:           Vec<String>,
+        not_mutable:       Vec<String>,
         partially_mutable: Vec<String>,
     },
 }
