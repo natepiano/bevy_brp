@@ -2,112 +2,14 @@
 //!
 //! This module contains the fundamental types used throughout the mutation path building system,
 //! including mutation path structures and status types.
-use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
+use super::new_types::{MutationPath, StructFieldName, VariantName};
 use super::path_kind::PathKind;
-use crate::json_schema::SchemaField;
-
-/// Full mutation path for BRP operations (e.g., ".translation.x")
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct MutationPath(String);
-
-impl Deref for MutationPath {
-    type Target = String;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<String> for MutationPath {
-    fn from(path: String) -> Self {
-        Self(path)
-    }
-}
-
-impl From<&str> for MutationPath {
-    fn from(path: &str) -> Self {
-        Self(path.to_string())
-    }
-}
-
-impl std::fmt::Display for MutationPath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-/// A struct field name used in mutation paths and variant signatures
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
-pub struct StructFieldName(String);
-
-impl StructFieldName {
-    /// Get the field name as a string slice
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl std::fmt::Display for StructFieldName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::borrow::Borrow<str> for StructFieldName {
-    fn borrow(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<String> for StructFieldName {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
-}
-
-impl From<&str> for StructFieldName {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
-}
-
-impl From<SchemaField> for StructFieldName {
-    fn from(field: SchemaField) -> Self {
-        Self(field.to_string())
-    }
-}
-
-/// A variant name from a Bevy enum type (e.g., "`Option<String>::Some`", "`Color::Srgba`")
-///
-/// This newtype wrapper provides type safety and documentation for variant names
-/// discovered through Bevy's reflection system at runtime.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Serialize, Deserialize)]
-pub struct VariantName(String);
-
-impl From<String> for VariantName {
-    fn from(name: String) -> Self {
-        Self(name)
-    }
-}
-
-impl std::fmt::Display for VariantName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl VariantName {
-    /// Get the variant name as a string slice
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
 
 /// Action to take regarding path creation during recursion
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -254,14 +156,14 @@ impl<'de> Deserialize<'de> for PathExample {
 
 /// Identifies what component has a mutability issue
 #[derive(Debug, Clone)]
-pub enum MutabilityTarget {
+pub enum MutabilityIssueTarget {
     /// A mutation path within a type (e.g., ".translation.x")
     Path(MutationPath),
     /// An enum variant name (e.g., "`Color::Srgba`")
     Variant(VariantName),
 }
 
-impl std::fmt::Display for MutabilityTarget {
+impl std::fmt::Display for MutabilityIssueTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Path(path) => write!(f, "{path}"),
@@ -273,7 +175,7 @@ impl std::fmt::Display for MutabilityTarget {
 /// Summary of a mutation issue for diagnostic reporting
 #[derive(Debug, Clone)]
 pub struct MutabilityIssue {
-    pub target:    MutabilityTarget,
+    pub target:    MutabilityIssueTarget,
     pub type_name: BrpTypeName,
     pub status:    Mutability,
     pub reason:    Option<Value>,
@@ -287,7 +189,7 @@ impl MutabilityIssue {
         status: Mutability,
     ) -> Self {
         Self {
-            target: MutabilityTarget::Variant(variant),
+            target: MutabilityIssueTarget::Variant(variant),
             type_name,
             status,
             reason: None,

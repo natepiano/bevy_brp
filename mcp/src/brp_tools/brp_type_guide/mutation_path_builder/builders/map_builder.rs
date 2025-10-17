@@ -12,10 +12,11 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::super::BuilderError;
+use super::super::new_types::StructFieldName;
 use super::super::path_builder::PathBuilder;
+use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
-use super::super::types::{PathAction, StructFieldName};
-use crate::brp_tools::brp_type_guide::mutation_path_builder::{MutationPathDescriptor, PathKind};
+use super::super::types::PathAction;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -70,13 +71,13 @@ impl PathBuilder for MapMutationBuilder {
         // Create PathKinds for key and value (MutationPathBuilder will create contexts)
         Ok(vec![
             PathKind::StructField {
-                field_name:  StructFieldName::from(SchemaField::Key),
-                type_name:   key_type_name,
+                field_name: StructFieldName::from(SchemaField::Key),
+                type_name: key_type_name,
                 parent_type: ctx.type_name().clone(),
             },
             PathKind::StructField {
-                field_name:  StructFieldName::from(SchemaField::Value),
-                type_name:   val_type_name,
+                field_name: StructFieldName::from(SchemaField::Value),
+                type_name: val_type_name,
                 parent_type: ctx.type_name().clone(),
             },
         ]

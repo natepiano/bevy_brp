@@ -2,8 +2,11 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::BuilderError;
+use super::mutation_path_internal::MutationPathInternal;
+use super::path_kind::MutationPathDescriptor;
+use super::recursion_context::RecursionContext;
 use super::types::PathAction;
-use super::{BuilderError, MutationPathDescriptor, RecursionContext};
 use crate::error::Result;
 
 /// Trait for building mutation paths for different type kinds
@@ -32,7 +35,7 @@ pub trait PathBuilder {
     fn build_paths(
         &self,
         _ctx: &RecursionContext,
-    ) -> std::result::Result<Vec<super::MutationPathInternal>, BuilderError> {
+    ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
         // Implementation details here
         Ok(vec![])
     }

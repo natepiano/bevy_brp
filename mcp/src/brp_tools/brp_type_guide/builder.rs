@@ -18,10 +18,7 @@ use super::constants::{
     AGENT_GUIDANCE, ENTITY_WARNING, ERROR_GUIDANCE, REFLECT_TRAIT_COMPONENT,
     REFLECT_TRAIT_RESOURCE, TYPE_BEVY_ENTITY,
 };
-use super::mutation_path_builder::{
-    self, MutationPathExternal, MutationPathInternal, PathExample, PathKind, RecursionContext,
-    recurse_mutation_paths,
-};
+use super::mutation_path_builder::{self, MutationPathExternal};
 use super::response_types::{BrpTypeName, SchemaInfo};
 use super::type_kind::TypeKind;
 use crate::error::Result;
@@ -42,9 +39,6 @@ pub struct TypeGuide {
     /// Mutation paths available for this type - using same format as V1
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub mutation_paths: HashMap<String, MutationPathExternal>,
-    /// Example values for spawn/insert operations (currently empty to match V1)
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub example_values: HashMap<String, Value>,
     /// Example format for spawn/insert operations when supported
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spawn_format:   Option<Value>,
@@ -73,10 +67,8 @@ impl TypeGuide {
         };
 
         // Build mutation paths to determine actual mutation capability
-        let mutation_paths_vec =
-            Self::build_mutation_paths(&brp_type_name, registry_schema, Arc::clone(&registry))?;
-
-        let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec, &registry);
+        let mutation_paths =
+            mutation_path_builder::build_mutation_paths(&brp_type_name, Arc::clone(&registry))?;
 
         // Extract spawn format if type is spawnable (Component or Resource)
         let spawn_format =
@@ -92,7 +84,6 @@ impl TypeGuide {
             type_name: brp_type_name,
             in_registry: true,
             mutation_paths,
-            example_values: HashMap::new(), // V1 always has this empty
             spawn_format,
             schema_info,
             agent_guidance,
@@ -106,7 +97,6 @@ impl TypeGuide {
             type_name,
             in_registry: false,
             mutation_paths: HashMap::new(),
-            example_values: HashMap::new(),
             spawn_format: None,
             schema_info: None,
             agent_guidance: AGENT_GUIDANCE.to_string(),
@@ -123,7 +113,6 @@ impl TypeGuide {
             type_name,
             in_registry: true, // Type WAS found in registry
             mutation_paths: HashMap::new(),
-            example_values: HashMap::new(),
             spawn_format: None,
             schema_info: None,
             agent_guidance: ERROR_GUIDANCE.to_string(),
@@ -144,17 +133,9 @@ impl TypeGuide {
             .any(|path| path.path_info.type_name.as_str().contains(TYPE_BEVY_ENTITY));
 
         if has_entity {
-            // Get the Entity example value from mutation knowledge
-            use super::mutation_path_builder::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-            let entity_example = BRP_MUTATION_KNOWLEDGE
-                .get(&KnowledgeKey::exact(TYPE_BEVY_ENTITY))
-                .and_then(|knowledge| knowledge.example().as_u64())
-                .ok_or_else(|| {
-                    crate::error::Error::InvalidState(
-                        "Entity type knowledge missing or invalid in BRP_MUTATION_KNOWLEDGE"
-                            .to_string(),
-                    )
-                })?;
+            // Get the Entity example value from mutation knowledge - encapsulated
+            // in `mutation_path_builder` so we use this helper function
+            let entity_example = mutation_path_builder::get_entity_example_value()?;
 
             let entity_suffix = ENTITY_WARNING.replace("{}", &entity_example.to_string());
             Ok(format!("{AGENT_GUIDANCE}{entity_suffix}"))
@@ -182,64 +163,10 @@ impl TypeGuide {
         });
 
         if is_spawnable {
-            Self::extract_spawn_format_from_paths(mutation_paths)
+            mutation_path_builder::extract_spawn_format(mutation_paths)
         } else {
             None
         }
-    }
-
-    /// Extract spawn format from root mutation path
-    /// Uses the root path `""` example as the spawn format for consistency
-    /// Should only be called for types that support spawn/insert operations
-    fn extract_spawn_format_from_paths(
-        mutation_paths: &HashMap<String, MutationPathExternal>,
-    ) -> Option<Value> {
-        mutation_paths
-            .get("")
-            .and_then(|root_path| match &root_path.path_example {
-                PathExample::Simple(val) => Some(val.clone()),
-                PathExample::EnumRoot { groups, .. } => {
-                    mutation_path_builder::select_preferred_example(groups)
-                }
-            })
-    }
-
-    /// Build mutation paths for a type
-    fn build_mutation_paths(
-        brp_type_name: &BrpTypeName,
-        registry_schema: &Value,
-        registry: Arc<HashMap<BrpTypeName, Value>>,
-    ) -> Result<Vec<MutationPathInternal>> {
-        let type_kind = TypeKind::from_schema(registry_schema);
-
-        // Create root `PathKind` for this type - the root has a mutation path of ""
-        let path_kind = PathKind::new_root_value(brp_type_name.clone());
-
-        let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
-
-        // Use the single, recursive dispatch point for all `TypeKind`s
-        let result = recurse_mutation_paths(type_kind, &ctx)?;
-
-        Ok(result)
-    }
-
-    /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`
-    fn convert_mutation_paths(
-        paths: &[MutationPathInternal],
-        registry: &HashMap<BrpTypeName, Value>,
-    ) -> HashMap<String, MutationPathExternal> {
-        paths
-            .iter()
-            .map(|mutation_path_internal| {
-                // Keep empty path as empty for root mutations
-                // BRP expects empty string for root replacements, not "."
-                let key = (*mutation_path_internal.mutation_path).clone();
-                let mutation_path = mutation_path_internal
-                    .clone()
-                    .into_mutation_path_external(registry);
-                (key, mutation_path)
-            })
-            .collect()
     }
 
     /// Extract schema information from registry schema

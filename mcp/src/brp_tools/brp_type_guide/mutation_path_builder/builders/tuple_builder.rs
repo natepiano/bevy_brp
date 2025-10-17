@@ -12,9 +12,9 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::super::path_builder::PathBuilder;
-use super::super::path_kind::PathKind;
+use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
-use super::super::{BuilderError, MutationPathDescriptor, NotMutableReason};
+use super::super::{BuilderError, NotMutableReason};
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 
@@ -85,7 +85,7 @@ impl PathBuilder for TupleMutationBuilder {
             return Err(BuilderError::NotMutable(
                 NotMutableReason::NonMutableHandle {
                     container_type: ctx.type_name().clone(),
-                    element_type:   elements[0].clone(),
+                    element_type: elements[0].clone(),
                 },
             ));
         }

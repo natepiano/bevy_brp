@@ -29,22 +29,24 @@ use super::builders::{
     StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
 };
 use super::mutation_knowledge::MutationKnowledge;
+use super::mutation_path_internal::MutationPathInternal;
+use super::new_types::VariantName;
+use super::not_mutable_reason::NotMutableReason;
 use super::path_builder::PathBuilder;
-use super::types::{EnumPathData, MutabilityIssue, PathAction, PathExample, VariantName};
-use super::{
-    BuilderError, Mutability, MutationPathDescriptor, MutationPathInternal, NotMutableReason,
-    PathKind, RecursionContext, enum_path_builder,
-};
+use super::path_kind::{MutationPathDescriptor, PathKind};
+use super::recursion_context::RecursionContext;
+use super::types::{EnumPathData, Mutability, MutabilityIssue, PathAction, PathExample};
+use super::{BuilderError, enum_path_builder};
 use crate::error::{Error, Result};
 
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -447,9 +449,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain:       ctx.variant_chain.clone(),
+                variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example:        None,
+                root_example: None,
             })
         };
 

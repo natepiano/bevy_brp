@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
-use super::types::StructFieldName;
+use super::new_types::StructFieldName;
 
 /// A semantic identifier for mutation paths in the builder system
 ///

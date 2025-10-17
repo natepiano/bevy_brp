@@ -1,8 +1,10 @@
+mod api;
 mod builder;
 mod builders;
 mod enum_path_builder;
 mod mutation_knowledge;
 mod mutation_path_internal;
+mod new_types;
 mod not_mutable_reason;
 mod path_builder;
 mod path_kind;
@@ -10,17 +12,13 @@ mod recursion_context;
 mod type_parser;
 mod types;
 
-pub use builder::recurse_mutation_paths;
-pub use enum_path_builder::select_preferred_example;
 use error_stack::Report;
-pub use mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
-pub use mutation_path_internal::MutationPathInternal;
-pub use not_mutable_reason::NotMutableReason;
-pub use path_kind::{MutationPathDescriptor, PathKind};
-pub use recursion_context::RecursionContext;
-pub use types::{Mutability, MutationPathExternal, PathExample};
-
+use not_mutable_reason::NotMutableReason;
+// Re-export support functions as the public API
 use crate::error::Error;
+pub use api::{build_mutation_paths, extract_spawn_format, get_entity_example_value};
+pub use mutation_knowledge::MutationKnowledge;
+pub use types::MutationPathExternal;
 
 /// Internal error type for mutation path building that preserves semantic information.
 ///

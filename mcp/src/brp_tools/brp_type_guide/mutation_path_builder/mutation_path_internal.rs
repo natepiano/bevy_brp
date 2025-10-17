@@ -11,10 +11,11 @@ use serde_json::{Value, json};
 use super::super::brp_type_name::BrpTypeName;
 use super::super::constants::{DEFAULT_SPAWN_GUIDANCE, REFLECT_TRAIT_DEFAULT};
 use super::super::type_kind::TypeKind;
+use super::new_types::{MutationPath, VariantName};
 use super::path_kind::PathKind;
 use super::types::{
-    EnumPathData, Mutability, MutabilityIssue, MutabilityTarget, MutationPath,
-    MutationPathExternal, PathExample, PathInfo, VariantName,
+    EnumPathData, Mutability, MutabilityIssue, MutabilityIssueTarget, MutationPathExternal,
+    PathExample, PathInfo,
 };
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -55,7 +56,7 @@ impl MutationPathInternal {
     /// Create a `MutabilityIssue` from this mutation path (for non-enum types)
     pub fn to_mutability_issue(&self) -> MutabilityIssue {
         MutabilityIssue {
-            target:    MutabilityTarget::Path(self.mutation_path.clone()),
+            target:    MutabilityIssueTarget::Path(self.mutation_path.clone()),
             type_name: self.type_name.clone(),
             status:    self.mutability,
             reason:    self.mutability_reason.clone(),
