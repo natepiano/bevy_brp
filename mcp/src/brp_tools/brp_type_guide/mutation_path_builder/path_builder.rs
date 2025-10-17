@@ -228,6 +228,88 @@ pub fn aggregate_mutability(statuses: &[Mutability]) -> Mutability {
     }
 }
 
+/// Check if a child's `variant_chain` is compatible with a target chain
+///
+/// Compatibility means the child's `variant_chain` must be a prefix of the target `child_chain`.
+///
+/// This is shared between `path_builder.rs` and `enum_builder.rs` to filter children
+/// when building variant-specific examples.
+pub fn is_variant_chain_compatible(
+    child: &MutationPathInternal,
+    child_chain: &[VariantName],
+) -> bool {
+    if let Some(child_enum_data) = &child.enum_path_data {
+        // Child's variant_chain cannot be longer than target chain
+        if child_enum_data.variant_chain.len() > child_chain.len() {
+            return false;
+        }
+
+        // Check prefix compatibility: all elements must match
+        child_enum_data
+            .variant_chain
+            .iter()
+            .zip(child_chain.iter())
+            .all(|(child_v, chain_v)| child_v == chain_v)
+    } else {
+        true // Non-enum children are always compatible
+    }
+}
+
+/// Extract the appropriate value from a child path for assembly
+///
+/// Priority order:
+/// 1. Variant-specific value from `partial_root_examples` (for deeply nested enums)
+/// 2. `example.for_parent()` (fallback for all other cases)
+///
+/// This is the single source of truth for extracting child values during variant-specific assembly.
+fn extract_child_value_for_chain(
+    child: &MutationPathInternal,
+    child_chain: Option<&[VariantName]>,
+) -> Value {
+    let fallback = || child.example.for_parent().clone();
+
+    child_chain.map_or_else(fallback, |chain| {
+        child
+            .partial_root_examples
+            .as_ref()
+            .and_then(|partials| partials.get(chain))
+            .cloned()
+            .unwrap_or_else(fallback)
+    })
+}
+
+/// Collect children values for a specific variant chain
+///
+/// This is the **single choke point** for filtering and extracting child values during
+/// variant-specific example assembly. Used by both enum and non-enum types.
+///
+/// Filtering rules:
+/// 1. Only direct children at current depth
+/// 2. Only children compatible with target variant chain (if specified)
+///
+/// Value extraction:
+/// 1. Variant-specific value from `partial_root_examples[chain]` if available
+/// 2. Fallback to `example.for_parent()` otherwise
+pub fn collect_children_for_chain(
+    child_paths: &[&MutationPathInternal],
+    ctx: &RecursionContext,
+    target_chain: Option<&[VariantName]>,
+) -> HashMap<MutationPathDescriptor, Value> {
+    child_paths
+        .iter()
+        // Skip grandchildren - only process direct children
+        .filter(|child| child.is_direct_child_at_depth(*ctx.depth))
+        // Filter by variant-chain compatibility if target chain specified
+        .filter(|child| target_chain.is_none_or(|chain| is_variant_chain_compatible(child, chain)))
+        // Map to (descriptor, value) pairs
+        .map(|child| {
+            let descriptor = child.path_kind.to_mutation_path_descriptor();
+            let value = extract_child_value_for_chain(child, target_chain);
+            (descriptor, value)
+        })
+        .collect()
+}
+
 /// Populate `root_example` from `partial_root_examples` for enum paths
 ///
 /// Iterates through mutation paths and populates the `root_example` field for any paths
@@ -494,31 +576,24 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
         let mut assembled_partial_root_examples = BTreeMap::new();
 
-        // For each variant chain, assemble wrapped example from ALL children
+        // For each variant chain, assemble wrapped example from compatible children
         for chain in all_chains {
-            let mut examples_for_chain = HashMap::new();
+            tracing::debug!(
+                "🔧 ASSEMBLE_PARTIAL: Processing chain {:?} for type {}",
+                chain,
+                ctx.type_name()
+            );
 
-            // Collect from ALL children, using variant-specific value if available, otherwise
-            // regular example
-            for child in child_paths {
-                let descriptor = child.path_kind.to_mutation_path_descriptor();
+            // Use shared choke point for filtering and value extraction
+            let examples_for_chain = collect_children_for_chain(child_paths, ctx, Some(&chain));
 
-                // Try to get variant-specific value first
-                if let Some(partial_root_example) = &child.partial_root_examples
-                    && let Some(child_value) = partial_root_example.get(&chain)
-                {
-                    examples_for_chain.insert(descriptor, child_value.clone());
-                    continue;
-                }
-
-                // No variant-specific value, use regular example
-                // Use for_parent() which handles both Simple and EnumRoot variants
-                let fallback_example = child.example.for_parent().clone();
-                examples_for_chain.insert(descriptor, fallback_example);
-            }
-
-            // Assemble from all children
+            // Assemble from filtered children
             let assembled = builder.assemble_from_children(ctx, examples_for_chain)?;
+            tracing::debug!(
+                "🔧 ASSEMBLED for chain {:?}: {}",
+                chain,
+                serde_json::to_string(&assembled).unwrap_or_else(|_| "ERR".to_string())
+            );
 
             assembled_partial_root_examples.insert(chain, assembled);
         }

@@ -486,71 +486,6 @@ fn create_paths_for_signature(
     }
 }
 
-/// Check if a child's `variant_chain` is compatible with a target chain
-///
-/// Compatibility means the child's `variant_chain` must be a prefix of the target `child_chain`.
-fn is_variant_chain_compatible(child: &MutationPathInternal, child_chain: &[VariantName]) -> bool {
-    if let Some(child_enum_data) = &child.enum_path_data {
-        // Child's variant_chain cannot be longer than target chain
-        if child_enum_data.variant_chain.len() > child_chain.len() {
-            return false;
-        }
-
-        // Check prefix compatibility: all elements must match
-        child_enum_data
-            .variant_chain
-            .iter()
-            .zip(child_chain.iter())
-            .all(|(child_v, chain_v)| child_v == chain_v)
-    } else {
-        true // Non-enum children are always compatible
-    }
-}
-
-/// Extract the appropriate value from a child path for assembly
-///
-/// Priority order:
-/// 1. Variant-specific value from `partial_root_examples` (for deeply nested enums)
-/// 2. `enum_example_for_parent` (for direct enum children)
-/// 3. `example` (for non-enum children like structs/primitives)
-fn extract_child_value_for_chain(
-    child: &MutationPathInternal,
-    child_chain: Option<&[VariantName]>,
-) -> Value {
-    let fallback = || child.example.for_parent().clone();
-
-    child_chain.map_or_else(fallback, |chain| {
-        child
-            .partial_root_examples
-            .as_ref()
-            .and_then(|partials| partials.get(chain))
-            .cloned()
-            .unwrap_or_else(fallback)
-    })
-}
-
-/// Collect children values for a specific variant chain
-fn collect_children_for_chain(
-    child_paths: &[MutationPathInternal],
-    ctx: &RecursionContext,
-    target_chain: Option<&[VariantName]>,
-) -> HashMap<MutationPathDescriptor, Value> {
-    child_paths
-        .iter()
-        // Skip grandchildren
-        .filter(|child| child.is_direct_child_at_depth(*ctx.depth))
-        // Filter by variant-chain compatibility if needed
-        .filter(|child| target_chain.is_none_or(|chain| is_variant_chain_compatible(child, chain)))
-        // Map to (descriptor, value) pairs
-        .map(|child| {
-            (
-                child.path_kind.to_mutation_path_descriptor(),
-                extract_child_value_for_chain(child, target_chain),
-            )
-        })
-        .collect()
-}
-
 /// Collect all unique child chains that extend a given variant chain
 fn collect_child_chains_to_wrap(
     child_paths: &[MutationPathInternal],
@@ -660,7 +595,9 @@ fn build_partial_root_examples(
             // `{"Weak": null}`.
             let mut found_child_chains = false;
             for child_chain in &child_chains_to_wrap {
-                let children = collect_children_for_chain(child_paths, ctx, Some(child_chain));
+                let child_refs: Vec<&MutationPathInternal> = child_paths.iter().collect();
+                let children =
+                    path_builder::collect_children_for_chain(&child_refs, ctx, Some(child_chain));
 
                 // Use existing `build_variant_example` with SHORT variant name
                 let wrapped =
@@ -673,9 +610,11 @@ fn build_partial_root_examples(
             // After processing all child chains, also create entry for n-variant chain
             // This handles paths that only specify the outer variant(s)
             if found_child_chains {
-                // Build n-variant entry: Assemble from ALL children with their REGULAR
-                // (non-variant-specific) examples
-                let children = collect_children_for_chain(child_paths, ctx, None);
+                // Build n-variant entry: Assemble from children compatible with this variant chain
+                // IMPORTANT: Filter by our_chain to exclude fields from other variants
+                let child_refs: Vec<&MutationPathInternal> = child_paths.iter().collect();
+                let children =
+                    path_builder::collect_children_for_chain(&child_refs, ctx, Some(&our_chain));
 
                 // Wrap with this variant using regular child examples
                 let wrapped =
