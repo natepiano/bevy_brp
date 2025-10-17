@@ -20,5 +20,15 @@ cp .claude/transient/all_types.json .claude/transient/all_types_baseline.json
 # Create timestamped backup of the promoted baseline
 cp .claude/transient/all_types.json .claude/transient/all_types_good_${TIMESTAMP}.json
 
+# Clean up old backups, keeping only the 2 most recent
+cd .claude/transient
+# Find all good backups, sort by name (which is chronological due to timestamp format),
+# skip the 2 newest, and delete the rest
+ls -1 all_types_good_*.json 2>/dev/null | sort -r | tail -n +3 | while read -r old_file; do
+    rm -f "${old_file}"
+    echo "🗑️  Removed old backup: ${old_file}"
+done
+cd - > /dev/null
+
 echo "✅ Version marked as good baseline"
 echo "📝 Baseline promoted at: ${TIMESTAMP}"
