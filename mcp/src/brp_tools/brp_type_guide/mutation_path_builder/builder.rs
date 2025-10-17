@@ -18,7 +18,6 @@
 //! The `recurse_mutation_paths` function is the single entry point that dispatches to either:
 //! - `enum_path_builder::process_enum` for enum types
 //! - `MutationPathBuilder` with appropriate builder for all other types
-//!
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use error_stack::Report;
@@ -31,7 +30,7 @@ use super::builders::{
 };
 use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::PathBuilder;
-use super::types::{EnumPathData, PathAction, PathExample, PathSummary, VariantName};
+use super::types::{EnumPathData, MutabilityIssue, PathAction, PathExample, VariantName};
 use super::{
     BuilderError, MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason,
     PathKind, RecursionContext, enum_path_builder,
@@ -41,11 +40,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -285,9 +284,9 @@ pub fn determine_parent_mutation_status(
 
         if has_not_mutable {
             // Map/Set is NotMutable if ANY child is NotMutable
-            let summaries: Vec<PathSummary> = child_paths
+            let mutability_issues: Vec<MutabilityIssue> = child_paths
                 .iter()
-                .map(MutationPathInternal::to_path_summary)
+                .map(MutationPathInternal::to_mutability_issue)
                 .collect();
 
             let collection_type = if matches!(type_kind, TypeKind::Map) {
@@ -298,7 +297,7 @@ pub fn determine_parent_mutation_status(
 
             let reason = NotMutableReason::from_partial_mutability(
                 ctx.type_name().clone(),
-                summaries,
+                mutability_issues,
                 format!(
                     "{collection_type} require all {} to be mutable for BRP operations",
                     type_kind.child_terminology()
@@ -317,9 +316,9 @@ pub fn determine_parent_mutation_status(
     // Build detailed reason if not fully mutable
     let reason = match status {
         MutationStatus::PartiallyMutable => {
-            let summaries: Vec<PathSummary> = child_paths
+            let mutability_issues: Vec<MutabilityIssue> = child_paths
                 .iter()
-                .map(MutationPathInternal::to_path_summary)
+                .map(MutationPathInternal::to_mutability_issue)
                 .collect();
 
             let message = format!(
@@ -329,7 +328,7 @@ pub fn determine_parent_mutation_status(
 
             Some(NotMutableReason::from_partial_mutability(
                 ctx.type_name().clone(),
-                summaries,
+                mutability_issues,
                 message,
             ))
         }
@@ -454,9 +453,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain: ctx.variant_chain.clone(),
+                variant_chain:       ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example: None,
+                root_example:        None,
             })
         };
 

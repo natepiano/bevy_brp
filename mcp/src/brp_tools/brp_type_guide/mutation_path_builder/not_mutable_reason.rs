@@ -27,7 +27,7 @@ use std::fmt::Display;
 use serde_json::{Value, json};
 
 use super::super::brp_type_name::BrpTypeName;
-use super::types::{MutationStatus, PathSummary};
+use super::types::{MutabilityIssue, MutationStatus};
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,7 +90,7 @@ impl NotMutableReason {
     /// conflict and correctly marks it as `partially_mutable`.
     pub fn from_partial_mutability<T: ToString>(
         parent_type: BrpTypeName,
-        summaries: Vec<PathSummary<T>>,
+        mutability_issues: Vec<MutabilityIssue<T>>,
         message: String,
     ) -> Self {
         use std::collections::{HashMap, HashSet};
@@ -99,12 +99,12 @@ impl NotMutableReason {
         // This detects when the same path appears with different statuses across variants
         let mut path_statuses: HashMap<String, HashSet<MutationStatus>> = HashMap::new();
 
-        for summary in summaries {
-            let path_str = summary.full_mutation_path.to_string();
+        for mutability_issue in mutability_issues {
+            let path_str = mutability_issue.full_mutation_path.to_string();
             path_statuses
                 .entry(path_str)
                 .or_default()
-                .insert(summary.status);
+                .insert(mutability_issue.status);
         }
 
         // Second pass: Categorize each unique path based on its status diversity

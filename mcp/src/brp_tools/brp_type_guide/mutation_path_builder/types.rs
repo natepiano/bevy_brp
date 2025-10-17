@@ -254,8 +254,8 @@ pub struct MutationPathInternal {
 
 impl MutationPathInternal {
     /// Convert to summary for reason reporting
-    pub fn to_path_summary(&self) -> PathSummary {
-        PathSummary {
+    pub fn to_mutability_issue(&self) -> MutabilityIssue {
+        MutabilityIssue {
             full_mutation_path: self.full_mutation_path.clone(),
             type_name:          self.type_name.clone(),
             status:             self.mutation_status,
@@ -274,7 +274,7 @@ impl MutationPathInternal {
 /// Generic over the path type to support both `FullMutationPath` (for structs/lists)
 /// and `VariantName` (for enums) without requiring early string conversion.
 #[derive(Debug, Clone)]
-pub struct PathSummary<T = FullMutationPath> {
+pub struct MutabilityIssue<T = FullMutationPath> {
     pub full_mutation_path: T,
     pub type_name:          BrpTypeName,
     pub status:             MutationStatus,
