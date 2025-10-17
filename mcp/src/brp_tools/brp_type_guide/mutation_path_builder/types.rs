@@ -259,43 +259,26 @@ impl<'de> Deserialize<'de> for PathExample {
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path - now type-safe!
-    pub example:           PathExample,
+    pub example:               PathExample,
     /// Path for mutation, e.g., ".translation.x"
-    pub mutation_path:     MutationPath,
+    pub mutation_path:         MutationPath,
     /// Type information for this path
-    pub type_name:         BrpTypeName,
+    pub type_name:             BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind:         PathKind,
+    pub path_kind:             PathKind,
     /// Whether this path can be mutated
-    pub mutability:        Mutability,
+    pub mutability:            Mutability,
     /// Reason if mutation is not possible
-    pub mutability_reason: Option<Value>,
+    pub mutability_reason:     Option<Value>,
     /// Consolidated enum-specific data (new approach)
-    pub enum_path_data:    Option<EnumPathData>,
+    pub enum_path_data:        Option<EnumPathData>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
-    pub depth:             usize,
-
-    /// For enum root paths at each nesting level: Maps FULL variant chains to partial
-    /// root examples built from this enum level down through all descendants.
-    ///
-    /// **Populated for paths where `matches!(example, PathExample::EnumRoot { .. })`** - meaning
-    /// any path that is the root of an enum type at ANY nesting level:
-    /// - Path `""` (`TestVariantChainEnum`) has this field
-    /// - Path `".middle_struct.nested_enum"` (`BottomEnum`) has this field
-    /// - Leaf paths like `".middle_struct.nested_enum.name"` have None
-    ///
-    /// Example at `BottomEnum` (path `".middle_struct.nested_enum"`):
-    ///   `[WithMiddleStruct, VariantB]` => `{"VariantB": {"name": "...", "value": ...}}`
-    ///   `[WithMiddleStruct, VariantA]` => `{"VariantA": 123}`
-    ///
-    /// Example for `TestVariantChainEnum` with chain `["WithMiddleStruct", "VariantA"]`:
-    ///   `{"WithMiddleStruct": {"middle_struct": {"nested_enum": {"VariantA": 1000000}, ...}}}`
-    ///
-    /// Partial roots built during ascent using assembly approach by wrapping child partial roots
-    /// as we ascend through recursion.
-    ///
-    /// None for non-enum paths (structs, primitives) and enum leaf paths.
+    pub depth:                 usize,
+    /// Maps variant chains to complete root examples for reaching nested enum paths.
+    /// Populated during enum processing for paths where `matches!(example, PathExample::EnumRoot {
+    /// .. })`. Built by `build_partial_root_examples()` in `enum_path_builder.rs` during
+    /// ascent phase. None for non-enum paths and enum leaf paths.
     pub partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
 }
 

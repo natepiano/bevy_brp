@@ -788,6 +788,25 @@ fn collect_child_chains_to_wrap(
 ///
 /// Builds partial roots IMMEDIATELY during recursion by wrapping child partial roots
 /// as we receive them during the ascent phase.
+///
+/// ## What is `partial_root_examples`?
+///
+/// Maps FULL variant chains to complete root examples for reaching nested enum paths.
+/// Populated for enum root paths at any nesting level (path `""` for `TestVariantChainEnum`,
+/// path `".middle_struct.nested_enum"` for `BottomEnum`, etc). None for non-enum paths
+/// and enum leaf paths.
+///
+/// ## Structure Examples
+///
+/// At `BottomEnum` (path `".middle_struct.nested_enum"`):
+/// - `[WithMiddleStruct, VariantB]` → `{"VariantB": {"name": "...", "value": ...}}`
+/// - `[WithMiddleStruct, VariantA]` → `{"VariantA": 123}`
+///
+/// For `TestVariantChainEnum` with chain `["WithMiddleStruct", "VariantA"]`:
+/// - `{"WithMiddleStruct": {"middle_struct": {"nested_enum": {"VariantA": 1000000}, ...}}}`
+///
+/// Partial roots are built using an assembly approach by wrapping child partial roots
+/// as we ascend through recursion.
 fn build_partial_root_examples(
     variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantKind>>,
     enum_examples: &[ExampleGroup],
