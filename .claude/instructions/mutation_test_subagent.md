@@ -18,8 +18,8 @@
 **CRITICAL**: Steps 7-8 execute whether previous steps succeed or fail. Step 7 returns results (success/failure/partial).
 
 **LOGGING REQUIREMENT**:
-- Log every major step using `.claude/scripts/mutation_test_subagent_log.sh`
-- Log before tool calls, and on errors
+- Log workflow steps (0, 3, 5, 7, 8) using `.claude/scripts/mutation_test_subagent_log.sh`
+- Log errors only
 - This creates a diagnostic trail if subagent fails silently
 </SubagentExecutionFlow>
 
@@ -35,10 +35,8 @@
 This creates `$TMPDIR/mutation_test_subagent_${PORT}_progress.log` for tracking workflow progress.
 
 **Log at these points**:
-- Before each workflow step
-- Before tool calls
-- When catching errors
-- When reaching Step 7 (critical for detecting silent failures)
+- At workflow steps 0, 3, 5, 7, 8
+- When catching errors (critical for debugging)
 </InitializeLogging>
 
 <ErrorRecoveryProtocol>
@@ -195,11 +193,6 @@ python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
     --subagent-index ${SUBAGENT_INDEX}
 ```
 
-**After tool result received**:
-```bash
-.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Assignment fetch completed"
-```
-
 **ERROR HANDLING**:
 - **IF** script fails to execute or returns non-zero exit code:
   - Log the error: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Assignment fetch failed: [error message]"`
@@ -262,14 +255,8 @@ The assignment gives you a simple array of type names. For EACH type name, you M
 ```
 # Assignment returned: {"type_names": ["bevy_pbr::cluster::ClusterConfig", "bevy_input::gamepad::GamepadSettings"]}
 
-# Log before fetching:
-Bash: .claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Fetching type guide for bevy_pbr::cluster::ClusterConfig"
-
 # Call 1 - Fetch first type guide:
 Bash: ./.claude/scripts/get_type_guide.sh bevy_pbr::cluster::ClusterConfig --file .claude/transient/all_types.json
-
-# Log before fetching:
-Bash: .claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Fetching type guide for bevy_input::gamepad::GamepadSettings"
 
 # Call 2 - Fetch second type guide:
 Bash: ./.claude/scripts/get_type_guide.sh bevy_input::gamepad::GamepadSettings --file .claude/transient/all_types.json
@@ -325,7 +312,6 @@ Bash: ./.claude/scripts/get_type_guide.sh bevy_input::gamepad::GamepadSettings -
 **Testing Protocol**:
 
 For each type name string in your `type_names` array:
-   0. **LOG TYPE START**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Testing type: [type_name]"`
    1. **FETCH TYPE GUIDE**: Call `get_type_guide.sh <type_name> --file .claude/transient/all_types.json`
    2. **EXTRACT TYPE NAME**: Get the `type_name` field from the script output - this is your AUTHORITATIVE string
    3. **TEST THE TYPE**:
@@ -356,13 +342,11 @@ For each type name string in your `type_names` array:
       - **CHECK `mutation_type` field from assignment data**
       - **RESOURCE DETECTION**:
         * IF `mutation_type == "Resource"` → **THIS IS A RESOURCE**
-        * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Type is Resource, using ResourceTestingProtocol"`
         * Execute <ResourceTestingProtocol/> ONLY
         * **SKIP** all component testing steps completely
         * **NEVER** use `world_spawn_entity` or `world_mutate_components` for resources
       - **COMPONENT DETECTION**:
         * IF `mutation_type == "Component"` → **THIS IS A COMPONENT**
-        * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Type is Component, using ComponentTestingProtocol"`
         * Execute <ComponentTestingProtocol/> ONLY
         * **SKIP** all resource testing steps completely
         * **NEVER** use `world_insert_resources` or `world_mutate_resources` for components
@@ -413,19 +397,17 @@ For each type name string in your `type_names` array:
         First mutate path `""` with this complete value, THEN mutate `.middle_struct.nested_enum.name`
    f. **MUTATION TESTING**: For each path in mutation_paths, validate THEN test
       - **FOR EACH path in mutation_paths object:**
-        1. **LOG PATH START**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Testing mutation path: [path]"`
-        2. **CHECK mutation_status FIRST**: If `path_info.mutation_status == "not_mutable"` → SKIP path (don't count in total)
-        3. **CHECK for example**: If no `example` or `examples` field exists → SKIP path (cannot test without value)
-        4. **IF partially_mutable**: SKIP unless `example` or `examples` exists
-        5. **ONLY if checks pass**: Proceed to mutation
+        1. **CHECK mutation_status FIRST**: If `path_info.mutation_status == "not_mutable"` → SKIP path (don't count in total)
+        2. **CHECK for example**: If no `example` or `examples` field exists → SKIP path (cannot test without value)
+        3. **IF partially_mutable**: SKIP unless `example` or `examples` exists
+        4. **ONLY if checks pass**: Proceed to mutation
       - **CHOOSE MUTATION METHOD** based on type category:
         * **FOR COMPONENTS**: Use `world_mutate_components` with entity ID
         * **FOR RESOURCES**: Use `world_mutate_resources` (no entity ID needed)
-      - **LOG BEFORE TOOL**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Calling mutate for path: [path]"`
       - Apply Entity ID substitution BEFORE sending any mutation request (components only)
       - If a mutation uses Entity IDs and you don't have real ones, query for them first
       - **CRITICAL VALUE HANDLING**: Extract the `example` value from mutation_paths and follow <JsonPrimitiveRules/> when using it
-      - **LOG AFTER TOOL**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Mutation [path] result: [PASS/FAIL]"`
+      - **ON FAILURE ONLY**: Log error with `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Mutation [path] failed: [error]"`
       - **ENUM TESTING REQUIREMENT**: When a mutation path contains an "examples" array (indicating enum variants), you MUST test each example individually:
         * For each entry in the "examples" array, perform a separate mutation using that specific "example" value
         * Example: If `.depth_load_op` has examples `[{"example": {"Clear": 3.14}}, {"example": "Load"}]`, test BOTH:
@@ -445,12 +427,11 @@ For each type name string in your `type_names` array:
 **CRITICAL**: Do NOT use component methods (`world_spawn_entity`, `world_mutate_components`) - these will CRASH the app
 
 1. **INSERT CHECK**: If `guide.spawn_format` is NOT null:
-   - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Inserting resource"`
    - Use `world_insert_resources` tool
    - Pass `resource` parameter with exact type name from type guide
    - Pass `value` parameter with `spawn_format` data
    - Then verify insertion with `world_get_resources`
-   - **LOG RESULT**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Resource insert result"`
+   - **ON FAILURE**: Log error with `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Resource insert failed: [error]"`
    - Set `spawn_insert: true` in operations_completed
 
 2. **IF spawn_format IS null**:
@@ -480,7 +461,6 @@ For each type name string in your `type_names` array:
 **CRITICAL**: Do NOT use resource methods (`world_insert_resources`, `world_mutate_resources`)
 
 1. **SPAWN/INSERT CHECK**: If `guide.spawn_format` is NOT null:
-   - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Spawning component entity"`
    - **FIRST**: Validate spawn_format for Entity ID placeholders
      * Inspect spawn_format values for `8589934670` (placeholder Entity ID)
      * **IF FOUND**: Query for any existing entity using `world_query` with `data: {}`
@@ -489,6 +469,7 @@ For each type name string in your `type_names` array:
      * **IF NOT FOUND**: Use spawn_format as-is
    - **THEN**: Use `world_spawn_entity` tool
    - Pass `components` parameter with type name as key and VALIDATED spawn_format as value
+   - **ON FAILURE**: Log error with `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Spawn failed: [error]"`
    - Set `spawn_insert: true` in operations_completed
    - Proceed to query for entity
 
@@ -499,12 +480,10 @@ For each type name string in your `type_names` array:
    - Proceed to query for EXISTING entities with this component
 
 3. **QUERY FOR ENTITY** (ALWAYS execute):
-   - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "Querying for entities with component"`
    - Use `world_query` tool
    - Pass `filter: {"with": ["EXACT_TYPE_NAME"]}` to find entities
    - Pass `data: {}` to get entity IDs only
    - Store entity ID for mutation testing
-   - **LOG RESULT**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Query found [N] entities"`
    - If 0 entities found → Report COMPONENT_NOT_FOUND status
    - If query fails with error → Follow <EmergencyBailout> and return FAIL with error details
    - Set `entity_query: true` in operations_completed
