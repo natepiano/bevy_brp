@@ -32,7 +32,7 @@ pub trait PathBuilder {
     fn build_paths(
         &self,
         _ctx: &RecursionContext,
-    ) -> std::result::Result<Vec<super::types::MutationPathInternal>, BuilderError> {
+    ) -> std::result::Result<Vec<super::MutationPathInternal>, BuilderError> {
         // Implementation details here
         Ok(vec![])
     }

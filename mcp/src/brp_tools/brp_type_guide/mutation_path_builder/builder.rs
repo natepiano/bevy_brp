@@ -280,7 +280,7 @@ pub fn determine_parent_mutability(
             // Map/Set is NotMutable if ANY child is NotMutable
             let mutability_issues: Vec<MutabilityIssue> = child_paths
                 .iter()
-                .map(MutabilityIssue::from_mutation_path)
+                .map(MutationPathInternal::to_mutability_issue)
                 .collect();
 
             let collection_type = if matches!(type_kind, TypeKind::Map) {
@@ -312,7 +312,7 @@ pub fn determine_parent_mutability(
         Mutability::PartiallyMutable => {
             let mutability_issues: Vec<MutabilityIssue> = child_paths
                 .iter()
-                .map(MutabilityIssue::from_mutation_path)
+                .map(MutationPathInternal::to_mutability_issue)
                 .collect();
 
             let message = format!(

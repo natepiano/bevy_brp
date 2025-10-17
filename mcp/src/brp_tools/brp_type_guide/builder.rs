@@ -231,13 +231,12 @@ impl TypeGuide {
         paths
             .iter()
             .map(|mutation_path_internal| {
-                let mutation_path = MutationPathExternal::from_mutation_path_internal(
-                    mutation_path_internal,
-                    registry,
-                );
                 // Keep empty path as empty for root mutations
                 // BRP expects empty string for root replacements, not "."
                 let key = (*mutation_path_internal.mutation_path).clone();
+                let mutation_path = mutation_path_internal
+                    .clone()
+                    .into_mutation_path_external(registry);
                 (key, mutation_path)
             })
             .collect()
