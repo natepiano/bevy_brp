@@ -75,12 +75,33 @@ Reorder parameters in your tool call - parameter order doesn't matter, but reord
 
 <EmergencyBailout>
 **IF ANY BRP tool fails with connection/timeout error:**
-1. **LOG IMMEDIATELY**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "BRP connection/timeout error - app crashed"`
-2. App likely crashed - STOP testing immediately
-3. **GO TO STEP 7 IMMEDIATELY** - return partial results array with FAIL status for current type
-4. For any completed types: include their results with actual status (PASS/FAIL)
-5. For the type being tested when error occurred: set status="FAIL", failed_operation=last operation attempted, include complete error in failure_details
-**DO NOT** continue testing remaining types or mutations
+
+1. **EXTRACT PORT FROM ERROR**: Parse the error message for URL pattern `http://127.0.0.1:XXXXX/jsonrpc`
+   - Extract the port number (XXXXX) that was actually attempted
+   - If port cannot be extracted, assume genuine app crash and skip to step 5
+
+2. **COMPARE PORTS**:
+   - Compare extracted port against your assigned ${PORT}
+   - Log both: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Connection failed: attempted port [EXTRACTED], assigned port ${PORT}"`
+
+3. **IF PORT MISMATCH DETECTED** (extracted port ≠ ${PORT}):
+   - This is YOUR bug - you failed to pass `port` parameter
+   - **RETRY IMMEDIATELY** with same operation parameters PLUS `port=${PORT}` explicitly
+   - Increment `retry_count`
+   - Log retry: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Port mismatch detected - retrying with correct port ${PORT}"`
+   - **IF RETRY SUCCEEDS**: Continue testing (no failure to report)
+   - **IF RETRY FAILS**: Report FAIL with both attempts in failure_details
+
+4. **IF PORT MATCH** (extracted port == ${PORT}):
+   - Genuine app crash on correct port
+   - Proceed to step 5
+
+5. **STOP TESTING**:
+   - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "BRP connection/timeout error - app crashed"`
+   - **GO TO STEP 7 IMMEDIATELY** - return partial results array with FAIL status for current type
+   - For any completed types: include their results with actual status (PASS/FAIL)
+   - For the type being tested when error occurred: set status="FAIL", failed_operation=last operation attempted, include complete error in failure_details
+   - **DO NOT** continue testing remaining types or mutations
 </EmergencyBailout>
 
 <JsonPrimitiveRules>
