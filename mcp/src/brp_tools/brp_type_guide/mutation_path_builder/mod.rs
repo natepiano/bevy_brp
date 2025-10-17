@@ -12,10 +12,10 @@ mod type_parser;
 mod types;
 mod variant_signature;
 
-pub use api::{build_mutation_paths, extract_spawn_format};
+pub(super) use api::{build_mutation_paths, extract_spawn_format};
 use error_stack::Report;
 use not_mutable_reason::NotMutableReason;
-pub use types::MutationPathExternal;
+pub(super) use types::MutationPathExternal;
 pub(super) use variant_signature::VariantSignature;
 
 // Re-export support functions as the public API
