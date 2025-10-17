@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Merge Batch Test Results into Mutation Test JSON (FULL SCHEMA format)
-# Usage: ./merge_batch_results.sh <results_file> <mutation_test_file>
+# Usage: ./merge_batch_results.sh <batch_number>
 #
-# Expects results_file to contain JSON array:
+# Expects batch_results_<batch_number>.json to contain JSON array:
 # [
 #   {"type": "...", "status": "PASS|FAIL", "fail_reason": "..."},
 #   ...
@@ -12,15 +12,19 @@
 set -e
 
 # Check arguments
-if [ $# -ne 2 ]; then
-    echo "Usage: $0 <results_file> <mutation_test_file>"
-    echo "  results_file:      Path to batch results JSON (array of test results)"
-    echo "  mutation_test_file: Path to mutation test JSON file to update"
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <batch_number>"
+    echo "  batch_number: The batch number to merge (e.g., 1, 2, 3)"
+    echo ""
+    echo "  Automatically uses:"
+    echo "    - Input:  .claude/transient/batch_results_<batch_number>.json"
+    echo "    - Output: .claude/transient/all_types.json"
     exit 1
 fi
 
-RESULTS_FILE="$1"
-MUTATION_TEST_FILE="$2"
+BATCH_NUMBER="$1"
+RESULTS_FILE=".claude/transient/batch_results_${BATCH_NUMBER}.json"
+MUTATION_TEST_FILE=".claude/transient/all_types.json"
 
 # Check if files exist
 if [ ! -f "$RESULTS_FILE" ]; then

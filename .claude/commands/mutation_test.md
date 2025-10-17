@@ -316,9 +316,17 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
        - **STOP IF** total_type_results != batch_size: "Missing [N] type results"
        - **STOP IF** any type != tested_type: "Subagent hallucinated type"
 
-    3. **Write and merge**: Save to `.claude/transient/batch_results_[BATCH_NUMBER].json`, execute merge script
+    3. **Write and merge**:
+       - Save results to `.claude/transient/batch_results_[BATCH_NUMBER].json`
+       - Execute merge script:
+         ```bash
+         ./.claude/scripts/mutation_test_merge_batch_results.sh [BATCH_NUMBER]
+         ```
+       - Script automatically uses:
+         - Input: `.claude/transient/batch_results_[BATCH_NUMBER].json`
+         - Output: `.claude/transient/all_types.json`
 
-    4. **Cleanup**: Remove temp file
+    4. **Cleanup**: Remove temp file `.claude/transient/batch_results_[BATCH_NUMBER].json`
 </ProcessBatchResults>
 
 <CheckForFailures>
