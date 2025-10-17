@@ -80,10 +80,11 @@ use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::constants::MAX_TYPE_RECURSION_DEPTH;
-use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
+use super::super::type_knowledge::{BRP_TYPE_KNOWLEDGE, KnowledgeKey};
 use super::new_types::{MutationPath, VariantName};
 use super::path_kind::PathKind;
-use super::types::{PathAction, VariantSignature};
+use super::types::PathAction;
+use super::variant_signature::VariantSignature;
 use super::{BuilderError, NotMutableReason};
 use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
@@ -263,7 +264,7 @@ impl RecursionContext {
     pub fn find_knowledge(
         &self,
     ) -> std::result::Result<
-        Option<&'static super::mutation_knowledge::MutationKnowledge>,
+        Option<&'static super::super::type_knowledge::TypeKnowledge>,
         BuilderError,
     > {
         // Try context-specific matches based on PathKind FIRST - these have higher priority
@@ -277,7 +278,7 @@ impl RecursionContext {
                 // Example: Camera3d.depth_texture_usages needs value 20, not generic u32 value
                 let key = KnowledgeKey::struct_field(parent_type, field_name.as_str());
                 tracing::debug!("Trying struct field match with key: {:?}", key);
-                if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&key) {
+                if let Some(knowledge) = BRP_TYPE_KNOWLEDGE.get(&key) {
                     tracing::debug!(
                         "Found struct field match for {}.{}: {:?}",
                         parent_type,
@@ -310,7 +311,7 @@ impl RecursionContext {
                                 *index,
                             );
 
-                            if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&key) {
+                            if let Some(knowledge) = BRP_TYPE_KNOWLEDGE.get(&key) {
                                 tracing::debug!(
                                     "Found enum signature knowledge for {parent_type}[{index}]: {:?}",
                                     knowledge.example()
@@ -342,7 +343,7 @@ impl RecursionContext {
 
         // Try exact type match as fallback - this handles most cases
         let exact_key = KnowledgeKey::exact(self.type_name());
-        Ok(BRP_MUTATION_KNOWLEDGE.get(&exact_key))
+        Ok(BRP_TYPE_KNOWLEDGE.get(&exact_key))
     }
 
     /// Creates a `NoMutableChildren` error with this context's type name

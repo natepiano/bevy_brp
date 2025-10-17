@@ -12,6 +12,7 @@ mod response_types;
 mod tool_all_types;
 mod tool_type_guide;
 mod type_kind;
+mod type_knowledge;
 
 // Re-export public API
 // Internal use for format discovery

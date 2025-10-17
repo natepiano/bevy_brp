@@ -8,7 +8,7 @@ use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
-use super::new_types::{MutationPath, StructFieldName, VariantName};
+use super::new_types::{MutationPath, VariantName};
 use super::path_kind::PathKind;
 
 /// Action to take regarding path creation during recursion
@@ -30,37 +30,6 @@ pub enum Mutability {
     NotMutable,
     /// Path is partially mutable (some elements mutable, others not)
     PartiallyMutable,
-}
-
-/// Variant signature types for enum variants - used for grouping similar structures
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
-pub enum VariantSignature {
-    /// Unit variant (no data)
-    Unit,
-    /// Tuple variant with ordered types
-    Tuple(Vec<BrpTypeName>),
-    /// Struct variant with named fields and types
-    Struct(Vec<(StructFieldName, BrpTypeName)>),
-}
-
-impl std::fmt::Display for VariantSignature {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Unit => write!(f, "unit"),
-            Self::Tuple(types) => {
-                let type_names: Vec<String> =
-                    types.iter().map(|t| t.display_name().to_string()).collect();
-                write!(f, "tuple({})", type_names.join(", "))
-            }
-            Self::Struct(fields) => {
-                let field_strs: Vec<String> = fields
-                    .iter()
-                    .map(|(name, type_name)| format!("{}: {}", name, type_name.display_name()))
-                    .collect();
-                write!(f, "struct{{{}}}", field_strs.join(", "))
-            }
-        }
-    }
 }
 
 /// Example value for a mutation path

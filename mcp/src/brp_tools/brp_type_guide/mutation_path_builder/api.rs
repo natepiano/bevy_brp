@@ -7,15 +7,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use error_stack::Report;
 use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
-use super::super::constants::TYPE_BEVY_ENTITY;
 use super::super::type_kind::TypeKind;
 use super::builder::recurse_mutation_paths;
 use super::enum_path_builder::select_preferred_example;
-use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
 use super::types::{MutationPathExternal, PathExample};
@@ -74,20 +71,4 @@ pub fn extract_spawn_format(
             PathExample::Simple(val) => Some(val.clone()),
             PathExample::EnumRoot { groups, .. } => select_preferred_example(groups),
         })
-}
-
-/// Get the example value for `bevy_ecs::entity::Entity` type from mutation knowledge
-///
-/// This is used for generating agent guidance messages that reference Entity IDs.
-/// Returns an error if the Entity type knowledge is missing or invalid.
-pub fn get_entity_example_value() -> Result<u64> {
-    BRP_MUTATION_KNOWLEDGE
-        .get(&KnowledgeKey::exact(TYPE_BEVY_ENTITY))
-        .and_then(|knowledge| knowledge.example().as_u64())
-        .ok_or_else(|| {
-            Error::InvalidState(
-                "Entity type knowledge missing or invalid in BRP_MUTATION_KNOWLEDGE".to_string(),
-            )
-        })
-        .map_err(Report::new)
 }

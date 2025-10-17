@@ -44,13 +44,12 @@ use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
 use super::mutation_path_internal::MutationPathInternal;
 use super::new_types::{StructFieldName, VariantName};
-use super::path_kind::MutationPathDescriptor;
-use super::path_kind::PathKind;
+use super::path_kind::{MutationPathDescriptor, PathKind};
 use super::recursion_context::RecursionContext;
 use super::types::{
     EnumPathData, ExampleGroup, Mutability, MutabilityIssue, PathAction, PathExample,
-    VariantSignature,
 };
+use super::variant_signature::VariantSignature;
 use super::{BuilderError, NotMutableReason, builder};
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -59,7 +58,7 @@ use crate::json_schema::SchemaField;
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct EnumVariantKind {
-    name: VariantName,
+    name:      VariantName,
     signature: VariantSignature,
 }
 
@@ -95,7 +94,7 @@ impl EnumVariantKind {
 
             let qualified_name = format!("{type_name}::{variant_str}");
             return Some(Self {
-                name: VariantName::from(qualified_name),
+                name:      VariantName::from(qualified_name),
                 signature: VariantSignature::Unit,
             });
         }
@@ -120,7 +119,7 @@ impl EnumVariantKind {
 
         // Unit variant (no fields)
         Some(Self {
-            name: variant_name,
+            name:      variant_name,
             signature: VariantSignature::Unit,
         })
     }
@@ -687,8 +686,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -962,9 +961,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathData {
-            variant_chain: ctx.variant_chain.clone(),
+            variant_chain:       ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example: None,
+            root_example:        None,
         })
     };
 
@@ -972,7 +971,7 @@ fn build_enum_root_path(
     MutationPathInternal {
         mutation_path: ctx.mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups: enum_examples,
+            groups:     enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),

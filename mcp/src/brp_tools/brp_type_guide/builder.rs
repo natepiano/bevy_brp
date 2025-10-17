@@ -21,6 +21,7 @@ use super::constants::{
 use super::mutation_path_builder::{self, MutationPathExternal};
 use super::response_types::{BrpTypeName, SchemaInfo};
 use super::type_kind::TypeKind;
+use super::type_knowledge::TypeKnowledge;
 use crate::error::Result;
 use crate::json_object::{IntoStrings, JsonObjectAccess};
 use crate::json_schema::SchemaField;
@@ -133,9 +134,8 @@ impl TypeGuide {
             .any(|path| path.path_info.type_name.as_str().contains(TYPE_BEVY_ENTITY));
 
         if has_entity {
-            // Get the Entity example value from mutation knowledge - encapsulated
-            // in `mutation_path_builder` so we use this helper function
-            let entity_example = mutation_path_builder::get_entity_example_value()?;
+            // Get the Entity example value from type knowledge
+            let entity_example = TypeKnowledge::get_entity_example_value()?;
 
             let entity_suffix = ENTITY_WARNING.replace("{}", &entity_example.to_string());
             Ok(format!("{AGENT_GUIDANCE}{entity_suffix}"))

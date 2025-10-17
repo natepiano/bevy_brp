@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::mutation_path_builder::MutationKnowledge;
+use super::type_knowledge::TypeKnowledge;
 
 /// A newtype wrapper for BRP type names used as `HashMap` keys
 ///
@@ -76,7 +76,7 @@ impl BrpTypeName {
 
     /// Get the display name for this type, using simplified name from knowledge if available
     pub fn display_name(&self) -> Self {
-        MutationKnowledge::get_simplified_name(self).unwrap_or_else(|| self.clone())
+        TypeKnowledge::get_simplified_name(self).unwrap_or_else(|| self.clone())
     }
 
     /// Shorten an enum type name while preserving generic parameters
@@ -144,10 +144,10 @@ impl From<&String> for BrpTypeName {
     }
 }
 
-// this one is because in `mutation_knowledge` we allow
+// this one is because in `type_knowledge` we allow
 // passing in an impl Into<BrpTypeName>
 // useful for passing in &str and String
-// but we also want to be able to psas in a `&BrpTypeName`
+// but we also want to be able to pass in a `&BrpTypeName`
 // hence this odd beast
 impl From<&Self> for BrpTypeName {
     fn from(type_name: &Self) -> Self {

@@ -14,8 +14,7 @@ use serde_json::{Value, json};
 use super::super::BuilderError;
 use super::super::new_types::StructFieldName;
 use super::super::path_builder::PathBuilder;
-use super::super::path_kind::MutationPathDescriptor;
-use super::super::path_kind::PathKind;
+use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -52,14 +51,14 @@ impl PathBuilder for StructMutationBuilder {
             // Note: extract_field_type handles complex schemas with $ref
             let Some(type_name) = field_schema.extract_field_type() else {
                 return Err(Error::SchemaProcessing {
-                    message: format!(
+                    message:   format!(
                         "Failed to extract type for field '{}' in struct '{}'",
                         field_name,
                         ctx.type_name()
                     ),
                     type_name: Some(ctx.type_name().to_string()),
                     operation: Some("extract_field_type".to_string()),
-                    details: Some(format!("Field: {field_name}")),
+                    details:   Some(format!("Field: {field_name}")),
                 }
                 .into());
             };

@@ -24,11 +24,11 @@ use error_stack::Report;
 use serde_json::{Value, json};
 
 use super::super::type_kind::TypeKind;
+use super::super::type_knowledge::TypeKnowledge;
 use super::builders::{
     ArrayMutationBuilder, ListMutationBuilder, MapMutationBuilder, SetMutationBuilder,
     StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
 };
-use super::mutation_knowledge::MutationKnowledge;
 use super::mutation_path_internal::MutationPathInternal;
 use super::new_types::VariantName;
 use super::not_mutable_reason::NotMutableReason;
@@ -42,11 +42,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -449,9 +449,9 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain: ctx.variant_chain.clone(),
+                variant_chain:       ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example: None,
+                root_example:        None,
             })
         };
 
@@ -620,7 +620,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 let example = knowledge.example().clone();
 
                 // Only return early for TreatAsValue types - they should not recurse
-                if matches!(knowledge, MutationKnowledge::TreatAsRootValue { .. }) {
+                if matches!(knowledge, TypeKnowledge::TreatAsRootValue { .. }) {
                     return (
                         Some(Ok(vec![Self::build_mutation_path_internal(
                             ctx,
