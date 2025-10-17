@@ -34,9 +34,9 @@ pub struct RecursionDepth(usize);
 pub struct MutationPathDescriptor(String);
 ```
 
-### 6. FullMutationPath (mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs)
+### 6. MutationPath (mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs)
 ```rust
-pub struct FullMutationPath(String);
+pub struct MucationPath(String);
 ```
 
 ## How shrinkwraprs Could Simplify These
@@ -115,7 +115,7 @@ shrinkwraprs = "0.3"
 ### High Value Targets
 - **RecursionDepth**: Has custom const methods (ZERO, increment, exceeds_limit) but would still benefit from auto-derived Deref
 - **MutationPathDescriptor**: Simple String wrapper
-- **FullMutationPath**: Simple String wrapper
+- **MutationPath**: Simple String wrapper
 
 ### Medium Value Targets
 - **Port**: Would save Deref boilerplate but needs custom deserialize
@@ -133,7 +133,7 @@ shrinkwraprs = "0.3"
 
 **YES, adopt shrinkwraprs for simple wrapper types** but:
 
-1. Start with the simplest types (RecursionDepth, MutationPathDescriptor, FullMutationPath)
+1. Start with the simplest types (RecursionDepth, MutationPathDescriptor, MutationPath)
 2. Keep manual implementations for types with validation logic
 3. Benchmark compile time impact before full adoption
 4. Document the decision in code comments
@@ -144,7 +144,7 @@ shrinkwraprs = "0.3"
 Phase 1: Simple types
 - RecursionDepth
 - MutationPathDescriptor
-- FullMutationPath
+- MutationPath
 
 Phase 2: Types with validation (if Phase 1 successful)
 - Port (keep custom Deserialize)

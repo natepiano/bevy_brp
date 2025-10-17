@@ -27,7 +27,7 @@ use std::fmt::Display;
 use serde_json::{Value, json};
 
 use super::super::brp_type_name::BrpTypeName;
-use super::types::{MutabilityIssue, MutationStatus};
+use super::types::{MutabilityIssue, Mutability};
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +35,7 @@ pub enum NotMutableReason {
     /// Container type has non-mutable element type
     NonMutableHandle {
         container_type: BrpTypeName,
-        element_type:   BrpTypeName,
+        element_type: BrpTypeName,
     },
     /// Type not found in registry
     NotInRegistry(BrpTypeName),
@@ -49,10 +49,10 @@ pub enum NotMutableReason {
     NoExampleAvailable(BrpTypeName),
     /// Some children are mutable, others are not (results in `PartiallyMutable`)
     PartialChildMutability {
-        parent_type:       BrpTypeName,
-        message:           String,
-        mutable:           Vec<String>,
-        not_mutable:       Vec<String>,
+        parent_type: BrpTypeName,
+        message: String,
+        mutable: Vec<String>,
+        not_mutable: Vec<String>,
         partially_mutable: Vec<String>,
     },
 }
@@ -94,7 +94,7 @@ impl NotMutableReason {
 
         // First pass: Collect all statuses for each unique path string
         // This detects when the same path appears with different statuses across variants
-        let mut path_statuses: HashMap<String, HashSet<MutationStatus>> = HashMap::new();
+        let mut path_statuses: HashMap<String, HashSet<Mutability>> = HashMap::new();
 
         for mutability_issue in mutability_issues {
             let path_str = mutability_issue.target.to_string();
@@ -118,9 +118,9 @@ impl NotMutableReason {
             } else if let Some(&status) = statuses.iter().next() {
                 // Path has consistent status across all variants → use that status
                 match status {
-                    MutationStatus::Mutable => mutable.push(path_str),
-                    MutationStatus::NotMutable => not_mutable.push(path_str),
-                    MutationStatus::PartiallyMutable => partially_mutable.push(path_str),
+                    Mutability::Mutable => mutable.push(path_str),
+                    Mutability::NotMutable => not_mutable.push(path_str),
+                    Mutability::PartiallyMutable => partially_mutable.push(path_str),
                 }
             }
         }

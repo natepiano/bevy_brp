@@ -14,6 +14,7 @@ from collections import defaultdict
 # JSON value type - recursive definition for arbitrary JSON
 JsonValue = str | int | float | bool | None | dict[str, "JsonValue"] | list["JsonValue"]
 
+
 # Type definitions for comparison JSON structure
 class ChangeData(TypedDict):
     type_name: str
@@ -24,9 +25,11 @@ class ChangeData(TypedDict):
     current: JsonValue
     mutation_path: str | None
 
+
 class MetadataDict(TypedDict):
     generated_at: str
     output_version: str
+
 
 class FileStatsDict(TypedDict):
     total_types: int
@@ -34,11 +37,13 @@ class FileStatsDict(TypedDict):
     types_with_mutations: int
     total_mutation_paths: int
 
+
 class SummaryDict(TypedDict):
     total_changes: int
     types_modified: int
     types_added: int
     types_removed: int
+
 
 class ComparisonData(TypedDict):
     metadata: MetadataDict
@@ -46,10 +51,12 @@ class ComparisonData(TypedDict):
     comparison_summary: SummaryDict
     all_changes: list[ChangeData]
 
+
 def get_comparison_file() -> Path:
     """Get the path to the comparison file using TMPDIR."""
-    tmpdir = os.environ.get('TMPDIR', '/tmp')
-    return Path(tmpdir) / 'mutation_comparison_full.json'
+    tmpdir = os.environ.get("TMPDIR", "/tmp")
+    return Path(tmpdir) / "mutation_comparison_full.json"
+
 
 def load_comparison_data() -> ComparisonData:
     """Load the comparison data file."""
@@ -63,6 +70,7 @@ def load_comparison_data() -> ComparisonData:
     with open(filepath) as f:
         data = cast(ComparisonData, json.load(f))
         return data
+
 
 def show_summary(data: ComparisonData) -> None:
     """Show the comparison summary."""
@@ -90,6 +98,7 @@ def show_summary(data: ComparisonData) -> None:
     else:
         print("✅ No changes detected!")
 
+
 def show_stats(data: ComparisonData) -> None:
     """Show statistics about all changes."""
     all_changes = data.get("all_changes", [])
@@ -107,24 +116,31 @@ def show_stats(data: ComparisonData) -> None:
     by_type_name: dict[str, int] = {}
 
     for change in all_changes:
-        change_type = change.get('change_type', 'unknown')
-        type_name = change.get('type_name', 'unknown')
+        change_type = change.get("change_type", "unknown")
+        type_name = change.get("type_name", "unknown")
 
         by_change_type[change_type] = by_change_type.get(change_type, 0) + 1
         by_type_name[type_name] = by_type_name.get(type_name, 0) + 1
 
     print("\nBy change type:")
-    for change_type, count in sorted(by_change_type.items(), key=lambda x: x[1], reverse=True):
+    for change_type, count in sorted(
+        by_change_type.items(), key=lambda x: x[1], reverse=True
+    ):
         print(f"   {change_type}: {count}")
 
     print(f"\nTop 10 affected types:")
-    for type_name, count in sorted(by_type_name.items(), key=lambda x: x[1], reverse=True)[:10]:
+    for type_name, count in sorted(
+        by_type_name.items(), key=lambda x: x[1], reverse=True
+    )[:10]:
         display_name = type_name if len(type_name) < 50 else type_name[:47] + "..."
         print(f"   {display_name}: {count}")
 
+
 def get_session_state() -> dict[str, int]:
     """Get the current review session state."""
-    session_file = Path(os.environ.get('TMPDIR', '/tmp')) / 'unexpected_review_session.json'
+    session_file = (
+        Path(os.environ.get("TMPDIR", "/tmp")) / "unexpected_review_session.json"
+    )
 
     if session_file.exists():
         try:
@@ -136,12 +152,16 @@ def get_session_state() -> dict[str, int]:
 
     return {"change_index": 0}
 
+
 def save_session_state(change_index: int) -> None:
     """Save the current review session state."""
-    session_file = Path(os.environ.get('TMPDIR', '/tmp')) / 'unexpected_review_session.json'
+    session_file = (
+        Path(os.environ.get("TMPDIR", "/tmp")) / "unexpected_review_session.json"
+    )
 
-    with open(session_file, 'w') as f:
+    with open(session_file, "w") as f:
         json.dump({"change_index": change_index}, f)
+
 
 def show_next_change(data: ComparisonData) -> None:
     """Show the next change for review."""
@@ -166,17 +186,17 @@ def show_next_change(data: ComparisonData) -> None:
     print()
     print(f"**Type**: `{change.get('type_name', 'unknown')}`")
 
-    mutation_path = change.get('mutation_path', '')
+    mutation_path = change.get("mutation_path", "")
     print(f"**Path**: `{mutation_path}`")
 
     # Create change description based on what changed
-    change_type = change.get('change_type', 'unknown')
-    description = change.get('description', '')
-    if 'examples' in description and 'example' in description:
+    change_type = change.get("change_type", "unknown")
+    description = change.get("description", "")
+    if "examples" in description and "example" in description:
         change_desc = "examples array → example field"
-    elif change_type == 'added':
+    elif change_type == "added":
         change_desc = f"Field added: {description}"
-    elif change_type == 'removed':
+    elif change_type == "removed":
         change_desc = f"Field removed: {description}"
     else:
         change_desc = description
@@ -184,8 +204,8 @@ def show_next_change(data: ComparisonData) -> None:
     print()
 
     # Show full baseline and current values in the exact format
-    baseline = change.get('baseline')
-    current = change.get('current')
+    baseline = change.get("baseline")
+    current = change.get("current")
 
     print("```json")
     print("// BASELINE")
@@ -216,28 +236,36 @@ def show_next_change(data: ComparisonData) -> None:
     # Save state for next time
     save_session_state(change_index + 1)
 
+
 def reset_session() -> None:
     """Reset the review session to start from the beginning."""
     save_session_state(0)
     print("🔄 Review session reset to beginning")
 
 
-def get_structural_combinations(data: ComparisonData) -> dict[str, dict[str, list[ChangeData]]]:
+def get_structural_combinations(
+    data: ComparisonData,
+) -> dict[str, dict[str, list[ChangeData]]]:
     """Group changes by type and mutation path for structural review."""
     type_path_changes = defaultdict(lambda: defaultdict(list))
 
     # Process all changes
     all_changes = data.get("all_changes", [])
     for change in all_changes:
-        type_name = change.get('type_name', 'unknown')
-        mutation_path = change.get('mutation_path')
+        type_name = change.get("type_name", "unknown")
+        mutation_path = change.get("mutation_path")
 
         # Only include mutation_paths changes
         if mutation_path is not None:
-            display_path = 'Root Path ("")' if mutation_path == "" else f'Mutation Path "{mutation_path}"'
+            display_path = (
+                'Root Path ("")'
+                if mutation_path == ""
+                else f'Mutation Path "{mutation_path}"'
+            )
             type_path_changes[type_name][display_path].append(change)
 
     return dict(type_path_changes)
+
 
 def show_structural_summary(data: ComparisonData) -> None:
     """Show structural differences grouped by type and mutation path."""
@@ -256,22 +284,29 @@ def show_structural_summary(data: ComparisonData) -> None:
         print(f"\n{type_name}:")
 
         # Sort paths: Root path first, then mutation paths
-        sorted_paths = sorted(paths.keys(), key=lambda x: (not x.startswith('Root'), x))
+        sorted_paths = sorted(paths.keys(), key=lambda x: (not x.startswith("Root"), x))
 
         for path_display in sorted_paths:
             changes = paths[path_display]
             change_count = len(changes)
-            change_types = set(change.get('change_type', 'unknown') for change in changes)
-            change_summary = ', '.join(sorted(change_types))
+            change_types = set(
+                change.get("change_type", "unknown") for change in changes
+            )
+            change_summary = ", ".join(sorted(change_types))
 
             print(f"  {path_display}: {change_count} modifications ({change_summary})")
             total_combinations += 1
 
-    print(f"\n📈 TOTAL: {len(type_path_changes)} types, {total_combinations} type+path combinations")
+    print(
+        f"\n📈 TOTAL: {len(type_path_changes)} types, {total_combinations} type+path combinations"
+    )
+
 
 def get_structural_session_state() -> dict[str, int]:
     """Get the current structural review session state."""
-    session_file = Path(os.environ.get('TMPDIR', '/tmp')) / 'structural_review_session.json'
+    session_file = (
+        Path(os.environ.get("TMPDIR", "/tmp")) / "structural_review_session.json"
+    )
 
     if session_file.exists():
         try:
@@ -282,14 +317,20 @@ def get_structural_session_state() -> dict[str, int]:
 
     return {"combination_index": 0}
 
+
 def save_structural_session_state(combination_index: int) -> None:
     """Save the current structural review session state."""
-    session_file = Path(os.environ.get('TMPDIR', '/tmp')) / 'structural_review_session.json'
+    session_file = (
+        Path(os.environ.get("TMPDIR", "/tmp")) / "structural_review_session.json"
+    )
 
-    with open(session_file, 'w') as f:
+    with open(session_file, "w") as f:
         json.dump({"combination_index": combination_index}, f)
 
-def get_full_mutation_path_data(type_name: str, mutation_path: str, file_path: str) -> JsonValue:
+
+def get_mutation_path_data(
+    type_name: str, mutation_path: str, file_path: str
+) -> JsonValue:
     """Get the complete mutation path data from a file."""
     import json
     from pathlib import Path
@@ -298,12 +339,12 @@ def get_full_mutation_path_data(type_name: str, mutation_path: str, file_path: s
     if not path.exists():
         return None
 
-    with open(path, 'r') as f:
+    with open(path, "r") as f:
         file_data = json.load(f)
 
     # Handle wrapped format
-    if 'type_guide' in file_data:
-        type_guide = file_data['type_guide']
+    if "type_guide" in file_data:
+        type_guide = file_data["type_guide"]
     else:
         type_guide = file_data
 
@@ -311,14 +352,15 @@ def get_full_mutation_path_data(type_name: str, mutation_path: str, file_path: s
         return None
 
     type_data = type_guide[type_name]
-    if 'mutation_paths' not in type_data:
+    if "mutation_paths" not in type_data:
         return None
 
-    mutation_paths = type_data['mutation_paths']
+    mutation_paths = type_data["mutation_paths"]
     if mutation_path not in mutation_paths:
         return None
 
     return mutation_paths[mutation_path]
+
 
 def show_next_structural(data: ComparisonData) -> None:
     """Show the next type+path combination for structural review."""
@@ -332,7 +374,7 @@ def show_next_structural(data: ComparisonData) -> None:
     all_combinations = []
     for type_name in sorted(type_path_changes.keys()):
         paths = type_path_changes[type_name]
-        sorted_paths = sorted(paths.keys(), key=lambda x: (not x.startswith('Root'), x))
+        sorted_paths = sorted(paths.keys(), key=lambda x: (not x.startswith("Root"), x))
         for path_display in sorted_paths:
             changes = paths[path_display]
             all_combinations.append((type_name, path_display, changes))
@@ -349,13 +391,17 @@ def show_next_structural(data: ComparisonData) -> None:
     type_name, path_display, changes = all_combinations[combination_index]
 
     # Get the actual mutation path from the display string
-    mutation_path = path_display.replace('Mutation Path ', '').strip('"')
+    mutation_path = path_display.replace("Mutation Path ", "").strip('"')
     if path_display == 'Root Path ("")':
         mutation_path = ""
 
     # Get the COMPLETE mutation path data for baseline and current
-    baseline_path_data = get_full_mutation_path_data(type_name, mutation_path, '.claude/transient/all_types_baseline.json')
-    current_path_data = get_full_mutation_path_data(type_name, mutation_path, '.claude/transient/all_types.json')
+    baseline_path_data = get_mutation_path_data(
+        type_name, mutation_path, ".claude/transient/all_types_baseline.json"
+    )
+    current_path_data = get_mutation_path_data(
+        type_name, mutation_path, ".claude/transient/all_types.json"
+    )
 
     # Format exactly as specified in FormatComparison
     print("## Mutation Path Comparison")
@@ -367,10 +413,10 @@ def show_next_structural(data: ComparisonData) -> None:
     change_summary = []
     has_examples_to_example = False
     for change in changes:
-        path = change.get('path', '')
-        if 'examples' in path and change.get('change_type') == 'removed':
+        path = change.get("path", "")
+        if "examples" in path and change.get("change_type") == "removed":
             has_examples_to_example = True
-        elif 'example' in path and change.get('change_type') == 'added':
+        elif "example" in path and change.get("change_type") == "added":
             has_examples_to_example = True
 
     if has_examples_to_example:
@@ -379,7 +425,7 @@ def show_next_structural(data: ComparisonData) -> None:
         # Count change types
         change_types = {}
         for change in changes:
-            ct = change.get('change_type', 'unknown')
+            ct = change.get("change_type", "unknown")
             change_types[ct] = change_types.get(ct, 0) + 1
         change_summary = f"{len(changes)} nested changes ({', '.join(f'{ct}: {count}' for ct, count in change_types.items())})"
 
@@ -405,17 +451,23 @@ def show_next_structural(data: ComparisonData) -> None:
     print("```")
     print()
 
-    print(f"[Structural combination {combination_index + 1} of {len(all_combinations)}]")
+    print(
+        f"[Structural combination {combination_index + 1} of {len(all_combinations)}]"
+    )
 
     # Save state for next time
     save_structural_session_state(combination_index + 1)
+
 
 def reset_structural_session() -> None:
     """Reset the structural review session to start from the beginning."""
     save_structural_session_state(0)
     print("🔄 Structural review session reset to beginning")
 
-def show_filtered_changes(data: ComparisonData, filter_type: str, limit: int = 10) -> None:
+
+def show_filtered_changes(
+    data: ComparisonData, filter_type: str, limit: int = 10
+) -> None:
     """Show changes filtered by change type."""
     all_changes = data.get("all_changes", [])
 
@@ -425,51 +477,67 @@ def show_filtered_changes(data: ComparisonData, filter_type: str, limit: int = 1
 
     # Filter by change type
     filtered_changes = [
-        change for change in all_changes
-        if change.get('change_type', '').lower() == filter_type.lower()
+        change
+        for change in all_changes
+        if change.get("change_type", "").lower() == filter_type.lower()
     ]
 
     if not filtered_changes:
         print(f"❌ No changes found with type '{filter_type}'")
-        available_types = set(change.get('change_type', 'unknown') for change in all_changes)
+        available_types = set(
+            change.get("change_type", "unknown") for change in all_changes
+        )
         print(f"Available types: {', '.join(sorted(available_types))}")
         return
 
     print(f"🔍 FILTERED CHANGES: {filter_type.upper()}")
     print("=" * 60)
-    print(f"Showing first {min(limit, len(filtered_changes))} of {len(filtered_changes)} changes")
+    print(
+        f"Showing first {min(limit, len(filtered_changes))} of {len(filtered_changes)} changes"
+    )
     print()
 
     for i, change in enumerate(filtered_changes[:limit]):
-        print(f"{i+1}. Type: {change.get('type_name', 'unknown')}")
+        print(f"{i + 1}. Type: {change.get('type_name', 'unknown')}")
         print(f"   Path: {change.get('path', 'unknown')}")
 
         # Show mutation path if available
-        mutation_path = change.get('mutation_path')
+        mutation_path = change.get("mutation_path")
         if mutation_path is not None:
-            display_path = f'"{mutation_path}"' if mutation_path == "" else mutation_path
+            display_path = (
+                f'"{mutation_path}"' if mutation_path == "" else mutation_path
+            )
             print(f"   Mutation Path: {display_path}")
 
         print(f"   Description: {change.get('description', '')}")
 
         # Show baseline and current values (abbreviated)
-        baseline = change.get('baseline')
-        current = change.get('current')
+        baseline = change.get("baseline")
+        current = change.get("current")
 
         if baseline is not None and current is not None:
-            baseline_str = str(baseline) if len(str(baseline)) < 50 else str(baseline)[:47] + "..."
-            current_str = str(current) if len(str(current)) < 50 else str(current)[:47] + "..."
+            baseline_str = (
+                str(baseline) if len(str(baseline)) < 50 else str(baseline)[:47] + "..."
+            )
+            current_str = (
+                str(current) if len(str(current)) < 50 else str(current)[:47] + "..."
+            )
             print(f"   Change: {baseline_str} → {current_str}")
         elif baseline is not None:
-            baseline_str = str(baseline) if len(str(baseline)) < 50 else str(baseline)[:47] + "..."
+            baseline_str = (
+                str(baseline) if len(str(baseline)) < 50 else str(baseline)[:47] + "..."
+            )
             print(f"   Removed: {baseline_str}")
         elif current is not None:
-            current_str = str(current) if len(str(current)) < 50 else str(current)[:47] + "..."
+            current_str = (
+                str(current) if len(str(current)) < 50 else str(current)[:47] + "..."
+            )
             print(f"   Added: {current_str}")
         print()
 
     if len(filtered_changes) > limit:
         print(f"... and {len(filtered_changes) - limit} more changes of this type")
+
 
 def main() -> None:
     if len(sys.argv) < 2:
@@ -526,6 +594,7 @@ def main() -> None:
     else:
         print(f"❌ Unknown command: {command}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

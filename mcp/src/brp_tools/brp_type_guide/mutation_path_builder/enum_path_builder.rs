@@ -45,7 +45,7 @@ use super::super::type_kind::TypeKind;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
 use super::types::{
-    EnumPathData, ExampleGroup, MutabilityIssue, MutationStatus, PathAction, PathExample,
+    EnumPathData, ExampleGroup, Mutability, MutabilityIssue, PathAction, PathExample,
     StructFieldName, VariantName, VariantSignature,
 };
 use super::{BuilderError, MutationPathInternal, NotMutableReason, PathKind, builder};
@@ -56,7 +56,7 @@ use crate::json_schema::SchemaField;
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct EnumVariantKind {
-    name:      VariantName,
+    name: VariantName,
     signature: VariantSignature,
 }
 
@@ -92,7 +92,7 @@ impl EnumVariantKind {
 
             let qualified_name = format!("{type_name}::{variant_str}");
             return Some(Self {
-                name:      VariantName::from(qualified_name),
+                name: VariantName::from(qualified_name),
                 signature: VariantSignature::Unit,
             });
         }
@@ -117,7 +117,7 @@ impl EnumVariantKind {
 
         // Unit variant (no fields)
         Some(Self {
-            name:      variant_name,
+            name: variant_name,
             signature: VariantSignature::Unit,
         })
     }
@@ -185,7 +185,7 @@ pub fn process_enum(
     tracing::debug!(
         "ENUM_PROCESS: type={}, path={}, depth={}",
         ctx.type_name(),
-        ctx.full_mutation_path,
+        ctx.mutation_path,
         *ctx.depth
     );
 
@@ -425,7 +425,7 @@ fn build_variant_example(
 ///
 /// 1. **First priority**: Non-unit `Mutable` variant with a complete example
 ///    - Provides rich examples for tuple/struct variants
-///    - Explicitly checks `mutation_status` to ensure spawnability
+///    - Explicitly checks `mutability` to ensure spawnability
 ///
 /// 2. **Second priority**: ANY `Mutable` variant with an example (including unit)
 ///    - Handles enums where all non-unit variants are `not_mutable`/`partially_mutable`
@@ -435,14 +435,12 @@ fn build_variant_example(
 ///    - The entire enum is not spawnable
 pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
     // First priority: Find a non-unit Mutable variant with a complete example
-    // Note: We check mutation_status explicitly for clarity and safety, even though
+    // Note: We check mutability explicitly for clarity and safety, even though
     // example.is_some() now implies Mutable due to build_variant_group_example's logic
     examples
         .iter()
         .find(|eg| {
-            eg.signature != "unit"
-                && eg.example.is_some()
-                && eg.mutation_status == MutationStatus::Mutable
+            eg.signature != "unit" && eg.example.is_some() && eg.mutability == Mutability::Mutable
         })
         .and_then(|eg| eg.example.clone())
         .or_else(|| {
@@ -450,7 +448,7 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
             // This handles cases where all non-unit variants are not_mutable/partially_mutable
             examples
                 .iter()
-                .find(|eg| eg.example.is_some() && eg.mutation_status == MutationStatus::Mutable)
+                .find(|eg| eg.example.is_some() && eg.mutability == Mutability::Mutable)
                 .and_then(|eg| eg.example.clone())
         })
 }
@@ -532,29 +530,29 @@ fn process_signature_path(
 }
 
 /// Determine the mutation status for a signature based on its child paths
-fn determine_signature_mutation_status(
+fn determine_signature_mutability(
     signature: &VariantSignature,
     signature_child_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
-) -> MutationStatus {
+) -> Mutability {
     if matches!(signature, VariantSignature::Unit) {
         // Unit variants are always mutable (no fields to construct)
-        return MutationStatus::Mutable;
+        return Mutability::Mutable;
     }
 
     // Aggregate field statuses from direct children at this depth
     // Use ONLY this signature's children (not all_child_paths from other signatures)
-    let signature_field_statuses: Vec<MutationStatus> = signature_child_paths
+    let signature_field_statuses: Vec<Mutability> = signature_child_paths
         .iter()
         .filter(|p| p.is_direct_child_at_depth(*ctx.depth))
-        .map(|p| p.mutation_status)
+        .map(|p| p.mutability)
         .collect();
 
     if signature_field_statuses.is_empty() {
         // No fields (shouldn't happen, but handle gracefully)
-        MutationStatus::Mutable
+        Mutability::Mutable
     } else {
-        builder::aggregate_mutation_statuses(&signature_field_statuses)
+        builder::aggregate_mutability(&signature_field_statuses)
     }
 }
 
@@ -571,7 +569,7 @@ fn build_variant_group_example(
     signature: &VariantSignature,
     variants_in_group: &[EnumVariantKind],
     child_examples: &HashMap<MutationPathDescriptor, Value>,
-    signature_status: MutationStatus,
+    signature_status: Mutability,
     ctx: &RecursionContext,
 ) -> std::result::Result<Option<Value>, BuilderError> {
     let representative = variants_in_group
@@ -580,7 +578,7 @@ fn build_variant_group_example(
 
     let example = if matches!(
         signature_status,
-        MutationStatus::NotMutable | MutationStatus::PartiallyMutable
+        Mutability::NotMutable | Mutability::PartiallyMutable
     ) {
         None // Omit example field for variants that cannot be fully constructed
     } else {
@@ -635,7 +633,7 @@ fn process_children(
 
         // Determine mutation status for this signature
         let signature_status =
-            determine_signature_mutation_status(signature, &signature_child_paths, ctx);
+            determine_signature_mutability(signature, &signature_child_paths, ctx);
 
         // Build example for this variant group
         let example = build_variant_group_example(
@@ -650,7 +648,7 @@ fn process_children(
             applicable_variants,
             signature: signature.to_string(),
             example,
-            mutation_status: signature_status,
+            mutability: signature_status,
         });
 
         // Add this signature's children to the combined collection
@@ -686,8 +684,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -889,13 +887,13 @@ fn build_partial_root_examples(
 }
 
 /// Build mutation status reason for enums based on variant mutability
-fn build_enum_mutation_status_reason(
-    enum_mutation_status: MutationStatus,
+fn build_enum_mutability_reason(
+    enum_mutability: Mutability,
     enum_examples: &[ExampleGroup],
     ctx: &RecursionContext,
 ) -> Option<Value> {
-    match enum_mutation_status {
-        MutationStatus::PartiallyMutable => {
+    match enum_mutability {
+        Mutability::PartiallyMutable => {
             // Create `MutabilityIssue` for each variant using `from_variant_name`
             let mutability_issues: Vec<MutabilityIssue> = enum_examples
                 .iter()
@@ -904,7 +902,7 @@ fn build_enum_mutation_status_reason(
                         MutabilityIssue::from_variant_name(
                             variant.clone(),
                             ctx.type_name().clone(),
-                            eg.mutation_status,
+                            eg.mutability,
                         )
                     })
                 })
@@ -919,13 +917,13 @@ fn build_enum_mutation_status_reason(
                 message,
             ))
         }
-        MutationStatus::NotMutable => {
+        Mutability::NotMutable => {
             // All variants are not mutable
             Some(json!({
                 "message": "No variants in this enum can be mutated"
             }))
         }
-        MutationStatus::Mutable => None,
+        Mutability::Mutable => None,
     }
 }
 
@@ -934,31 +932,31 @@ fn build_enum_root_path(
     ctx: &RecursionContext,
     enum_examples: Vec<ExampleGroup>,
     default_example: Value,
-    enum_mutation_status: MutationStatus,
-    mutation_status_reason: Option<Value>,
+    enum_mutability: Mutability,
+    mutability_reason: Option<Value>,
 ) -> MutationPathInternal {
     // Generate enum data only if we have a variant chain (nested in another enum)
     let enum_data = if ctx.variant_chain.is_empty() {
         None
     } else {
         Some(EnumPathData {
-            variant_chain:       ctx.variant_chain.clone(),
+            variant_chain: ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example:        None,
+            root_example: None,
         })
     };
 
     // Direct field assignment - enums ALWAYS generate examples arrays
     MutationPathInternal {
-        full_mutation_path: ctx.full_mutation_path.clone(),
+        mutation_path: ctx.mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups:     enum_examples,
+            groups: enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),
         path_kind: ctx.path_kind.clone(),
-        mutation_status: enum_mutation_status,
-        mutation_status_reason,
+        mutability: enum_mutability,
+        mutability_reason,
         enum_path_data: enum_data,
         depth: *ctx.depth,
         partial_root_examples: None,
@@ -991,22 +989,21 @@ fn create_result_paths(
     partial_root_examples: BTreeMap<Vec<VariantName>, Value>,
 ) -> Vec<MutationPathInternal> {
     // Determine enum mutation status by aggregating signature statuses
-    let signature_statuses: Vec<MutationStatus> =
-        enum_examples.iter().map(|eg| eg.mutation_status).collect();
+    let signature_statuses: Vec<Mutability> =
+        enum_examples.iter().map(|eg| eg.mutability).collect();
 
-    let enum_mutation_status = builder::aggregate_mutation_statuses(&signature_statuses);
+    let enum_mutability = builder::aggregate_mutability(&signature_statuses);
 
     // Build reason for partially_mutable or not_mutable enums using unified approach
-    let mutation_status_reason =
-        build_enum_mutation_status_reason(enum_mutation_status, &enum_examples, ctx);
+    let mutability_reason = build_enum_mutability_reason(enum_mutability, &enum_examples, ctx);
 
     // Build root mutation path
     let mut root_mutation_path = build_enum_root_path(
         ctx,
         enum_examples,
         default_example,
-        enum_mutation_status,
-        mutation_status_reason,
+        enum_mutability,
+        mutability_reason,
     );
 
     // Store partial_root_examples built during ascent in process_children

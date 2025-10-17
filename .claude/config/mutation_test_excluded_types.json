@@ -34,15 +34,15 @@
     },
     {
       "type_name": "bevy_pbr::wireframe::Mesh3dWireframe",
-      "reason": "Handle wrapper component. TupleStruct wrapper around Handle<WireframeMaterial> which lacks ReflectDeserialize type data. Not mutable through BRP - mutation_status is 'not_mutable' due to handle_wrapper_component restriction. No mutation paths available for testing."
+      "reason": "Handle wrapper component. TupleStruct wrapper around Handle<WireframeMaterial> which lacks ReflectDeserialize type data. Not mutable through BRP - mutability is 'not_mutable' due to handle_wrapper_component restriction. No mutation paths available for testing."
     },
     {
       "type_name": "bevy_sprite_render::mesh2d::material::MeshMaterial2d<bevy_sprite_render::tilemap_chunk::tilemap_chunk_material::TilemapChunkMaterial>",
-      "reason": "Handle wrapper component. TupleStruct wrapper around Handle<TilemapChunkMaterial> which lacks ReflectDeserialize type data. Not mutable through BRP - mutation_status is 'not_mutable' due to handle_wrapper_component restriction. No mutation paths available for testing."
+      "reason": "Handle wrapper component. TupleStruct wrapper around Handle<TilemapChunkMaterial> which lacks ReflectDeserialize type data. Not mutable through BRP - mutability is 'not_mutable' due to handle_wrapper_component restriction. No mutation paths available for testing."
     },
     {
       "type_name": "bevy_sprite_render::mesh2d::wireframe2d::Mesh2dWireframe",
-      "reason": "Handle wrapper component. TupleStruct wrapper around Handle<Wireframe2dMaterial> which lacks ReflectDeserialize type data. Not mutable through BRP - mutation_status is 'not_mutable' due to handle_wrapper_component restriction. No mutation paths available for testing."
+      "reason": "Handle wrapper component. TupleStruct wrapper around Handle<Wireframe2dMaterial> which lacks ReflectDeserialize type data. Not mutable through BRP - mutability is 'not_mutable' due to handle_wrapper_component restriction. No mutation paths available for testing."
     },
     {
       "type_name": "bevy_sprite_render::tilemap_chunk::TilemapChunk",

@@ -16,7 +16,7 @@ pub use mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowl
 pub use not_mutable_reason::NotMutableReason;
 pub use path_kind::{MutationPathDescriptor, PathKind};
 pub use recursion_context::RecursionContext;
-pub use types::{MutationPath, MutationPathInternal, MutationStatus};
+pub use types::{MutationPathExternal, MutationPathInternal, Mutability};
 
 use crate::error::Error;
 

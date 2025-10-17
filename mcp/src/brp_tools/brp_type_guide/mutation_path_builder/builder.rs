@@ -32,7 +32,7 @@ use super::mutation_knowledge::MutationKnowledge;
 use super::path_builder::PathBuilder;
 use super::types::{EnumPathData, MutabilityIssue, PathAction, PathExample, VariantName};
 use super::{
-    BuilderError, MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason,
+    BuilderError, Mutability, MutationPathDescriptor, MutationPathInternal, NotMutableReason,
     PathKind, RecursionContext, enum_path_builder,
 };
 use crate::error::{Error, Result};
@@ -40,11 +40,11 @@ use crate::error::{Error, Result};
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: PathBuilder> {
@@ -105,15 +105,15 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
             knowledge_example.map_or(assembled_example, |knowledge_example| knowledge_example);
 
         // Compute parent's mutation status from children's statuses
-        let (parent_status, reason_enum) = determine_parent_mutation_status(ctx, &all_paths);
+        let (parent_status, reason_enum) = determine_parent_mutability(ctx, &all_paths);
 
         // Convert NotMutableReason to Value if present
-        let mutation_status_reason = reason_enum.as_ref().and_then(Option::<Value>::from);
+        let mutability_reason = reason_enum.as_ref().and_then(Option::<Value>::from);
 
         // Build examples appropriately based on mutation status
         let example_to_use = match parent_status {
-            MutationStatus::NotMutable => json!(null),
-            MutationStatus::PartiallyMutable => {
+            Mutability::NotMutable => json!(null),
+            Mutability::PartiallyMutable => {
                 // Build partial example with only mutable children
                 let mutable_child_examples: HashMap<_, _> = child_examples
                     .iter()
@@ -121,7 +121,7 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
                         // Find the child path and check if it's mutable
                         all_paths.iter().any(|p| {
                             p.path_kind.to_mutation_path_descriptor() == **descriptor
-                                && matches!(p.mutation_status, MutationStatus::Mutable)
+                                && matches!(p.mutability, Mutability::Mutable)
                         })
                     })
                     .map(|(k, v)| (k.clone(), v.clone()))
@@ -132,29 +132,27 @@ impl<B: PathBuilder<Item = PathKind>> PathBuilder for MutationPathBuilder<B> {
                     .assemble_from_children(ctx, mutable_child_examples)
                     .unwrap_or(json!(null))
             }
-            MutationStatus::Mutable => final_example,
+            Mutability::Mutable => final_example,
         };
 
         // Return error only for NotMutable, success for Mutable and PartiallyMutable
         match parent_status {
-            MutationStatus::NotMutable => {
-                let reason = reason_enum.ok_or_else(|| {
+            Mutability::NotMutable => {
+                let mutability_reason = reason_enum.ok_or_else(|| {
                     BuilderError::SystemError(Report::new(Error::InvalidState(
                         "NotMutable status must have a reason".to_string(),
                     )))
                 })?;
-                Err(BuilderError::NotMutable(reason))
+                Err(BuilderError::NotMutable(mutability_reason))
             }
-            MutationStatus::Mutable | MutationStatus::PartiallyMutable => {
-                Ok(Self::build_final_result(
-                    ctx,
-                    paths_to_expose,
-                    example_to_use,
-                    parent_status,
-                    mutation_status_reason,
-                    partial_root_examples,
-                ))
-            }
+            Mutability::Mutable | Mutability::PartiallyMutable => Ok(Self::build_final_result(
+                ctx,
+                paths_to_expose,
+                example_to_use,
+                parent_status,
+                mutability_reason,
+                partial_root_examples,
+            )),
         }
     }
 }
@@ -211,25 +209,21 @@ pub fn recurse_mutation_paths(
 /// - If any `PartiallyMutable` OR (has both `Mutable` and `NotMutable`) → `PartiallyMutable`
 /// - Else if any `NotMutable` → `NotMutable`
 /// - Else → `Mutable`
-pub fn aggregate_mutation_statuses(statuses: &[MutationStatus]) -> MutationStatus {
+pub fn aggregate_mutability(statuses: &[Mutability]) -> Mutability {
     let has_partially_mutable = statuses
         .iter()
-        .any(|s| matches!(s, MutationStatus::PartiallyMutable));
+        .any(|s| matches!(s, Mutability::PartiallyMutable));
 
-    let has_mutable = statuses
-        .iter()
-        .any(|s| matches!(s, MutationStatus::Mutable));
+    let has_mutable = statuses.iter().any(|s| matches!(s, Mutability::Mutable));
 
-    let has_not_mutable = statuses
-        .iter()
-        .any(|s| matches!(s, MutationStatus::NotMutable));
+    let has_not_mutable = statuses.iter().any(|s| matches!(s, Mutability::NotMutable));
 
     if has_partially_mutable || (has_mutable && has_not_mutable) {
-        MutationStatus::PartiallyMutable
+        Mutability::PartiallyMutable
     } else if has_not_mutable {
-        MutationStatus::NotMutable
+        Mutability::NotMutable
     } else {
-        MutationStatus::Mutable
+        Mutability::Mutable
     }
 }
 
@@ -266,10 +260,10 @@ pub fn populate_root_examples_from_partials(
 ///
 /// Unlike Structs where some fields can be mutable and others not, collections are
 /// all-or-nothing: either you can perform operations or you can't.
-pub fn determine_parent_mutation_status(
+pub fn determine_parent_mutability(
     ctx: &RecursionContext,
     child_paths: &[MutationPathInternal],
-) -> (MutationStatus, Option<NotMutableReason>) {
+) -> (Mutability, Option<NotMutableReason>) {
     // Get TypeKind for special case handling
     let schema = ctx.registry.get(ctx.type_name()).unwrap_or(&Value::Null);
     let type_kind = TypeKind::from_schema(schema);
@@ -280,7 +274,7 @@ pub fn determine_parent_mutation_status(
     if matches!(type_kind, TypeKind::Map | TypeKind::Set) {
         let has_not_mutable = child_paths
             .iter()
-            .any(|p| matches!(p.mutation_status, MutationStatus::NotMutable));
+            .any(|p| matches!(p.mutability, Mutability::NotMutable));
 
         if has_not_mutable {
             // Map/Set is NotMutable if ANY child is NotMutable
@@ -304,18 +298,18 @@ pub fn determine_parent_mutation_status(
                 ),
             );
 
-            return (MutationStatus::NotMutable, Some(reason));
+            return (Mutability::NotMutable, Some(reason));
         }
     }
 
     // Extract statuses and aggregate (normal logic for non-Map/Set types)
-    let statuses: Vec<MutationStatus> = child_paths.iter().map(|p| p.mutation_status).collect();
+    let statuses: Vec<Mutability> = child_paths.iter().map(|p| p.mutability).collect();
 
-    let status = aggregate_mutation_statuses(&statuses);
+    let status = aggregate_mutability(&statuses);
 
     // Build detailed reason if not fully mutable
     let reason = match status {
-        MutationStatus::PartiallyMutable => {
+        Mutability::PartiallyMutable => {
             let mutability_issues: Vec<MutabilityIssue> = child_paths
                 .iter()
                 .map(MutabilityIssue::from_mutation_path)
@@ -332,8 +326,8 @@ pub fn determine_parent_mutation_status(
                 message,
             ))
         }
-        MutationStatus::NotMutable => Some(ctx.create_no_mutable_children_error()),
-        MutationStatus::Mutable => None,
+        Mutability::NotMutable => Some(ctx.create_no_mutable_children_error()),
+        Mutability::Mutable => None,
     };
 
     (status, reason)
@@ -394,7 +388,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             "PROCESS_CHILD: descriptor='{}', type='{}', path='{}', depth={}",
             &**descriptor,
             child_ctx.type_name(),
-            child_ctx.full_mutation_path,
+            child_ctx.mutation_path,
             *child_ctx.depth
         );
 
@@ -444,8 +438,8 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
     fn build_mutation_path_internal(
         ctx: &RecursionContext,
         example: PathExample,
-        status: MutationStatus,
-        mutation_status_reason: Option<Value>,
+        status: Mutability,
+        mutability_reason: Option<Value>,
         partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
     ) -> MutationPathInternal {
         // Build enum data if variant chain exists
@@ -453,19 +447,19 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain:       ctx.variant_chain.clone(),
+                variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example:        None,
+                root_example: None,
             })
         };
 
         MutationPathInternal {
-            full_mutation_path: ctx.full_mutation_path.clone(),
+            mutation_path: ctx.mutation_path.clone(),
             example,
             type_name: ctx.type_name().display_name(),
             path_kind: ctx.path_kind.clone(),
-            mutation_status: status,
-            mutation_status_reason,
+            mutability: status,
+            mutability_reason,
             enum_path_data,
             depth: *ctx.depth,
             partial_root_examples,
@@ -536,8 +530,8 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         ctx: &RecursionContext,
         mut paths_to_expose: Vec<MutationPathInternal>,
         example_to_use: Value,
-        parent_status: MutationStatus,
-        mutation_status_reason: Option<Value>,
+        parent_status: Mutability,
+        mutability_reason: Option<Value>,
         partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
     ) -> Vec<MutationPathInternal> {
         if let Some(ref partials) = partial_root_examples {
@@ -559,7 +553,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                         ctx,
                         PathExample::Simple(example_to_use),
                         parent_status,
-                        mutation_status_reason,
+                        mutability_reason,
                         partial_root_examples,
                     ),
                 );
@@ -573,7 +567,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                     ctx,
                     PathExample::Simple(example_to_use),
                     parent_status,
-                    mutation_status_reason,
+                    mutability_reason,
                     partial_root_examples,
                 )]
             }
@@ -591,7 +585,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
         Self::build_mutation_path_internal(
             ctx,
             PathExample::Simple(json!(null)), // No example for NotMutable paths
-            MutationStatus::NotMutable,
+            Mutability::NotMutable,
             Option::<Value>::from(&reason),
             None, // No partial roots for NotMutable paths
         )
@@ -629,7 +623,7 @@ impl<B: PathBuilder<Item = PathKind>> MutationPathBuilder<B> {
                         Some(Ok(vec![Self::build_mutation_path_internal(
                             ctx,
                             PathExample::Simple(example),
-                            MutationStatus::Mutable,
+                            Mutability::Mutable,
                             None,
                             None, // No partial roots for knowledge-based paths
                         )])),

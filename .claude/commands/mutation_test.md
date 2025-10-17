@@ -503,7 +503,7 @@ The merge script automatically loads `.claude/config/mutation_test_known_issues.
 
 1. Run: `.claude/scripts/get_type_guide.sh <failed_type_name> --file .claude/transient/all_types.json`
 2. Examine the returned type guide focusing on the failed mutation path
-3. Check `path_info` for the failed path (look for `applicable_variants`, `root_example`, `mutation_status`)
+3. Check `path_info` for the failed path (look for `applicable_variants`, `root_example`, `mutability`)
 4. Present findings to user with specific recommendations
 5. Do NOT launch Task agents - handle investigation directly
 </InvestigateFailure>

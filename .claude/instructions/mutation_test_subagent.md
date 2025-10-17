@@ -317,7 +317,7 @@ Bash: ./.claude/scripts/get_type_guide.sh bevy_input::gamepad::GamepadSettings -
 - **`guide.mutation_paths`**: Dictionary of testable mutation paths
   - Keys are path strings (e.g., `""`, `".field"`, `".nested.value"`)
   - Each path has an `example` value to use in mutations
-  - Check `path_info.mutation_status` before testing (skip if `"not_mutable"`)
+  - Check `path_info.mutability` before testing (skip if `"not_mutable"`)
 
 - **`guide.supported_operations`**: Which BRP methods work with this type
   - Check before calling: If "spawn" not in list, don't call world_spawn_entity
@@ -418,7 +418,7 @@ For each type name string in your `type_names` array:
         First mutate path `""` with this complete value, THEN mutate `.middle_struct.nested_enum.name`
    f. **MUTATION TESTING**: For each path in mutation_paths, validate THEN test
       - **FOR EACH path in mutation_paths object:**
-        1. **CHECK mutation_status FIRST**: If `path_info.mutation_status == "not_mutable"` → SKIP path (don't count in total)
+        1. **CHECK mutability FIRST**: If `path_info.mutability == "not_mutable"` → SKIP path (don't count in total)
         2. **CHECK for example**: If no `example` or `examples` field exists → SKIP path (cannot test without value)
         3. **IF partially_mutable**: SKIP unless `example` or `examples` exists
         4. **ONLY if checks pass**: Proceed to mutation

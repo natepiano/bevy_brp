@@ -19,7 +19,8 @@ use super::constants::{
     REFLECT_TRAIT_RESOURCE, TYPE_BEVY_ENTITY,
 };
 use super::mutation_path_builder::{
-    self, MutationPath, MutationPathInternal, PathKind, RecursionContext, recurse_mutation_paths,
+    self, MutationPathExternal, MutationPathInternal, PathKind, RecursionContext,
+    recurse_mutation_paths,
 };
 use super::response_types::{BrpTypeName, SchemaInfo};
 use super::type_kind::TypeKind;
@@ -35,25 +36,25 @@ pub struct TypeGuide {
     /// Guidance for AI agents about using mutation paths
     pub agent_guidance: String,
     /// Fully-qualified type name
-    pub type_name:      BrpTypeName,
+    pub type_name: BrpTypeName,
     /// Whether the type is registered in the Bevy registry
-    pub in_registry:    bool,
+    pub in_registry: bool,
     /// Mutation paths available for this type - using same format as V1
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub mutation_paths: HashMap<String, MutationPath>,
+    pub mutation_paths: HashMap<String, MutationPathExternal>,
     /// Example values for spawn/insert operations (currently empty to match V1)
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub example_values: HashMap<String, Value>,
     /// Example format for spawn/insert operations when supported
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub spawn_format:   Option<Value>,
+    pub spawn_format: Option<Value>,
     /// Schema information from the registry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schema_info:    Option<SchemaInfo>,
+    pub schema_info: Option<SchemaInfo>,
     /// Type information for direct fields (struct fields only, one level deep)
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error:          Option<String>,
+    pub error: Option<String>,
 }
 
 impl TypeGuide {
@@ -134,7 +135,9 @@ impl TypeGuide {
     ///
     /// Checks all mutation paths for Entity types and adds a warning about using
     /// valid Entity IDs from the running app.
-    fn generate_agent_guidance(mutation_paths: &HashMap<String, MutationPath>) -> Result<String> {
+    fn generate_agent_guidance(
+        mutation_paths: &HashMap<String, MutationPathExternal>,
+    ) -> Result<String> {
         // Check if any mutation path contains Entity type
         let has_entity = mutation_paths
             .values()
@@ -166,7 +169,7 @@ impl TypeGuide {
     /// and extracting it from the mutation paths.
     fn extract_spawn_format_if_spawnable(
         registry_schema: &Value,
-        mutation_paths: &HashMap<String, MutationPath>,
+        mutation_paths: &HashMap<String, MutationPathExternal>,
     ) -> Option<Value> {
         // Check if type is spawnable (has Component or Resource trait)
         let reflect_types = registry_schema
@@ -189,7 +192,7 @@ impl TypeGuide {
     /// Uses the root path `""` example as the spawn format for consistency
     /// Should only be called for types that support spawn/insert operations
     fn extract_spawn_format_from_paths(
-        mutation_paths: &HashMap<String, MutationPath>,
+        mutation_paths: &HashMap<String, MutationPathExternal>,
     ) -> Option<Value> {
         mutation_paths.get("").and_then(|root_path| {
             // Handle both the new `example` field and the legacy `examples` array
@@ -226,15 +229,17 @@ impl TypeGuide {
     fn convert_mutation_paths(
         paths: &[MutationPathInternal],
         registry: &HashMap<BrpTypeName, Value>,
-    ) -> HashMap<String, MutationPath> {
+    ) -> HashMap<String, MutationPathExternal> {
         paths
             .iter()
             .map(|mutation_path_internal| {
-                let mutation_path =
-                    MutationPath::from_mutation_path_internal(mutation_path_internal, registry);
+                let mutation_path = MutationPathExternal::from_mutation_path_internal(
+                    mutation_path_internal,
+                    registry,
+                );
                 // Keep empty path as empty for root mutations
                 // BRP expects empty string for root replacements, not "."
-                let key = (*mutation_path_internal.full_mutation_path).clone();
+                let key = (*mutation_path_internal.mutation_path).clone();
                 (key, mutation_path)
             })
             .collect()

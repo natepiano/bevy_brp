@@ -27,7 +27,7 @@
 //!
 //! Each child context inherits from parent:
 //! - `registry`: Shared (cheap Arc clone)
-//! - `full_mutation_path`: Parent path + new segment
+//! - `mutation_path`: Parent path + new segment
 //! - `variant_chain`: Parent chain (cloned, may be extended for enum children)
 //! - `path_action`: Controls mutation path exposure (not recursion)
 //!
@@ -82,7 +82,7 @@ use super::super::brp_type_name::BrpTypeName;
 use super::super::constants::MAX_TYPE_RECURSION_DEPTH;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
-use super::types::{FullMutationPath, PathAction, VariantName, VariantSignature};
+use super::types::{MutationPath, PathAction, VariantName, VariantSignature};
 use super::{BuilderError, NotMutableReason};
 use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
@@ -125,19 +125,19 @@ impl Deref for RecursionDepth {
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind:                PathKind,
+    pub path_kind: PathKind,
     /// Reference to the type registry
-    pub registry:                 Arc<HashMap<BrpTypeName, Value>>,
+    pub registry: Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
-    pub full_mutation_path:       FullMutationPath,
+    pub mutation_path: MutationPath,
     /// Action to take regarding path creation (set by `MutationPathBuilder`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action:              PathAction,
+    pub path_action: PathAction,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
-    pub variant_chain:            Vec<VariantName>,
+    pub variant_chain: Vec<VariantName>,
     /// Recursion depth tracking to prevent infinite loops
-    pub depth:                    RecursionDepth,
+    pub depth: RecursionDepth,
     /// Parent enum variant signature (only set when processing enum variant children)
     /// The enum type is available via `path_kind.parent_type` - no need to store it redundantly
     pub parent_variant_signature: Option<VariantSignature>,
@@ -149,7 +149,7 @@ impl RecursionContext {
         Self {
             path_kind,
             registry,
-            full_mutation_path: FullMutationPath::from(""),
+            mutation_path: MutationPath::from(""),
             path_action: PathAction::Create, // Default to creating paths
             variant_chain: Vec::new(),       // Start with empty variant chain
             depth: RecursionDepth::ZERO,     // Start at depth 0
@@ -204,16 +204,16 @@ impl RecursionContext {
                 "RECURSION LIMIT EXCEEDED: type={}, depth={}, path={}",
                 path_kind.type_name(),
                 *new_depth,
-                self.full_mutation_path
+                self.mutation_path
             );
             return Err(BuilderError::NotMutable(
                 NotMutableReason::RecursionLimitExceeded(path_kind.type_name().clone()),
             ));
         }
 
-        let new_path_prefix = FullMutationPath::from(format!(
+        let new_path_prefix = MutationPath::from(format!(
             "{}{}",
-            self.full_mutation_path,
+            self.mutation_path,
             Self::path_kind_to_segment(&path_kind)
         ));
 
@@ -229,7 +229,7 @@ impl RecursionContext {
         Ok(Self {
             path_kind,
             registry: Arc::clone(&self.registry),
-            full_mutation_path: new_path_prefix,
+            mutation_path: new_path_prefix,
             path_action,
             variant_chain: self.variant_chain.clone(), // Inherit parent's variant chain
             depth: new_depth,

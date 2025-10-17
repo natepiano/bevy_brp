@@ -14,6 +14,7 @@ from typing import TypedDict, cast
 # Type definitions for structured data
 JsonValue = str | int | float | bool | None | dict[str, "JsonValue"] | list["JsonValue"]
 
+
 class DifferenceDict(TypedDict):
     path: str
     change_type: str
@@ -23,18 +24,22 @@ class DifferenceDict(TypedDict):
     type_name: str
     mutation_path: str | None
 
+
 class TypeStatsDict(TypedDict):
     baseline_only: list[str]
     current_only: list[str]
     modified: list[str]
 
+
 class ComparisonResultDict(TypedDict):
     all_changes: list[DifferenceDict]
     type_stats: TypeStatsDict
 
+
 class MetadataDict(TypedDict):
     generated_at: str
     output_version: str
+
 
 class SummaryDict(TypedDict):
     total_changes: int
@@ -42,11 +47,13 @@ class SummaryDict(TypedDict):
     types_added: int
     types_removed: int
 
+
 class FileStatsDict(TypedDict):
     total_types: int
     spawn_supported: int
     types_with_mutations: int
     total_mutation_paths: int
+
 
 class OutputDict(TypedDict):
     metadata: MetadataDict
@@ -54,12 +61,16 @@ class OutputDict(TypedDict):
     comparison_summary: SummaryDict
     all_changes: list[DifferenceDict]
 
+
 def get_output_path() -> Path:
     """Get the output path using TMPDIR environment variable."""
-    tmpdir = os.environ.get('TMPDIR', '/tmp')
-    return Path(tmpdir) / 'mutation_comparison_full.json'
+    tmpdir = os.environ.get("TMPDIR", "/tmp")
+    return Path(tmpdir) / "mutation_comparison_full.json"
 
-def load_files(baseline_path: str, current_path: str) -> tuple[dict[str, JsonValue], dict[str, JsonValue]]:
+
+def load_files(
+    baseline_path: str, current_path: str
+) -> tuple[dict[str, JsonValue], dict[str, JsonValue]]:
     """Load baseline and current JSON files."""
     with open(baseline_path) as f:
         baseline_data: JsonValue = cast(JsonValue, json.load(f))
@@ -69,12 +80,12 @@ def load_files(baseline_path: str, current_path: str) -> tuple[dict[str, JsonVal
 
     # Extract type guides - safely handle the case where data might not be a dict
     if isinstance(baseline_data, dict):
-        baseline = baseline_data.get('type_guide', baseline_data)
+        baseline = baseline_data.get("type_guide", baseline_data)
     else:
         baseline = baseline_data
 
     if isinstance(current_data, dict):
-        current = current_data.get('type_guide', current_data)
+        current = current_data.get("type_guide", current_data)
     else:
         current = current_data
 
@@ -86,6 +97,7 @@ def load_files(baseline_path: str, current_path: str) -> tuple[dict[str, JsonVal
 
     return baseline, current
 
+
 def extract_mutation_path(path: str) -> str | None:
     """Extract the mutation path key from a JSON path if it's within mutation_paths."""
     if not path.startswith("mutation_paths."):
@@ -94,26 +106,47 @@ def extract_mutation_path(path: str) -> str | None:
     # Handle double-dot case: could be root metadata or mutation path data
     if path.startswith("mutation_paths.."):
         # Get what comes after the double dots
-        rest_after_dots = path[len("mutation_paths.."):]
+        rest_after_dots = path[len("mutation_paths..") :]
 
         # We need to find where the mutation path ends and the nested field begins
         # Mutation paths can contain dots (like .z_config.far_z_mode)
         # The nested field is what comes after the mutation path
 
         # Check if it starts with a root-level metadata field (no mutation path)
-        root_metadata_fields = ["path_info", "description", "mutation_status", "example", "examples",
-                               "type", "type_kind", "enum_variant_path", "applicable_variants", "signature"]
+        root_metadata_fields = [
+            "path_info",
+            "description",
+            "mutability",
+            "example",
+            "examples",
+            "type",
+            "type_kind",
+            "enum_variant_path",
+            "applicable_variants",
+            "signature",
+        ]
 
-        first_field = rest_after_dots.split(".", 1)[0] if "." in rest_after_dots else rest_after_dots
+        first_field = (
+            rest_after_dots.split(".", 1)[0]
+            if "." in rest_after_dots
+            else rest_after_dots
+        )
         if first_field in root_metadata_fields:
             # This is a root-level metadata change, empty mutation path
             return ""
 
         # Known nested field patterns that indicate end of mutation path (with leading dot)
         nested_field_indicators = [
-            ".example", ".examples", ".path_info", ".description",
-            ".mutation_status", ".type", ".type_kind", ".enum_variant_path",
-            ".applicable_variants", ".signature"
+            ".example",
+            ".examples",
+            ".path_info",
+            ".description",
+            ".mutability",
+            ".type",
+            ".type_kind",
+            ".enum_variant_path",
+            ".applicable_variants",
+            ".signature",
         ]
 
         # Find the first occurrence of a nested field indicator
@@ -127,12 +160,15 @@ def extract_mutation_path(path: str) -> str | None:
         return f".{rest_after_dots}" if rest_after_dots else ""
 
     # Normal case: mutation_paths.some_key.rest -> ".some_key"
-    parts = path.split(".", 3)  # Split into max 4 parts: ["mutation_paths", "key", "rest", ...]
+    parts = path.split(
+        ".", 3
+    )  # Split into max 4 parts: ["mutation_paths", "key", "rest", ...]
     if len(parts) >= 2 and parts[1]:  # Check that the key part exists and is not empty
         mutation_key = parts[1]
         return f".{mutation_key}"
 
     return ""
+
 
 def describe_value(val: JsonValue) -> str:
     """Create a concise description of a value."""
@@ -155,7 +191,10 @@ def describe_value(val: JsonValue) -> str:
                 keys.append("...")
             return f"object{{{','.join(str(k) for k in keys)}}}"
 
-def deep_compare_values(path: str, baseline_val: JsonValue, current_val: JsonValue) -> list[DifferenceDict]:
+
+def deep_compare_values(
+    path: str, baseline_val: JsonValue, current_val: JsonValue
+) -> list[DifferenceDict]:
     """Recursively compare values and return all differences."""
     differences: list[DifferenceDict] = []
 
@@ -165,40 +204,46 @@ def deep_compare_values(path: str, baseline_val: JsonValue, current_val: JsonVal
 
     # Check if one is None
     if baseline_val is None:
-        differences.append(DifferenceDict(
-            path=path,
-            change_type="added",
-            baseline=None,
-            current=current_val,
-            description=f"Added: {describe_value(current_val)}",
-            type_name="",
-            mutation_path=extract_mutation_path(path)
-        ))
+        differences.append(
+            DifferenceDict(
+                path=path,
+                change_type="added",
+                baseline=None,
+                current=current_val,
+                description=f"Added: {describe_value(current_val)}",
+                type_name="",
+                mutation_path=extract_mutation_path(path),
+            )
+        )
         return differences
 
     if current_val is None:
-        differences.append(DifferenceDict(
-            path=path,
-            change_type="removed",
-            baseline=baseline_val,
-            current=None,
-            description=f"Removed: {describe_value(baseline_val)}",
-            type_name="",
-            mutation_path=extract_mutation_path(path)
-        ))
+        differences.append(
+            DifferenceDict(
+                path=path,
+                change_type="removed",
+                baseline=baseline_val,
+                current=None,
+                description=f"Removed: {describe_value(baseline_val)}",
+                type_name="",
+                mutation_path=extract_mutation_path(path),
+            )
+        )
         return differences
 
     # Check if types differ
     if type(baseline_val) != type(current_val):
-        differences.append(DifferenceDict(
-            path=path,
-            change_type="type_changed",
-            baseline=baseline_val,
-            current=current_val,
-            description=f"Type changed: {type(baseline_val).__name__} → {type(current_val).__name__}",
-            type_name="",
-            mutation_path=extract_mutation_path(path)
-        ))
+        differences.append(
+            DifferenceDict(
+                path=path,
+                change_type="type_changed",
+                baseline=baseline_val,
+                current=current_val,
+                description=f"Type changed: {type(baseline_val).__name__} → {type(current_val).__name__}",
+                type_name="",
+                mutation_path=extract_mutation_path(path),
+            )
+        )
         return differences
 
     # Compare based on type
@@ -229,34 +274,41 @@ def deep_compare_values(path: str, baseline_val: JsonValue, current_val: JsonVal
                 curr_item = current_val[i] if i < len(current_val) else None
 
                 if base_item is None and curr_item is not None:
-                    differences.append(DifferenceDict(
-                        path=new_path,
-                        change_type="added",
-                        baseline=None,
-                        current=curr_item,
-                        description=f"Added element at index {i}",
-                        type_name="",
-                        mutation_path=extract_mutation_path(new_path)
-                    ))
+                    differences.append(
+                        DifferenceDict(
+                            path=new_path,
+                            change_type="added",
+                            baseline=None,
+                            current=curr_item,
+                            description=f"Added element at index {i}",
+                            type_name="",
+                            mutation_path=extract_mutation_path(new_path),
+                        )
+                    )
                 elif base_item is not None and curr_item is None:
-                    differences.append(DifferenceDict(
-                        path=new_path,
-                        change_type="removed",
-                        baseline=base_item,
-                        current=None,
-                        description=f"Removed element at index {i}",
-                        type_name="",
-                        mutation_path=extract_mutation_path(new_path)
-                    ))
+                    differences.append(
+                        DifferenceDict(
+                            path=new_path,
+                            change_type="removed",
+                            baseline=base_item,
+                            current=None,
+                            description=f"Removed element at index {i}",
+                            type_name="",
+                            mutation_path=extract_mutation_path(new_path),
+                        )
+                    )
                 else:
-                    differences.extend(deep_compare_values(new_path, base_item, curr_item))
+                    differences.extend(
+                        deep_compare_values(new_path, base_item, curr_item)
+                    )
         else:
             # Same length - check if arrays contain primitive values that can be compared as sets
             def is_primitive(val: JsonValue) -> bool:
                 return isinstance(val, (str, int, float, bool, type(None)))
 
-            all_primitives = all(is_primitive(item) for item in baseline_val) and \
-                           all(is_primitive(item) for item in current_val)
+            all_primitives = all(is_primitive(item) for item in baseline_val) and all(
+                is_primitive(item) for item in current_val
+            )
 
             if all_primitives and set(baseline_val) == set(current_val):  # type: ignore[arg-type]
                 # Same elements, different order - ignore this difference
@@ -265,29 +317,36 @@ def deep_compare_values(path: str, baseline_val: JsonValue, current_val: JsonVal
                 # Either not all primitives, or different elements - compare by index
                 for i in range(len(baseline_val)):
                     new_path = f"{path}[{i}]"
-                    differences.extend(deep_compare_values(new_path, baseline_val[i], current_val[i]))
+                    differences.extend(
+                        deep_compare_values(new_path, baseline_val[i], current_val[i])
+                    )
 
     elif baseline_val != current_val:
         # Primitive values that differ
-        differences.append(DifferenceDict(
-            path=path,
-            change_type="value_changed",
-            baseline=baseline_val,
-            current=current_val,
-            description=f"Value changed: {describe_value(baseline_val)} → {describe_value(current_val)}",
-            type_name="",
-            mutation_path=extract_mutation_path(path)
-        ))
+        differences.append(
+            DifferenceDict(
+                path=path,
+                change_type="value_changed",
+                baseline=baseline_val,
+                current=current_val,
+                description=f"Value changed: {describe_value(baseline_val)} → {describe_value(current_val)}",
+                type_name="",
+                mutation_path=extract_mutation_path(path),
+            )
+        )
 
     return differences
 
-def compare_types(baseline: dict[str, JsonValue], current: dict[str, JsonValue]) -> ComparisonResultDict:
+
+def compare_types(
+    baseline: dict[str, JsonValue], current: dict[str, JsonValue]
+) -> ComparisonResultDict:
     """Compare all types and collect ALL differences."""
     all_changes: list[DifferenceDict] = []
     type_stats: TypeStatsDict = {
         "baseline_only": [],
         "current_only": [],
-        "modified": []
+        "modified": [],
     }
 
     all_types = set(baseline.keys()) | set(current.keys())
@@ -312,18 +371,24 @@ def compare_types(baseline: dict[str, JsonValue], current: dict[str, JsonValue])
                 diff["type_name"] = type_name
                 all_changes.append(diff)
 
-    return ComparisonResultDict(
-        all_changes=all_changes,
-        type_stats=type_stats
-    )
+    return ComparisonResultDict(all_changes=all_changes, type_stats=type_stats)
+
 
 def calculate_file_statistics(data: dict[str, JsonValue]) -> FileStatsDict:
     """Calculate statistics for a mutation test file."""
     total_types = len(data)
-    spawn_supported = sum(1 for t in data.values() if isinstance(t, dict) and t.get('spawn_format') is not None)
-    types_with_mutations = sum(1 for t in data.values() if isinstance(t, dict) and t.get('mutation_paths'))
+    spawn_supported = sum(
+        1
+        for t in data.values()
+        if isinstance(t, dict) and t.get("spawn_format") is not None
+    )
+    types_with_mutations = sum(
+        1 for t in data.values() if isinstance(t, dict) and t.get("mutation_paths")
+    )
     total_paths = sum(
-        len(cast(dict[str, JsonValue], t.get('mutation_paths', {}))) if isinstance(t.get('mutation_paths'), dict) else 0
+        len(cast(dict[str, JsonValue], t.get("mutation_paths", {})))
+        if isinstance(t.get("mutation_paths"), dict)
+        else 0
         for t in data.values()
         if isinstance(t, dict)
     )
@@ -332,8 +397,9 @@ def calculate_file_statistics(data: dict[str, JsonValue]) -> FileStatsDict:
         total_types=total_types,
         spawn_supported=spawn_supported,
         types_with_mutations=types_with_mutations,
-        total_mutation_paths=total_paths
+        total_mutation_paths=total_paths,
     )
+
 
 def main() -> None:
     if len(sys.argv) != 3:
@@ -390,20 +456,21 @@ def main() -> None:
     output_result: OutputDict = {
         "metadata": {
             "generated_at": datetime.now().isoformat(),
-            "output_version": "3.0.0"
+            "output_version": "3.0.0",
         },
         "current_file_stats": current_stats,
         "comparison_summary": {
             "total_changes": len(all_changes),
             "types_modified": len(modified_types),
             "types_added": len(added_types),
-            "types_removed": len(removed_types)
+            "types_removed": len(removed_types),
         },
-        "all_changes": all_changes
+        "all_changes": all_changes,
     }
 
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         json.dump(output_result, f, indent=2)
+
 
 if __name__ == "__main__":
     main()

@@ -17,9 +17,9 @@ use crate::json_schema::SchemaField;
 
 /// Full mutation path for BRP operations (e.g., ".translation.x")
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct FullMutationPath(String);
+pub struct MutationPath(String);
 
-impl Deref for FullMutationPath {
+impl Deref for MutationPath {
     type Target = String;
 
     fn deref(&self) -> &Self::Target {
@@ -27,19 +27,19 @@ impl Deref for FullMutationPath {
     }
 }
 
-impl From<String> for FullMutationPath {
+impl From<String> for MutationPath {
     fn from(path: String) -> Self {
         Self(path)
     }
 }
 
-impl From<&str> for FullMutationPath {
+impl From<&str> for MutationPath {
     fn from(path: &str) -> Self {
         Self(path.to_string())
     }
 }
 
-impl std::fmt::Display for FullMutationPath {
+impl std::fmt::Display for MutationPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -124,7 +124,7 @@ pub enum PathAction {
 /// Status of whether a mutation path can be mutated
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum MutationStatus {
+pub enum Mutability {
     /// Path can be fully mutated
     Mutable,
     /// Path cannot be mutated (missing traits, unsupported type, etc.)
@@ -186,7 +186,7 @@ pub enum PathExample {
     /// use when assembling their own examples.
     EnumRoot {
         /// All variant groups for this enum (the `examples` array in JSON output)
-        groups:     Vec<ExampleGroup>,
+        groups: Vec<ExampleGroup>,
         /// Simplified example for parent assembly
         for_parent: Value,
     },
@@ -212,22 +212,22 @@ impl PathExample {
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path - now type-safe!
-    pub example:                PathExample,
+    pub example: PathExample,
     /// Path for mutation, e.g., ".translation.x"
-    pub full_mutation_path:     FullMutationPath,
+    pub mutation_path: MutationPath,
     /// Type information for this path
-    pub type_name:              BrpTypeName,
+    pub type_name: BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind:              PathKind,
-    /// Status of whether this path can be mutated
-    pub mutation_status:        MutationStatus,
+    pub path_kind: PathKind,
+    /// Whether this path can be mutated
+    pub mutability: Mutability,
     /// Reason if mutation is not possible
-    pub mutation_status_reason: Option<Value>,
+    pub mutability_reason: Option<Value>,
     /// Consolidated enum-specific data (new approach)
-    pub enum_path_data:         Option<EnumPathData>,
+    pub enum_path_data: Option<EnumPathData>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
-    pub depth:                  usize,
+    pub depth: usize,
 
     /// For enum root paths at each nesting level: Maps FULL variant chains to partial
     /// root examples built from this enum level down through all descendants.
@@ -263,7 +263,7 @@ impl MutationPathInternal {
 #[derive(Debug, Clone)]
 pub enum MutabilityTarget {
     /// A mutation path within a type (e.g., ".translation.x")
-    MutationPath(FullMutationPath),
+    Path(MutationPath),
     /// An enum variant name (e.g., "`Color::Srgba`")
     Variant(VariantName),
 }
@@ -271,7 +271,7 @@ pub enum MutabilityTarget {
 impl std::fmt::Display for MutabilityTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::MutationPath(path) => write!(f, "{path}"),
+            Self::Path(path) => write!(f, "{path}"),
             Self::Variant(name) => write!(f, "{name}"),
         }
     }
@@ -280,20 +280,20 @@ impl std::fmt::Display for MutabilityTarget {
 /// Summary of a mutation issue for diagnostic reporting
 #[derive(Debug, Clone)]
 pub struct MutabilityIssue {
-    pub target:    MutabilityTarget,
+    pub target: MutabilityTarget,
     pub type_name: BrpTypeName,
-    pub status:    MutationStatus,
-    pub reason:    Option<Value>,
+    pub status: Mutability,
+    pub reason: Option<Value>,
 }
 
 impl MutabilityIssue {
     /// Create from a mutation path (for non-enum types)
     pub fn from_mutation_path(path: &MutationPathInternal) -> Self {
         Self {
-            target:    MutabilityTarget::MutationPath(path.full_mutation_path.clone()),
+            target: MutabilityTarget::Path(path.mutation_path.clone()),
             type_name: path.type_name.clone(),
-            status:    path.mutation_status,
-            reason:    path.mutation_status_reason.clone(),
+            status: path.mutability,
+            reason: path.mutability_reason.clone(),
         }
     }
 
@@ -301,7 +301,7 @@ impl MutabilityIssue {
     pub const fn from_variant_name(
         variant: VariantName,
         type_name: BrpTypeName,
-        status: MutationStatus,
+        status: Mutability,
     ) -> Self {
         Self {
             target: MutabilityTarget::Variant(variant),
@@ -316,27 +316,27 @@ impl MutabilityIssue {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
-    pub path_kind:              PathKind,
+    pub path_kind: PathKind,
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
-    pub type_name:              BrpTypeName,
+    pub type_name: BrpTypeName,
     /// The kind of type this field contains (Struct, Enum, Array, etc.)
-    pub type_kind:              TypeKind,
+    pub type_kind: TypeKind,
     /// Status of whether this path can be mutated
-    pub mutation_status:        MutationStatus,
+    pub mutability: Mutability,
     /// Reason if mutation is not possible
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutation_status_reason: Option<Value>,
+    pub mutability_reason: Option<Value>,
     /// Instructions for setting variants required for this mutation path (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_instructions:      Option<String>,
+    pub enum_instructions: Option<String>,
     /// Example: `["BottomEnum::VariantB"]`
     /// `VariantName` serializes as a string in JSON output
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub applicable_variants:    Option<Vec<VariantName>>,
+    pub applicable_variants: Option<Vec<VariantName>>,
     /// Only present for paths nested in enums - built using assembly during ascent
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub root_example:           Option<Value>,
+    pub root_example: Option<Value>,
 }
 
 /// Example group for enum variants
@@ -346,11 +346,11 @@ pub struct ExampleGroup {
     pub applicable_variants: Vec<VariantName>,
     /// Example value for this group (omitted for `NotMutable` variants)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example:             Option<Value>,
+    pub example: Option<Value>,
     /// The variant signature as a string
-    pub signature:           String,
+    pub signature: String,
     /// Mutation status for this signature/variant group
-    pub mutation_status:     MutationStatus,
+    pub mutability: Mutability,
 }
 
 /// Consolidated enum-specific data for mutation paths
@@ -368,20 +368,20 @@ pub struct EnumPathData {
 
 /// Information about a mutation path that we serialize to our response
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MutationPath {
+pub struct MutationPathExternal {
     /// Human-readable description of what this path mutates
     pub description: String,
     /// Combined path navigation and type metadata
-    pub path_info:   PathInfo,
+    pub path_info: PathInfo,
     /// Array of example groups with variants, signatures, and examples (for enums)
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub examples:    Vec<ExampleGroup>,
+    pub examples: Vec<ExampleGroup>,
     /// Single example value (for non-enum types)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example:     Option<Value>,
+    pub example: Option<Value>,
 }
 
-impl MutationPath {
+impl MutationPathExternal {
     /// Create from `MutationPathInternal` with proper formatting logic
     pub fn from_mutation_path_internal(
         path: &MutationPathInternal,
@@ -407,8 +407,8 @@ impl MutationPath {
         // Generate description - override for partially_mutable paths
         // Use type-specific terminology (fields, elements, entries, variants) instead of generic
         // "descendants"
-        let description = match path.mutation_status {
-            MutationStatus::PartiallyMutable => {
+        let description = match path.mutability {
+            Mutability::PartiallyMutable => {
                 let base_msg = format!(
                     "This {} path is partially mutable due to some of its {} not being mutable",
                     type_kind.as_ref().to_lowercase(),
@@ -423,8 +423,8 @@ impl MutationPath {
             _ => path.path_kind.description(&type_kind),
         };
 
-        let (examples, example) = match path.mutation_status {
-            MutationStatus::PartiallyMutable => {
+        let (examples, example) = match path.mutability {
+            Mutability::PartiallyMutable => {
                 // PartiallyMutable enums: show examples array with per-variant status
                 // PartiallyMutable non-enums: check for Default trait
                 match &path.example {
@@ -439,11 +439,11 @@ impl MutationPath {
                     }
                 }
             }
-            MutationStatus::NotMutable => {
+            Mutability::NotMutable => {
                 // NotMutable: no example at all (not even null)
                 (vec![], None)
             }
-            MutationStatus::Mutable => {
+            Mutability::Mutable => {
                 match &path.example {
                     PathExample::EnumRoot { groups, .. } => {
                         // Enum root: use the examples array
@@ -465,20 +465,20 @@ impl MutationPath {
         //
         // For example, `.main_animation.0` might be `not_mutable` because `NodeIndex` has no
         // example value. Without this check, we'd show:
-        //   - `mutation_status: "not_mutable"` (can't be mutated)
+        //   - `mutability: "not_mutable"` (can't be mutated)
         //   - `enum_instructions: "First, set root to..."` (here's how to mutate it!)
         //
         // This is confusing. Instead, we only include enum metadata for mutable/partially
         // mutable paths where the instructions are actually useful.
         let (enum_instructions, applicable_variants, root_example) = if matches!(
-            path.mutation_status,
-            MutationStatus::Mutable | MutationStatus::PartiallyMutable
+            path.mutability,
+            Mutability::Mutable | Mutability::PartiallyMutable
         ) {
             path.enum_path_data
                 .as_ref()
                 .map_or((None, None, None), |enum_data| {
                     let instructions = Some(format!(
-                        "First, set the root mutation path to 'root_example', then you can mutate the '{}' path. See 'applicable_variants' for which variants support this field.", &path.full_mutation_path
+                        "First, set the root mutation path to 'root_example', then you can mutate the '{}' path. See 'applicable_variants' for which variants support this field.", &path.mutation_path
                     ));
                     let variants = if enum_data.applicable_variants.is_empty() {
                         None
@@ -498,8 +498,8 @@ impl MutationPath {
                 path_kind: path.path_kind.clone(),
                 type_name: path.type_name.clone(),
                 type_kind,
-                mutation_status: path.mutation_status,
-                mutation_status_reason: path.mutation_status_reason.clone(),
+                mutability: path.mutability,
+                mutability_reason: path.mutability_reason.clone(),
                 enum_instructions,
                 applicable_variants,
                 root_example,
