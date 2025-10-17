@@ -61,13 +61,28 @@ IF any mutation error contains `"invalid type: string"`:
   - Result: If retry succeeds → mark PASSED; if retry fails with different error → mark
    FAILED
 
+**IF any mutation error contains `"UUID parsing failed"` AND `"found \`\"\` at"`**:
+1. This means YOU double-quoted the UUID string (your bug, not BRP)
+2. The UUID value is already a JSON string - don't stringify it further
+3. Immediately retry with the UUID as a plain JSON string value
+4. Increment `retry_count`
+5. Only report failure if retry also fails with DIFFERENT error
+
+**Example (UUID parsing failure from testing)**:
+- Type guide shows: `"example": "550e8400-e29b-41d4-a716-446655440000"`
+- Sent: `{"value": "550e8400-e29b-41d4-a716-446655440000"}` (appears correct)
+- Error: `UUID parsing failed: invalid character: expected an optional prefix of 'urn:uuid:' followed by [0-9a-fA-F-], found '"' at 1`
+- **Root cause**: Value was double-serialized/quoted during JSON construction
+- Fix: Ensure the UUID string from type guide is used AS-IS without additional stringification
+- Result: If retry succeeds → mark PASSED; if retry fails with different error → mark FAILED
+
 **Error patterns → Fix**:
 - `expected a sequence` or `expected reflected list` → Unquoted array
 - `expected a boolean` → Unquoted boolean
 - `expected f32/i32/u32` → Unquoted number
 - `expected reflected struct` → Unquoted object
 
-**Tracking**: Keep `retry_count` variable starting at 0, increment for each "invalid type: string" error you retry. Include in final output.
+**Tracking**: Keep `retry_count` variable starting at 0, increment for each "invalid type: string" or UUID parsing error you retry. Include in final output.
 
 **IF YOU GET STUCK IN A LOOP CALLING TOOLS WITH EMPTY PARAMETERS**:
 Reorder parameters in your tool call - parameter order doesn't matter, but reordering breaks mental loops.
@@ -458,7 +473,7 @@ For each type name string in your `type_names` array:
 4. NEVER test types not provided in your assignment data
 
 **AFTER EACH MUTATION**:
-- If error contains "invalid type: string", follow <ErrorRecoveryProtocol/> immediately.
+- If error contains "invalid type: string" or UUID parsing error, follow <ErrorRecoveryProtocol/> immediately.
 - Check <ContextWindowMonitoring/> - if context limit approaching, bail out to Step 7 immediately.
 </TestAllTypes>
 
@@ -542,9 +557,9 @@ For each type name string in your `type_names` array:
 <PreFailureCheck>
 **BEFORE REPORTING ANY FAILURE**:
 
-1. Count "invalid type: string" errors received: _____
+1. Count "invalid type: string" and UUID parsing errors received: _____
 2. Does this match your `retry_count`? (must be equal)
-3. Are you reporting ANY failures that had "invalid type: string"?
+3. Are you reporting ANY failures that had "invalid type: string" or UUID parsing errors?
    - If YES → Protocol violation - those must be retried first per <ErrorRecoveryProtocol/>
 
 If any check fails, go back and follow <ErrorRecoveryProtocol/>.
@@ -630,8 +645,8 @@ If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 ```
 
 **VERIFY BEFORE OUTPUT**:
-- `retry_count` matches number of "invalid type: string" errors received
-- No failures reported with "invalid type: string" in error_message
+- `retry_count` matches number of "invalid type: string" and UUID parsing errors received
+- No failures reported with "invalid type: string" or UUID parsing errors in error_message
 - All failure values are proper JSON types (not strings)
 
 If any fail: Review <ErrorRecoveryProtocol/> and fix before output.
