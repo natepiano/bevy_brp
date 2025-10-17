@@ -4,6 +4,7 @@ mod map_builder;
 mod set_builder;
 mod struct_builder;
 mod tuple_builder;
+mod type_kind_builder;
 mod value_builder;
 
 pub use array_builder::ArrayMutationBuilder;
@@ -12,4 +13,5 @@ pub use map_builder::MapMutationBuilder;
 pub use set_builder::SetMutationBuilder;
 pub use struct_builder::StructMutationBuilder;
 pub use tuple_builder::TupleMutationBuilder;
+pub use type_kind_builder::TypeKindBuilder;
 pub use value_builder::ValueMutationBuilder;

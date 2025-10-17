@@ -11,16 +11,16 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::super::path_builder::PathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
 use super::super::{BuilderError, NotMutableReason};
+use super::type_kind_builder::TypeKindBuilder;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 
 pub struct TupleMutationBuilder;
 
-impl PathBuilder for TupleMutationBuilder {
+impl TypeKindBuilder for TupleMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
         = std::vec::IntoIter<PathKind>

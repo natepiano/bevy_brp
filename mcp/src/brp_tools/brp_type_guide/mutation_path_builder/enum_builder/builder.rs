@@ -26,144 +26,35 @@
 //! Unlike other types that use `MutationPathBuilder`, enums bypass the trait system for
 //! their specialized processing, then calls back into `recurse_mutation_paths` for its children.
 
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+
+use error_stack::Report;
+use itertools::Itertools;
+use serde_json::{Value, json};
+
+use super::super::super::type_kind::TypeKind;
+use super::super::mutation_path_internal::MutationPathInternal;
+use super::super::new_types::VariantName;
+use super::super::path_kind::{MutationPathDescriptor, PathKind};
+use super::super::recursion_context::RecursionContext;
+use super::super::types::{
+    EnumPathData, ExampleGroup, Mutability, MutabilityIssue, PathAction, PathExample,
+};
+use super::super::{BuilderError, NotMutableReason, path_builder};
+use super::option_classification::apply_option_transformation;
+use super::variant_kind::VariantKind;
+use super::variant_signature::VariantSignature;
+use crate::brp_tools::brp_type_guide::BrpTypeName;
+use crate::error::{Error, Result};
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
+
 /// Result type for `process_children` containing example groups, child paths, and partial roots
 type ProcessChildrenResult = (
     Vec<ExampleGroup>,
     Vec<MutationPathInternal>,
     BTreeMap<Vec<VariantName>, Value>,
 );
-
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-
-use error_stack::Report;
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
-
-use super::super::brp_type_name::BrpTypeName;
-use super::super::type_kind::TypeKind;
-use super::mutation_path_internal::MutationPathInternal;
-use super::new_types::{StructFieldName, VariantName};
-use super::path_kind::{MutationPathDescriptor, PathKind};
-use super::recursion_context::RecursionContext;
-use super::types::{
-    EnumPathData, ExampleGroup, Mutability, MutabilityIssue, PathAction, PathExample,
-};
-use super::variant_signature::VariantSignature;
-use super::{BuilderError, NotMutableReason, builder};
-use crate::error::{Error, Result};
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
-
-/// Type-safe enum variant information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct EnumVariantKind {
-    name:      VariantName,
-    signature: VariantSignature,
-}
-
-impl EnumVariantKind {
-    /// Get the fully qualified variant name (e.g., "`Color::Srgba`")
-    const fn variant_name(&self) -> &VariantName {
-        &self.name
-    }
-
-    /// Get just the variant name without the enum prefix (e.g., "Srgba" from "`Color::Srgba`")
-    fn name(&self) -> &str {
-        self.name
-            .as_str()
-            .rsplit_once("::")
-            .map_or_else(|| self.name.as_str(), |(_, name)| name)
-    }
-
-    /// Extract variant information from a schema variant
-    fn from_schema_variant(
-        v: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-        enum_type: &BrpTypeName,
-    ) -> Option<Self> {
-        // Handle Unit variants which show up as simple strings
-        if let Some(variant_str) = v.as_str() {
-            // For simple string variants, we need to construct the full variant name
-            // Extract just the type name without module path
-            let type_name = enum_type
-                .as_str()
-                .rsplit("::")
-                .next()
-                .unwrap_or(enum_type.as_str());
-
-            let qualified_name = format!("{type_name}::{variant_str}");
-            return Some(Self {
-                name:      VariantName::from(qualified_name),
-                signature: VariantSignature::Unit,
-            });
-        }
-
-        // Extract the fully qualified variant name
-        let variant_name = extract_variant_qualified_name(v)?;
-
-        // Check what type of variant this is
-        if let Some(signature) = extract_tuple_variant_signature(v, registry) {
-            return Some(Self {
-                name: variant_name,
-                signature,
-            });
-        }
-
-        if let Some(signature) = extract_struct_variant_signature(v, registry) {
-            return Some(Self {
-                name: variant_name,
-                signature,
-            });
-        }
-
-        // Unit variant (no fields)
-        Some(Self {
-            name:      variant_name,
-            signature: VariantSignature::Unit,
-        })
-    }
-}
-
-/// Extract tuple variant signature from schema if it matches tuple pattern
-fn extract_tuple_variant_signature(
-    v: &Value,
-    _registry: &HashMap<BrpTypeName, Value>,
-) -> Option<VariantSignature> {
-    let prefix_items = v.get_field(SchemaField::PrefixItems)?;
-    let prefix_array = prefix_items.as_array()?;
-
-    let tuple_types: Vec<BrpTypeName> = prefix_array
-        .iter()
-        .filter_map(Value::extract_field_type)
-        .collect();
-
-    Some(VariantSignature::Tuple(tuple_types))
-}
-
-/// Extract struct variant signature from schema if it matches struct pattern
-fn extract_struct_variant_signature(
-    v: &Value,
-    _registry: &HashMap<BrpTypeName, Value>,
-) -> Option<VariantSignature> {
-    let properties = v.get_field(SchemaField::Properties)?;
-    let props_map = properties.as_object()?;
-
-    let struct_fields: Vec<(StructFieldName, BrpTypeName)> = props_map
-        .iter()
-        .filter_map(|(field_name, field_schema)| {
-            field_schema
-                .extract_field_type()
-                .map(|type_name| (StructFieldName::from(field_name.clone()), type_name))
-        })
-        .collect();
-
-    if struct_fields.is_empty() {
-        return None;
-    }
-
-    Some(VariantSignature::Struct(struct_fields))
-}
 
 /// Process enum type directly, bypassing `PathBuilder` trait
 ///
@@ -209,186 +100,6 @@ pub fn process_enum(
         child_paths,
         partial_root_examples,
     ))
-}
-
-/// Extract the fully qualified variant name from schema (e.g., "`Color::Srgba`")
-fn extract_variant_qualified_name(v: &Value) -> Option<VariantName> {
-    // First try to get the type path for the full qualified name
-    if let Some(type_path) = v.get_field(SchemaField::TypePath).and_then(Value::as_str) {
-        // Use the new parser to handle nested generics properly
-        let simplified_name = super::type_parser::extract_simplified_variant_name(type_path);
-        return Some(VariantName::from(simplified_name));
-    }
-
-    // Fallback to just the variant name if we can't parse it
-    v.get_field(SchemaField::ShortPath)
-        .and_then(Value::as_str)
-        .map(|s| VariantName::from(s.to_string()))
-}
-
-fn extract_enum_variants(
-    registry_schema: &Value,
-    registry: &HashMap<BrpTypeName, Value>,
-    enum_type: &BrpTypeName,
-) -> Vec<EnumVariantKind> {
-    let one_of_field = registry_schema.get_field(SchemaField::OneOf);
-
-    one_of_field
-        .and_then(Value::as_array)
-        .map(|variants| {
-            variants
-                .iter()
-                .filter_map(|v| EnumVariantKind::from_schema_variant(v, registry, enum_type))
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum TypeCategory {
-    Option { inner_type: BrpTypeName },
-    Regular(BrpTypeName),
-}
-
-impl TypeCategory {
-    fn from_type_name(type_name: &BrpTypeName) -> Self {
-        Self::extract_option_inner(type_name).map_or_else(
-            || Self::Regular(type_name.clone()),
-            |inner_type| Self::Option { inner_type },
-        )
-    }
-
-    const fn is_option(&self) -> bool {
-        matches!(self, Self::Option { .. })
-    }
-
-    fn extract_option_inner(type_name: &BrpTypeName) -> Option<BrpTypeName> {
-        const OPTION_PREFIX: &str = "core::option::Option<";
-        const OPTION_SUFFIX: char = '>';
-
-        let type_str = type_name.as_str();
-        type_str
-            .strip_prefix(OPTION_PREFIX)
-            .and_then(|inner_with_suffix| {
-                inner_with_suffix
-                    .strip_suffix(OPTION_SUFFIX)
-                    .map(|inner| BrpTypeName::from(inner.to_string()))
-            })
-    }
-}
-
-/// Apply `Option<T>` transformation if needed: {"Some": value} → value, "None" → null
-fn apply_option_transformation(
-    example: Value,
-    variant_name: &str,
-    enum_type: &BrpTypeName,
-) -> Value {
-    let type_category = TypeCategory::from_type_name(enum_type);
-
-    tracing::debug!(
-        "apply_option_transformation: enum_type={}, variant_name={}, is_option={}, example={:?}",
-        enum_type.as_str(),
-        variant_name,
-        type_category.is_option(),
-        example
-    );
-
-    if !type_category.is_option() {
-        tracing::debug!(
-            "apply_option_transformation: NOT an Option type, returning example unchanged"
-        );
-        return example;
-    }
-
-    // Transform Option variants for BRP mutations
-    let result = match variant_name {
-        "None" => {
-            tracing::debug!("apply_option_transformation: Transforming None variant to null");
-            json!(null)
-        }
-        "Some" => {
-            // Extract the inner value from {"Some": value}
-            if let Some(obj) = example.as_object()
-                && let Some(value) = obj.get("Some")
-            {
-                tracing::debug!(
-                    "apply_option_transformation: Extracting inner value from Some variant"
-                );
-                return value.clone();
-            }
-            tracing::debug!("apply_option_transformation: Some variant but no extraction needed");
-            example
-        }
-        _ => {
-            tracing::debug!("apply_option_transformation: Other variant, returning unchanged");
-            example
-        }
-    };
-
-    tracing::debug!("apply_option_transformation: returning result={:?}", result);
-    result
-}
-
-/// Build a complete example for a variant with all its fields
-fn build_variant_example(
-    signature: &VariantSignature,
-    variant_name: &str,
-    children: &HashMap<MutationPathDescriptor, Value>,
-    enum_type: &BrpTypeName,
-) -> Value {
-    tracing::debug!(
-        "build_variant_example: enum_type={}, variant_name={}, signature={:?}, children={:?}",
-        enum_type.as_str(),
-        variant_name,
-        signature,
-        children
-    );
-
-    let example = match signature {
-        VariantSignature::Unit => {
-            json!(variant_name)
-        }
-        VariantSignature::Tuple(types) => {
-            let mut tuple_values = Vec::new();
-            for index in 0..types.len() {
-                let descriptor = MutationPathDescriptor::from(index.to_string());
-                let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
-                tuple_values.push(value);
-            }
-            // Fix: Single-element tuples should not be wrapped in arrays
-            // Vec<Value> always serializes as JSON array, but BRP expects single-element
-            // tuples to use direct value format for mutations, not array format
-            if tuple_values.len() == 1 {
-                json!({ variant_name: tuple_values[0] })
-            } else {
-                json!({ variant_name: tuple_values })
-            }
-        }
-        VariantSignature::Struct(field_types) => {
-            let mut field_values = serde_json::Map::new();
-            for (field_name, _) in field_types {
-                let descriptor = MutationPathDescriptor::from(field_name);
-                let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
-                field_values.insert(field_name.to_string(), value);
-            }
-            json!({ variant_name: field_values })
-        }
-    };
-
-    tracing::debug!(
-        "build_variant_example: built example before transformation: {:?}",
-        example
-    );
-
-    // Apply `Option<T>` transformation only for actual Option types
-    let result = apply_option_transformation(example, variant_name, enum_type);
-
-    tracing::debug!(
-        "build_variant_example: final result after transformation: {:?}",
-        result
-    );
-
-    result
 }
 
 /// Select the preferred example from a collection of `ExampleGroups`.
@@ -455,19 +166,99 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
         })
 }
 
+fn extract_enum_variants(
+    registry_schema: &Value,
+    registry: &HashMap<BrpTypeName, Value>,
+    enum_type: &BrpTypeName,
+) -> Vec<VariantKind> {
+    let one_of_field = registry_schema.get_field(SchemaField::OneOf);
+
+    one_of_field
+        .and_then(Value::as_array)
+        .map(|variants| {
+            variants
+                .iter()
+                .filter_map(|v| VariantKind::from_schema_variant(v, registry, enum_type))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Build a complete example for a variant with all its fields
+fn build_variant_example(
+    signature: &VariantSignature,
+    variant_name: &str,
+    children: &HashMap<MutationPathDescriptor, Value>,
+    enum_type: &BrpTypeName,
+) -> Value {
+    tracing::debug!(
+        "build_variant_example: enum_type={}, variant_name={}, signature={:?}, children={:?}",
+        enum_type.as_str(),
+        variant_name,
+        signature,
+        children
+    );
+
+    let example = match signature {
+        VariantSignature::Unit => {
+            json!(variant_name)
+        }
+        VariantSignature::Tuple(types) => {
+            let mut tuple_values = Vec::new();
+            for index in 0..types.len() {
+                let descriptor = MutationPathDescriptor::from(index.to_string());
+                let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
+                tuple_values.push(value);
+            }
+            // Fix: Single-element tuples should not be wrapped in arrays
+            // Vec<Value> always serializes as JSON array, but BRP expects single-element
+            // tuples to use direct value format for mutations, not array format
+            if tuple_values.len() == 1 {
+                json!({ variant_name: tuple_values[0] })
+            } else {
+                json!({ variant_name: tuple_values })
+            }
+        }
+        VariantSignature::Struct(field_types) => {
+            let mut field_values = serde_json::Map::new();
+            for (field_name, _) in field_types {
+                let descriptor = MutationPathDescriptor::from(field_name);
+                let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
+                field_values.insert(field_name.to_string(), value);
+            }
+            json!({ variant_name: field_values })
+        }
+    };
+
+    tracing::debug!(
+        "build_variant_example: built example before transformation: {:?}",
+        example
+    );
+
+    // Apply `Option<T>` transformation only for actual Option types
+    let result = apply_option_transformation(example, variant_name, enum_type);
+
+    tracing::debug!(
+        "build_variant_example: final result after transformation: {:?}",
+        result
+    );
+
+    result
+}
+
 /// Extract all variants from schema and group them by signature
 /// This is the single source of truth for enum variant processing
 fn extract_and_group_variants(
     ctx: &RecursionContext,
-) -> Result<BTreeMap<VariantSignature, Vec<EnumVariantKind>>> {
+) -> Result<BTreeMap<VariantSignature, Vec<VariantKind>>> {
     let schema = ctx.require_registry_schema()?;
     let mut variants = extract_enum_variants(schema, &ctx.registry, ctx.type_name());
 
-    variants.sort_by(|a, b| a.signature.cmp(&b.signature));
+    variants.sort_by(|a, b| a.signature().cmp(b.signature()));
 
     Ok(variants
         .into_iter()
-        .chunk_by(|v| v.signature.clone())
+        .chunk_by(|v| v.signature().clone())
         .into_iter()
         .map(|(signature, signature_group)| (signature, signature_group.collect()))
         .collect())
@@ -498,7 +289,7 @@ fn process_signature_path(
     let child_type_kind = TypeKind::from_schema(child_schema);
 
     // Use the same recursion function as `MutationPathBuilder`
-    let mut child_paths = builder::recurse_mutation_paths(child_type_kind, &child_ctx)?;
+    let mut child_paths = path_builder::recurse_mutation_paths(child_type_kind, &child_ctx)?;
 
     // Track which variants make these child paths valid
     // Only populate for DIRECT children (not grandchildren nested deeper)
@@ -554,7 +345,7 @@ fn determine_signature_mutability(
         // No fields (shouldn't happen, but handle gracefully)
         Mutability::Mutable
     } else {
-        builder::aggregate_mutability(&signature_field_statuses)
+        path_builder::aggregate_mutability(&signature_field_statuses)
     }
 }
 
@@ -569,7 +360,7 @@ fn determine_signature_mutability(
 ///    a fully `Mutable` variant (or return `None` if no `Mutable` variants exist)
 fn build_variant_group_example(
     signature: &VariantSignature,
-    variants_in_group: &[EnumVariantKind],
+    variants_in_group: &[VariantKind],
     child_examples: &HashMap<MutationPathDescriptor, Value>,
     signature_status: Mutability,
     ctx: &RecursionContext,
@@ -600,7 +391,7 @@ fn build_variant_group_example(
 /// Now builds examples immediately for each variant group to avoid `HashMap` collision issues
 /// where multiple variant groups with the same signature would overwrite each other's examples.
 fn process_children(
-    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantKind>>,
+    variant_groups: &BTreeMap<VariantSignature, Vec<VariantKind>>,
     ctx: &RecursionContext,
 ) -> std::result::Result<ProcessChildrenResult, BuilderError> {
     let mut all_examples = Vec::new();
@@ -810,7 +601,7 @@ fn collect_child_chains_to_wrap(
 /// Partial roots are built using an assembly approach by wrapping child partial roots
 /// as we ascend through recursion.
 fn build_partial_root_examples(
-    variant_groups: &BTreeMap<VariantSignature, Vec<EnumVariantKind>>,
+    variant_groups: &BTreeMap<VariantSignature, Vec<VariantKind>>,
     enum_examples: &[ExampleGroup],
     child_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
@@ -997,7 +788,7 @@ fn propagate_partial_root_examples_to_children(
         }
 
         // Use shared helper function to populate root examples
-        builder::populate_root_examples_from_partials(child_paths, partial_root_examples);
+        path_builder::populate_root_examples_from_partials(child_paths, partial_root_examples);
     }
 }
 
@@ -1013,7 +804,7 @@ fn create_result_paths(
     let signature_statuses: Vec<Mutability> =
         enum_examples.iter().map(|eg| eg.mutability).collect();
 
-    let enum_mutability = builder::aggregate_mutability(&signature_statuses);
+    let enum_mutability = path_builder::aggregate_mutability(&signature_statuses);
 
     // Build reason for partially_mutable or not_mutable enums using unified approach
     let mutability_reason = build_enum_mutability_reason(enum_mutability, &enum_examples, ctx);

@@ -13,15 +13,15 @@ use serde_json::{Value, json};
 
 use super::super::BuilderError;
 use super::super::new_types::StructFieldName;
-use super::super::path_builder::PathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
+use super::type_kind_builder::TypeKindBuilder;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 
 pub struct StructMutationBuilder;
 
-impl PathBuilder for StructMutationBuilder {
+impl TypeKindBuilder for StructMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
         = std::vec::IntoIter<PathKind>

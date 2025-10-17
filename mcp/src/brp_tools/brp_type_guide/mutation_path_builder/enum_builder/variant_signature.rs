@@ -8,8 +8,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::super::BrpTypeName;
-use super::new_types::StructFieldName;
+use super::super::super::BrpTypeName;
+use super::super::new_types::StructFieldName;
 
 /// Variant signature types for enum variants - used for grouping similar structures
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]

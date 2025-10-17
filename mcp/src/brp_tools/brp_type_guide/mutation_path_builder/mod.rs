@@ -1,24 +1,23 @@
 mod api;
-mod builder;
-mod builders;
-mod enum_path_builder;
+mod enum_builder;
 mod mutation_path_internal;
 mod new_types;
 mod not_mutable_reason;
 mod path_builder;
 mod path_kind;
 mod recursion_context;
+mod type_kind_builders;
 mod type_parser;
 mod types;
-mod variant_signature;
 
+// public use
 pub(super) use api::{build_mutation_paths, extract_spawn_format};
+pub(super) use enum_builder::VariantSignature;
 use error_stack::Report;
 use not_mutable_reason::NotMutableReason;
 pub(super) use types::MutationPathExternal;
-pub(super) use variant_signature::VariantSignature;
 
-// Re-export support functions as the public API
+// local use
 use crate::error::Error;
 
 /// Internal error type for mutation path building that preserves semantic information.

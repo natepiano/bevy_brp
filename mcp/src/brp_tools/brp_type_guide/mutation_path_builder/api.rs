@@ -11,8 +11,8 @@ use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
-use super::builder::recurse_mutation_paths;
-use super::enum_path_builder::select_preferred_example;
+use super::enum_builder::select_preferred_example;
+use super::path_builder::recurse_mutation_paths;
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
 use super::types::{MutationPathExternal, PathExample};

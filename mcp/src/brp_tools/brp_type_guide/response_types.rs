@@ -11,7 +11,7 @@ use serde_json::Value;
 use strum::{AsRefStr, Display};
 
 pub use super::brp_type_name::BrpTypeName;
-use super::builder::TypeGuide;
+use super::guide::TypeGuide;
 use super::type_kind::TypeKind;
 
 /// Enum for BRP supported operations

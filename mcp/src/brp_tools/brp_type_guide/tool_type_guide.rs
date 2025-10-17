@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::brp_type_name::BrpTypeName;
-use super::builder::TypeGuide;
+use super::guide::TypeGuide;
 use super::response_types::{TypeGuideResponse, TypeGuideSummary};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
