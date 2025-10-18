@@ -259,9 +259,42 @@ def deep_compare_values(
                 continue
 
             new_path = f"{path}.{key}" if path else str(key)
-            base_item = baseline_val.get(key)
-            curr_item = current_val.get(key)
-            differences.extend(deep_compare_values(new_path, base_item, curr_item))
+
+            # Check if key exists in each dict to distinguish None value from missing key
+            base_has_key = key in baseline_val
+            curr_has_key = key in current_val
+
+            if base_has_key and curr_has_key:
+                # Both have the key, compare values (even if both are None)
+                differences.extend(deep_compare_values(new_path, baseline_val[key], current_val[key]))
+            elif base_has_key and not curr_has_key:
+                # Key exists in baseline but not current (field removed)
+                # Directly create the difference entry to avoid (None, None) comparison
+                differences.append(
+                    DifferenceDict(
+                        path=new_path,
+                        change_type="removed",
+                        baseline=baseline_val[key],
+                        current=None,
+                        description=f"Removed: {describe_value(baseline_val[key])}",
+                        type_name="",
+                        mutation_path=extract_mutation_path(new_path),
+                    )
+                )
+            elif not base_has_key and curr_has_key:
+                # Key exists in current but not baseline (field added)
+                # Directly create the difference entry to avoid (None, None) comparison
+                differences.append(
+                    DifferenceDict(
+                        path=new_path,
+                        change_type="added",
+                        baseline=None,
+                        current=current_val[key],
+                        description=f"Added: {describe_value(current_val[key])}",
+                        type_name="",
+                        mutation_path=extract_mutation_path(new_path),
+                    )
+                )
 
     elif isinstance(baseline_val, list) and isinstance(current_val, list):
         # Check if arrays have different lengths

@@ -10,13 +10,13 @@ use crate::tool::{HandlerContext, HandlerResult, NoParams, ToolFn, ToolResult};
 pub struct GetTraceLogPathResult {
     /// Full path to the trace log file
     #[to_metadata]
-    log_path: String,
+    log_path:         String,
     /// Whether the log file currently exists
     #[to_metadata]
-    exists: bool,
+    exists:           bool,
     /// Size of the log file in bytes (if it exists)
     #[to_metadata(skip_if_none)]
-    file_size_bytes: Option<u64>,
+    file_size_bytes:  Option<u64>,
     /// Message template for formatting responses
     #[to_message(message_template = "Trace log path: {log_path}")]
     message_template: String,

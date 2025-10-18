@@ -278,7 +278,7 @@ fn extract_child_value_for_chain(
 
 /// Collect children values for a specific variant chain
 ///
-/// Used by both enum and non-enum types.
+/// Used by both enum and non-enum types for constructing `root_example` fields
 ///
 /// Filtering rules:
 /// 1. Only direct children at current depth
@@ -298,6 +298,9 @@ pub fn collect_children_for_chain(
         .filter(|child| child.is_direct_child_at_depth(*ctx.depth))
         // Filter by variant-chain compatibility if target chain specified
         .filter(|child| target_chain.is_none_or(|chain| is_variant_chain_compatible(child, chain)))
+        // Exclude NotMutable children - they can't be set in root_example
+        // Include Mutable and PartiallyMutable (enum builder selects mutable variants)
+        .filter(|child| !matches!(child.mutability, Mutability::NotMutable))
         // Map to (descriptor, value) pairs
         .map(|child| {
             let descriptor = child.path_kind.to_mutation_path_descriptor();
@@ -372,6 +375,7 @@ pub fn determine_parent_mutability(
     // SPECIAL CASE: Map and Set require ALL children to be mutable
     // Maps need both key AND value mutable for operations like insert(key, value)
     // Sets need element mutable for operations like insert(element)
+    // Note: Tuples use normal aggregation - PartiallyMutable tuples expose mutable child paths
     if matches!(type_kind, TypeKind::Map | TypeKind::Set) {
         let has_not_mutable = child_paths
             .iter()
@@ -578,6 +582,23 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         ctx: &RecursionContext,
         child_paths: &[&MutationPathInternal],
     ) -> std::result::Result<Option<BTreeMap<Vec<VariantName>, Value>>, BuilderError> {
+        // Special case: Skip partial root examples for Maps/Sets with NotMutable children
+        // These collections require ALL children to be present for assembly, but our
+        // filter excludes NotMutable children, causing assembly validation errors
+        let schema = ctx.registry.get(ctx.type_name()).unwrap_or(&Value::Null);
+        let type_kind = TypeKind::from_schema(schema);
+
+        if matches!(type_kind, TypeKind::Map | TypeKind::Set) {
+            let has_not_mutable = child_paths
+                .iter()
+                .any(|p| matches!(p.mutability, Mutability::NotMutable));
+
+            if has_not_mutable {
+                // Map/Set with NotMutable children can't have valid partial root examples
+                return Ok(None);
+            }
+        }
+
         // Collect all unique variant chains from all children
         let mut all_chains = BTreeSet::new();
         for child in child_paths {
