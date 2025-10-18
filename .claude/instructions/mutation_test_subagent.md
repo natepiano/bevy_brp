@@ -630,11 +630,14 @@ Set `spawn_insert: true` in operations_completed
 1. **Log the framework error**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Framework error: Unable to extract parameters - will retry with reordered parameters"`
 2. **Reorder parameters immediately** - change the order of parameters in your tool call
 3. **Log the reordered parameters**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} info "Reordered parameters: ${reordered_params}"` so that you have the context of what you have changed readily present in your thinking
-4. **Retry the EXACT same mutation** using ultrathink with the reordered parameters
-5. **Increment `retry_count`**
-6. **Check retry result**:
-   - If SUCCESS → Track in `mutations_passed`, continue
-   - If FAILURE → Apply <LogOperationFailure operation="Mutation [path]"/>, mark failed, continue
+4. **Increment `retry_count`**
+5. **Restart this mutation path**: Go back to "EXECUTE MUTATION" in <MutationTestingLoop/> for this same path with reordered parameters, which will automatically:
+   - Apply <LogMutationAttempt/> (shows retry attempt in logs)
+   - Execute mutation with reordered parameters
+   - Check result via normal flow
+6. **On retry result**:
+   - If SUCCESS → Track in `mutations_passed`, continue to next mutation path
+   - If FAILURE → Apply <LogOperationFailure operation="Mutation [path]"/>, mark failed, continue to next mutation path
 
 **Why this works:** Parameter order doesn't matter semantically, but reordering breaks mental loops that cause extraction errors.
 </ParameterExtractionRecovery>
