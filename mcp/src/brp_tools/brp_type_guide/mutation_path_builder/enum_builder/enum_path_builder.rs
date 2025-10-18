@@ -69,20 +69,9 @@ type ProcessChildrenResult = (
 
 /// Process enum type directly, bypassing `PathBuilder` trait
 ///
-/// # Simplified Design
-///
-/// This function always generates examples arrays for all enums, regardless of where
-/// they appear in the type hierarchy. This simplification:
-///
-/// - Removes the need for `EnumContext` tracking
+/// This function always generates examples arrays for all enums, anywhere in the type hierarchy
 /// - Ensures all enum fields show their available variants
 /// - Improves discoverability for nested enums
-/// - Makes the behavior predictable and consistent
-///
-/// Every enum will output:
-/// - `example`: null (the example field is always null for enums)
-/// - `enum_root_examples`: array of all variant examples
-/// - `enum_root_example_for_parent`: concrete value for parent assembly
 pub fn process_enum(
     ctx: &RecursionContext,
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
@@ -164,19 +153,24 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
     examples
         .iter()
         .find(|eg| {
-            eg.signature != "unit" && eg.example.is_some() && eg.mutability == Mutability::Mutable
+            !matches!(eg.signature, VariantSignature::Unit)
+                && eg.example.is_some()
+                && eg.mutability == Mutability::Mutable
         })
-        .and_then(|eg| eg.example.clone())
         .or_else(|| {
             // Second priority: Fall back to ANY Mutable variant with an example (including unit)
             // This handles cases where all non-unit variants are not_mutable/partially_mutable
             examples
                 .iter()
                 .find(|eg| eg.example.is_some() && eg.mutability == Mutability::Mutable)
-                .and_then(|eg| eg.example.clone())
         })
+        .and_then(|eg| eg.example.clone())
 }
 
+/// Extract and parse all variants from an enum's JSON schema
+///
+/// Reads the `oneOf` field from the schema and converts each variant definition
+/// into a `VariantKind` structure containing the variant's name and signature.
 fn extract_enum_variants(
     registry_schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
@@ -281,7 +275,7 @@ fn process_signature_path(
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
     let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create)?;
 
-    // NEW: Set parent variant signature context for the child
+    // Set parent variant signature context for the child
     // Note: enum type is already in child_ctx.path_kind.parent_type
     child_ctx.parent_variant_signature = Some(signature.clone());
 
@@ -395,7 +389,7 @@ fn build_variant_group_example(
 
 /// Process child paths - simplified version of `MutationPathBuilder`'s child processing
 ///
-/// Now builds examples immediately for each variant group to avoid `HashMap` collision issues
+/// Builds examples immediately for each variant group to avoid `HashMap` collision issues
 /// where multiple variant groups with the same signature would overwrite each other's examples.
 fn process_children(
     variant_groups: &BTreeMap<VariantSignature, Vec<VariantKind>>,
@@ -446,7 +440,7 @@ fn process_children(
 
         all_examples.push(ExampleGroup {
             applicable_variants,
-            signature: signature.to_string(),
+            signature: signature.clone(),
             example,
             mutability: signature_status,
         });
@@ -521,7 +515,7 @@ fn collect_child_chains_to_wrap(
 
 /// Build partial root examples using assembly during ascent
 ///
-/// Builds partial roots IMMEDIATELY during recursion by wrapping child partial roots
+/// Builds partial roots during recursion by wrapping child partial roots
 /// as we receive them during the ascent phase.
 ///
 /// ## What is `partial_root_examples`?

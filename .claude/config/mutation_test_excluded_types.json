@@ -67,6 +67,10 @@
     {
       "type_name": "bevy_animation::transition::AnimationTransitions",
       "reason": "Array element mutation paths cannot be tested. Type spawns with empty transitions array (spawn_format: {}), but type guide includes mutation paths for array elements (.transitions[0].current_weight, .transitions[0].weight_decline_per_sec). Cannot mutate array element [0] when array is empty - results in error: 'The list accessed doesn't have index `0`'. Would need non-empty spawn format or filtered mutation paths to be testable."
+    },
+    {
+      "type_name": "bevy_picking::pointer::PointerInteraction",
+      "reason": "Immutable array field - mutations silently fail. The .sorted_entities field cannot be populated through BRP mutations (both root path and field path mutations report success but leave the array empty). Attempting to mutate array element paths like .sorted_entities[0] fails with 'The list accessed doesn't have index `0`'. The component is auto-managed by Bevy's picking system and the field appears to be read-only despite being marked as mutable in reflection."
     }
   ]
 }

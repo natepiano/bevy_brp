@@ -6,21 +6,16 @@
     **EXECUTE THESE STEPS IN ORDER:**
 
     **STEP 0:** Execute <InitializeLogging/> - Initialize progress log file
-    **STEP 1:** Read and internalize <ErrorRecoveryProtocol/>
-    **STEP 2:** Read <SubagentContext/> to understand your assignment
-    **STEP 3:** Execute <FetchAssignment/> → ON ERROR: go to Step 7 with assignment error
-    **STEP 4:** Execute <ParseAssignmentData/> → ON ERROR: go to Step 7 with parsing error
-    **STEP 5:** Execute <TestAllTypes/> → ON ERROR: go to Step 7 with partial results
-    **STEP 6:** Execute <PreFailureCheck/> before reporting any failures
-    **STEP 7:** **[UNCONDITIONAL - ALWAYS EXECUTE]** Execute <ReturnResults/> with JSON output
-    **STEP 8:** **[UNCONDITIONAL - ALWAYS EXECUTE]** Execute <FinalValidation/> before sending response
+    **STEP 1:** Read <SubagentContext/> to understand your assignment
+    **STEP 2:** Execute <FetchAssignment/> → ON ERROR: go to Step 5 with assignment error
+    **STEP 3:** Execute <TestAllTypes/> → ON ERROR: go to Step 5 with partial results
+    **STEP 4:** Execute <PreFailureCheck/> before reporting any failures
+    **STEP 5:** **[UNCONDITIONAL - ALWAYS EXECUTE]** Execute <ReturnResults/> with JSON output
+    **STEP 6:** **[UNCONDITIONAL - ALWAYS EXECUTE]** Execute <FinalValidation/> before sending response
 
-**CRITICAL**: Steps 7-8 execute whether previous steps succeed or fail. Step 7 returns results (success/failure/partial).
+**CRITICAL**: Steps 5-6 execute whether previous steps succeed or fail. Step 5 returns results (success/failure/partial).
 
-**LOGGING REQUIREMENT**:
-- Log workflow steps (0, 3, 5, 7, 8) using `.claude/scripts/mutation_test_subagent_log.sh`
-- Log errors only
-- This creates a diagnostic trail if subagent fails silently
+**LOGGING REQUIREMENT**: Use `.claude/scripts/mutation_test_subagent_log.sh` to create diagnostic trail (see <InitializeLogging/> for details)
 </SubagentExecutionFlow>
 
 **OUTPUT FORMAT**: Return ONLY the JSON array result from <ReturnResults/>. No explanations, no commentary.
@@ -35,58 +30,12 @@
 This creates `$TMPDIR/mutation_test_subagent_${PORT}_progress.log` for tracking workflow progress.
 
 **Log at these points**:
-- At workflow steps 0, 3, 5, 7, 8
+- At workflow steps 0, 2, 3, 5, 6
+- Before/after spawn/insert operations
+- Before/after query operations
+- Before testing each mutation path
 - When catching errors (critical for debugging)
 </InitializeLogging>
-
-<ErrorRecoveryProtocol>
-**CRITICAL - READ THIS SECTION FIRST**
-
-IF any mutation error contains `"invalid type: string"`:
-1. This means YOU stringified the value (your bug, not BRP)
-2. Immediately retry with proper JSON type (unquoted)
-3. Increment `retry_count`
-4. Only report failure if retry also fails with DIFFERENT error
-
-**Example (Lightmap .uv_rect.max failure from testing)**:
-- Sent: `{"value": "[1.0, 2.0]"}` (string)
-- Error: `invalid type: string "[1.0, 2.0]", expected a sequence of 2 f32 values`
-- Fix: Retry with `{"value": [1.0, 2.0]}` (array)
-- Result: If retry succeeds → mark PASSED; if retry fails with different error → mark FAILED
-
- **Example (Sprite .image_mode.stretch_value failure from testing)**:
-  - Sent: `{"value": "3.1415927410125732"}` (string)
-  - Error: `invalid type: string "3.1415927410125732", expected f32`
-  - Fix: Retry with `{"value": 3.1415927410125732}` (number, no quotes)
-  - Result: If retry succeeds → mark PASSED; if retry fails with different error → mark
-   FAILED
-
-**IF any mutation error contains `"UUID parsing failed"` AND `"found \`\"\` at"`**:
-1. This means YOU double-quoted the UUID string (your bug, not BRP)
-2. The UUID value is already a JSON string - don't stringify it further
-3. Immediately retry with the UUID as a plain JSON string value
-4. Increment `retry_count`
-5. Only report failure if retry also fails with DIFFERENT error
-
-**Example (UUID parsing failure from testing)**:
-- Type guide shows: `"example": "550e8400-e29b-41d4-a716-446655440000"`
-- Sent: `{"value": "550e8400-e29b-41d4-a716-446655440000"}` (appears correct)
-- Error: `UUID parsing failed: invalid character: expected an optional prefix of 'urn:uuid:' followed by [0-9a-fA-F-], found '"' at 1`
-- **Root cause**: Value was double-serialized/quoted during JSON construction
-- Fix: Ensure the UUID string from type guide is used AS-IS without additional stringification
-- Result: If retry succeeds → mark PASSED; if retry fails with different error → mark FAILED
-
-**Error patterns → Fix**:
-- `expected a sequence` or `expected reflected list` → Unquoted array
-- `expected a boolean` → Unquoted boolean
-- `expected f32/i32/u32` → Unquoted number
-- `expected reflected struct` → Unquoted object
-
-**Tracking**: Keep `retry_count` variable starting at 0, increment for each "invalid type: string" or UUID parsing error you retry. Include in final output.
-
-**IF YOU GET STUCK IN A LOOP CALLING TOOLS WITH EMPTY PARAMETERS**:
-Reorder parameters in your tool call - parameter order doesn't matter, but reordering breaks mental loops.
-</ErrorRecoveryProtocol>
 
 <ContextWindowMonitoring>
 **DETECT APPROACHING CONTEXT LIMIT**:
@@ -97,13 +46,13 @@ Reorder parameters in your tool call - parameter order doesn't matter, but reord
 - Reported count includes: messages, memory files, system prompt, system tools
 - Hidden overhead: 73,600 tokens (MCP tool definitions ~28.6K + autocompact buffer ~45K)
 - **CALCULATED total = 73,600 + reported**
-- **IF CALCULATED total >= 180,000 tokens (90% of 200K)**: IMMEDIATELY bail out to Step 7
+- **IF CALCULATED total >= 180,000 tokens (90% of 200K)**: IMMEDIATELY bail out to Step 6
 - Use the CALCULATED total for the bailout check, NOT the reported number
 
 **Manual Check Point**: After EVERY mutation operation
 - IF you sense context running low OR have difficulty continuing:
   * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Context limit approaching - returning partial results"`
-  * **GO TO STEP 7 IMMEDIATELY**
+  * **GO TO STEP 6 IMMEDIATELY**
   * Return results for completed types + partial result for current type
   * Use standard FAIL result format with context-limit error message
 
@@ -163,7 +112,7 @@ Where:
 
 5. **STOP TESTING**:
    - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "BRP connection/timeout error - app crashed"`
-   - **GO TO STEP 7 IMMEDIATELY** - return partial results array with FAIL status for current type
+   - **GO TO STEP 6 IMMEDIATELY** - return partial results array with FAIL status for current type
    - For any completed types: include their results with actual status (PASS/FAIL)
    - For the type being tested when error occurred: set status="FAIL", failed_operation=last operation attempted, include complete error in failure_details
    - **DO NOT** continue testing remaining types or mutations
@@ -252,16 +201,10 @@ You are subagent with index ${SUBAGENT_INDEX} (0-based) assigned to port ${PORT}
 - Update JSON files
 - Provide explanations or commentary
 - Test any type other than those provided in your assignment data
-- Make up or substitute different types
-- Use your Bevy knowledge to "fix" or "improve" type names
-- Test related types (like bundles when given components)
-- MODIFY TYPE NAMES IN ANY WAY - use the exact strings provided
 - Call `brp_all_type_guides` tool - you already have the data you need
 - Use `jq` command - parse JSON directly from tool outputs
 
-**CRITICAL CONSTRAINT**: You MUST test ONLY the exact types provided in your assignment data. The test system controls type names completely.
-
-**Follow <TypeNameValidation/> requirements exactly** before testing each type.
+**CRITICAL**: Follow <TypeNameValidation/> requirements exactly - NEVER modify type names in any way.
 </SubagentContext>
 
 <FetchAssignment>
@@ -282,11 +225,11 @@ python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
 **ERROR HANDLING**:
 - **IF** script fails to execute or returns non-zero exit code:
   - Log the error: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Assignment fetch failed: [error message]"`
-  - Go directly to Step 7 (<ReturnResults/>)
+  - Go directly to Step 6 (<ReturnResults/>)
   - Return single error result: `[{"type": "ASSIGNMENT_FETCH_FAILED", "tested_type": "ASSIGNMENT_FETCH_FAILED", "status": "FAIL", "entity_id": null, "retry_count": 0, "operations_completed": {"spawn_insert": false, "entity_query": false, "mutations_passed": [], "total_mutations_attempted": 0}, "failure_details": {"failed_operation": "assignment_fetch", "error_message": "[script error message]"}}]`
 - **IF** script returns invalid JSON or missing `type_names` field:
   - Log the error: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Assignment JSON invalid"`
-  - Go directly to Step 7 (<ReturnResults/>)
+  - Go directly to Step 6 (<ReturnResults/>)
   - Return single error result per above format with error_message="Invalid JSON in assignment response"
 
 **SUCCESS CASE - This returns a JSON object with a `type_names` array containing ONLY the literal type name strings**:
@@ -324,94 +267,23 @@ Example: If assigned `["bevy_input::gamepad::Gamepad", "bevy_light::AmbientLight
 ```
 </FetchAssignment>
 
-<ParseAssignmentData>
+<TestAllTypes>
 **Log the step**:
 ```bash
-.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 4: Parsing assignment data"
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 4: Testing all assigned types"
 ```
-
-**Parse the type_names array from assignment and fetch each type guide:**
-
-The assignment gives you a simple array of type names. For EACH type name, you MUST:
-
-1. **Extract the literal type name string** from the `type_names` array
-2. **Fetch its type guide** using INDIVIDUAL bash calls (one per type)
 
 **CRITICAL - NO LOOPS ALLOWED:**
 - ❌ NEVER use bash `for` loops - they require user approval
 - ❌ NEVER use `while` loops or any iteration constructs
-- ✅ Make INDIVIDUAL sequential Bash tool calls, one per type
-- ✅ Call `./.claude/scripts/get_type_guide.sh <TYPE_NAME> --file .claude/transient/all_types.json` for each type
+- ✅ Make INDIVIDUAL sequential tool calls, one per type
+- ✅ Follow <TypeNameValidation/> - use EXACT strings from `type_names` array
 
-**CRITICAL - TYPE NAME HANDLING:**
-- The type name from `type_names` is a LITERAL STRING
-- COPY it EXACTLY when calling get_type_guide.sh
-- NEVER retype or reconstruct the type name from memory
-- Use the SAME EXACT STRING in all BRP operations
+**Testing Protocol** - For each type name string in your `type_names` array:
 
-**Example workflow for 2 types:**
-```
-# Assignment returned: {"type_names": ["bevy_pbr::cluster::ClusterConfig", "bevy_input::gamepad::GamepadSettings"]}
-
-# Call 1 - Fetch first type guide:
-Bash: ./.claude/scripts/get_type_guide.sh bevy_pbr::cluster::ClusterConfig --file .claude/transient/all_types.json
-
-# Call 2 - Fetch second type guide:
-Bash: ./.claude/scripts/get_type_guide.sh bevy_input::gamepad::GamepadSettings --file .claude/transient/all_types.json
-```
-
-**VALIDATION**: You should make exactly as many Bash calls as there are entries in `type_names` array
-
-**The get_type_guide.sh script returns:**
-```json
-{
-  "status": "found",
-  "type_name": "bevy_pbr::cluster::ClusterConfig",
-  "guide": {
-    "spawn_format": null,
-    "mutation_paths": {...},
-    "supported_operations": ["query", "get", "mutate"],
-    ...
-  }
-}
-```
-
-**FIELD USAGE - How to use the type guide:**
-
-- **`type_name`** (from script output): The AUTHORITATIVE type identifier
-  - Use EXACTLY as-is in all BRP tool calls
-  - This MUST match the string from your assignment
-
-- **`mutation_type`** (from assignment data): Type category - "Component" or "Resource"
-  - Use this to determine which testing protocol to follow
-  - "Component" → Use <ComponentTestingProtocol/>
-  - "Resource" → Use <ResourceTestingProtocol/>
-
-- **`guide.spawn_format`**: Example value for entity creation (may be `null`)
-  - If not `null` AND "spawn" in `supported_operations`: Use in spawn/insert
-  - If `null` OR "spawn" not supported: Skip spawn/insert testing
-
-- **`guide.mutation_paths`**: Dictionary of testable mutation paths
-  - Keys are path strings (e.g., `""`, `".field"`, `".nested.value"`)
-  - Each path has an `example` value to use in mutations
-  - Check `path_info.mutability` before testing (skip if `"not_mutable"`)
-
-- **`guide.supported_operations`**: Which BRP methods work with this type
-  - Check before calling: If "spawn" not in list, don't call world_spawn_entity
-  - If "mutate" not in list, don't call world_mutate_components
-</ParseAssignmentData>
-
-<TestAllTypes>
-**Log the step**:
-```bash
-.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 5: Testing all assigned types"
-```
-
-**Testing Protocol**:
-
-For each type name string in your `type_names` array:
    1. **FETCH TYPE GUIDE**: Call `get_type_guide.sh <type_name> --file .claude/transient/all_types.json`
-   2. **EXTRACT TYPE NAME**: Get the `type_name` field from the script output - this is your AUTHORITATIVE string
+      - Returns: `{"status": "found", "type_name": "...", "guide": {...}}`
+   2. **EXTRACT TYPE NAME**: Get the `type_name` field from script output - this is your AUTHORITATIVE string
    3. **CALCULATE AND LOG TOKEN USAGE** (CRITICAL - Read carefully):
       - After the tool call, check for `<system_warning>` in the response
       - Extract the REPORTED token count from pattern: `Token usage: X/200,000`
@@ -423,7 +295,7 @@ For each type name string in your `type_names` array:
       - **BAILOUT CHECK**: Compare CALCULATED total (not reported X) against threshold:
         * **IF CALCULATED total >= 180,000 tokens (90% of 200K)**:
           - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Context limit reached - calculated total YK >= 180K (Z%) - returning partial results"`
-          - **GO TO STEP 7 IMMEDIATELY**
+          - **GO TO STEP 6 IMMEDIATELY**
           - Return results for all completed types (with their actual PASS/FAIL status)
           - Do NOT start testing this type
    4. **TEST THE TYPE**:
@@ -470,7 +342,7 @@ For each type name string in your `type_names` array:
 **AFTER COMPLETING TESTING FOR CURRENT TYPE**:
 - Add the result (PASS/FAIL/COMPONENT_NOT_FOUND) to your results collection
 - **IF there are more types remaining in your `type_names` array**: Return to step 1 above and test the next type
-- **IF there are no more types to test**: You have completed Step 5. Proceed to Step 6 (<PreFailureCheck/>)
+- **IF there are no more types to test**: You have completed Step 4. Proceed to Step 5 (<PreFailureCheck/>)
 </TestAllTypes>
 
 <ResourceTestingProtocol>
@@ -480,11 +352,13 @@ For each type name string in your `type_names` array:
 
 1. **INSERT CHECK**: If `guide.spawn_format` is NOT null:
    - **FIRST**: Check spawn_format for Entity ID placeholders and apply <EntityIdSubstitution/> if needed
+   - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Inserting resource"`
    - Use `world_insert_resources` tool
    - Pass `resource` parameter with exact type name from type guide
    - Pass `value` parameter with VALIDATED spawn_format data (after Entity ID substitution)
    - Then verify insertion with `world_get_resources`
    - **ON FAILURE**: Apply <LogOperationFailure operation="Resource insert"/>
+   - **ON SUCCESS**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Resource insert successful"`
    - Apply <MarkSpawnInsertSuccess/>
 
 2. **IF spawn_format IS null**: Apply <NullSpawnFormatHandling/>
@@ -507,19 +381,23 @@ For each type name string in your `type_names` array:
 
 1. **SPAWN/INSERT CHECK**: If `guide.spawn_format` is NOT null:
    - **FIRST**: Check spawn_format for Entity ID placeholders and apply <EntityIdSubstitution/> if needed
+   - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Spawning entity with component"`
    - **THEN**: Use `world_spawn_entity` tool
    - Pass `components` parameter with type name as key and VALIDATED spawn_format as value
    - **ON FAILURE**: Apply <LogOperationFailure operation="Spawn"/>
+   - **ON SUCCESS**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Spawn successful - entity ID: [id]"`
    - Apply <MarkSpawnInsertSuccess/>
    - Proceed to query for entity
 
 2. **IF spawn_format IS null**: Apply <NullSpawnFormatHandling/>
 
 3. **QUERY FOR ENTITY** (ALWAYS execute):
+   - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Querying for entities with component"`
    - Use `world_query` tool
    - Pass `filter: {"with": ["EXACT_TYPE_NAME"]}` to find entities
    - Pass `data: {}` to get entity IDs only
    - Store entity ID for mutation testing
+   - **ON SUCCESS**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Query found [count] entities"`
    - If 0 entities found → Report COMPONENT_NOT_FOUND status
    - If query fails with error → Follow <EmergencyBailout> and return FAIL with error details
    - Set `entity_query: true` in operations_completed
@@ -589,9 +467,9 @@ If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 </SubagentOutputFormat>
 
 <ReturnResults>
-**CRITICAL - Log reaching Step 7**:
+**CRITICAL - Log reaching Step 6**:
 ```bash
-.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 7: Returning results"
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 6: Returning results"
 ```
 
 **CRITICAL FIELD REQUIREMENTS**:
@@ -617,7 +495,7 @@ If any check fails, go back and follow <ErrorRecoveryProtocol/>.
 <FinalValidation>
 **Log validation step**:
 ```bash
-.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 8: Final validation before output"
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} step "STEP 7: Final validation before output"
 ```
 
 **VERIFY BEFORE OUTPUT**:
@@ -686,8 +564,12 @@ Assignment script says: "bevy_ecs::hierarchy::Children"
 <NullSpawnFormatHandling>
 - Skip spawn/insert step
 - Set `spawn_insert: false`
-- Components: Query for EXISTING entities
-- Resources: Proceed to mutation testing
+- **Components**:
+  - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "spawn_format is null - querying for existing entities"`
+  - Query for EXISTING entities
+- **Resources**:
+  - **LOG**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "spawn_format is null - proceeding to mutation testing"`
+  - Proceed to mutation testing
 </NullSpawnFormatHandling>
 
 <LogOperationFailure>
@@ -722,19 +604,81 @@ Set `spawn_insert: true` in operations_completed
 - Components: `world_mutate_components` with entity, component, path, value
 - Resources: `world_mutate_resources` with resource, path, value
 - Follow <JsonPrimitiveRules/>
-- On failure: Apply <LogOperationFailure operation="Mutation [path]"/>
+
+**CHECK RESULT** (immediately after mutation):
+- **IF status == "success"**:
+  - Track in `mutations_passed`
+  - Increment `total_mutations_attempted`
+  - Continue to next mutation
+- **IF status == "error"**:
+  - Increment `total_mutations_attempted`
+  - **MATCH error message and dispatch recovery:**
+    * IF contains `"Unable to extract parameters"` → Apply <ParameterExtractionRecovery/>
+    * IF contains `"invalid type: string"` → Apply <InvalidTypeStringRecovery/>
+    * IF contains `"UUID parsing failed"` AND `"found \`\"\` at"` → Apply <UuidParsingRecovery/>
+    * ELSE → Apply <LogOperationFailure operation="Mutation [path]"/>, mark failed, continue
+- **IF context limit approaching** → bail to Step 6
 
 **ENUM VARIANTS**:
 - If path has `examples` array: Test each example separately
 - Count each as separate mutation in totals
-
-**TRACKING**:
-- Track passes in `mutations_passed`
-- Count attempts in `total_mutations_attempted`
-
-**AFTER EACH MUTATION**:
-- "invalid type: string" or UUID error → <ErrorRecoveryProtocol/>
-- Context limit approaching → bail to Step 7
 </MutationTestingLoop>
+
+<ParameterExtractionRecovery>
+**When mutation fails with "Unable to extract parameters":**
+
+1. **Log the framework error**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Framework error: Unable to extract parameters - will retry with reordered parameters"`
+2. **Reorder parameters immediately** - change the order of parameters in your tool call
+3. **Log the reordered parameters**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} info "Reordered parameters: ${reordered_params}"` so that you have the context of what you have changed readily present in your thinking
+4. **Retry the EXACT same mutation** using ultrathink with the reordered parameters
+5. **Increment `retry_count`**
+6. **Check retry result**:
+   - If SUCCESS → Track in `mutations_passed`, continue
+   - If FAILURE → Apply <LogOperationFailure operation="Mutation [path]"/>, mark failed, continue
+
+**Why this works:** Parameter order doesn't matter semantically, but reordering breaks mental loops that cause extraction errors.
+</ParameterExtractionRecovery>
+
+<InvalidTypeStringRecovery>
+**When mutation fails with "invalid type: string":**
+
+This means you stringified a value that should be a JSON primitive (number, boolean, array, or object).
+
+**Error patterns → Fix:**
+- `"invalid type: string \"42\", expected f32"` → Use `42` not `"42"`
+- `"invalid type: string \"[1, 2]\", expected a sequence"` → Use `[1, 2]` not `"[1, 2]"`
+- `"invalid type: string \"true\", expected a boolean"` → Use `true` not `"true"`
+- `"invalid type: string \"{...}\", expected reflected struct"` → Use `{...}` not `"{...}"`
+
+**Recovery steps:**
+1. **Identify the stringified value** in your mutation params
+2. **Convert to proper JSON type** (unquote numbers/booleans, parse arrays/objects)
+3. **Retry immediately** with the unquoted value
+4. **Increment `retry_count`**
+5. **Check retry result**:
+   - If SUCCESS → Track in `mutations_passed`, continue
+   - If FAILURE with DIFFERENT error → Mark failed, continue
+   - If FAILURE with SAME error → You didn't fix it correctly, mark failed, continue
+</InvalidTypeStringRecovery>
+
+<UuidParsingRecovery>
+**When mutation fails with "UUID parsing failed" AND "found \`\"\` at":**
+
+This means you double-quoted a UUID string (your bug, not BRP's).
+
+**Example:**
+- Type guide shows: `"example": "550e8400-e29b-41d4-a716-446655440000"`
+- You sent: `{"value": "\"550e8400-e29b-41d4-a716-446655440000\""}` (double-quoted)
+- Error: `UUID parsing failed: invalid character: expected an optional prefix of 'urn:uuid:' followed by [0-9a-fA-F-], found '"' at 1`
+
+**Recovery steps:**
+1. **Remove the extra quotes** around the UUID string
+2. **Use the UUID AS-IS** from the type guide example (already a JSON string)
+3. **Retry immediately** with single-quoted UUID
+4. **Increment `retry_count`**
+5. **Check retry result**:
+   - If SUCCESS → Track in `mutations_passed`, continue
+   - If FAILURE with DIFFERENT error → Mark failed, continue
+</UuidParsingRecovery>
 
 **FINAL INSTRUCTION**: Execute <FinalValidation/> then output ONLY the JSON array from <ReturnResults/>. Nothing before. Nothing after.

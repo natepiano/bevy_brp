@@ -107,7 +107,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
             .inner
             .assemble_from_children(ctx, child_examples.clone())?;
 
-        // NEW: Assemble partial_root_examples from children (same bottom-up approach)
+        // Assemble partial_root_examples from children (same bottom-up approach)
         // Filter to only direct children by matching against child_examples keys
         let direct_children: Vec<&MutationPathInternal> = all_paths
             .iter()
@@ -173,19 +173,17 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
     }
 }
 
-// Feature flag removed - EnumPathBuilder is now the permanent implementation
-
 /// Single dispatch point for creating builders - used for both entry and recursion
 /// This is the ONLY place where we match on `TypeKind` to create builders
 ///
-/// # Simplified Context Handling
+/// # Context Handling
 ///
-/// With the removal of `EnumContext`, the `RecursionContext` is now immutable throughout
-/// the recursion. Each type handles its own behavior without needing to coordinate context states.
+/// The `RecursionContext` is immutable throughout recursion.
+/// Each type handles its own behavior without needing to coordinate context states.
 ///
 /// # Depth Limit Checking
 ///
-/// Depth limit checking is now automatic in `RecursionContext::create_recursion_context()`.
+/// Depth limit checking is automatic in `RecursionContext::create_recursion_context()`.
 /// The check happens at the point where depth is incremented, ensuring developers cannot
 /// accidentally skip the check.
 pub fn recurse_mutation_paths(
@@ -439,7 +437,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
     }
 
-    /// Assemble `partial_root_examples` from children using same bottom-up approach
+    /// Assemble `partial_root_examples` from children using bottom-up approach
     ///
     /// For each variant chain present in any child:
     /// 1. Collect each child's value for that chain
@@ -558,7 +556,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
     }
 
-    /// Build a `NotMutatable` path with consistent formatting (private to `MutationPathBuilder`)
+    /// Build a `NotMutable` path with consistent formatting (private to `MutationPathBuilder`)
     ///
     /// This centralizes `NotMutable` path creation, ensuring only `MutationPathBuilder`
     /// can create these paths while builders simply return `Error::NotMutable`.

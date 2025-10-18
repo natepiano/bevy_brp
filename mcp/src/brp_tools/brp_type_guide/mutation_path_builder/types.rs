@@ -9,6 +9,7 @@ use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
+use super::enum_builder::VariantSignature;
 use super::new_types::MutationPath;
 use super::new_types::VariantName;
 use super::path_kind::PathKind;
@@ -203,8 +204,8 @@ pub struct ExampleGroup {
     /// Example value for this group (omitted for `NotMutable` variants)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub example:             Option<Value>,
-    /// The variant signature as a string
-    pub signature:           String,
+    /// The variant signature (Unit, Tuple, or Struct)
+    pub signature:           VariantSignature,
     /// Mutation status for this signature/variant group
     pub mutability:          Mutability,
 }
@@ -271,7 +272,7 @@ mod tests {
         let groups = vec![ExampleGroup {
             applicable_variants: vec![VariantName::from("SomeVariant".to_string())],
             example:             Some(json!(42)),
-            signature:           "tuple(i32)".to_string(),
+            signature:           VariantSignature::Tuple(vec![BrpTypeName::from("i32")]),
             mutability:          Mutability::Mutable,
         }];
 
