@@ -122,7 +122,8 @@ pub fn collect_children_for_chain(
 /// for missing fields. This allows BRP to use the type's `Default` implementation to fill
 /// in any missing required fields.
 ///
-/// Used for assembling struct-like objects from child examples in both structs and enum struct variants.
+/// Used for assembling struct-like objects from child examples in both structs and enum struct
+/// variants.
 pub fn assemble_struct_from_children(
     children: &HashMap<MutationPathDescriptor, Value>,
 ) -> serde_json::Map<String, Value> {
