@@ -11,10 +11,10 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::super::BuilderError;
 use super::super::new_types::StructFieldName;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
+use super::super::{BuilderError, support};
 use super::type_kind_builder::TypeKindBuilder;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -87,7 +87,7 @@ impl TypeKindBuilder for StructMutationBuilder {
         }
 
         // Use shared function to build struct object from child examples
-        let struct_obj = super::super::path_builder::assemble_struct_from_children(&children);
+        let struct_obj = support::assemble_struct_from_children(&children);
 
         Ok(Value::Object(struct_obj))
     }

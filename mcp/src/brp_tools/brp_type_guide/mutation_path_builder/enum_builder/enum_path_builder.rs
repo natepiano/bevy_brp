@@ -40,7 +40,7 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::{
     EnumPathData, ExampleGroup, Mutability, MutabilityIssue, PathAction, PathExample,
 };
-use super::super::{BuilderError, NotMutableReason, path_builder};
+use super::super::{BuilderError, NotMutableReason, path_builder, support};
 use super::option_classification::apply_option_transformation;
 use super::variant_kind::VariantKind;
 use super::variant_signature::VariantSignature;
@@ -221,7 +221,7 @@ fn build_variant_example(
         }
         VariantSignature::Struct(_field_types) => {
             // Use shared function to assemble struct from children (only includes mutable fields)
-            let field_values = path_builder::assemble_struct_from_children(children);
+            let field_values = support::assemble_struct_from_children(children);
             json!({ variant_name: field_values })
         }
     };
@@ -341,7 +341,7 @@ fn determine_signature_mutability(
         // No fields (shouldn't happen, but handle gracefully)
         Mutability::Mutable
     } else {
-        path_builder::aggregate_mutability(&signature_field_statuses)
+        support::aggregate_mutability(&signature_field_statuses)
     }
 }
 
@@ -593,7 +593,7 @@ fn build_partial_root_examples(
             for child_chain in &child_chains_to_wrap {
                 let child_refs: Vec<&MutationPathInternal> = child_paths.iter().collect();
                 let children =
-                    path_builder::collect_children_for_chain(&child_refs, ctx, Some(child_chain));
+                    support::collect_children_for_chain(&child_refs, ctx, Some(child_chain));
 
                 // Use existing `build_variant_example` with SHORT variant name
                 let wrapped =
@@ -610,7 +610,7 @@ fn build_partial_root_examples(
                 // IMPORTANT: Filter by our_chain to exclude fields from other variants
                 let child_refs: Vec<&MutationPathInternal> = child_paths.iter().collect();
                 let children =
-                    path_builder::collect_children_for_chain(&child_refs, ctx, Some(&our_chain));
+                    support::collect_children_for_chain(&child_refs, ctx, Some(&our_chain));
 
                 // Wrap with this variant using regular child examples
                 let wrapped =
@@ -723,7 +723,7 @@ fn propagate_partial_root_examples_to_children(
         }
 
         // Use shared helper function to populate root examples
-        path_builder::populate_root_examples_from_partials(child_paths, partial_root_examples);
+        support::populate_root_examples_from_partials(child_paths, partial_root_examples);
     }
 }
 
@@ -739,7 +739,7 @@ fn create_result_paths(
     let signature_statuses: Vec<Mutability> =
         enum_examples.iter().map(|eg| eg.mutability).collect();
 
-    let enum_mutability = path_builder::aggregate_mutability(&signature_statuses);
+    let enum_mutability = support::aggregate_mutability(&signature_statuses);
 
     // Build reason for partially_mutable or not_mutable enums using unified approach
     let mutability_reason = build_enum_mutability_reason(enum_mutability, &enum_examples, ctx);

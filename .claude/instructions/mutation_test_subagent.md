@@ -91,15 +91,21 @@ Reorder parameters in your tool call - parameter order doesn't matter, but reord
 <ContextWindowMonitoring>
 **DETECT APPROACHING CONTEXT LIMIT**:
 
-**Check Point**: After EVERY mutation operation in <TestAllTypes/>
+**Automatic Check Point**: At the start of testing each type in <TestAllTypes/>
+- Extract REPORTED token count from system warnings after tool calls
+- **CRITICAL**: System warnings exclude MCP tools and autocompact buffer
+- Reported count includes: messages, memory files, system prompt, system tools
+- Hidden overhead: 73,600 tokens (MCP tool definitions ~28.6K + autocompact buffer ~45K)
+- **CALCULATED total = 73,600 + reported**
+- **IF CALCULATED total >= 180,000 tokens (90% of 200K)**: IMMEDIATELY bail out to Step 7
+- Use the CALCULATED total for the bailout check, NOT the reported number
 
-**Decision Logic**:
-1. **After each mutation completes** (success or failure):
-   - IF you sense context running low OR have difficulty continuing:
-     * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Context limit approaching - returning partial results"`
-     * **GO TO STEP 7 IMMEDIATELY**
-     * Return results for completed types + partial result for current type
-     * Use standard FAIL result format with context-limit error message
+**Manual Check Point**: After EVERY mutation operation
+- IF you sense context running low OR have difficulty continuing:
+  * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Context limit approaching - returning partial results"`
+  * **GO TO STEP 7 IMMEDIATELY**
+  * Return results for completed types + partial result for current type
+  * Use standard FAIL result format with context-limit error message
 
 **Bailout Result Format**:
 ```json
@@ -304,6 +310,18 @@ python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
 - ❌ NEVER pipe to `python3 -c` with parsing scripts
 - ✅ Parse JSON directly from the Bash tool result stdout
 - The script prints JSON to stdout - it's already in the tool result
+
+**IMMEDIATELY AFTER FETCHING ASSIGNMENT**:
+Log the assigned types for diagnostics:
+
+```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Assigned types: [comma-separated list of type names from assignment]"
+```
+
+Example: If assigned `["bevy_input::gamepad::Gamepad", "bevy_light::AmbientLight"]`, log:
+```bash
+.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Assigned types: bevy_input::gamepad::Gamepad, bevy_light::AmbientLight"
+```
 </FetchAssignment>
 
 <ParseAssignmentData>
@@ -394,7 +412,21 @@ Bash: ./.claude/scripts/get_type_guide.sh bevy_input::gamepad::GamepadSettings -
 For each type name string in your `type_names` array:
    1. **FETCH TYPE GUIDE**: Call `get_type_guide.sh <type_name> --file .claude/transient/all_types.json`
    2. **EXTRACT TYPE NAME**: Get the `type_name` field from the script output - this is your AUTHORITATIVE string
-   3. **TEST THE TYPE**:
+   3. **CALCULATE AND LOG TOKEN USAGE** (CRITICAL - Read carefully):
+      - After the tool call, check for `<system_warning>` in the response
+      - Extract the REPORTED token count from pattern: `Token usage: X/200,000`
+      - **CRITICAL**: The reported count X is INCOMPLETE - it excludes MCP tools and autocompact buffer
+      - Hidden overhead = 73,600 tokens (MCP tool definitions ~28.6K + autocompact buffer ~45K)
+      - **CALCULATED total usage = 73,600 + X** (THIS is your actual total)
+      - Percentage = (CALCULATED total / 200,000) * 100
+      - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Testing type: [type_name] - usage (hidden: 73.6K, reported: XK, total: YK, Z%)"`
+      - **BAILOUT CHECK**: Compare CALCULATED total (not reported X) against threshold:
+        * **IF CALCULATED total >= 180,000 tokens (90% of 200K)**:
+          - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Context limit reached - calculated total YK >= 180K (Z%) - returning partial results"`
+          - **GO TO STEP 7 IMMEDIATELY**
+          - Return results for all completed types (with their actual PASS/FAIL status)
+          - Do NOT start testing this type
+   4. **TEST THE TYPE**:
 
    **UNDERSTANDING spawn_format NULL**:
    - `spawn_format: null` means root path is `partially_mutable`
@@ -432,26 +464,7 @@ For each type name string in your `type_names` array:
         * **NEVER** use `world_insert_resources` or `world_mutate_resources` for components
       - **ERROR CASE**: If `mutation_type` is neither "Resource" nor "Component", report error in failure_details
 
-   e. **ENTITY ID SUBSTITUTION FOR MUTATIONS**:
-      - **CRITICAL**: If any mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
-      - **YOU MUST**: Replace ALL instances of `8589934670` with REAL entity IDs from the running app
-      - **HOW TO GET REAL ENTITY IDs**:
-        1. First query for existing entities: `world_query` with appropriate filter
-        2. Use entity IDs from query results (if query fails → follow <EmergencyBailout>)
-        3. If testing EntityHashMap types, use the queried entity ID as the map key
-      - **EXAMPLE**: If mutation example shows `{"8589934670": [...]}` for an EntityHashMap:
-        - Query for an entity with the component first
-        - Replace `8589934670` with the actual entity ID from the query
-        - Then perform the mutation with the real entity ID
-      - **FOR HIERARCHY COMPONENTS** (Children, Parent):
-        - **CRITICAL**: Query for ALL entities in the scene using `world_query` with no filter
-        - Use a DIFFERENT entity ID than the one being mutated
-        - **NEVER** create circular relationships (entity as its own parent/child)
-        - Example: When testing entity 4294967390's `Children` component:
-          - ❌ WRONG: Use [4294967390] as the child value (circular reference → CRASH)
-          - ✅ CORRECT: Query all entities, select a different ID like 4294967297
-        - If only one entity exists with the component, query for other entities without that component to use as children
-   e. **ROOT EXAMPLE SETUP FOR VARIANT-DEPENDENT PATHS**:
+   c. **ROOT EXAMPLE SETUP FOR VARIANT-DEPENDENT PATHS**:
       - **BEFORE testing each mutation path**, check if `path_info.root_example` exists
       - **IF `root_example` EXISTS**:
         1. **First** mutate the root path (`""`) to set up the correct variant structure:
@@ -501,6 +514,11 @@ For each type name string in your `type_names` array:
 **AFTER EACH MUTATION**:
 - If error contains "invalid type: string" or UUID parsing error, follow <ErrorRecoveryProtocol/> immediately.
 - Check <ContextWindowMonitoring/> - if context limit approaching, bail out to Step 7 immediately.
+
+**AFTER COMPLETING TESTING FOR CURRENT TYPE**:
+- Add the result (PASS/FAIL/COMPONENT_NOT_FOUND) to your results collection
+- **IF there are more types remaining in your `type_names` array**: Return to step 1 above and test the next type
+- **IF there are no more types to test**: You have completed Step 5. Proceed to Step 6 (<PreFailureCheck/>)
 </TestAllTypes>
 
 <ResourceTestingProtocol>
@@ -509,9 +527,10 @@ For each type name string in your `type_names` array:
 **CRITICAL**: Do NOT use component methods (`world_spawn_entity`, `world_mutate_components`) - these will CRASH the app
 
 1. **INSERT CHECK**: If `guide.spawn_format` is NOT null:
+   - **FIRST**: Check spawn_format for Entity ID placeholders and apply <EntityIdSubstitution/> if needed
    - Use `world_insert_resources` tool
    - Pass `resource` parameter with exact type name from type guide
-   - Pass `value` parameter with `spawn_format` data
+   - Pass `value` parameter with VALIDATED spawn_format data (after Entity ID substitution)
    - Then verify insertion with `world_get_resources`
    - **ON FAILURE**: Log error with `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Resource insert failed: [error]"`
    - Set `spawn_insert: true` in operations_completed
@@ -523,10 +542,11 @@ For each type name string in your `type_names` array:
    - Proceed directly to mutation testing
 
 3. **MUTATION TESTING** (ALWAYS execute if mutation paths exist):
+   - **BEFORE each mutation**: Check mutation example for Entity ID placeholders and apply <EntityIdSubstitution/> if needed
    - Use `world_mutate_resources` tool (NOT `world_mutate_components`)
    - Pass `resource` parameter with exact type name
    - Pass `path` parameter with mutation path from type guide
-   - Pass `value` parameter with example from type guide
+   - Pass `value` parameter with VALIDATED example from type guide (after Entity ID substitution)
    - Follow <JsonPrimitiveRules/> for value formatting
    - **NO entity ID parameter** - resources don't have entities
 
@@ -543,12 +563,7 @@ For each type name string in your `type_names` array:
 **CRITICAL**: Do NOT use resource methods (`world_insert_resources`, `world_mutate_resources`)
 
 1. **SPAWN/INSERT CHECK**: If `guide.spawn_format` is NOT null:
-   - **FIRST**: Validate spawn_format for Entity ID placeholders
-     * Inspect spawn_format values for `8589934670` (placeholder Entity ID)
-     * **IF FOUND**: Query for any existing entity using `world_query` with `data: {}`
-       - Use first entity ID from results to replace ALL `8589934670` instances
-       - If query returns 0 entities, report FAIL with error "Cannot spawn type requiring Entity ID - no entities exist for substitution"
-     * **IF NOT FOUND**: Use spawn_format as-is
+   - **FIRST**: Check spawn_format for Entity ID placeholders and apply <EntityIdSubstitution/> if needed
    - **THEN**: Use `world_spawn_entity` tool
    - Pass `components` parameter with type name as key and VALIDATED spawn_format as value
    - **ON FAILURE**: Log error with `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Spawn failed: [error]"`
@@ -571,13 +586,13 @@ For each type name string in your `type_names` array:
    - Set `entity_query: true` in operations_completed
 
 4. **MUTATION TESTING** (ALWAYS execute if entity found and mutation paths exist):
+   - **BEFORE each mutation**: Check mutation example for Entity ID placeholders and apply <EntityIdSubstitution/> if needed
    - Use `world_mutate_components` tool (NOT `world_mutate_resources`)
    - Pass `entity` parameter with entity ID from query
    - Pass `component` parameter with exact type name
    - Pass `path` parameter with mutation path from type guide
-   - Pass `value` parameter with example from type guide
+   - Pass `value` parameter with VALIDATED example from type guide (after Entity ID substitution)
    - Follow <JsonPrimitiveRules/> for value formatting
-   - Apply Entity ID substitution per <TestAllTypes/> section e
 </ComponentTestingProtocol>
 
 <PreFailureCheck>
@@ -709,5 +724,28 @@ Assignment script says: "bevy_ecs::hierarchy::Children"
 
 ═══════════════════════════════════════════════════════════════════════════════
 </TypeNameValidation>
+
+<EntityIdSubstitution>
+**ENTITY ID SUBSTITUTION - For types with Entity fields**:
+
+- **CRITICAL**: If any spawn_format or mutation example contains the value `8589934670`, this is a PLACEHOLDER Entity ID
+- **YOU MUST**: Replace ALL instances of `8589934670` with REAL entity IDs from the running app
+- **HOW TO GET REAL ENTITY IDs**:
+  1. First query for existing entities: `world_query` with `data: {}` (gets all entities)
+  2. Use entity IDs from query results (if query fails → follow <EmergencyBailout>)
+  3. If testing EntityHashMap types, use the queried entity ID as the map key
+- **EXAMPLE**: If mutation example shows `{"8589934670": [...]}` for an EntityHashMap:
+  - Query for entities first
+  - Replace `8589934670` with the actual entity ID from the query
+  - Then perform the insert/mutation with the real entity ID
+- **FOR HIERARCHY COMPONENTS** (Children, Parent):
+  - **CRITICAL**: Query for ALL entities in the scene using `world_query` with no filter
+  - Use a DIFFERENT entity ID than the one being mutated
+  - **NEVER** create circular relationships (entity as its own parent/child)
+  - Example: When testing entity 4294967390's `Children` component:
+    - ❌ WRONG: Use [4294967390] as the child value (circular reference → CRASH)
+    - ✅ CORRECT: Query all entities, select a different ID like 4294967297
+  - If only one entity exists with the component, query for other entities without that component to use as children
+</EntityIdSubstitution>
 
 **FINAL INSTRUCTION**: Execute <FinalValidation/> then output ONLY the JSON array from <ReturnResults/>. Nothing before. Nothing after.

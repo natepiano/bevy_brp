@@ -6,6 +6,7 @@ mod not_mutable_reason;
 mod path_builder;
 mod path_kind;
 mod recursion_context;
+mod support;
 mod type_kind_builders;
 mod type_parser;
 mod types;
