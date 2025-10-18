@@ -2,7 +2,10 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Field, Ident, Type};
+use syn::Attribute;
+use syn::Field;
+use syn::Ident;
+use syn::Type;
 
 /// Information about a computed field
 pub struct ComputedField {

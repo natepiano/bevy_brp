@@ -4,14 +4,24 @@
 //! their type schema information in a single call. It combines `world.list_components`,
 //! `world.list_resources`, and `brp_type_guide` functionality for convenience.
 
-use bevy_brp_mcp_macros::{ParamStruct, ToolFn};
+use bevy_brp_mcp_macros::ParamStruct;
+use bevy_brp_mcp_macros::ToolFn;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use super::tool_type_guide::{TypeGuideEngine, TypeGuideResult};
-use crate::brp_tools::{BrpClient, Port, ResponseStatus};
-use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
+use super::tool_type_guide::TypeGuideEngine;
+use super::tool_type_guide::TypeGuideResult;
+use crate::brp_tools::BrpClient;
+use crate::brp_tools::Port;
+use crate::brp_tools::ResponseStatus;
+use crate::error::Error;
+use crate::error::Result;
+use crate::tool::BrpMethod;
+use crate::tool::HandlerContext;
+use crate::tool::HandlerResult;
+use crate::tool::ToolFn;
+use crate::tool::ToolResult;
 
 /// Parameters for the `brp_all_type_guides` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]

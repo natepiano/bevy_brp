@@ -1,10 +1,13 @@
 //! Window title handler for BRP extras
 
 use bevy::prelude::*;
-use bevy::remote::error_codes::{INTERNAL_ERROR, INVALID_PARAMS};
-use bevy::remote::{BrpError, BrpResult};
+use bevy::remote::BrpError;
+use bevy::remote::BrpResult;
+use bevy::remote::error_codes::INTERNAL_ERROR;
+use bevy::remote::error_codes::INVALID_PARAMS;
 use bevy::window::PrimaryWindow;
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 /// Handler for `set_window_title` requests
 pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {

@@ -1,12 +1,15 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::ParamStruct;
+use bevy_brp_mcp_macros::ResultStruct;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::tracing::TracingLevel;
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 use crate::tool::ToolFn;
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]

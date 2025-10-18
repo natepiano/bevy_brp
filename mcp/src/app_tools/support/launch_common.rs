@@ -1,16 +1,25 @@
 use std::marker::PhantomData;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
 use bevy_brp_mcp_macros::ResultStruct;
 use error_stack::Report;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use super::errors::{NoTargetsFoundError, PathDisambiguationError, TargetNotFoundAtSpecifiedPath};
+use super::errors::NoTargetsFoundError;
+use super::errors::PathDisambiguationError;
+use super::errors::TargetNotFoundAtSpecifiedPath;
 use super::process;
 use crate::app_tools::support::cargo_detector::BevyTarget;
-use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, ParamStruct, ToolFn, ToolResult};
+use crate::error::Error;
+use crate::error::Result;
+use crate::tool::HandlerContext;
+use crate::tool::HandlerResult;
+use crate::tool::ParamStruct;
+use crate::tool::ToolFn;
+use crate::tool::ToolResult;
 
 /// Marker type for App launch configuration
 #[derive(Clone)]
@@ -99,7 +108,8 @@ pub struct LaunchResult {
 }
 
 use crate::app_tools::instance_count::InstanceCount;
-use crate::brp_tools::{BRP_EXTRAS_PORT_ENV_VAR, Port};
+use crate::brp_tools::BRP_EXTRAS_PORT_ENV_VAR;
+use crate::brp_tools::Port;
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
@@ -398,7 +408,8 @@ fn parse_build_output(stdout: &[u8], target_name: &str) -> BuildState {
 
 /// Log the build result based on build state
 fn log_build_result(build_state: BuildState, target_name: &str, target_type: TargetType) {
-    use tracing::{debug, info};
+    use tracing::debug;
+    use tracing::info;
 
     match build_state {
         BuildState::NotFound => {

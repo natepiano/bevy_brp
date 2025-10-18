@@ -14,16 +14,21 @@ use std::sync::Arc;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::constants::{
-    AGENT_GUIDANCE, ENTITY_WARNING, ERROR_GUIDANCE, REFLECT_TRAIT_COMPONENT,
-    REFLECT_TRAIT_RESOURCE, TYPE_BEVY_ENTITY,
-};
-use super::mutation_path_builder::{self, MutationPathExternal};
-use super::response_types::{BrpTypeName, SchemaInfo};
+use super::constants::AGENT_GUIDANCE;
+use super::constants::ENTITY_WARNING;
+use super::constants::ERROR_GUIDANCE;
+use super::constants::REFLECT_TRAIT_COMPONENT;
+use super::constants::REFLECT_TRAIT_RESOURCE;
+use super::constants::TYPE_BEVY_ENTITY;
+use super::mutation_path_builder::MutationPathExternal;
+use super::mutation_path_builder::{self};
+use super::response_types::BrpTypeName;
+use super::response_types::SchemaInfo;
 use super::type_kind::TypeKind;
 use super::type_knowledge::TypeKnowledge;
 use crate::error::Result;
-use crate::json_object::{IntoStrings, JsonObjectAccess};
+use crate::json_object::IntoStrings;
+use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
 /// this is all of the information we provide about a type

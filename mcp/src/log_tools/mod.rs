@@ -12,11 +12,16 @@ mod support;
 mod tracing;
 
 // Re-export tracing functionality for other modules
-pub use delete_logs::{DeleteLogs, DeleteLogsParams};
+pub use delete_logs::DeleteLogs;
+pub use delete_logs::DeleteLogsParams;
 #[cfg(feature = "mcp-debug")]
 pub use get_trace_log_path::GetTraceLogPath;
-pub use list_logs::{ListLogs, ListLogsParams};
-pub use read_log::{ReadLog, ReadLogParams};
+pub use list_logs::ListLogs;
+pub use list_logs::ListLogsParams;
+pub use read_log::ReadLog;
+pub use read_log::ReadLogParams;
 #[cfg(feature = "mcp-debug")]
-pub use set_tracing_level::{SetTracingLevel, SetTracingLevelParams};
+pub use set_tracing_level::SetTracingLevel;
+#[cfg(feature = "mcp-debug")]
+pub use set_tracing_level::SetTracingLevelParams;
 pub use tracing::TracingLevel;

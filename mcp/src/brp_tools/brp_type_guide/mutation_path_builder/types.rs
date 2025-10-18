@@ -3,12 +3,14 @@
 //! This module contains the fundamental types used throughout the mutation path building system,
 //! including mutation path structures and status types.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
-use super::new_types::{MutationPath, VariantName};
+use super::new_types::MutationPath;
+use super::new_types::VariantName;
 use super::path_kind::PathKind;
 
 /// Action to take regarding path creation during recursion

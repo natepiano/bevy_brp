@@ -15,8 +15,10 @@ use super::enum_builder::select_preferred_example;
 use super::path_builder::recurse_mutation_paths;
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
-use super::types::{MutationPathExternal, PathExample};
-use crate::error::{Error, Result};
+use super::types::MutationPathExternal;
+use super::types::PathExample;
+use crate::error::Error;
+use crate::error::Result;
 
 /// Entry point for building mutation paths from a type name and registry
 ///

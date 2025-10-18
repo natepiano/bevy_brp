@@ -1,9 +1,11 @@
 use bevy_brp_mcp_macros::ParamStruct;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::instance_count::InstanceCount;
-use super::support::{LaunchParams, ToLaunchParams};
+use super::support::LaunchParams;
+use super::support::ToLaunchParams;
 use crate::brp_tools::Port;
 
 /// Shared parameters for launching Bevy binaries (apps or examples)

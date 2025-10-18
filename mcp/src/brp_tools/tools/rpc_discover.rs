@@ -1,8 +1,10 @@
 //! `rpc.discover` tool - Discover available BRP methods
 
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::ParamStruct;
+use bevy_brp_mcp_macros::ResultStruct;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::brp_tools::Port;

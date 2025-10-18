@@ -1,13 +1,15 @@
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
 use error_stack::ResultExt;
 
 /// Create a log file for a Bevy app launch
 use super::cargo_detector::TargetType;
 use crate::brp_tools::Port;
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 
 pub fn create_log_file(
     name: &str,

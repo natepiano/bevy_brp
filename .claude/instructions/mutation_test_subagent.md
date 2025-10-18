@@ -464,56 +464,8 @@ For each type name string in your `type_names` array:
         * **NEVER** use `world_insert_resources` or `world_mutate_resources` for components
       - **ERROR CASE**: If `mutation_type` is neither "Resource" nor "Component", report error in failure_details
 
-   c. **ROOT EXAMPLE SETUP FOR VARIANT-DEPENDENT PATHS**:
-      - **BEFORE testing each mutation path**, check if `path_info.root_example` exists
-      - **IF `root_example` EXISTS**:
-        1. **First** mutate the root path (`""`) to set up the correct variant structure:
-           - **FOR COMPONENTS**: Use `world_mutate_components` with entity ID
-           - **FOR RESOURCES**: Use `world_mutate_resources` (no entity ID)
-           - Set `path: ""`
-           - Set `value` to the `root_example` value from `path_info`
-        2. **Then** proceed with mutating the specific path
-      - **IF `root_example` DOES NOT EXIST**: Proceed directly with mutating the path
-      - **PURPOSE**: Ensures enum variants are correctly set before accessing variant-specific fields
-      - **EXAMPLE**: For `.middle_struct.nested_enum.name` with applicable_variants `["BottomEnum::VariantB"]` and this `root_example`:
-        ```json
-        {
-          "WithMiddleStruct": {
-            "middle_struct": {
-              "nested_enum": {"VariantB": {"name": "Hello, World!", "value": 3.14}},
-              "some_field": "Hello, World!",
-              "some_value": 3.14
-            }
-          }
-        }
-        ```
-        First mutate path `""` with this complete value, THEN mutate `.middle_struct.nested_enum.name`
-   f. **MUTATION TESTING**: For each path in mutation_paths, validate THEN test
-      - **FOR EACH path in mutation_paths object:**
-        1. **CHECK mutability FIRST**: If `path_info.mutability == "not_mutable"` → SKIP path (don't count in total)
-        2. **CHECK for example**: If no `example` or `examples` field exists → SKIP path (cannot test without value)
-        3. **IF partially_mutable**: SKIP unless `example` or `examples` exists
-        4. **ONLY if checks pass**: Proceed to mutation
-      - **CHOOSE MUTATION METHOD** based on type category:
-        * **FOR COMPONENTS**: Use `world_mutate_components` with entity ID
-        * **FOR RESOURCES**: Use `world_mutate_resources` (no entity ID needed)
-      - Apply Entity ID substitution BEFORE sending any mutation request (components only)
-      - If a mutation uses Entity IDs and you don't have real ones, query for them first
-      - **CRITICAL VALUE HANDLING**: Extract the `example` value from mutation_paths and follow <JsonPrimitiveRules/> when using it
-      - **ON FAILURE ONLY**: Log error with `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Mutation [path] failed: [error]"`
-      - **ENUM TESTING REQUIREMENT**: When a mutation path contains an "examples" array (indicating enum variants), you MUST test each example individually:
-        * For each entry in the "examples" array, perform a separate mutation using that specific "example" value
-        * Example: If `.depth_load_op` has examples `[{"example": {"Clear": 3.14}}, {"example": "Load"}]`, test BOTH:
-          1. Mutate `.depth_load_op` with `{"Clear": 3.14}`
-          2. Mutate `.depth_load_op` with `"Load"`
-        * Count each example test as a separate mutation attempt in your totals
-      - **IMPORTANT**: Only count actually attempted mutations in `total_mutations_attempted`
 3. **CAPTURE ALL ERROR DETAILS**: When ANY operation fails, record the COMPLETE request and response
 4. NEVER test types not provided in your assignment data
-
-**AFTER EACH MUTATION**:
-- If error contains "invalid type: string" or UUID parsing error, follow <ErrorRecoveryProtocol/> immediately.
-- Check <ContextWindowMonitoring/> - if context limit approaching, bail out to Step 7 immediately.
 
 **AFTER COMPLETING TESTING FOR CURRENT TYPE**:
 - Add the result (PASS/FAIL/COMPONENT_NOT_FOUND) to your results collection
@@ -532,23 +484,14 @@ For each type name string in your `type_names` array:
    - Pass `resource` parameter with exact type name from type guide
    - Pass `value` parameter with VALIDATED spawn_format data (after Entity ID substitution)
    - Then verify insertion with `world_get_resources`
-   - **ON FAILURE**: Log error with `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Resource insert failed: [error]"`
-   - Set `spawn_insert: true` in operations_completed
+   - **ON FAILURE**: Apply <LogOperationFailure operation="Resource insert"/>
+   - Apply <MarkSpawnInsertSuccess/>
 
-2. **IF spawn_format IS null**:
-   - Skip insert step (root is `partially_mutable`)
-   - Resource must already exist in the running app
-   - Set `spawn_insert: false` in operations_completed
-   - Proceed directly to mutation testing
+2. **IF spawn_format IS null**: Apply <NullSpawnFormatHandling/>
 
 3. **MUTATION TESTING** (ALWAYS execute if mutation paths exist):
-   - **BEFORE each mutation**: Check mutation example for Entity ID placeholders and apply <EntityIdSubstitution/> if needed
-   - Use `world_mutate_resources` tool (NOT `world_mutate_components`)
-   - Pass `resource` parameter with exact type name
-   - Pass `path` parameter with mutation path from type guide
-   - Pass `value` parameter with VALIDATED example from type guide (after Entity ID substitution)
-   - Follow <JsonPrimitiveRules/> for value formatting
-   - **NO entity ID parameter** - resources don't have entities
+   - Execute <MutationTestingLoop/> using `world_mutate_resources` tool
+   - **NO entity ID parameter** - resources are global, not entity-attached
 
 4. **ENTITY QUERY**:
    - Resources are NOT attached to entities
@@ -566,15 +509,11 @@ For each type name string in your `type_names` array:
    - **FIRST**: Check spawn_format for Entity ID placeholders and apply <EntityIdSubstitution/> if needed
    - **THEN**: Use `world_spawn_entity` tool
    - Pass `components` parameter with type name as key and VALIDATED spawn_format as value
-   - **ON FAILURE**: Log error with `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Spawn failed: [error]"`
-   - Set `spawn_insert: true` in operations_completed
+   - **ON FAILURE**: Apply <LogOperationFailure operation="Spawn"/>
+   - Apply <MarkSpawnInsertSuccess/>
    - Proceed to query for entity
 
-2. **IF spawn_format IS null**:
-   - Skip spawn step (root is `partially_mutable`)
-   - Component must already exist on entities in the running app
-   - Set `spawn_insert: false` in operations_completed
-   - Proceed to query for EXISTING entities with this component
+2. **IF spawn_format IS null**: Apply <NullSpawnFormatHandling/>
 
 3. **QUERY FOR ENTITY** (ALWAYS execute):
    - Use `world_query` tool
@@ -586,13 +525,9 @@ For each type name string in your `type_names` array:
    - Set `entity_query: true` in operations_completed
 
 4. **MUTATION TESTING** (ALWAYS execute if entity found and mutation paths exist):
-   - **BEFORE each mutation**: Check mutation example for Entity ID placeholders and apply <EntityIdSubstitution/> if needed
-   - Use `world_mutate_components` tool (NOT `world_mutate_resources`)
-   - Pass `entity` parameter with entity ID from query
+   - Execute <MutationTestingLoop/> using `world_mutate_components` tool
+   - **REQUIRED**: Pass `entity` parameter with entity ID from query
    - Pass `component` parameter with exact type name
-   - Pass `path` parameter with mutation path from type guide
-   - Pass `value` parameter with VALIDATED example from type guide (after Entity ID substitution)
-   - Follow <JsonPrimitiveRules/> for value formatting
 </ComponentTestingProtocol>
 
 <PreFailureCheck>
@@ -747,5 +682,59 @@ Assignment script says: "bevy_ecs::hierarchy::Children"
     - ✅ CORRECT: Query all entities, select a different ID like 4294967297
   - If only one entity exists with the component, query for other entities without that component to use as children
 </EntityIdSubstitution>
+
+<NullSpawnFormatHandling>
+- Skip spawn/insert step
+- Set `spawn_insert: false`
+- Components: Query for EXISTING entities
+- Resources: Proceed to mutation testing
+</NullSpawnFormatHandling>
+
+<LogOperationFailure>
+`.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "[operation] failed: [error]"`
+</LogOperationFailure>
+
+<LogMutationAttempt>
+`.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Testing mutation path: [path]"`
+</LogMutationAttempt>
+
+<MarkSpawnInsertSuccess>
+Set `spawn_insert: true` in operations_completed
+</MarkSpawnInsertSuccess>
+
+<MutationTestingLoop>
+**BEFORE TESTING MUTATION PATH**:
+- If `path_info.root_example` exists:
+  1. Mutate root path (`""`) with `root_example` value first
+     - Components: `world_mutate_components` with entity ID
+     - Resources: `world_mutate_resources` (no entity ID)
+  2. Then mutate the specific path
+- If no `root_example`: Mutate path directly
+
+**FOR EACH path in mutation_paths**:
+1. If `path_info.mutability == "not_mutable"` → SKIP
+2. If no `example` or `examples` → SKIP
+3. If `partially_mutable` and no example → SKIP
+
+**EXECUTE MUTATION**:
+- Apply <EntityIdSubstitution/> if type has Entity fields
+- Apply <LogMutationAttempt/>
+- Components: `world_mutate_components` with entity, component, path, value
+- Resources: `world_mutate_resources` with resource, path, value
+- Follow <JsonPrimitiveRules/>
+- On failure: Apply <LogOperationFailure operation="Mutation [path]"/>
+
+**ENUM VARIANTS**:
+- If path has `examples` array: Test each example separately
+- Count each as separate mutation in totals
+
+**TRACKING**:
+- Track passes in `mutations_passed`
+- Count attempts in `total_mutations_attempted`
+
+**AFTER EACH MUTATION**:
+- "invalid type: string" or UUID error → <ErrorRecoveryProtocol/>
+- Context limit approaching → bail to Step 7
+</MutationTestingLoop>
 
 **FINAL INSTRUCTION**: Execute <FinalValidation/> then output ONLY the JSON array from <ReturnResults/>. Nothing before. Nothing after.

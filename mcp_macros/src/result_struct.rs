@@ -5,9 +5,12 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, parse_macro_input};
+use syn::Data;
+use syn::DeriveInput;
+use syn::parse_macro_input;
 
-use crate::shared::{ComputedField, extract_field_data};
+use crate::shared::ComputedField;
+use crate::shared::extract_field_data;
 
 /// Attributes for #[brp_result(...)]
 #[derive(Default)]

@@ -2,11 +2,15 @@
 
 use bevy::prelude::*;
 use bevy::remote;
-use bevy::remote::error_codes::{INTERNAL_ERROR, INVALID_PARAMS};
-use bevy::remote::{BrpError, BrpResult};
-use bevy::render::view::screenshot::{Screenshot, ScreenshotCaptured};
+use bevy::remote::BrpError;
+use bevy::remote::BrpResult;
+use bevy::remote::error_codes::INTERNAL_ERROR;
+use bevy::remote::error_codes::INVALID_PARAMS;
+use bevy::render::view::screenshot::Screenshot;
+use bevy::render::view::screenshot::ScreenshotCaptured;
 use bevy::tasks::IoTaskPool;
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 /// Handler for screenshot requests
 ///

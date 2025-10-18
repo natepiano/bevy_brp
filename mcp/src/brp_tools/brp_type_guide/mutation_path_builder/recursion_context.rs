@@ -80,12 +80,15 @@ use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::constants::MAX_TYPE_RECURSION_DEPTH;
-use super::super::type_knowledge::{BRP_TYPE_KNOWLEDGE, KnowledgeKey};
+use super::super::type_knowledge::BRP_TYPE_KNOWLEDGE;
+use super::super::type_knowledge::KnowledgeKey;
+use super::BuilderError;
+use super::NotMutableReason;
 use super::enum_builder::VariantSignature;
-use super::new_types::{MutationPath, VariantName};
+use super::new_types::MutationPath;
+use super::new_types::VariantName;
 use super::path_kind::PathKind;
 use super::types::PathAction;
-use super::{BuilderError, NotMutableReason};
 use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;

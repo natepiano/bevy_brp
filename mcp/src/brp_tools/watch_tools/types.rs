@@ -3,7 +3,8 @@
 //! These types represent results from watch operations.
 
 use bevy_brp_mcp_macros::ResultStruct;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Result from starting a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]

@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use rmcp::ErrorData;
-use rmcp::model::{CallToolRequestParam, CallToolResult};
+use rmcp::model::CallToolRequestParam;
+use rmcp::model::CallToolResult;
 use schemars::schema_for;
 
 use super::HandlerContext;

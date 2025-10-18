@@ -4,19 +4,26 @@
 //! The conversion is implemented as a consuming `into_mutation_path_external` method following
 //! Rust's `into_*` pattern for efficient ownership transfer.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 use super::super::brp_type_name::BrpTypeName;
-use super::super::constants::{DEFAULT_SPAWN_GUIDANCE, REFLECT_TRAIT_DEFAULT};
+use super::super::constants::DEFAULT_SPAWN_GUIDANCE;
+use super::super::constants::REFLECT_TRAIT_DEFAULT;
 use super::super::type_kind::TypeKind;
-use super::new_types::{MutationPath, VariantName};
+use super::new_types::MutationPath;
+use super::new_types::VariantName;
 use super::path_kind::PathKind;
-use super::types::{
-    EnumPathData, Mutability, MutabilityIssue, MutabilityIssueTarget, MutationPathExternal,
-    PathExample, PathInfo,
-};
+use super::types::EnumPathData;
+use super::types::Mutability;
+use super::types::MutabilityIssue;
+use super::types::MutabilityIssueTarget;
+use super::types::MutationPathExternal;
+use super::types::PathExample;
+use super::types::PathInfo;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 

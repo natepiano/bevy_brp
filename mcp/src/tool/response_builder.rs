@@ -1,11 +1,15 @@
 use serde::Serialize;
 use serde_json::Value;
 
+use super::HandlerContext;
+use super::ParamStruct;
+use super::ResultStruct;
 use super::field_placement::FieldPlacement;
-use super::json_response::{ResponseStatus, ToolCallJsonResponse};
+use super::json_response::ResponseStatus;
+use super::json_response::ToolCallJsonResponse;
 use super::tool_name::CallInfo;
-use super::{HandlerContext, ParamStruct, ResultStruct};
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 
 /// High-level response creation API
 ///

@@ -8,9 +8,14 @@ mod logging;
 mod process;
 mod scanning;
 
-pub use collection_strategy::{BevyAppsStrategy, BevyExamplesStrategy, BrpAppsStrategy};
-pub use launch_common::{
-    App, Example, GenericLaunchHandler, LaunchConfig, LaunchParams, ToLaunchParams,
-};
+pub use collection_strategy::BevyAppsStrategy;
+pub use collection_strategy::BevyExamplesStrategy;
+pub use collection_strategy::BrpAppsStrategy;
+pub use launch_common::App;
+pub use launch_common::Example;
+pub use launch_common::GenericLaunchHandler;
+pub use launch_common::LaunchConfig;
+pub use launch_common::LaunchParams;
+pub use launch_common::ToLaunchParams;
 pub use list_common::collect_all_items;
 pub use process::get_pid_for_port;

@@ -5,7 +5,9 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, parse_macro_input};
+use syn::Data;
+use syn::DeriveInput;
+use syn::parse_macro_input;
 
 use crate::shared::extract_field_data;
 

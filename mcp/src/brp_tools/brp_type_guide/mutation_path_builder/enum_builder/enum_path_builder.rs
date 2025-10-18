@@ -26,26 +26,37 @@
 //! Unlike other types that use `MutationPathBuilder`, enums bypass the trait system for
 //! their specialized processing, then calls back into `recurse_mutation_paths` for its children.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::collections::HashMap;
 
 use error_stack::Report;
 use itertools::Itertools;
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 use super::super::super::type_kind::TypeKind;
+use super::super::BuilderError;
+use super::super::NotMutableReason;
 use super::super::mutation_path_internal::MutationPathInternal;
 use super::super::new_types::VariantName;
-use super::super::path_kind::{MutationPathDescriptor, PathKind};
+use super::super::path_builder;
+use super::super::path_kind::MutationPathDescriptor;
+use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
-use super::super::types::{
-    EnumPathData, ExampleGroup, Mutability, MutabilityIssue, PathAction, PathExample,
-};
-use super::super::{BuilderError, NotMutableReason, path_builder, support};
+use super::super::support;
+use super::super::types::EnumPathData;
+use super::super::types::ExampleGroup;
+use super::super::types::Mutability;
+use super::super::types::MutabilityIssue;
+use super::super::types::PathAction;
+use super::super::types::PathExample;
 use super::option_classification::apply_option_transformation;
 use super::variant_kind::VariantKind;
 use super::variant_signature::VariantSignature;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 

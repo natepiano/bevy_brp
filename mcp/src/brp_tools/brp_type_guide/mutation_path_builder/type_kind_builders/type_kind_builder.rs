@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
+use super::super::BuilderError;
+use super::super::NotMutableReason;
 use super::super::mutation_path_internal::MutationPathInternal;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::PathAction;
-use super::super::{BuilderError, NotMutableReason};
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 

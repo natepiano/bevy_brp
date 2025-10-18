@@ -6,13 +6,18 @@
 //! - `Option<Handle<Mesh>>::Some`
 //! - `core::option::Option<bevy_asset::handle::Handle<bevy_mesh::mesh::Mesh>>::Some`
 
+use nom::IResult;
+use nom::Parser;
 use nom::branch::alt;
-use nom::bytes::complete::{tag, take_while1};
+use nom::bytes::complete::tag;
+use nom::bytes::complete::take_while1;
 use nom::character::complete::char;
-use nom::combinator::{opt, recognize};
+use nom::combinator::opt;
+use nom::combinator::recognize;
 use nom::multi::separated_list0;
-use nom::sequence::{delimited, pair, preceded};
-use nom::{IResult, Parser};
+use nom::sequence::delimited;
+use nom::sequence::pair;
+use nom::sequence::preceded;
 
 /// A parsed type path with optional variant
 #[derive(Debug, Clone, PartialEq, Eq)]

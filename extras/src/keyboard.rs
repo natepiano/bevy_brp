@@ -6,11 +6,16 @@ use std::time::Duration;
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
+use bevy::remote::BrpError;
+use bevy::remote::BrpResult;
 use bevy::remote::error_codes::INVALID_PARAMS;
-use bevy::remote::{BrpError, BrpResult};
-use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
-use strum_macros::{Display, EnumIter, EnumString};
+use serde::Deserialize;
+use serde::Serialize;
+use serde_json::Value;
+use serde_json::json;
+use strum_macros::Display;
+use strum_macros::EnumIter;
+use strum_macros::EnumString;
 
 /// Maximum duration for holding keys in milliseconds (1 minute)
 const MAX_KEY_DURATION_MS: u32 = 60_000;

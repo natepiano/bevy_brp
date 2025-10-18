@@ -1,6 +1,10 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Error, Lit, Result, parse2};
+use syn::DeriveInput;
+use syn::Error;
+use syn::Lit;
+use syn::Result;
+use syn::parse2;
 
 /// Derive macro for implementing the ToolFn trait
 ///

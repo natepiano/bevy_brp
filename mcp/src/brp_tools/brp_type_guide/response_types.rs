@@ -6,9 +6,11 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
-use strum::{AsRefStr, Display};
+use strum::AsRefStr;
+use strum::Display;
 
 pub use super::brp_type_name::BrpTypeName;
 use super::guide::TypeGuide;

@@ -6,7 +6,8 @@
 //! - Matching variant-specific type knowledge entries
 //! - Displaying variant signatures in debug output
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::super::super::BrpTypeName;
 use super::super::new_types::StructFieldName;

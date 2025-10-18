@@ -18,25 +18,40 @@
 //! The `recurse_mutation_paths` function is the single entry point that dispatches to either:
 //! - `enum_path_builder::process_enum` for enum types
 //! - `MutationPathBuilder` with appropriate builder for all other types
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::collections::HashMap;
 
 use error_stack::Report;
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 use super::super::type_kind::TypeKind;
 use super::super::type_knowledge::TypeKnowledge;
+use super::BuilderError;
+use super::enum_builder;
 use super::mutation_path_internal::MutationPathInternal;
 use super::new_types::VariantName;
 use super::not_mutable_reason::NotMutableReason;
-use super::path_kind::{MutationPathDescriptor, PathKind};
+use super::path_kind::MutationPathDescriptor;
+use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
-use super::type_kind_builders::{
-    ArrayMutationBuilder, ListMutationBuilder, MapMutationBuilder, SetMutationBuilder,
-    StructMutationBuilder, TupleMutationBuilder, TypeKindBuilder, ValueMutationBuilder,
-};
-use super::types::{EnumPathData, Mutability, MutabilityIssue, PathAction, PathExample};
-use super::{BuilderError, enum_builder, support};
-use crate::error::{Error, Result};
+use super::support;
+use super::type_kind_builders::ArrayMutationBuilder;
+use super::type_kind_builders::ListMutationBuilder;
+use super::type_kind_builders::MapMutationBuilder;
+use super::type_kind_builders::SetMutationBuilder;
+use super::type_kind_builders::StructMutationBuilder;
+use super::type_kind_builders::TupleMutationBuilder;
+use super::type_kind_builders::TypeKindBuilder;
+use super::type_kind_builders::ValueMutationBuilder;
+use super::types::EnumPathData;
+use super::types::Mutability;
+use super::types::MutabilityIssue;
+use super::types::PathAction;
+use super::types::PathExample;
+use crate::error::Error;
+use crate::error::Result;
 
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {

@@ -24,10 +24,12 @@
 //! - Consistent formatting of all "not mutable" paths
 use std::fmt::Display;
 
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 use super::super::brp_type_name::BrpTypeName;
-use super::types::{Mutability, MutabilityIssue};
+use super::types::Mutability;
+use super::types::MutabilityIssue;
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,7 +92,8 @@ impl NotMutableReason {
         mutability_issues: Vec<MutabilityIssue>,
         message: String,
     ) -> Self {
-        use std::collections::{HashMap, HashSet};
+        use std::collections::HashMap;
+        use std::collections::HashSet;
 
         // First pass: Collect all statuses for each unique path string
         // This detects when the same path appears with different statuses across variants

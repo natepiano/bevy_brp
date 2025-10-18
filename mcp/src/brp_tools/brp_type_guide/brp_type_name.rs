@@ -4,7 +4,8 @@
 //! Rust type names (e.g., `"bevy_transform::components::transform::Transform"`)
 //! with various utility methods for working with these names.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
 
 use super::type_knowledge::TypeKnowledge;

@@ -5,7 +5,8 @@ use std::sync::LazyLock;
 use error_stack::ResultExt;
 use regex::Regex;
 
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 
 // Constants
 pub const LOG_PREFIX: &str = "bevy_brp_mcp_";

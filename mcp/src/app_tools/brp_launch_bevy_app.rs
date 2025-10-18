@@ -1,6 +1,8 @@
 use super::constants::DEFAULT_PROFILE;
 use super::launch_params::LaunchBevyBinaryParams;
-use super::support::{App, GenericLaunchHandler, LaunchConfig};
+use super::support::App;
+use super::support::GenericLaunchHandler;
+use super::support::LaunchConfig;
 
 /// Handler for launching Bevy apps
 pub type LaunchBevyApp = GenericLaunchHandler<LaunchConfig<App>, LaunchBevyBinaryParams>;

@@ -4,7 +4,11 @@ use bevy::prelude::*;
 use bevy::remote::RemotePlugin;
 use bevy::remote::http::RemoteHttpPlugin;
 
-use crate::{DEFAULT_REMOTE_PORT, keyboard, screenshot, shutdown, window_title};
+use crate::DEFAULT_REMOTE_PORT;
+use crate::keyboard;
+use crate::screenshot;
+use crate::shutdown;
+use crate::window_title;
 
 /// Command prefix for `brp_extras` methods
 const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";

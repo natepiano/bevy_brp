@@ -10,10 +10,14 @@ mod tool_name;
 mod types;
 
 // exported for mcp_macros
-pub use field_placement::{FieldPlacement, FieldPlacementInfo, HasFieldPlacement};
+pub use field_placement::FieldPlacement;
+pub use field_placement::FieldPlacementInfo;
+pub use field_placement::HasFieldPlacement;
 //
 pub use handler_context::HandlerContext;
-pub use parameters::{NoParams, ParamStruct, ParameterName};
+pub use parameters::NoParams;
+pub use parameters::ParamStruct;
+pub use parameters::ParameterName;
 //
 // exported for mcp_macros
 pub use response_builder::ResponseBuilder;
@@ -23,4 +27,7 @@ pub use tool_def::ToolDef;
 // Macro creates and populates the `BrpMethod` enum from tools
 // flagged in the `ToolName` enum as having a `brp_method`
 pub use tool_name::{BrpMethod, ToolName};
-pub use types::{HandlerResult, ResultStruct, ToolFn, ToolResult};
+pub use types::HandlerResult;
+pub use types::ResultStruct;
+pub use types::ToolFn;
+pub use types::ToolResult;

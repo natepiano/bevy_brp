@@ -3,9 +3,12 @@
 //! This enum represents the actual type kinds returned by Bevy's type registry.
 //! These correspond to the "kind" field in registry schema responses.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
-use strum::{AsRefStr, Display, EnumString};
+use strum::AsRefStr;
+use strum::Display;
+use strum::EnumString;
 
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;

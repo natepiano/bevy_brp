@@ -1,14 +1,22 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
+use std::io::BufReader;
 use std::path::Path;
 
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
+use bevy_brp_mcp_macros::ParamStruct;
+use bevy_brp_mcp_macros::ResultStruct;
+use bevy_brp_mcp_macros::ToolFn;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::support;
-use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
+use crate::error::Error;
+use crate::error::Result;
+use crate::tool::HandlerContext;
+use crate::tool::HandlerResult;
+use crate::tool::ToolFn;
+use crate::tool::ToolResult;
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ReadLogParams {

@@ -10,16 +10,21 @@ use serde_json::Value;
 use tracing::warn;
 
 use super::super::Port;
-use super::constants::{BRP_EXTRAS_PREFIX, JSON_RPC_ERROR_METHOD_NOT_FOUND};
+use super::constants::BRP_EXTRAS_PREFIX;
+use super::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use super::http_client::BrpHttpClient;
-use super::types::{
-    BrpClientCallJsonResponse, BrpClientError, BrpToolConfig, Operation, ResponseStatus,
-    ResultStructBrpExt,
-};
+use super::types::BrpClientCallJsonResponse;
+use super::types::BrpClientError;
+use super::types::BrpToolConfig;
+use super::types::Operation;
+use super::types::ResponseStatus;
+use super::types::ResultStructBrpExt;
 use crate::brp_tools::FormatCorrectionStatus;
 use crate::brp_tools::brp_type_guide::TypeGuideEngine;
-use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, ParameterName};
+use crate::error::Error;
+use crate::error::Result;
+use crate::tool::BrpMethod;
+use crate::tool::ParameterName;
 
 /// Client for executing a BRP operation
 pub struct BrpClient {

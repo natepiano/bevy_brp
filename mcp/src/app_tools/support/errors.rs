@@ -1,5 +1,6 @@
 use bevy_brp_mcp_macros::ResultStruct;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Error when multiple targets with the same name exist
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]

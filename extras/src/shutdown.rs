@@ -2,7 +2,8 @@
 
 use bevy::prelude::*;
 use bevy::remote::BrpResult;
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 /// Resource to track pending shutdown
 #[derive(Resource)]

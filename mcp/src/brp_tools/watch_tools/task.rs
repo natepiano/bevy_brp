@@ -4,13 +4,20 @@ use std::path::PathBuf;
 
 use futures::StreamExt;
 use serde_json::Value;
-use tracing::{debug, error, info, warn};
+use tracing::debug;
+use tracing::error;
+use tracing::info;
+use tracing::warn;
 
 use super::logger::BufferedWatchLogger;
-use super::manager::{WATCH_MANAGER, WatchInfo};
-use crate::brp_tools::{BrpClient, Port};
-use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, ParameterName};
+use super::manager::WATCH_MANAGER;
+use super::manager::WatchInfo;
+use crate::brp_tools::BrpClient;
+use crate::brp_tools::Port;
+use crate::error::Error;
+use crate::error::Result;
+use crate::tool::BrpMethod;
+use crate::tool::ParameterName;
 
 /// Maximum size for a single chunk in the SSE stream (1MB)
 const MAX_CHUNK_SIZE: usize = 1024 * 1024;

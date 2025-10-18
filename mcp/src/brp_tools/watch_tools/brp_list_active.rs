@@ -1,12 +1,18 @@
 //! List all active watches
 
-use bevy_brp_mcp_macros::{ResultStruct, ToolFn};
-use serde::{Deserialize, Serialize};
+use bevy_brp_mcp_macros::ResultStruct;
+use bevy_brp_mcp_macros::ToolFn;
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::manager::WATCH_MANAGER;
 use crate::brp_tools::Port;
 use crate::error::Result;
-use crate::tool::{HandlerContext, HandlerResult, NoParams, ToolFn, ToolResult};
+use crate::tool::HandlerContext;
+use crate::tool::HandlerResult;
+use crate::tool::NoParams;
+use crate::tool::ToolFn;
+use crate::tool::ToolResult;
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize)]

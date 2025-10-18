@@ -12,7 +12,8 @@ mod type_parser;
 mod types;
 
 // public use
-pub(super) use api::{build_mutation_paths, extract_spawn_format};
+pub(super) use api::build_mutation_paths;
+pub(super) use api::extract_spawn_format;
 pub(super) use enum_builder::VariantSignature;
 use error_stack::Report;
 use not_mutable_reason::NotMutableReason;

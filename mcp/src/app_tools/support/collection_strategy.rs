@@ -2,8 +2,10 @@
 
 use serde_json::json;
 
-use super::cargo_detector::{BevyTarget, CargoDetector};
-use crate::app_tools::constants::{PROFILE_DEBUG, PROFILE_RELEASE};
+use super::cargo_detector::BevyTarget;
+use super::cargo_detector::CargoDetector;
+use crate::app_tools::constants::PROFILE_DEBUG;
+use crate::app_tools::constants::PROFILE_RELEASE;
 
 /// Helper function to create builds JSON for binary items (apps only)
 fn create_builds_json(item: &BevyTarget) -> serde_json::Value {

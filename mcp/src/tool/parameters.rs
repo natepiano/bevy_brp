@@ -4,13 +4,19 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use bevy_brp_mcp_macros::ParamStruct;
-use schemars::{JsonSchema, Schema};
-use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
-use strum::{Display, EnumString};
+use schemars::JsonSchema;
+use schemars::Schema;
+use serde::Deserialize;
+use serde::Serialize;
+use serde_json::Map;
+use serde_json::Value;
+use strum::Display;
+use strum::EnumString;
 
-use crate::json_object::{IntoStrings, JsonObjectAccess};
-use crate::json_schema::{JsonSchemaType, SchemaField};
+use crate::json_object::IntoStrings;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::JsonSchemaType;
+use crate::json_schema::SchemaField;
 
 /// Trait for parameter types used in tools
 ///

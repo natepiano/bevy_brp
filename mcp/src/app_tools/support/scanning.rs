@@ -1,10 +1,15 @@
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::path::Path;
+use std::path::PathBuf;
 
 use tracing::debug;
 
-use super::cargo_detector::{BevyTarget, CargoDetector, TargetType};
-use super::errors::{NoTargetsFoundError, PathDisambiguationError};
+use super::cargo_detector::BevyTarget;
+use super::cargo_detector::CargoDetector;
+use super::cargo_detector::TargetType;
+use super::errors::NoTargetsFoundError;
+use super::errors::PathDisambiguationError;
 use crate::error::Error;
 
 /// Helper function to safely canonicalize a path

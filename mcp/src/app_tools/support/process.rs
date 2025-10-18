@@ -4,11 +4,16 @@ use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Stdio;
 
-use error_stack::{Report, ResultExt};
-use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, get_sockets_info};
+use error_stack::Report;
+use error_stack::ResultExt;
+use netstat2::AddressFamilyFlags;
+use netstat2::ProtocolFlags;
+use netstat2::ProtocolSocketInfo;
+use netstat2::get_sockets_info;
 
 use crate::brp_tools::Port;
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 
 /// Launch a detached process with proper setup
 pub fn launch_detached_process(

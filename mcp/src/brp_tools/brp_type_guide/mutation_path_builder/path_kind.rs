@@ -3,7 +3,8 @@ use std::borrow::Borrow;
 use std::fmt::Display;
 use std::ops::Deref;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;

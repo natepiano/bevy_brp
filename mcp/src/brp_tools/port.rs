@@ -6,9 +6,12 @@
 use std::ops::Deref;
 
 use schemars::JsonSchema;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::Deserialize;
+use serde::Deserializer;
+use serde::Serialize;
 
-use crate::brp_tools::constants::{DEFAULT_BRP_EXTRAS_PORT, VALID_PORT_RANGE};
+use crate::brp_tools::constants::DEFAULT_BRP_EXTRAS_PORT;
+use crate::brp_tools::constants::VALID_PORT_RANGE;
 
 /// Port number for BRP - defaults to 15702
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize)]
@@ -54,7 +57,8 @@ where
 {
     use std::fmt;
 
-    use serde::de::{self, Visitor};
+    use serde::de::Visitor;
+    use serde::de::{self};
 
     struct PortVisitor;
 

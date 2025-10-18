@@ -2,7 +2,10 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, parse_macro_input};
+use syn::Data;
+use syn::DeriveInput;
+use syn::Fields;
+use syn::parse_macro_input;
 
 /// Attributes extracted from #[tool(...)]
 struct ToolAttrs {

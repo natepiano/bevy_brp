@@ -1,13 +1,19 @@
 //! Start watching an entity for component changes
 
-use bevy_brp_mcp_macros::{ParamStruct, ToolFn};
+use bevy_brp_mcp_macros::ParamStruct;
+use bevy_brp_mcp_macros::ToolFn;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::types::WatchStartResult;
 use crate::brp_tools::Port;
-use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
+use crate::error::Error;
+use crate::error::Result;
+use crate::tool::HandlerContext;
+use crate::tool::HandlerResult;
+use crate::tool::ToolFn;
+use crate::tool::ToolResult;
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct GetComponentsWatchParams {

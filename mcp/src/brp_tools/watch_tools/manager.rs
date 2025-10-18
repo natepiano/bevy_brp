@@ -3,14 +3,16 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering;
 
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tracing::info;
 
 use crate::brp_tools::Port;
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 
 /// Global watch manager instance
 pub static WATCH_MANAGER: std::sync::LazyLock<Arc<Mutex<WatchManager>>> =

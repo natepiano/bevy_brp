@@ -1,14 +1,17 @@
 //! Common types for BRP tools
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
 
-use super::constants::{
-    BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, JSON_RPC_ERROR_INTERNAL_ERROR,
-    JSON_RPC_ERROR_INVALID_PARAMS,
-};
-use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, ParameterName};
+use super::constants::BRP_ERROR_ACCESS_ERROR;
+use super::constants::BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE;
+use super::constants::JSON_RPC_ERROR_INTERNAL_ERROR;
+use super::constants::JSON_RPC_ERROR_INVALID_PARAMS;
+use crate::error::Error;
+use crate::error::Result;
+use crate::tool::BrpMethod;
+use crate::tool::ParameterName;
 
 /// Configuration trait for BRP tools to control enhanced error handling
 pub trait BrpToolConfig {

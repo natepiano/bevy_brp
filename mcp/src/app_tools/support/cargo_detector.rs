@@ -1,12 +1,18 @@
 //! Simple cargo detector based on `bevy_brp_tool`
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
-use anyhow::{Context, Result};
-use cargo_metadata::{Metadata, MetadataCommand, Package};
+use anyhow::Context;
+use anyhow::Result;
+use cargo_metadata::Metadata;
+use cargo_metadata::MetadataCommand;
+use cargo_metadata::Package;
 use serde::Serialize;
-use strum::{AsRefStr, Display, EnumString};
+use strum::AsRefStr;
+use strum::Display;
+use strum::EnumString;
 
 /// Type of Bevy target
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, EnumString, Serialize)]

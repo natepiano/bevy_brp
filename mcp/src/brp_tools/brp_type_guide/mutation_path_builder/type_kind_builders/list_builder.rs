@@ -9,13 +9,16 @@
 
 use std::collections::HashMap;
 
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 use super::super::BuilderError;
-use super::super::path_kind::{MutationPathDescriptor, PathKind};
+use super::super::path_kind::MutationPathDescriptor;
+use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::type_kind_builder::TypeKindBuilder;
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 

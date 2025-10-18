@@ -2,10 +2,14 @@
 
 use std::fmt;
 
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::ParamStruct;
+use bevy_brp_mcp_macros::ResultStruct;
 use schemars::JsonSchema;
-use serde::de::{Error, MapAccess, Visitor};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
+use serde::de::Error;
+use serde::de::MapAccess;
+use serde::de::Visitor;
 use serde_json::Value;
 
 use crate::brp_tools::Port;

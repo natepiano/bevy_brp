@@ -1,8 +1,14 @@
-use bevy_brp_mcp_macros::{ResultStruct, ToolFn};
-use serde::{Deserialize, Serialize};
+use bevy_brp_mcp_macros::ResultStruct;
+use bevy_brp_mcp_macros::ToolFn;
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::TracingLevel;
-use crate::tool::{HandlerContext, HandlerResult, NoParams, ToolFn, ToolResult};
+use crate::tool::HandlerContext;
+use crate::tool::HandlerResult;
+use crate::tool::NoParams;
+use crate::tool::ToolFn;
+use crate::tool::ToolResult;
 
 /// Result from getting the trace log path
 #[cfg(feature = "mcp-debug")]

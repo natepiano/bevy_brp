@@ -2,14 +2,19 @@
 //! debugging tool for his MCP server but can also be used if (for example) a new brp method is
 //! added before it's been implemented in this server code.
 use async_trait::async_trait;
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::ParamStruct;
+use bevy_brp_mcp_macros::ResultStruct;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
 
-use crate::brp_tools::{BrpClient, Port, ResponseStatus};
+use crate::brp_tools::BrpClient;
+use crate::brp_tools::Port;
+use crate::brp_tools::ResponseStatus;
 use crate::error::Error;
-use crate::tool::{BrpMethod, ToolFn};
+use crate::tool::BrpMethod;
+use crate::tool::ToolFn;
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ExecuteParams {

@@ -11,55 +11,87 @@
 
 #![allow(clippy::used_underscore_binding)] // False positive on enum struct variant fields
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
-use bevy::animation::graph::{AnimationGraph, AnimationGraphHandle};
-use bevy::animation::{AnimationPlayer, AnimationTarget};
+use bevy::animation::AnimationPlayer;
+use bevy::animation::AnimationTarget;
+use bevy::animation::graph::AnimationGraph;
+use bevy::animation::graph::AnimationGraphHandle;
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
 use bevy::anti_alias::fxaa::Fxaa;
 use bevy::anti_alias::smaa::Smaa;
 use bevy::anti_alias::taa::TemporalAntiAliasing;
 use bevy::asset::RenderAssetUsages;
-use bevy::audio::{PlaybackSettings, SpatialListener};
+use bevy::audio::PlaybackSettings;
+use bevy::audio::SpatialListener;
 use bevy::camera::ManualTextureViewHandle;
 use bevy::camera::primitives::CascadesFrusta;
-use bevy::camera::visibility::{NoFrustumCulling, RenderLayers, VisibilityRange};
+use bevy::camera::visibility::NoFrustumCulling;
+use bevy::camera::visibility::RenderLayers;
+use bevy::camera::visibility::VisibilityRange;
 use bevy::core_pipeline::Skybox;
 use bevy::core_pipeline::prepass::MotionVectorPrepass;
 use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::gizmos::GizmoAsset;
 use bevy::gizmos::config::GizmoLineConfig;
 use bevy::gizmos::retained::Gizmo;
-use bevy::input::gamepad::{Gamepad, GamepadSettings};
+use bevy::input::gamepad::Gamepad;
+use bevy::input::gamepad::GamepadSettings;
 use bevy::input::keyboard::KeyboardInput;
-use bevy::input_focus::tab_navigation::{TabGroup, TabIndex};
+use bevy::input_focus::tab_navigation::TabGroup;
+use bevy::input_focus::tab_navigation::TabIndex;
+use bevy::light::CascadeShadowConfig;
+use bevy::light::Cascades;
+use bevy::light::ClusteredDecal;
+use bevy::light::DirectionalLightTexture;
+use bevy::light::FogVolume;
+use bevy::light::GeneratedEnvironmentMapLight;
+use bevy::light::IrradianceVolume;
+use bevy::light::NotShadowCaster;
+use bevy::light::NotShadowReceiver;
+use bevy::light::PointLightTexture;
+use bevy::light::ShadowFilteringMethod;
+use bevy::light::SpotLightTexture;
+use bevy::light::VolumetricFog;
+use bevy::light::VolumetricLight;
 use bevy::light::cluster::ClusterConfig;
-use bevy::light::{
-    CascadeShadowConfig, Cascades, ClusteredDecal, DirectionalLightTexture, FogVolume,
-    GeneratedEnvironmentMapLight, IrradianceVolume, NotShadowCaster, NotShadowReceiver,
-    PointLightTexture, ShadowFilteringMethod, SpotLightTexture, VolumetricFog, VolumetricLight,
-};
-use bevy::mesh::morph::{MeshMorphWeights, MorphWeights};
+use bevy::mesh::morph::MeshMorphWeights;
+use bevy::mesh::morph::MorphWeights;
 use bevy::mesh::skinning::SkinnedMesh;
+use bevy::pbr::ExtendedMaterial;
+use bevy::pbr::Lightmap;
+use bevy::pbr::ScreenSpaceAmbientOcclusion;
+use bevy::pbr::ScreenSpaceReflections;
 use bevy::pbr::decal::ForwardDecalMaterialExt;
-use bevy::pbr::{ExtendedMaterial, Lightmap, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections};
 use bevy::post_process::auto_exposure::AutoExposure;
 use bevy::post_process::bloom::Bloom;
 use bevy::post_process::dof::DepthOfField;
 use bevy::post_process::effect_stack::ChromaticAberration;
-use bevy::prelude::{ChildOf, *};
+use bevy::prelude::ChildOf;
+use bevy::prelude::*;
 // Bevy 0.16
 use bevy::render::camera::{MipBias, TemporalJitter};
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
-use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
+use bevy::render::render_resource::TextureViewDescriptor;
+use bevy::render::render_resource::TextureViewDimension;
+use bevy::render::view::ColorGrading;
+use bevy::render::view::Msaa;
 use bevy::render::view::window::screenshot::Screenshot;
-use bevy::render::view::{ColorGrading, Msaa};
-use bevy::scene::{Scene, SceneRoot};
-use bevy::ui::widget::{Button, Label};
-use bevy::ui::{CalculatedClip, FocusPolicy, Interaction, Outline, UiTargetCamera, ZIndex};
-use bevy::window::{CursorIcon, PrimaryWindow};
+use bevy::scene::Scene;
+use bevy::scene::SceneRoot;
+use bevy::ui::CalculatedClip;
+use bevy::ui::FocusPolicy;
+use bevy::ui::Interaction;
+use bevy::ui::Outline;
+use bevy::ui::UiTargetCamera;
+use bevy::ui::ZIndex;
+use bevy::ui::widget::Button;
+use bevy::ui::widget::Label;
+use bevy::window::CursorIcon;
+use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
 
 /// Resource to track keyboard input history

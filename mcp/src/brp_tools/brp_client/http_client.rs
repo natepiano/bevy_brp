@@ -7,14 +7,19 @@
 use std::time::Duration;
 
 use serde_json::Value;
-use tracing::{debug, warn};
+use tracing::debug;
+use tracing::warn;
 
-use super::constants::{BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH};
+use super::constants::BRP_DEFAULT_HOST;
+use super::constants::BRP_HTTP_PROTOCOL;
+use super::constants::BRP_JSONRPC_PATH;
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::Port;
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
-use crate::tool::{BrpMethod, ParameterName};
+use crate::tool::BrpMethod;
+use crate::tool::ParameterName;
 
 /// HTTP client for BRP communication
 pub struct BrpHttpClient {

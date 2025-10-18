@@ -1,11 +1,14 @@
 //! `JsonResponse` and conversion methods
-use rmcp::model::{CallToolResult, Content};
+use rmcp::model::CallToolResult;
+use rmcp::model::Content;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
 
 use super::tool_name::CallInfo;
-use crate::error::{Error, Result};
+use crate::error::Error;
+use crate::error::Result;
 
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

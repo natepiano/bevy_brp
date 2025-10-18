@@ -3,10 +3,13 @@
 //! Provides a type-safe wrapper around the number of instances to launch
 //! with built-in validation and default values for parallel testing.
 
-use std::ops::{Deref, RangeInclusive};
+use std::ops::Deref;
+use std::ops::RangeInclusive;
 
 use schemars::JsonSchema;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::Deserialize;
+use serde::Deserializer;
+use serde::Serialize;
 
 /// Minimum number of instances (1)
 pub const MIN_INSTANCE_COUNT: usize = 1;
@@ -60,7 +63,8 @@ where
 {
     use std::fmt;
 
-    use serde::de::{self, Visitor};
+    use serde::de::Visitor;
+    use serde::de::{self};
 
     struct InstanceCountVisitor;
 

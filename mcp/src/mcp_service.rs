@@ -2,14 +2,20 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use itertools::Itertools;
-use rmcp::model::{
-    CallToolRequestParam, CallToolResult, ListToolsResult, PaginatedRequestParam,
-    ServerCapabilities, Tool,
-};
+use rmcp::ErrorData as McpError;
+use rmcp::Peer;
+use rmcp::RoleServer;
+use rmcp::ServerHandler;
+use rmcp::model::CallToolRequestParam;
+use rmcp::model::CallToolResult;
+use rmcp::model::ListToolsResult;
+use rmcp::model::PaginatedRequestParam;
+use rmcp::model::ServerCapabilities;
+use rmcp::model::Tool;
 use rmcp::service::RequestContext;
-use rmcp::{ErrorData as McpError, Peer, RoleServer, ServerHandler};
 
-use crate::tool::{ToolDef, ToolName};
+use crate::tool::ToolDef;
+use crate::tool::ToolName;
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///

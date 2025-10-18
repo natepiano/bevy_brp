@@ -1,10 +1,13 @@
 use std::str::FromStr;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::AtomicU8;
+use std::sync::atomic::Ordering;
 
-use tracing::{Level, Subscriber};
+use tracing::Level;
+use tracing::Subscriber;
+use tracing_subscriber::Layer;
+use tracing_subscriber::Registry;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{Layer, Registry};
 
 use super::lazy_file_writer::LazyFileWriter;
 

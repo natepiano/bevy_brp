@@ -1,10 +1,16 @@
-use bevy_brp_mcp_macros::{ResultStruct, ToolFn};
-use serde::{Deserialize, Serialize};
+use bevy_brp_mcp_macros::ResultStruct;
+use bevy_brp_mcp_macros::ToolFn;
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::support;
 use super::support::BevyExamplesStrategy;
 use crate::error::Result;
-use crate::tool::{HandlerContext, HandlerResult, NoParams, ToolFn, ToolResult};
+use crate::tool::HandlerContext;
+use crate::tool::HandlerResult;
+use crate::tool::NoParams;
+use crate::tool::ToolFn;
+use crate::tool::ToolResult;
 
 /// Result from listing Bevy examples
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]

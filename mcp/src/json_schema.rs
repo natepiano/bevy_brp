@@ -5,7 +5,9 @@
 
 use serde::Serialize;
 use serde_json::Value;
-use strum::{AsRefStr, Display, EnumString};
+use strum::AsRefStr;
+use strum::Display;
+use strum::EnumString;
 
 /// JSON schema type names for type schema generation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, Serialize, EnumString)]

@@ -7,21 +7,63 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 use super::mutation_path_builder::VariantSignature;
 use crate::brp_tools::BrpTypeName;
-use crate::brp_tools::brp_type_guide::constants::{
-    TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_ENTITY, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2,
-    TYPE_BEVY_MAT3, TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2,
-    TYPE_BEVY_VEC3, TYPE_BEVY_VEC3A, TYPE_BEVY_VEC4, TYPE_BLOOM, TYPE_BOOL, TYPE_CHAR, TYPE_F32,
-    TYPE_F64, TYPE_GLAM_AFFINE2, TYPE_GLAM_AFFINE3A, TYPE_GLAM_IVEC2, TYPE_GLAM_IVEC3,
-    TYPE_GLAM_IVEC4, TYPE_GLAM_MAT2, TYPE_GLAM_MAT3, TYPE_GLAM_MAT3A, TYPE_GLAM_MAT4,
-    TYPE_GLAM_QUAT, TYPE_GLAM_UVEC2, TYPE_GLAM_UVEC3, TYPE_GLAM_UVEC4, TYPE_GLAM_VEC2,
-    TYPE_GLAM_VEC3, TYPE_GLAM_VEC3A, TYPE_GLAM_VEC4, TYPE_I8, TYPE_I16, TYPE_I32, TYPE_I64,
-    TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8, TYPE_U16,
-    TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
-};
+use crate::brp_tools::brp_type_guide::constants::TYPE_ALLOC_STRING;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_COLOR;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_ENTITY;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_IMAGE_HANDLE;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_MAT2;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_MAT3;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_MAT4;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_NAME;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_QUAT;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_RECT;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_VEC2;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_VEC3;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_VEC3A;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_VEC4;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BLOOM;
+use crate::brp_tools::brp_type_guide::constants::TYPE_BOOL;
+use crate::brp_tools::brp_type_guide::constants::TYPE_CHAR;
+use crate::brp_tools::brp_type_guide::constants::TYPE_F32;
+use crate::brp_tools::brp_type_guide::constants::TYPE_F64;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_AFFINE2;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_AFFINE3A;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_IVEC2;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_IVEC3;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_IVEC4;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_MAT2;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_MAT3;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_MAT3A;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_MAT4;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_QUAT;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_UVEC2;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_UVEC3;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_UVEC4;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_VEC2;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_VEC3;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_VEC3A;
+use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_VEC4;
+use crate::brp_tools::brp_type_guide::constants::TYPE_I8;
+use crate::brp_tools::brp_type_guide::constants::TYPE_I16;
+use crate::brp_tools::brp_type_guide::constants::TYPE_I32;
+use crate::brp_tools::brp_type_guide::constants::TYPE_I64;
+use crate::brp_tools::brp_type_guide::constants::TYPE_I128;
+use crate::brp_tools::brp_type_guide::constants::TYPE_ISIZE;
+use crate::brp_tools::brp_type_guide::constants::TYPE_STD_STRING;
+use crate::brp_tools::brp_type_guide::constants::TYPE_STR;
+use crate::brp_tools::brp_type_guide::constants::TYPE_STR_REF;
+use crate::brp_tools::brp_type_guide::constants::TYPE_STRING;
+use crate::brp_tools::brp_type_guide::constants::TYPE_U8;
+use crate::brp_tools::brp_type_guide::constants::TYPE_U16;
+use crate::brp_tools::brp_type_guide::constants::TYPE_U32;
+use crate::brp_tools::brp_type_guide::constants::TYPE_U64;
+use crate::brp_tools::brp_type_guide::constants::TYPE_U128;
+use crate::brp_tools::brp_type_guide::constants::TYPE_USIZE;
 
 /// Format knowledge key for matching types
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

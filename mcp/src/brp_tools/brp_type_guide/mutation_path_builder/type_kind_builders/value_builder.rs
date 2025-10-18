@@ -9,9 +9,11 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use super::super::path_kind::{MutationPathDescriptor, PathKind};
+use super::super::BuilderError;
+use super::super::NotMutableReason;
+use super::super::path_kind::MutationPathDescriptor;
+use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
-use super::super::{BuilderError, NotMutableReason};
 use super::type_kind_builder::TypeKindBuilder;
 use crate::error::Result;
 

@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
 
-use super::super::new_types::{StructFieldName, VariantName};
+use super::super::new_types::StructFieldName;
+use super::super::new_types::VariantName;
 use super::super::type_parser;
 use super::variant_signature::VariantSignature;
 use crate::brp_tools::brp_type_guide::BrpTypeName;

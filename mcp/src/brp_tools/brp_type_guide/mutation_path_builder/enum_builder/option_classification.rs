@@ -5,7 +5,8 @@
 //! - `None` → `null`
 //! - `Some(value)` → `value` (unwrapped)
 
-use serde_json::{Value, json};
+use serde_json::Value;
+use serde_json::json;
 
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 

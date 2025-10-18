@@ -4,7 +4,8 @@
 //! and `enum_path_builder.rs` (enum types) to avoid code duplication and improve
 //! maintainability.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use serde_json::Value;
 

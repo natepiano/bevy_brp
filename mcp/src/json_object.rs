@@ -4,7 +4,8 @@
 //! - Type-safe JSON field access using any type that implements `AsRef<str>`
 //! - Converting iterators to string collections
 
-use serde_json::{Map, Value};
+use serde_json::Map;
+use serde_json::Value;
 
 use crate::brp_tools::BrpTypeName;
 use crate::json_schema::SchemaField;
