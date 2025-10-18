@@ -74,6 +74,7 @@ impl FromStr for TracingLevel {
 }
 
 impl TracingLevel {
+    #[cfg(feature = "mcp-debug")]
     const fn as_u8(self) -> u8 {
         match self {
             Self::Error => 0,
@@ -84,6 +85,7 @@ impl TracingLevel {
         }
     }
 
+    #[cfg(feature = "mcp-debug")]
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Error => "error",
@@ -130,6 +132,7 @@ impl TracingLevel {
     }
 
     /// Set the current tracing level dynamically
+    #[cfg(feature = "mcp-debug")]
     pub fn set_tracing_level(level: Self) {
         CURRENT_LEVEL.store(level.as_u8(), Ordering::Relaxed);
 

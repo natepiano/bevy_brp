@@ -309,7 +309,7 @@ pub fn collect_children_for_chain(
 
 /// Assemble a struct JSON object from child field examples
 ///
-/// Only includes fields that exist in the `children` HashMap - does not add null defaults
+/// Only includes fields that exist in the `children` `HashMap` - does not add null defaults
 /// for missing fields. This allows BRP to use the type's `Default` implementation to fill
 /// in any missing required fields.
 ///

@@ -1,0 +1,5 @@
+# Local development configuration
+# This enables the mcp-debug feature by default when building within this workspace
+
+[target.'cfg(all())']
+rustflags = ["--cfg", "feature=\"mcp-debug\""]

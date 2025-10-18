@@ -34,9 +34,10 @@ use crate::brp_tools::{
     StopWatchParams, TypeGuideParams, WorldGetComponentsWatch,
 };
 use crate::log_tools::{
-    DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
-    ReadLogParams, SetTracingLevel, SetTracingLevelParams,
+    DeleteLogs, DeleteLogsParams, ListLogs, ListLogsParams, ReadLog, ReadLogParams,
 };
+#[cfg(feature = "mcp-debug")]
+use crate::log_tools::{GetTraceLogPath, SetTracingLevel, SetTracingLevelParams};
 
 /// Call information for tracking tool execution
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -269,8 +270,10 @@ pub enum ToolName {
     /// `brp_delete_logs` - Delete `bevy_brp_mcp` log files
     BrpDeleteLogs,
     /// `brp_get_trace_log_path` - Get trace log path
+    #[cfg(feature = "mcp-debug")]
     BrpGetTraceLogPath,
     /// `brp_set_tracing_level` - Set tracing level
+    #[cfg(feature = "mcp-debug")]
     BrpSetTracingLevel,
 
     // Type Schema - In a class of its own
@@ -422,6 +425,7 @@ impl ToolName {
                 ToolCategory::Logging,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
+            #[cfg(feature = "mcp-debug")]
             Self::BrpGetTraceLogPath => Annotation::new(
                 "Get Trace Log Path",
                 ToolCategory::Logging,
@@ -472,6 +476,7 @@ impl ToolName {
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
             ),
+            #[cfg(feature = "mcp-debug")]
             Self::BrpSetTracingLevel => Annotation::new(
                 "Set Tracing Level",
                 ToolCategory::Logging,
@@ -566,8 +571,9 @@ impl ToolName {
             Self::BrpDeleteLogs => Some(parameters::build_parameters_from::<DeleteLogsParams>),
 
             // this lot has no parametrers
-            Self::BrpGetTraceLogPath
-            | Self::BrpListBevyApps
+            #[cfg(feature = "mcp-debug")]
+            Self::BrpGetTraceLogPath => None,
+            Self::BrpListBevyApps
             | Self::BrpListBevyExamples
             | Self::BrpListBrpApps
             | Self::BrpListActiveWatches => None,
@@ -579,6 +585,7 @@ impl ToolName {
             Self::BrpStopWatch => Some(parameters::build_parameters_from::<StopWatchParams>),
             Self::BrpListLogs => Some(parameters::build_parameters_from::<ListLogsParams>),
             Self::BrpReadLog => Some(parameters::build_parameters_from::<ReadLogParams>),
+            #[cfg(feature = "mcp-debug")]
             Self::BrpSetTracingLevel => {
                 Some(parameters::build_parameters_from::<SetTracingLevelParams>)
             }
@@ -627,6 +634,7 @@ impl ToolName {
 
             // App tools
             Self::BrpDeleteLogs => Arc::new(DeleteLogs),
+            #[cfg(feature = "mcp-debug")]
             Self::BrpGetTraceLogPath => Arc::new(GetTraceLogPath),
             Self::BrpLaunchBevyApp => Arc::new(app_tools::create_launch_bevy_app_handler()),
             Self::BrpLaunchBevyExample => Arc::new(app_tools::create_launch_bevy_example_handler()),
@@ -635,6 +643,7 @@ impl ToolName {
             Self::BrpListBrpApps => Arc::new(ListBrpApps),
             Self::BrpListLogs => Arc::new(ListLogs),
             Self::BrpReadLog => Arc::new(ReadLog),
+            #[cfg(feature = "mcp-debug")]
             Self::BrpSetTracingLevel => Arc::new(SetTracingLevel),
             Self::BrpStatus => Arc::new(Status),
             Self::BrpShutdown => Arc::new(Shutdown),
