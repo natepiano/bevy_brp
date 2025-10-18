@@ -219,13 +219,9 @@ fn build_variant_example(
                 json!({ variant_name: tuple_values })
             }
         }
-        VariantSignature::Struct(field_types) => {
-            let mut field_values = serde_json::Map::new();
-            for (field_name, _) in field_types {
-                let descriptor = MutationPathDescriptor::from(field_name);
-                let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
-                field_values.insert(field_name.to_string(), value);
-            }
+        VariantSignature::Struct(_field_types) => {
+            // Use shared function to assemble struct from children (only includes mutable fields)
+            let field_values = path_builder::assemble_struct_from_children(children);
             json!({ variant_name: field_values })
         }
     };

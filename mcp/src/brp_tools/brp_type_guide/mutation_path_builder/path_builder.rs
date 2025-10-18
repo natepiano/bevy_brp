@@ -260,8 +260,6 @@ pub fn is_variant_chain_compatible(
 /// Priority order:
 /// 1. Variant-specific value from `partial_root_examples` (for deeply nested enums)
 /// 2. `example.for_parent()` (fallback for all other cases)
-///
-/// This is the single source of truth for extracting child values during variant-specific assembly.
 fn extract_child_value_for_chain(
     child: &MutationPathInternal,
     child_chain: Option<&[VariantName]>,
@@ -280,8 +278,7 @@ fn extract_child_value_for_chain(
 
 /// Collect children values for a specific variant chain
 ///
-/// This is the **single choke point** for filtering and extracting child values during
-/// variant-specific example assembly. Used by both enum and non-enum types.
+/// Used by both enum and non-enum types.
 ///
 /// Filtering rules:
 /// 1. Only direct children at current depth
@@ -308,6 +305,27 @@ pub fn collect_children_for_chain(
             (descriptor, value)
         })
         .collect()
+}
+
+/// Assemble a struct JSON object from child field examples
+///
+/// Only includes fields that exist in the `children` HashMap - does not add null defaults
+/// for missing fields. This allows BRP to use the type's `Default` implementation to fill
+/// in any missing required fields.
+///
+/// Used for assembling struct-like objects from child examples,
+/// shared by both `StructMutationBuilder` and `build_variant_example` for enum struct variants.
+pub fn assemble_struct_from_children(
+    children: &HashMap<MutationPathDescriptor, Value>,
+) -> serde_json::Map<String, Value> {
+    let mut struct_obj = serde_json::Map::new();
+
+    for (descriptor, example) in children {
+        let field_name = (*descriptor).to_string();
+        struct_obj.insert(field_name, example.clone());
+    }
+
+    struct_obj
 }
 
 /// Populate `root_example` from `partial_root_examples` for enum paths

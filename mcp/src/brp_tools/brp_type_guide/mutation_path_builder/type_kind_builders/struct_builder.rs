@@ -86,16 +86,8 @@ impl TypeKindBuilder for StructMutationBuilder {
             return Ok(json!({}));
         }
 
-        // Build the struct example from child examples
-        let mut struct_obj = serde_json::Map::new();
-
-        // MutationPathDescriptor for StructField is just the field name as a string
-        for (descriptor, example) in children {
-            // descriptor derefs to the field name string
-            // e.g., MutationPathDescriptor("position") -> "position"
-            let field_name = (*descriptor).to_string();
-            struct_obj.insert(field_name, example);
-        }
+        // Use shared function to build struct object from child examples
+        let struct_obj = super::super::path_builder::assemble_struct_from_children(&children);
 
         Ok(Value::Object(struct_obj))
     }
