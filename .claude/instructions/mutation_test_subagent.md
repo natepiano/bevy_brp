@@ -99,9 +99,35 @@ Reorder parameters in your tool call - parameter order doesn't matter, but reord
      * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Context limit approaching - returning partial results"`
      * **GO TO STEP 7 IMMEDIATELY**
      * Return results for completed types + partial result for current type
-     * Add indicator in final result's failure_details: `"error_message": "Context window approaching limit - stopped testing after [N] mutations on [current_type]"`
+     * Use standard FAIL result format with context-limit error message
 
-**Bailout Status**: Use existing FAIL status with `failed_operation: "context_limit"`
+**Bailout Result Format**:
+```json
+{
+  "type": "bevy_pbr::light::PointLight",
+  "tested_type": "bevy_pbr::light::PointLight",
+  "status": "FAIL",
+  "entity_id": 12345,
+  "retry_count": 0,
+  "operations_completed": {
+    "spawn_insert": true,
+    "entity_query": true,
+    "mutations_passed": [".intensity", ".color", ".range"],
+    "total_mutations_attempted": 3
+  },
+  "failure_details": {
+    "failed_operation": "mutation",
+    "failed_mutation_path": ".shadows",
+    "error_message": "Context window approaching limit - stopped testing after 3 mutations on bevy_pbr::light::PointLight"
+  }
+}
+```
+
+Where:
+- `failed_operation`: The operation type when bailout occurred (spawn|insert|query|mutation)
+- `failed_mutation_path`: The specific path being tested (or "" if not in mutation phase)
+- `error_message`: Always start with "Context window approaching limit"
+- **No `request_sent` or `response_received`** - there's no BRP error, just context exhaustion
 
 **Purpose**: Ensure you reach Steps 7-8 before complete context exhaustion.
 </ContextWindowMonitoring>
