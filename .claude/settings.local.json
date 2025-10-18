@@ -187,7 +187,8 @@
       "Bash(.claude/scripts/mutation_test_subagent_log.sh:*)",
       "Bash(~/.claude/scripts/post-tool-use-cargo-check.sh)",
       "Bash(/Users/natemccoy/.claude/scripts/post-tool-use-cargo-check.sh)",
-      "Bash(test -f .todo.json)"
+      "Bash(test -f .todo.json)",
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test_subagent_log.sh: *)"
     ],
     "deny": [
       "Bash(sed:*)",
