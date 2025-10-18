@@ -42,8 +42,7 @@ pub fn aggregate_mutability(statuses: &[Mutability]) -> Mutability {
 ///
 /// Compatibility means the child's `variant_chain` must be a prefix of the target `child_chain`.
 ///
-/// This is shared between `path_builder.rs` and `enum_builder.rs` to filter children
-/// when building variant-specific examples.
+/// Use to filter children when building variant-specific examples.
 fn is_variant_chain_compatible(child: &MutationPathInternal, child_chain: &[VariantName]) -> bool {
     if let Some(child_enum_data) = &child.enum_path_data {
         // Child's variant_chain cannot be longer than target chain
@@ -123,8 +122,7 @@ pub fn collect_children_for_chain(
 /// for missing fields. This allows BRP to use the type's `Default` implementation to fill
 /// in any missing required fields.
 ///
-/// Used for assembling struct-like objects from child examples,
-/// shared by both `StructMutationBuilder` and `build_variant_example` for enum struct variants.
+/// Used for assembling struct-like objects from child examples in both structs and enum struct variants.
 pub fn assemble_struct_from_children(
     children: &HashMap<MutationPathDescriptor, Value>,
 ) -> serde_json::Map<String, Value> {
