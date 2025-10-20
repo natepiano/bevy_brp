@@ -18,9 +18,8 @@
 //! The `recurse_mutation_paths` function is the single entry point that dispatches to either:
 //! - `enum_path_builder::process_enum` for enum types
 //! - `MutationPathBuilder` with appropriate builder for all other types
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use error_stack::Report;
 use serde_json::Value;
@@ -56,11 +55,11 @@ use crate::error::Result;
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: TypeKindBuilder> {
@@ -411,16 +410,16 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         example: PathExample,
         status: Mutability,
         mutability_reason: Option<Value>,
-        partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
+        partial_root_examples: Option<HashMap<Vec<VariantName>, Value>>,
     ) -> MutationPathInternal {
         // Build enum data if variant chain exists
         let enum_path_data = if ctx.variant_chain.is_empty() {
             None
         } else {
             Some(EnumPathData {
-                variant_chain:       ctx.variant_chain.clone(),
+                variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example:        None,
+                root_example: None,
             })
         };
 
@@ -447,7 +446,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         builder: &B,
         ctx: &RecursionContext,
         child_paths: &[&MutationPathInternal],
-    ) -> std::result::Result<Option<BTreeMap<Vec<VariantName>, Value>>, BuilderError> {
+    ) -> std::result::Result<Option<HashMap<Vec<VariantName>, Value>>, BuilderError> {
         // Special case: Skip partial root examples for Maps/Sets with NotMutable children
         // These collections require ALL children to be present for assembly, but our
         // filter excludes NotMutable children, causing assembly validation errors
@@ -466,7 +465,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
 
         // Collect all unique variant chains from all children
-        let mut all_chains = BTreeSet::new();
+        let mut all_chains = HashSet::new();
         for child in child_paths {
             if let Some(partial_root_example) = &child.partial_root_examples {
                 for chain in partial_root_example.keys() {
@@ -479,27 +478,16 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             return Ok(None);
         }
 
-        let mut assembled_partial_root_examples = BTreeMap::new();
+        let mut assembled_partial_root_examples = HashMap::new();
 
         // For each variant chain, assemble wrapped example from compatible children
         for chain in all_chains {
-            tracing::debug!(
-                "🔧 ASSEMBLE_PARTIAL: Processing chain {:?} for type {}",
-                chain,
-                ctx.type_name()
-            );
-
             // Use shared choke point for filtering and value extraction
             let examples_for_chain =
                 support::collect_children_for_chain(child_paths, ctx, Some(&chain));
 
             // Assemble from filtered children
             let assembled = builder.assemble_from_children(ctx, examples_for_chain)?;
-            tracing::debug!(
-                "🔧 ASSEMBLED for chain {:?}: {}",
-                chain,
-                serde_json::to_string(&assembled).unwrap_or_else(|_| "ERR".to_string())
-            );
 
             assembled_partial_root_examples.insert(chain, assembled);
         }
@@ -514,7 +502,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         example_to_use: Value,
         parent_status: Mutability,
         mutability_reason: Option<Value>,
-        partial_root_examples: Option<BTreeMap<Vec<VariantName>, Value>>,
+        partial_root_examples: Option<HashMap<Vec<VariantName>, Value>>,
     ) -> Vec<MutationPathInternal> {
         if let Some(ref partials) = partial_root_examples {
             // Propagate assembled partial_root_examples to all children

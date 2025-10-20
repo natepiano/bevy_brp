@@ -26,9 +26,8 @@
 //! Unlike other types that use `MutationPathBuilder`, enums bypass the trait system for
 //! their specialized processing, then calls back into `recurse_mutation_paths` for its children.
 
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use error_stack::Report;
 use itertools::Itertools;
@@ -77,7 +76,7 @@ impl SortedVariantGroups for HashMap<VariantSignature, Vec<VariantName>> {
 type ProcessChildrenResult = (
     Vec<ExampleGroup>,
     Vec<MutationPathInternal>,
-    BTreeMap<Vec<VariantName>, Value>,
+    HashMap<Vec<VariantName>, Value>,
 );
 
 /// Process enum type directly, bypassing `PathBuilder` trait
@@ -483,7 +482,7 @@ fn collect_child_chains_to_wrap(
     child_paths: &[MutationPathInternal],
     our_chain: &[VariantName],
     ctx: &RecursionContext,
-) -> BTreeSet<Vec<VariantName>> {
+) -> HashSet<Vec<VariantName>> {
     child_paths
         .iter()
         // Only process direct children
@@ -539,8 +538,8 @@ fn build_partial_root_examples(
     enum_examples: &[ExampleGroup],
     child_mutation_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
-) -> BTreeMap<Vec<VariantName>, Value> {
-    let mut partial_root_examples = BTreeMap::new();
+) -> HashMap<Vec<VariantName>, Value> {
+    let mut partial_root_examples = HashMap::new();
 
     // For each variant at THIS level in deterministic order
     for (signature, variants) in variant_groups.sorted() {
@@ -693,7 +692,7 @@ fn build_enum_root_path(
 /// Propagate partial root examples to child paths at the root level
 fn propagate_partial_root_examples_to_children(
     child_paths: &mut [MutationPathInternal],
-    partial_root_examples: &BTreeMap<Vec<VariantName>, Value>,
+    partial_root_examples: &HashMap<Vec<VariantName>, Value>,
     ctx: &RecursionContext,
 ) {
     if ctx.variant_chain.is_empty() {
@@ -713,7 +712,7 @@ fn create_enum_mutation_paths(
     enum_examples: Vec<ExampleGroup>,
     default_example: Value,
     mut child_mutation_paths: Vec<MutationPathInternal>,
-    partial_root_examples: BTreeMap<Vec<VariantName>, Value>,
+    partial_root_examples: HashMap<Vec<VariantName>, Value>,
 ) -> Vec<MutationPathInternal> {
     // Determine enum mutation status by aggregating the mutability of all examples
     // and then using the shared (with path_builder) aggregate_mutability to determine

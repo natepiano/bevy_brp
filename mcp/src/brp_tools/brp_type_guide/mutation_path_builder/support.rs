@@ -4,7 +4,6 @@
 //! and `enum_path_builder.rs` (enum types) to avoid code duplication and improve
 //! maintainability.
 
-use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 use serde_json::Value;
@@ -146,7 +145,7 @@ pub fn assemble_struct_from_children(
 /// This is shared between `builder.rs` and `enum_path_builder.rs` to avoid code duplication.
 pub fn populate_root_examples_from_partials(
     paths: &mut [MutationPathInternal],
-    partials: &BTreeMap<Vec<VariantName>, Value>,
+    partials: &HashMap<Vec<VariantName>, Value>,
 ) {
     for path in paths {
         if let Some(enum_data) = &mut path.enum_path_data
