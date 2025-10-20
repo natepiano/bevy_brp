@@ -319,6 +319,14 @@ struct TestTupleField {
 struct TestTupleStruct(pub f32, pub String, pub bool);
 
 /// Test component that exceeds recursion depth (11 nested Options exceeds limit of 10)
+///
+/// Note: the BRP actually expects just a value for Option - i.e. we don't say Some(1.0) we just say
+/// 1.0 and for None it expects a null - which will then set it to None.
+/// As a result - no matter how many levels of Option we provide, the Some hierarchy is unwrapped
+/// in the bevy_brp_mcp option handling so that we only provide the actual type or null.
+/// So setting a value of {"shallow_nested": 1.0} or {"shallow_nested": null} works for
+/// Option<Option<Option<f32>>> - where 1.0 represents Some(Some(Some(1.0))) and null represents
+/// any level of None (None, Some(None), Some(Some(None)), etc. - BRP can't distinguish these).
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 #[allow(clippy::type_complexity)]
@@ -326,6 +334,8 @@ struct RecursionDepthTestComponent {
     /// 11 levels of nesting: Option->Option->...->f32 (exceeds `MAX_TYPE_RECURSION_DEPTH` of 10)
     pub deeply_nested:
         Option<Option<Option<Option<Option<Option<Option<Option<Option<Option<Option<f32>>>>>>>>>>>,
+    /// 3 levels of nesting for testing (well within recursion limits)
+    pub shallow_nested: Option<Option<Option<f32>>>,
 }
 
 /// Test component with complex tuple types for testing tuple recursion
@@ -1054,7 +1064,10 @@ fn spawn_mixed_mutability_test_entities(commands: &mut Commands) {
 
 fn spawn_recursion_test_entity(commands: &mut Commands) {
     commands.spawn((
-        RecursionDepthTestComponent::default(),
+        RecursionDepthTestComponent {
+            deeply_nested:  None,
+            shallow_nested: Some(Some(Some(5.0))), // Test format: Some(Some(Some(5.0)))
+        },
         Name::new("RecursionDepthTestEntity"),
     ));
 }

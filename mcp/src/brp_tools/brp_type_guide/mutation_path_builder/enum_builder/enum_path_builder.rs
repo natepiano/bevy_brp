@@ -167,46 +167,6 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
         .and_then(|eg| eg.example.clone())
 }
 
-/// Build a complete example for a variant with all its fields
-fn build_variant_example(
-    signature: &VariantSignature,
-    variant_name: &str,
-    children: &HashMap<MutationPathDescriptor, Value>,
-    enum_type: &BrpTypeName,
-) -> Value {
-    let example = match signature {
-        VariantSignature::Unit => {
-            json!(variant_name)
-        }
-        VariantSignature::Tuple(types) => {
-            let mut tuple_values = Vec::new();
-            for index in 0..types.len() {
-                let descriptor = MutationPathDescriptor::from(index.to_string());
-                let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
-                tuple_values.push(value);
-            }
-            // Fix: Single-element tuples should not be wrapped in arrays
-            // Vec<Value> always serializes as JSON array, but BRP expects single-element
-            // tuples to use direct value format for mutations, not array format
-            if tuple_values.len() == 1 {
-                json!({ variant_name: tuple_values[0] })
-            } else {
-                json!({ variant_name: tuple_values })
-            }
-        }
-        VariantSignature::Struct(_field_types) => {
-            // Use shared function to assemble struct from children (only includes mutable fields)
-            let field_values = support::assemble_struct_from_children(children);
-            json!({ variant_name: field_values })
-        }
-    };
-
-    // Apply `Option<T>` transformation only for actual Option types
-    let result = apply_option_transformation(example, variant_name, enum_type);
-
-    result
-}
-
 /// Extract all variants from schema and group them by signature
 /// This is the single source of truth for enum variant processing
 fn group_variants_by_signature(
@@ -369,6 +329,57 @@ fn build_variant_group_example(
     Ok(example)
 }
 
+/// Build a complete example for a variant with all its fields
+///
+/// For nested `Option` types, BRP collapses all nesting levels due to the wrap-unwrap pattern:
+/// - Each `Option` level wraps as `{"Some": value}`, then `apply_option_transformation` unwraps it
+/// - This happens at every level, producing complete flattening:
+///   - `Some(Some(Some(5.0)))` → `5.0` (fully unwrapped)
+///   - `Some(Some(None))` → `null` (any nested `None` collapses to `null`)
+///   - `Some(None)` → `null`
+///   - `None` → `null`
+///
+/// When children are empty (e.g., filtered `NotMutable` at recursion depth limits),
+/// `unwrap_or(json!(null))` at line 347 provides a fallback, producing `{"Some": null}`
+/// which `apply_option_transformation` at line 367 transforms to `null` - the correct BRP
+/// representation.
+fn build_variant_example(
+    signature: &VariantSignature,
+    variant_name: &str,
+    children: &HashMap<MutationPathDescriptor, Value>,
+    enum_type: &BrpTypeName,
+) -> Value {
+    let example = match signature {
+        VariantSignature::Unit => {
+            json!(variant_name)
+        }
+        VariantSignature::Tuple(types) => {
+            let mut tuple_values = Vec::new();
+            for index in 0..types.len() {
+                let descriptor = MutationPathDescriptor::from(index.to_string());
+                let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
+                tuple_values.push(value);
+            }
+            // Fix: Single-element tuples should not be wrapped in arrays
+            // Vec<Value> always serializes as JSON array, but BRP expects single-element
+            // tuples to use direct value format for mutations, not array format
+            if tuple_values.len() == 1 {
+                json!({ variant_name: tuple_values[0] })
+            } else {
+                json!({ variant_name: tuple_values })
+            }
+        }
+        VariantSignature::Struct(_field_types) => {
+            // Use shared function to assemble struct from children (only includes mutable fields)
+            let field_values = support::assemble_struct_from_children(children);
+            json!({ variant_name: field_values })
+        }
+    };
+
+    // Apply `Option<T>` transformation only for actual Option types
+    apply_option_transformation(example, variant_name, enum_type)
+}
+
 /// Process child paths - simplified version of `MutationPathBuilder`'s child processing
 ///
 /// Builds examples immediately for each variant group to avoid `HashMap` collision issues
@@ -459,8 +470,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -494,29 +505,36 @@ fn collect_child_chains_to_wrap(
         .collect()
 }
 
-/// Build partial root examples using assembly during ascent
+/// Build `partial_root_examples` by assembling variant-specific root examples during recursion
+/// ascent
 ///
-/// Builds partial roots during recursion by wrapping child partial roots
-/// as we receive them during the ascent phase.
+/// Creates a map from variant chains to complete root examples showing how to reach nested enum
+/// paths. Each variant at this level gets entries for itself and all compatible child chains.
 ///
-/// ## What is `partial_root_examples`?
+/// ## Variant Chain Compatibility
 ///
-/// Maps FULL variant chains to complete root examples for reaching nested enum paths.
-/// Populated for enum root paths at any nesting level (path `""` for `TestVariantChainEnum`,
-/// path `".middle_struct.nested_enum"` for `BottomEnum`, etc). None for non-enum paths
-/// and enum leaf paths.
+/// Multiple variants can share the same signature. When building examples for nested enums,
+/// we must filter children by variant chain compatibility to prevent HashMap collisions.
 ///
-/// ## Structure Examples
+/// **Example**: `Handle<Image>` enum with two variants:
+/// - `Weak(AssetId<Image>)` where `AssetId` is an enum with `Uuid` and `Index` variants
+/// - `Strong(Arc<StrongHandle>)` where the inner type is not an enum
 ///
-/// At `BottomEnum` (path `".middle_struct.nested_enum"`):
-/// - `[WithMiddleStruct, VariantB]` → `{"VariantB": {"name": "...", "value": ...}}`
-/// - `[WithMiddleStruct, VariantA]` → `{"VariantA": 123}`
+/// Both variants use descriptor `"0"` for their tuple element, but have different nested
+/// structures.
 ///
-/// For `TestVariantChainEnum` with chain `["WithMiddleStruct", "VariantA"]`:
-/// - `{"WithMiddleStruct": {"middle_struct": {"nested_enum": {"VariantA": 1000000}, ...}}}`
+/// When building for chain `["Handle::Weak", "AssetId::Uuid"]`:
+/// - Child with chain `["Handle::Weak"]` → compatible ✅ (prefix match)
+/// - Child with chain `["Handle::Strong"]` → incompatible ❌ (different variant path)
 ///
-/// Partial roots are built using an assembly approach by wrapping child partial roots
-/// as we ascend through recursion.
+/// Without filtering, both children would collide on descriptor `"0"`, and `Strong`'s `null` value
+/// would overwrite `Weak`'s nested `AssetId` structure.
+///
+/// **Output for this example**:
+/// - `["Handle::Weak"]` → `{"Weak": {"Uuid": "00000000-0000-0000-0000-000000000000"}}`
+/// - `["Handle::Weak", "AssetId::Uuid"]` → `{"Weak": {"Uuid":
+///   "00000000-0000-0000-0000-000000000000"}}`
+/// - `["Handle::Strong"]` → `{"Strong": null}`
 fn build_partial_root_examples(
     variant_groups: &BTreeMap<VariantSignature, Vec<VariantKind>>,
     enum_examples: &[ExampleGroup],
@@ -545,41 +563,16 @@ fn build_partial_root_examples(
             let child_chains_to_wrap =
                 collect_child_chains_to_wrap(child_mutation_paths, &our_chain, ctx);
 
-            // Build wrapped examples for each child variant chain
-            //
-            // VARIANT CHAIN COMPATIBILITY RULE:
-            // When building partial roots for a specific `child_chain`, we must only include
-            // child paths whose `variant_chain` is compatible with that `child_chain`.
-            //
-            // Compatibility means: the child's `variant_chain` must be a prefix of `child_chain`.
-            //
-            // Example: Given `Handle<Image>` enum with two variants (Weak, Strong):
-            //   - Weak variant: `.image.0` → `AssetId<Image>` (another enum with Uuid, Index)
-            //   - Strong variant: `.image.0` → `Arc<StrongHandle>` (not an enum)
-            //
-            // When building for `child_chain = ["Handle<Image>::Weak", "AssetId<Image>::Uuid"]`:
-            //   - Child with variant_chain `["Handle<Image>::Weak"]` IS compatible ✅ (prefix of
-            //     target chain)
-            //   - Child with variant_chain `["Handle<Image>::Strong"]` is NOT compatible ❌
-            //     (different variant path)
-            //
-            // Without this filtering, both children share the same descriptor ("0" for tuple
-            // index), causing HashMap collisions where the last insert overwrites correct values
-            // with incompatible ones (e.g., Strong's null overwrites Weak's nested structure).
-            //
-            // This ensures deeply nested enum paths like `.image.0.uuid` get correct
-            // `root_example` values: `{"Weak": {"Uuid": {"uuid": "..."}}}` rather than
-            // `{"Weak": null}`.
+            // Build wrapped examples for each compatible child chain
             let mut found_child_chains = false;
             for child_chain in &child_chains_to_wrap {
-                let child_refs: Vec<&MutationPathInternal> = child_mutation_paths.iter().collect();
-                let children =
-                    support::collect_children_for_chain(&child_refs, ctx, Some(child_chain));
-
-                // Use existing `build_variant_example` with SHORT variant name
-                let wrapped =
-                    build_variant_example(signature, variant.name(), &children, ctx.type_name());
-
+                let wrapped = build_variant_example_for_chain(
+                    signature,
+                    variant.name(),
+                    child_mutation_paths,
+                    child_chain,
+                    ctx,
+                );
                 partial_root_examples.insert(child_chain.clone(), wrapped);
                 found_child_chains = true;
             }
@@ -587,15 +580,13 @@ fn build_partial_root_examples(
             // After processing all child chains, also create entry for n-variant chain
             // This handles paths that only specify the outer variant(s)
             if found_child_chains {
-                // Build n-variant entry: Assemble from children compatible with this variant chain
-                // IMPORTANT: Filter by our_chain to exclude fields from other variants
-                let child_refs: Vec<&MutationPathInternal> = child_mutation_paths.iter().collect();
-                let children =
-                    support::collect_children_for_chain(&child_refs, ctx, Some(&our_chain));
-
-                // Wrap with this variant using regular child examples
-                let wrapped =
-                    build_variant_example(signature, variant.name(), &children, ctx.type_name());
+                let wrapped = build_variant_example_for_chain(
+                    signature,
+                    variant.name(),
+                    child_mutation_paths,
+                    &our_chain,
+                    ctx,
+                );
                 partial_root_examples.insert(our_chain.clone(), wrapped);
             } else {
                 // No child chains found, this is a leaf variant - store base example
@@ -605,6 +596,24 @@ fn build_partial_root_examples(
     }
 
     partial_root_examples
+}
+
+/// Eliminate duplication in `build_partial_root_examples` by centralizing child collection and
+/// example building
+///
+/// Collects children for a variant chain and calls `build_variant_example` to construct the
+/// example.
+fn build_variant_example_for_chain(
+    signature: &VariantSignature,
+    variant_name: &str,
+    child_mutation_paths: &[MutationPathInternal],
+    variant_chain: &[VariantName],
+    ctx: &RecursionContext,
+) -> Value {
+    let child_refs: Vec<&MutationPathInternal> = child_mutation_paths.iter().collect();
+    let children = support::collect_children_for_chain(&child_refs, ctx, Some(variant_chain));
+
+    build_variant_example(signature, variant_name, &children, ctx.type_name())
 }
 
 /// Build mutation status reason for enums based on variant mutability
@@ -661,9 +670,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathData {
-            variant_chain: ctx.variant_chain.clone(),
+            variant_chain:       ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example: None,
+            root_example:        None,
         })
     };
 
@@ -671,7 +680,7 @@ fn build_enum_root_path(
     MutationPathInternal {
         mutation_path: ctx.mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups: enum_examples,
+            groups:     enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),

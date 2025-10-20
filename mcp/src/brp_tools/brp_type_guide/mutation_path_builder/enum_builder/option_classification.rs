@@ -10,8 +10,8 @@ use serde_json::json;
 
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 
-#[derive(Debug, Clone, PartialEq)]
-enum OptionClassification {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OptionClassification {
     Option { inner_type: BrpTypeName },
     Regular(BrpTypeName),
 }
