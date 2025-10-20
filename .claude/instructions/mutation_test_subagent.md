@@ -577,7 +577,15 @@ Assignment script says: "bevy_ecs::hierarchy::Children"
 </LogOperationFailure>
 
 <LogMutationAttempt>
-`.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Testing mutation path: [path]"`
+Log the mutation path AND the full arguments being passed to the tool:
+
+For Components:
+`.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "world_mutate_components(entity=[entity_id], component=\"[component_type]\", path=\"[path]\", value=[json_value])"`
+
+For Resources:
+`.claude/scripts/mutation_test_subagent_log.sh ${PORT} tool "world_mutate_resources(resource=\"[resource_type]\", path=\"[path]\", value=[json_value])"`
+
+Replace placeholders with actual values. Include the full JSON value being passed.
 </LogMutationAttempt>
 
 <MarkSpawnInsertSuccess>
@@ -606,6 +614,7 @@ Set `spawn_insert: true` in operations_completed
 - Follow <JsonPrimitiveRules/>
 
 **CHECK RESULT** (immediately after mutation):
+- **Log the result**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Mutation result: status=[success/error], path=[path]"`
 - **IF status == "success"**:
   - Track in `mutations_passed`
   - Increment `total_mutations_attempted`

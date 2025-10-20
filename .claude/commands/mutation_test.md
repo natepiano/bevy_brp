@@ -309,15 +309,16 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **Collect and validate batch results:**
 
     1. **Collect Task outputs**: Extract JSON array from each subagent Task result
-       - **STOP IF** any Task returned empty/null: "Subagent [N] no output (see port [PORT] logs)"
+       - **Record validation errors** if any Task returned empty/null (but continue to save results)
 
-    2. **Validate completeness**:
-       - **STOP IF** subagent_responses != assignments_count: "Missing [N] subagent responses"
-       - **STOP IF** total_type_results != batch_size: "Missing [N] type results"
-       - **STOP IF** any type != tested_type: "Subagent hallucinated type"
+    2. **Check completeness and record issues**:
+       - **Record error** if subagent_responses != assignments_count
+       - **Record error** if total_type_results != batch_size
+       - **Record error** if any type != tested_type
+       - Note: Record these issues but continue to step 3
 
-    3. **Write and merge**:
-       - Save results to `.claude/transient/batch_results_[BATCH_NUMBER].json`
+    3. **Write and merge** (always execute, even if validation errors were recorded):
+       - Save ALL successful results to `.claude/transient/batch_results_[BATCH_NUMBER].json`
        - Execute merge script:
          ```bash
          ./.claude/scripts/mutation_test_merge_batch_results.sh [BATCH_NUMBER]
@@ -327,6 +328,14 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
          - Output: `.claude/transient/all_types.json`
 
     4. **Cleanup**: Remove temp file `.claude/transient/batch_results_[BATCH_NUMBER].json`
+
+    5. **Report validation errors**:
+       - **STOP IF** any validation errors were recorded in steps 1-2
+       - Report: "Subagent [N] no output (see port [PORT] logs)" for empty outputs
+       - Report: "Missing [N] subagent responses" if count mismatch
+       - Report: "Missing [N] type results" if result count mismatch
+       - Report: "Subagent hallucinated type" if type name mismatch
+       - Partial results have been saved before stopping
 </ProcessBatchResults>
 
 <CheckForFailures>
