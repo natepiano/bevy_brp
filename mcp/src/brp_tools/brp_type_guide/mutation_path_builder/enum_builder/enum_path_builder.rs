@@ -60,6 +60,19 @@ use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
+/// Extension trait for sorting variant groups deterministically
+trait SortedVariantGroups {
+    fn sorted(&self) -> Vec<(&VariantSignature, &Vec<VariantName>)>;
+}
+
+impl SortedVariantGroups for HashMap<VariantSignature, Vec<VariantName>> {
+    fn sorted(&self) -> Vec<(&VariantSignature, &Vec<VariantName>)> {
+        let mut sorted_groups: Vec<_> = self.iter().collect();
+        sorted_groups.sort_by_key(|(signature, _)| *signature);
+        sorted_groups
+    }
+}
+
 /// Result type for `process_children` containing example groups, child paths, and partial roots
 type ProcessChildrenResult = (
     Vec<ExampleGroup>,
@@ -170,24 +183,29 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
 /// Extract all variants from schema and group them by signature
 fn group_variants_by_signature(
     ctx: &RecursionContext,
-) -> Result<BTreeMap<VariantSignature, Vec<VariantName>>> {
+) -> Result<HashMap<VariantSignature, Vec<VariantName>>> {
     let schema = ctx.require_registry_schema()?;
-    let one_of_field = schema.get_field(SchemaField::OneOf);
 
-    Ok(one_of_field
+    let one_of_array = schema
+        .get_field(SchemaField::OneOf)
         .and_then(Value::as_array)
         .ok_or_else(|| {
             Report::new(Error::InvalidState(format!(
                 "Enum type {} missing oneOf field in schema",
                 ctx.type_name()
             )))
-        })?
+        })?;
+
+    // the first map gets a VariantKind which contains the variant signature and name
+    // the second map iterates over the result and then groups them by signature
+    // returning the HashMap via .into_group_map()
+    Ok(one_of_array
         .iter()
-        .filter_map(|v| VariantKind::from_schema_variant(v, &ctx.registry, ctx.type_name()))
-        .map(|vk| (vk.variant_signature().clone(), vk.variant_name().clone()))
-        .into_group_map()
+        .map(|v| VariantKind::from_schema_variant(v, &ctx.registry, ctx.type_name()))
+        .collect::<Result<Vec<_>>>()?
         .into_iter()
-        .collect())
+        .map(|variant_kind| (variant_kind.signature, variant_kind.name))
+        .into_group_map())
 }
 
 /// Process a single path within a signature group, recursively building child paths
@@ -368,14 +386,14 @@ fn build_variant_example(
 /// Builds examples immediately for each variant group to avoid `HashMap` collision issues
 /// where multiple variant groups with the same signature would overwrite each other's examples.
 fn process_signature_groups(
-    variant_groups: &BTreeMap<VariantSignature, Vec<VariantName>>,
+    variant_groups: &HashMap<VariantSignature, Vec<VariantName>>,
     ctx: &RecursionContext,
 ) -> std::result::Result<ProcessChildrenResult, BuilderError> {
     let mut examples = Vec::new();
     let mut child_mutation_paths = Vec::new();
 
-    // Process each variant group
-    for (signature, variant_names) in variant_groups {
+    // Process each variant group in deterministic order
+    for (variant_signature, variant_names) in variant_groups.sorted() {
         // Create FRESH child_examples `HashMap` for each variant group to avoid overwrites
         let mut child_examples = HashMap::new();
         // Collect THIS signature's children separately to avoid mixing with other variants
@@ -384,14 +402,14 @@ fn process_signature_groups(
         let applicable_variants: Vec<VariantName> = variant_names.clone();
 
         // Create paths for this signature group
-        let path_kinds = create_paths_for_signature(signature, ctx);
+        let path_kinds = create_paths_for_signature(variant_signature, ctx);
 
         // Process each path
         for path_kind in path_kinds.into_iter().flatten() {
             let child_paths = process_signature_path(
                 path_kind,
                 &applicable_variants,
-                signature,
+                variant_signature,
                 ctx,
                 &mut child_examples,
             )?;
@@ -399,11 +417,12 @@ fn process_signature_groups(
         }
 
         // Determine mutation status for this signature
-        let mutability = determine_signature_mutability(signature, &signature_child_paths, ctx);
+        let mutability =
+            determine_signature_mutability(variant_signature, &signature_child_paths, ctx);
 
         // Build example for this variant group
         let example = build_variant_group_example(
-            signature,
+            variant_signature,
             variant_names,
             &child_examples,
             mutability,
@@ -412,7 +431,7 @@ fn process_signature_groups(
 
         examples.push(ExampleGroup {
             applicable_variants,
-            signature: signature.clone(),
+            signature: variant_signature.clone(),
             example,
             mutability,
         });
@@ -516,15 +535,15 @@ fn collect_child_chains_to_wrap(
 ///   "00000000-0000-0000-0000-000000000000"}}`
 /// - `["Handle::Strong"]` → `{"Strong": null}`
 fn build_partial_root_examples(
-    variant_groups: &BTreeMap<VariantSignature, Vec<VariantName>>,
+    variant_groups: &HashMap<VariantSignature, Vec<VariantName>>,
     enum_examples: &[ExampleGroup],
     child_mutation_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
 ) -> BTreeMap<Vec<VariantName>, Value> {
     let mut partial_root_examples = BTreeMap::new();
 
-    // For each variant at THIS level
-    for (signature, variants) in variant_groups {
+    // For each variant at THIS level in deterministic order
+    for (signature, variants) in variant_groups.sorted() {
         for variant_name in variants {
             // Build the chain for this variant by extending parent's chain
             let mut this_variant_chain = ctx.variant_chain.clone();
