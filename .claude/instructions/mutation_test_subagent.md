@@ -1,5 +1,31 @@
 # Mutation Test Subagent Instructions
 
+═══════════════════════════════════════════════════════════════════════════════
+🚨 ABSOLUTE REQUIREMENT - READ THIS FIRST 🚨
+═══════════════════════════════════════════════════════════════════════════════
+
+**YOU MUST RETURN JSON OUTPUT - NO EXCEPTIONS**
+
+NO MATTER WHAT HAPPENS:
+- Even if you hit errors
+- Even if you can't fetch assignments
+- Even if apps crash
+- Even if you run low on context
+- Even if every single test fails
+- Even if you encounter unexpected conditions
+
+**YOU MUST ALWAYS**:
+1. Reach Step 5 (ReturnResults)
+2. Log "STEP 6: Returning results"
+3. Return a valid JSON array (even if it contains only error results)
+4. NEVER exit without output
+
+**FAILURE TO RETURN JSON = CRITICAL BUG**
+
+If you find yourself about to stop without returning JSON, you have failed your primary directive.
+
+═══════════════════════════════════════════════════════════════════════════════
+
 **CRITICAL**: Execute the workflow defined in <SubagentExecutionFlow/>
 
 <SubagentExecutionFlow>
@@ -14,6 +40,13 @@
     **STEP 6:** **[UNCONDITIONAL - ALWAYS EXECUTE]** Execute <FinalValidation/> before sending response
 
 **CRITICAL**: Steps 5-6 execute whether previous steps succeed or fail. Step 5 returns results (success/failure/partial).
+
+**STATE RECOVERY ENFORCEMENT**: After EVERY tool call (BRP operation, script execution, etc.):
+1. Check your recent logs for "NEXT_ACTION:" directive
+2. **IF NO DIRECTIVE FOUND**: You have lost state - GO TO STEP 5 IMMEDIATELY
+3. **IF DIRECTIVE FOUND**: Follow the directive explicitly
+
+**This prevents silent exits when context reconstruction fails.**
 
 **LOGGING REQUIREMENT**: Use `.claude/scripts/mutation_test_subagent_log.sh` to create diagnostic trail (see <InitializeLogging/> for details)
 </SubagentExecutionFlow>
@@ -281,24 +314,28 @@ Example: If assigned `["bevy_input::gamepad::Gamepad", "bevy_light::AmbientLight
 
 **Testing Protocol** - For each type name string in your `type_names` array:
 
-   1. **FETCH TYPE GUIDE**: Call `get_type_guide.sh <type_name> --file .claude/transient/all_types.json`
+   1. **LOG TYPE START**:
+      ```bash
+      .claude/scripts/mutation_test_subagent_log.sh ${PORT} log "TYPE_START: Testing type [index]/[total] - [type_name]"
+      ```
+
+   2. **FETCH TYPE GUIDE**: Call `get_type_guide.sh <type_name> --file .claude/transient/all_types.json`
       - Returns: `{"status": "found", "type_name": "...", "guide": {...}}`
-   2. **EXTRACT TYPE NAME**: Get the `type_name` field from script output - this is your AUTHORITATIVE string
-   3. **CALCULATE AND LOG TOKEN USAGE** (CRITICAL - Read carefully):
-      - After the tool call, check for `<system_warning>` in the response
-      - Extract the REPORTED token count from pattern: `Token usage: X/200,000`
-      - **CRITICAL**: The reported count X is INCOMPLETE - it excludes MCP tools and autocompact buffer
-      - Hidden overhead = 73,600 tokens (MCP tool definitions ~28.6K + autocompact buffer ~45K)
-      - **CALCULATED total usage = 73,600 + X** (THIS is your actual total)
-      - Percentage = (CALCULATED total / 200,000) * 100
-      - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "Testing type: [type_name] - usage (hidden: 73.6K, reported: XK, total: YK, Z%)"`
-      - **BAILOUT CHECK**: Compare CALCULATED total (not reported X) against threshold:
-        * **IF CALCULATED total >= 180,000 tokens (90% of 200K)**:
-          - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Context limit reached - calculated total YK >= 180K (Z%) - returning partial results"`
-          - **GO TO STEP 6 IMMEDIATELY**
-          - Return results for all completed types (with their actual PASS/FAIL status)
-          - Do NOT start testing this type
-   4. **TEST THE TYPE**:
+
+   3. **EXTRACT TYPE NAME**: Get the `type_name` field from script output - this is your AUTHORITATIVE string
+
+   4. **TOKEN CHECKPOINT**: Execute <CalculateAndCheckTokens context="Testing type: [type_name]"/>
+
+   5. **LOG NEXT ACTION**:
+      ```bash
+      # Determine if this is the last type
+      IF this is the last type in type_names array:
+        .claude/scripts/mutation_test_subagent_log.sh ${PORT} log "NEXT_ACTION: complete_all_types_after_testing"
+      ELSE:
+        .claude/scripts/mutation_test_subagent_log.sh ${PORT} log "NEXT_ACTION: test_next_type_after_completion"
+      ```
+
+   6. **TEST THE TYPE**:
 
    **UNDERSTANDING spawn_format NULL**:
    - `spawn_format: null` means root path is `partially_mutable`
@@ -340,9 +377,22 @@ Example: If assigned `["bevy_input::gamepad::Gamepad", "bevy_light::AmbientLight
 4. NEVER test types not provided in your assignment data
 
 **AFTER COMPLETING TESTING FOR CURRENT TYPE**:
-- Add the result (PASS/FAIL/COMPONENT_NOT_FOUND) to your results collection
-- **IF there are more types remaining in your `type_names` array**: Return to step 1 above and test the next type
-- **IF there are no more types to test**: You have completed Step 4. Proceed to Step 5 (<PreFailureCheck/>)
+1. **Log type completion**:
+   ```bash
+   .claude/scripts/mutation_test_subagent_log.sh ${PORT} log "TYPE_COMPLETE: Finished testing [type_name] with status [PASS/FAIL/COMPONENT_NOT_FOUND]"
+   ```
+
+2. Add the result (PASS/FAIL/COMPONENT_NOT_FOUND) to your results collection
+
+3. **Check NEXT_ACTION from step 5 above**:
+   - **IF last TYPE_START log said "NEXT_ACTION: test_next_type_after_completion"**:
+     * Return to step 1 above and test the next type
+   - **IF last TYPE_START log said "NEXT_ACTION: complete_all_types_after_testing"**:
+     * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "ALL_TYPES_COMPLETE: Tested [count] types, proceeding to Step 5"`
+     * You have completed Step 4. Proceed to Step 5 (<PreFailureCheck/>)
+   - **ELSE (no clear directive)**:
+     * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "STATE_LOST: Cannot determine if more types remain - proceeding to Step 5"`
+     * Proceed to Step 5 with results collected so far
 </TestAllTypes>
 
 <ResourceTestingProtocol>
@@ -593,45 +643,127 @@ Set `spawn_insert: true` in operations_completed
 </MarkSpawnInsertSuccess>
 
 <MutationTestingLoop>
-**BEFORE TESTING MUTATION PATH**:
-- If `path_info.root_example` exists:
-  1. Mutate root path (`""`) with `root_example` value first
-     - Components: `world_mutate_components` with entity ID
-     - Resources: `world_mutate_resources` (no entity ID)
-  2. Then mutate the specific path
-- If no `root_example`: Mutate path directly
+**CRITICAL STATE MANAGEMENT**: This loop must be stateless - every decision determinable from logs alone.
+
+**BEFORE ENTERING MUTATION LOOP**:
+1. Execute <CalculateAndCheckTokens context="Pre-mutation token check"/>
+2. Build complete mutation queue from type guide's mutation_paths
+3. Log loop initialization:
+   ```bash
+   .claude/scripts/mutation_test_subagent_log.sh ${PORT} log "LOOP_INIT: Starting mutations for [type_name], total_paths=[count]"
+   ```
+4. Set tracking variables: `mutation_index = 0`, `last_root_mutated = null`
+
+**STATE RECOVERY PROTOCOL** (execute at start of EVERY iteration):
+```bash
+# Check for NEXT_ACTION directive in recent logs
+IF no "NEXT_ACTION:" found in last 5 log entries:
+  - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "STATE_LOST: Cannot determine next action - returning partial results"`
+  - GO TO STEP 5 IMMEDIATELY with partial results for current type
+```
 
 **FOR EACH path in mutation_paths**:
-1. If `path_info.mutability == "not_mutable"` → SKIP
-2. If no `example` or `examples` → SKIP
-3. If `partially_mutable` and no example → SKIP
 
-**EXECUTE MUTATION**:
+**STEP A - PRE-MUTATION STATE LOGGING**:
+1. Check mutability: If `path_info.mutability == "not_mutable"` → SKIP to next path
+2. Check example: If no `example` or `examples` → SKIP to next path
+3. Log current state:
+   ```bash
+   .claude/scripts/mutation_test_subagent_log.sh ${PORT} log "MUTATION_START: path=[index]/[total] name=[path] type=[type_name]"
+   ```
+4. Determine if this is last mutation:
+   ```bash
+   IF mutation_index == (total_paths - 1):
+     .claude/scripts/mutation_test_subagent_log.sh ${PORT} log "NEXT_ACTION: complete_type_after_mutation"
+   ELSE:
+     .claude/scripts/mutation_test_subagent_log.sh ${PORT} log "NEXT_ACTION: test_next_mutation_path"
+   ```
+
+**STEP B - ROOT MUTATION HANDLING** (if needed):
+- If `path_info.root_example` exists AND differs from `last_root_mutated`:
+  1. Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "ROOT_MUTATION: Setting root to enable nested path testing"`
+  2. Mutate root path (`""`) with `root_example`
+  3. Set `last_root_mutated = path_info.root_example`
+  4. Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "NEXT_ACTION: test_nested_path_after_root"`
+  5. Then proceed to mutate the specific nested path
+- Else: mutate path directly (no root mutation needed)
+
+**STEP C - EXECUTE MUTATION**:
 - Apply <EntityIdSubstitution/> if type has Entity fields
 - Apply <LogMutationAttempt/>
 - Components: `world_mutate_components` with entity, component, path, value
 - Resources: `world_mutate_resources` with resource, path, value
 - Follow <JsonPrimitiveRules/>
 
-**CHECK RESULT** (immediately after mutation):
-- **Log the result**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Mutation result: status=[success/error], path=[path]"`
-- **IF status == "success"**:
-  - Track in `mutations_passed`
-  - Increment `total_mutations_attempted`
-  - Continue to next mutation
-- **IF status == "error"**:
-  - Increment `total_mutations_attempted`
-  - **MATCH error message and dispatch recovery:**
-    * IF contains `"Unable to extract parameters"` → Apply <ParameterExtractionRecovery/>
-    * IF contains `"invalid type: string"` → Apply <InvalidTypeStringRecovery/>
-    * IF contains `"UUID parsing failed"` AND `"found \`\"\` at"` → Apply <UuidParsingRecovery/>
-    * ELSE → Apply <LogOperationFailure operation="Mutation [path]"/>, mark failed, continue
-- **IF context limit approaching** → bail to Step 6
+**STEP D - POST-MUTATION STATE LOGGING**:
+1. **Log the result**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} result "Mutation result: status=[success/error], path=[path]"`
 
-**ENUM VARIANTS**:
-- If path has `examples` array: Test each example separately
-- Count each as separate mutation in totals
+2. **IF status == "success"**:
+   - Track in `mutations_passed`
+   - Increment `total_mutations_attempted`
+   - Increment `mutation_index`
+   - Log completion:
+     ```bash
+     .claude/scripts/mutation_test_subagent_log.sh ${PORT} log "MUTATION_COMPLETE: [path] succeeded, tested=[mutation_index]/[total]"
+     ```
+   - **CRITICAL - Check NEXT_ACTION from Step A**:
+     * IF last log before tool call said "NEXT_ACTION: complete_type_after_mutation":
+       - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "TYPE_COMPLETE: All mutations passed for [type_name]"`
+       - EXIT mutation loop
+       - Return to <TestAllTypes/> to process next type
+     * IF last log before tool call said "NEXT_ACTION: test_next_mutation_path":
+       - Continue to next iteration of mutation loop
+     * IF last log before tool call said "NEXT_ACTION: test_nested_path_after_root":
+       - Continue to test the actual nested path
+     * ELSE (no clear directive):
+       - Apply <StateRecoveryProtocol/>
+
+3. **IF status == "error"**:
+   - Increment `total_mutations_attempted`
+   - **MATCH error message and dispatch recovery:**
+     * IF contains `"Unable to extract parameters"` → Apply <ParameterExtractionRecovery/>
+     * IF contains `"invalid type: string"` → Apply <InvalidTypeStringRecovery/>
+     * IF contains `"UUID parsing failed"` AND `"found \`\"\` at"` → Apply <UuidParsingRecovery/>
+     * ELSE → Apply <LogOperationFailure operation="Mutation [path]"/>, mark as failed, increment mutation_index, continue to next path
+   - After error handling, check NEXT_ACTION same as success case above
+
+**ENUM VARIANTS HANDLING**:
+- If path has `examples` array (enum with multiple variants):
+  1. Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "ENUM_VARIANTS: Testing [count] variants for [path]"`
+  2. For each variant in examples array:
+     - Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "ENUM_VARIANT: [variant_index]/[total_variants] for [path]"`
+     - Test variant separately
+     - Count as separate mutation in totals
+  3. After all variants tested, continue to next path
+
+**CONTEXT LIMIT CHECK**:
+- After EVERY mutation, execute <CalculateAndCheckTokens context="Post-mutation [path]"/>
+- If bailout triggered: LOG and GO TO STEP 5 with partial results
 </MutationTestingLoop>
+
+<StateRecoveryProtocol>
+**When NEXT_ACTION cannot be determined after successful mutation:**
+
+1. Log the problem:
+   ```bash
+   .claude/scripts/mutation_test_subagent_log.sh ${PORT} error "STATE_AMBIGUOUS: Cannot determine next action after [path] mutation"
+   ```
+
+2. Check recent logs for context:
+   - Count total mutations attempted (from MUTATION_COMPLETE logs)
+   - Count total paths expected (from LOOP_INIT log)
+   - Compare: `mutations_attempted >= total_paths`?
+
+3. Make conservative decision:
+   - IF `mutations_attempted >= total_paths`:
+     * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "STATE_RECOVERY: Mutations complete, marking type done"`
+     * Mark type complete, exit mutation loop
+   - ELSE:
+     * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "STATE_RECOVERY: Unsafe to continue - returning partial results"`
+     * GO TO STEP 5 IMMEDIATELY with partial results
+
+**Purpose**: When state is ambiguous, fail safe by returning results rather than guessing.
+</StateRecoveryProtocol>
 
 <ParameterExtractionRecovery>
 **When mutation fails with "Unable to extract parameters":**
@@ -692,5 +824,24 @@ This means you double-quoted a UUID string (your bug, not BRP's).
    - If SUCCESS → Track in `mutations_passed`, continue
    - If FAILURE with DIFFERENT error → Mark failed, continue
 </UuidParsingRecovery>
+
+<CalculateAndCheckTokens>
+**Calculate token usage and check bailout threshold:**
+
+1. **Extract reported token count** from most recent `<system_warning>` after previous tool call
+   - Pattern: `Token usage: X/200,000`
+2. **Calculate totals**:
+   - Hidden overhead = 73,600 tokens (MCP tools ~28.6K + autocompact buffer ~45K)
+   - **CALCULATED total = 73,600 + reported**
+   - Percentage = (CALCULATED total / 200,000) * 100
+3. **Log usage**: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} log "${context} - usage (hidden: 73.6K, reported: XK, total: YK, Z%)"`
+   - Replace `${context}` with the context parameter passed to this section
+4. **BAILOUT CHECK**:
+   - **IF CALCULATED total >= 180,000 tokens (90% of 200K)**:
+     * Log: `.claude/scripts/mutation_test_subagent_log.sh ${PORT} error "Context limit reached - total YK >= 180K (Z%) - returning partial results"`
+     * **GO TO STEP 6 IMMEDIATELY**
+     * Return results for all completed types with actual status
+     * Do NOT continue with current operation
+</CalculateAndCheckTokens>
 
 **FINAL INSTRUCTION**: Execute <FinalValidation/> then output ONLY the JSON array from <ReturnResults/>. Nothing before. Nothing after.

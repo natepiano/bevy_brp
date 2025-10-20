@@ -20,21 +20,11 @@ MAX_PORT = ${BASE_PORT + MAX_SUBAGENTS - 1}             # Last port in range
 PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagents
 </TestConfiguration>
 
-<NoOptimizationAllowed>
-**CRITICAL CONSTRAINTS**:
-- Use commands EXACTLY as specified - no modifications
-- Execute each batch independently with full procedures
-- Work with command output directly even if truncated
-- No custom scripts, intermediate files, or automation shortcuts
-- No combining or skipping steps regardless of previous success
-</NoOptimizationAllowed>
-
 ## MAIN WORKFLOW
 
 <ExecutionFlow>
     **EXECUTE THESE STEPS IN ORDER:**
 
-    **STEP 0:** Execute the <NoOptimizationAllowed/> - Read and internalize
     **STEP 1:** Execute the <InitialSetup/>
     **STEP 2:** Execute the <BatchRenumbering/>
     **STEP 3:** Execute the <CleanupPreviousRuns/>
