@@ -30,22 +30,22 @@ use crate::json_schema::SchemaField;
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path - now type-safe!
-    pub example: PathExample,
+    pub example:               PathExample,
     /// Path for mutation, e.g., ".translation.x"
-    pub mutation_path: MutationPath,
+    pub mutation_path:         MutationPath,
     /// Type information for this path
-    pub type_name: BrpTypeName,
+    pub type_name:             BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind: PathKind,
+    pub path_kind:             PathKind,
     /// Whether this path can be mutated
-    pub mutability: Mutability,
+    pub mutability:            Mutability,
     /// Reason if mutation is not possible
-    pub mutability_reason: Option<Value>,
+    pub mutability_reason:     Option<Value>,
     /// Consolidated enum-specific data (new approach)
-    pub enum_path_data: Option<EnumPathData>,
+    pub enum_path_data:        Option<EnumPathData>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
-    pub depth: usize,
+    pub depth:                 usize,
     /// Maps variant chains to complete root examples for reaching nested enum paths.
     /// Populated during enum processing for paths where `matches!(example, PathExample::EnumRoot {
     /// .. })`. Built by `build_partial_root_examples()` in `enum_path_builder.rs` during
@@ -62,10 +62,10 @@ impl MutationPathInternal {
     /// Create a `MutabilityIssue` from this mutation path (for non-enum types)
     pub fn to_mutability_issue(&self) -> MutabilityIssue {
         MutabilityIssue {
-            target: MutabilityIssueTarget::Path(self.mutation_path.clone()),
+            target:    MutabilityIssueTarget::Path(self.mutation_path.clone()),
             type_name: self.type_name.clone(),
-            status: self.mutability,
-            reason: self.mutability_reason.clone(),
+            status:    self.mutability,
+            reason:    self.mutability_reason.clone(),
         }
     }
 
