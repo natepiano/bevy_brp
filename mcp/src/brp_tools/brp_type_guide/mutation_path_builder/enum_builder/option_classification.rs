@@ -9,6 +9,7 @@ use serde_json::Value;
 use serde_json::json;
 
 use crate::brp_tools::brp_type_guide::BrpTypeName;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::new_types::VariantName;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptionClassification {
@@ -46,7 +47,7 @@ impl OptionClassification {
 /// Apply `Option<T>` transformation if needed: `{"Some": value}` → `value`, `"None"` → `null`
 pub fn apply_option_transformation(
     example: Value,
-    variant_name: &str,
+    variant_name: &VariantName,
     enum_type: &BrpTypeName,
 ) -> Value {
     let type_category = OptionClassification::from_type_name(enum_type);
@@ -56,7 +57,7 @@ pub fn apply_option_transformation(
     }
 
     // Transform Option variants for BRP mutations
-    match variant_name {
+    match variant_name.short_name() {
         "None" => {
             json!(null)
         }

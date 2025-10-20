@@ -171,18 +171,18 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
 /// This is the single source of truth for enum variant processing
 fn group_variants_by_signature(
     ctx: &RecursionContext,
-) -> Result<BTreeMap<VariantSignature, Vec<VariantKind>>> {
+) -> Result<BTreeMap<VariantSignature, Vec<VariantName>>> {
     let schema = ctx.require_registry_schema()?;
-    let mut variants = extract_variants(schema, &ctx.registry, ctx.type_name());
+    let variants = extract_variants(schema, &ctx.registry, ctx.type_name());
 
-    variants.sort_by(|a, b| a.signature().cmp(b.signature()));
-
-    Ok(variants
-        .into_iter()
-        .chunk_by(|v| v.signature().clone())
-        .into_iter()
-        .map(|(signature, signature_group)| (signature, signature_group.collect()))
-        .collect())
+    let mut grouped: BTreeMap<VariantSignature, Vec<VariantName>> = BTreeMap::new();
+    for variant in variants {
+        grouped
+            .entry(variant.variant_signature().clone())
+            .or_default()
+            .push(variant.variant_name().clone());
+    }
+    Ok(grouped)
 }
 
 /// Extract and parse all variants from an enum's JSON schema
@@ -303,12 +303,12 @@ fn determine_signature_mutability(
 ///    a fully `Mutable` variant (or return `None` if no `Mutable` variants exist)
 fn build_variant_group_example(
     signature: &VariantSignature,
-    variants_in_group: &[VariantKind],
+    variants_in_group: &[VariantName],
     child_examples: &HashMap<MutationPathDescriptor, Value>,
     mutability: Mutability,
     ctx: &RecursionContext,
 ) -> std::result::Result<Option<Value>, BuilderError> {
-    let representative = variants_in_group
+    let representative_variant_name = variants_in_group
         .first()
         .ok_or_else(|| Report::new(Error::InvalidState("Empty variant group".to_string())))?;
 
@@ -320,7 +320,7 @@ fn build_variant_group_example(
     } else {
         Some(build_variant_example(
             signature,
-            representative.name(),
+            representative_variant_name,
             child_examples,
             ctx.type_name(),
         ))
@@ -345,13 +345,13 @@ fn build_variant_group_example(
 /// representation.
 fn build_variant_example(
     signature: &VariantSignature,
-    variant_name: &str,
+    variant_name: &VariantName,
     children: &HashMap<MutationPathDescriptor, Value>,
     enum_type: &BrpTypeName,
 ) -> Value {
     let example = match signature {
         VariantSignature::Unit => {
-            json!(variant_name)
+            json!(variant_name.short_name())
         }
         VariantSignature::Tuple(types) => {
             let mut tuple_values = Vec::new();
@@ -364,15 +364,15 @@ fn build_variant_example(
             // Vec<Value> always serializes as JSON array, but BRP expects single-element
             // tuples to use direct value format for mutations, not array format
             if tuple_values.len() == 1 {
-                json!({ variant_name: tuple_values[0] })
+                json!({ variant_name.short_name(): tuple_values[0] })
             } else {
-                json!({ variant_name: tuple_values })
+                json!({ variant_name.short_name(): tuple_values })
             }
         }
         VariantSignature::Struct(_field_types) => {
             // Use shared function to assemble struct from children (only includes mutable fields)
             let field_values = support::assemble_struct_from_children(children);
-            json!({ variant_name: field_values })
+            json!({ variant_name.short_name(): field_values })
         }
     };
 
@@ -385,23 +385,20 @@ fn build_variant_example(
 /// Builds examples immediately for each variant group to avoid `HashMap` collision issues
 /// where multiple variant groups with the same signature would overwrite each other's examples.
 fn process_signature_groups(
-    variant_groups: &BTreeMap<VariantSignature, Vec<VariantKind>>,
+    variant_groups: &BTreeMap<VariantSignature, Vec<VariantName>>,
     ctx: &RecursionContext,
 ) -> std::result::Result<ProcessChildrenResult, BuilderError> {
     let mut examples = Vec::new();
     let mut child_mutation_paths = Vec::new();
 
     // Process each variant group
-    for (signature, variant_kinds) in variant_groups {
+    for (signature, variant_names) in variant_groups {
         // Create FRESH child_examples `HashMap` for each variant group to avoid overwrites
         let mut child_examples = HashMap::new();
         // Collect THIS signature's children separately to avoid mixing with other variants
         let mut signature_child_paths = Vec::new();
 
-        let applicable_variants: Vec<VariantName> = variant_kinds
-            .iter()
-            .map(|v| v.variant_name().clone())
-            .collect();
+        let applicable_variants: Vec<VariantName> = variant_names.clone();
 
         // Create paths for this signature group
         let path_kinds = create_paths_for_signature(signature, ctx);
@@ -424,7 +421,7 @@ fn process_signature_groups(
         // Build example for this variant group
         let example = build_variant_group_example(
             signature,
-            variant_kinds,
+            variant_names,
             &child_examples,
             mutability,
             ctx,
@@ -470,8 +467,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -536,7 +533,7 @@ fn collect_child_chains_to_wrap(
 ///   "00000000-0000-0000-0000-000000000000"}}`
 /// - `["Handle::Strong"]` → `{"Strong": null}`
 fn build_partial_root_examples(
-    variant_groups: &BTreeMap<VariantSignature, Vec<VariantKind>>,
+    variant_groups: &BTreeMap<VariantSignature, Vec<VariantName>>,
     enum_examples: &[ExampleGroup],
     child_mutation_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
@@ -545,53 +542,51 @@ fn build_partial_root_examples(
 
     // For each variant at THIS level
     for (signature, variants) in variant_groups {
-        for variant in variants {
-            let our_variant = variant.variant_name().clone();
+        for variant_name in variants {
+            // Build the chain for this variant by extending parent's chain
+            let mut this_variant_chain = ctx.variant_chain.clone();
+            this_variant_chain.push(variant_name.clone());
 
-            // Build our variant chain by extending parent's chain
-            let mut our_chain = ctx.variant_chain.clone();
-            our_chain.push(our_variant.clone());
-
-            // Get base example for this variant
-            let base_example = enum_examples
+            // Get base example for this variant (from spawn_format examples)
+            let spawn_example = enum_examples
                 .iter()
-                .find(|ex| ex.applicable_variants.contains(&our_variant))
+                .find(|ex| ex.applicable_variants.contains(variant_name))
                 .and_then(|ex| ex.example.clone())
                 .unwrap_or(json!(null));
 
-            // Collect all unique child chains that start with our_chain
-            let child_chains_to_wrap =
-                collect_child_chains_to_wrap(child_mutation_paths, &our_chain, ctx);
+            // Find all deeper nested chains that extend this variant
+            // Example: if this_variant_chain = ["Handle::Weak"], we might find:
+            //   ["Handle::Weak", "AssetId::Uuid"], ["Handle::Weak", "AssetId::Index"]
+            let nested_enum_chains =
+                collect_child_chains_to_wrap(child_mutation_paths, &this_variant_chain, ctx);
 
-            // Build wrapped examples for each compatible child chain
-            let mut found_child_chains = false;
-            for child_chain in &child_chains_to_wrap {
-                let wrapped = build_variant_example_for_chain(
+            // Build root examples for each nested enum chain (there may be none)
+            for nested_chain in &nested_enum_chains {
+                let root_example = build_variant_example_for_chain(
                     signature,
-                    variant.name(),
+                    variant_name,
                     child_mutation_paths,
-                    child_chain,
+                    nested_chain,
                     ctx,
                 );
-                partial_root_examples.insert(child_chain.clone(), wrapped);
-                found_child_chains = true;
+                partial_root_examples.insert(nested_chain.clone(), root_example);
             }
 
-            // After processing all child chains, also create entry for n-variant chain
-            // This handles paths that only specify the outer variant(s)
-            if found_child_chains {
-                let wrapped = build_variant_example_for_chain(
-                    signature,
-                    variant.name(),
-                    child_mutation_paths,
-                    &our_chain,
-                    ctx,
-                );
-                partial_root_examples.insert(our_chain.clone(), wrapped);
+            // Create entry for this variant's chain itself
+            let root_example = if nested_enum_chains.is_empty() {
+                // Leaf variant (no nested enums) - use spawn example directly
+                spawn_example
             } else {
-                // No child chains found, this is a leaf variant - store base example
-                partial_root_examples.insert(our_chain, base_example);
-            }
+                // This variant contains nested enums - build by wrapping children
+                build_variant_example_for_chain(
+                    signature,
+                    variant_name,
+                    child_mutation_paths,
+                    &this_variant_chain,
+                    ctx,
+                )
+            };
+            partial_root_examples.insert(this_variant_chain, root_example);
         }
     }
 
@@ -605,7 +600,7 @@ fn build_partial_root_examples(
 /// example.
 fn build_variant_example_for_chain(
     signature: &VariantSignature,
-    variant_name: &str,
+    variant_name: &VariantName,
     child_mutation_paths: &[MutationPathInternal],
     variant_chain: &[VariantName],
     ctx: &RecursionContext,
@@ -670,9 +665,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathData {
-            variant_chain:       ctx.variant_chain.clone(),
+            variant_chain: ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example:        None,
+            root_example: None,
         })
     };
 
@@ -680,7 +675,7 @@ fn build_enum_root_path(
     MutationPathInternal {
         mutation_path: ctx.mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups:     enum_examples,
+            groups: enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),

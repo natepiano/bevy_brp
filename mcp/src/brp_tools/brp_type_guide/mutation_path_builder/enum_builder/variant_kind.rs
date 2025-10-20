@@ -15,7 +15,7 @@ use crate::json_schema::SchemaField;
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantKind {
-    name:      VariantName,
+    name: VariantName,
     signature: VariantSignature,
 }
 
@@ -25,16 +25,8 @@ impl VariantKind {
         &self.name
     }
 
-    pub const fn signature(&self) -> &VariantSignature {
+    pub const fn variant_signature(&self) -> &VariantSignature {
         &self.signature
-    }
-
-    /// Get just the variant name without the enum prefix (e.g., "Srgba" from "`Color::Srgba`")
-    pub fn name(&self) -> &str {
-        self.name
-            .as_str()
-            .rsplit_once("::")
-            .map_or_else(|| self.name.as_str(), |(_, name)| name)
     }
 
     /// Extract variant information from a schema variant
@@ -55,7 +47,7 @@ impl VariantKind {
 
             let qualified_name = format!("{type_name}::{variant_str}");
             return Some(Self {
-                name:      VariantName::from(qualified_name),
+                name: VariantName::from(qualified_name),
                 signature: VariantSignature::Unit,
             });
         }
@@ -80,7 +72,7 @@ impl VariantKind {
 
         // Unit variant (no fields)
         Some(Self {
-            name:      variant_name,
+            name: variant_name,
             signature: VariantSignature::Unit,
         })
     }
