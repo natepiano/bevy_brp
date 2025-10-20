@@ -1,3 +1,4 @@
+//! type used to support parsing enum variants for their name and associated signature
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -15,7 +16,7 @@ use crate::json_schema::SchemaField;
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantKind {
-    name: VariantName,
+    name:      VariantName,
     signature: VariantSignature,
 }
 
@@ -47,7 +48,7 @@ impl VariantKind {
 
             let qualified_name = format!("{type_name}::{variant_str}");
             return Some(Self {
-                name: VariantName::from(qualified_name),
+                name:      VariantName::from(qualified_name),
                 signature: VariantSignature::Unit,
             });
         }
@@ -72,7 +73,7 @@ impl VariantKind {
 
         // Unit variant (no fields)
         Some(Self {
-            name: variant_name,
+            name:      variant_name,
             signature: VariantSignature::Unit,
         })
     }

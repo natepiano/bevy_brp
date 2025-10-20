@@ -323,13 +323,14 @@ struct TestTupleStruct(pub f32, pub String, pub bool);
 /// Note: the BRP actually expects just a value for Option - i.e. we don't say Some(1.0) we just say
 /// 1.0 and for None it expects a null - which will then set it to None.
 /// As a result - no matter how many levels of Option we provide, the Some hierarchy is unwrapped
-/// in the bevy_brp_mcp option handling so that we only provide the actual type or null.
-/// So setting a value of {"shallow_nested": 1.0} or {"shallow_nested": null} works for
+/// in the `bevy_brp_mcp` option handling so that we only provide the actual type or null.
+/// So setting a value of {"`shallow_nested`": 1.0} or {"`shallow_nested`": null} works for
 /// Option<Option<Option<f32>>> - where 1.0 represents Some(Some(Some(1.0))) and null represents
 /// any level of None (None, Some(None), Some(Some(None)), etc. - BRP can't distinguish these).
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 #[allow(clippy::type_complexity)]
+#[allow(clippy::option_option)]
 struct RecursionDepthTestComponent {
     /// 11 levels of nesting: Option->Option->...->f32 (exceeds `MAX_TYPE_RECURSION_DEPTH` of 10)
     pub deeply_nested:

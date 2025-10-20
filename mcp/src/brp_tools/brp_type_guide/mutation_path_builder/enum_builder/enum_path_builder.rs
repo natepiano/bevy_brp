@@ -168,43 +168,26 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
 }
 
 /// Extract all variants from schema and group them by signature
-/// This is the single source of truth for enum variant processing
 fn group_variants_by_signature(
     ctx: &RecursionContext,
 ) -> Result<BTreeMap<VariantSignature, Vec<VariantName>>> {
     let schema = ctx.require_registry_schema()?;
-    let variants = extract_variants(schema, &ctx.registry, ctx.type_name());
+    let one_of_field = schema.get_field(SchemaField::OneOf);
 
-    let mut grouped: BTreeMap<VariantSignature, Vec<VariantName>> = BTreeMap::new();
-    for variant in variants {
-        grouped
-            .entry(variant.variant_signature().clone())
-            .or_default()
-            .push(variant.variant_name().clone());
-    }
-    Ok(grouped)
-}
-
-/// Extract and parse all variants from an enum's JSON schema
-///
-/// Reads the `oneOf` field from the schema and converts each variant definition
-/// into a `VariantKind` structure containing the variant's name and signature.
-fn extract_variants(
-    registry_schema: &Value,
-    registry: &HashMap<BrpTypeName, Value>,
-    enum_type: &BrpTypeName,
-) -> Vec<VariantKind> {
-    let one_of_field = registry_schema.get_field(SchemaField::OneOf);
-
-    one_of_field
+    Ok(one_of_field
         .and_then(Value::as_array)
-        .map(|variants| {
-            variants
-                .iter()
-                .filter_map(|v| VariantKind::from_schema_variant(v, registry, enum_type))
-                .collect()
-        })
-        .unwrap_or_default()
+        .ok_or_else(|| {
+            Report::new(Error::InvalidState(format!(
+                "Enum type {} missing oneOf field in schema",
+                ctx.type_name()
+            )))
+        })?
+        .iter()
+        .filter_map(|v| VariantKind::from_schema_variant(v, &ctx.registry, ctx.type_name()))
+        .map(|vk| (vk.variant_signature().clone(), vk.variant_name().clone()))
+        .into_group_map()
+        .into_iter()
+        .collect())
 }
 
 /// Process a single path within a signature group, recursively building child paths
@@ -511,7 +494,7 @@ fn collect_child_chains_to_wrap(
 /// ## Variant Chain Compatibility
 ///
 /// Multiple variants can share the same signature. When building examples for nested enums,
-/// we must filter children by variant chain compatibility to prevent HashMap collisions.
+/// we must filter children by variant chain compatibility to prevent `HashMap` collisions.
 ///
 /// **Example**: `Handle<Image>` enum with two variants:
 /// - `Weak(AssetId<Image>)` where `AssetId` is an enum with `Uuid` and `Index` variants
