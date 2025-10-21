@@ -81,6 +81,37 @@ class TestResult(TypedDict):
     query_details: QueryDetails | None
 
 
+# Output JSON types
+class FailureSummary(TypedDict):
+    type: str
+    status: str
+    summary: str
+    entity_id: int | None
+    failed_at: str
+
+
+class BatchInfo(TypedDict):
+    number: int
+    total_batches: int | None
+
+
+class Stats(TypedDict):
+    types_tested: int
+    passed: int
+    failed: int
+    missing_components: int
+    remaining_types: int | None
+
+
+class ProcessResultsOutput(TypedDict):
+    status: str
+    batch: BatchInfo
+    stats: Stats
+    failures: list[FailureSummary]
+    warnings: list[str]
+    log_file: str | None
+
+
 # Parse command line arguments
 parser = argparse.ArgumentParser(
     description="Process mutation test results from subagent test plans"
@@ -158,9 +189,8 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
     # This indicates subagent workflow failure, not a BRP validation failure
     all_null = all(op.get("status") is None for op in operations)
     if all_null:
-        print(
-            f"Warning: Type {type_name} has all null status - subagent did not execute test. Will retry in next run.",
-            file=sys.stderr,
+        warnings.append(
+            f"Type {type_name} has all null status - subagent did not execute test. Will retry in next run."
         )
         return None
 
@@ -296,6 +326,7 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
 # Calculate port range and read test plans
 base_port = 30001
 results: list[TestResult] = []
+warnings: list[str] = []
 tmpdir = tempfile.gettempdir()
 
 # Determine how many subagents were actually used
@@ -375,47 +406,97 @@ for type_key, type_data in type_guide.items():  # pyright: ignore[reportAny]
 with open(all_types_file, "w", encoding="utf-8") as f:
     json.dump(all_types, f, indent=2)
 
-# Report statistics
+# Calculate statistics
 total_results = len(results)
 passed = sum(1 for r in results if r["status"] == "PASS")
 failed = sum(1 for r in results if r["status"] == "FAIL")
 missing = sum(1 for r in results if r["status"] == "COMPONENT_NOT_FOUND")
 
-print(f"✓ Merged {total_results} results into {all_types_file}")
-print(f"  Passed: {passed}")
-print(f"  Failed: {failed}")
-print(f"  Missing Components: {missing}")
+# Calculate remaining types
+# Read summary from all_types.json to get total count
+summary = all_types.get("summary", {})  # pyright: ignore[reportAny]
+total_types: int = cast(int, summary.get("total_types", 0))  # pyright: ignore[reportAny]
+tested_count: int = cast(int, summary.get("tested_count", 0))  # pyright: ignore[reportAny]
+remaining_types: int | None = total_types - tested_count if total_types > 0 else None
 
-# Check for failures
+# Calculate total batches
+total_batches: int | None = None
+if total_types > 0 and batch_size > 0:
+    total_batches = (total_types + batch_size - 1) // batch_size
+
+# Check for failures and build failure summaries
+failure_log_path: str | None = None
+failure_summaries: list[FailureSummary] = []
+
 if failed > 0 or missing > 0:
     # Get all failures
     failures = [r for r in results if r["status"] in ["FAIL", "COMPONENT_NOT_FOUND"]]
 
-    # Save failure log
+    # Save detailed failure log
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    failure_log = f".claude/transient/all_types_failures_{timestamp}.json"
-    with open(failure_log, "w", encoding="utf-8") as f:
+    failure_log_path = f".claude/transient/all_types_failures_{timestamp}.json"
+    with open(failure_log_path, "w", encoding="utf-8") as f:
         json.dump(failures, f, indent=2)
 
-    print("")
-    print("⚠️  FAILURES DETECTED:")
-    print(f"  Total failures: {failed + missing}")
-    print(f"  Detailed failure information saved to: {failure_log}")
-    print("")
-
-    # Display summary of failures
+    # Build condensed failure summaries
     for failure in failures:
-        error_msg = "Component not found"
         fail_details = failure.get("failure_details")
+
+        # Determine summary message
+        if failure["status"] == "COMPONENT_NOT_FOUND":
+            summary_msg = "Component not found after spawn"
+        elif fail_details:
+            summary_msg = fail_details.get("error_message", "Unknown error")
+        else:
+            summary_msg = "Unknown error"
+
+        # Determine failed_at
+        failed_at = "unknown"
         if fail_details:
-            error_msg = fail_details.get("error_message", error_msg)
-        print(f"  - {failure['type']}: {error_msg}")
+            failed_op = fail_details.get("failed_operation", "unknown")
+            failed_path = fail_details.get("failed_mutation_path")
+            if failed_path:
+                failed_at = f"{failed_op} ({failed_path})"
+            else:
+                failed_at = failed_op
 
-    # Cleanup batch results file
-    os.remove(batch_results_file)
+        failure_summaries.append(
+            FailureSummary(
+                type=failure["type"],
+                status=failure["status"],
+                summary=summary_msg,
+                entity_id=failure.get("entity_id"),
+                failed_at=failed_at,
+            )
+        )
 
-    # Exit code 2 = failures exist
-    sys.exit(2)
+# Build output JSON
+output: ProcessResultsOutput = {
+    "status": "FAILURES_DETECTED" if (failed > 0 or missing > 0) else "SUCCESS",
+    "batch": {
+        "number": batch_num,
+        "total_batches": total_batches,
+    },
+    "stats": {
+        "types_tested": total_results,
+        "passed": passed,
+        "failed": failed,
+        "missing_components": missing,
+        "remaining_types": remaining_types,
+    },
+    "failures": failure_summaries,
+    "warnings": warnings,
+    "log_file": failure_log_path,
+}
 
-# Cleanup batch results file on success
+# Output JSON to stdout
+print(json.dumps(output, indent=2))
+
+# Cleanup batch results file
 os.remove(batch_results_file)
+
+# Exit with appropriate code
+if failed > 0 or missing > 0:
+    sys.exit(2)  # Failures exist
+else:
+    sys.exit(0)  # Success
