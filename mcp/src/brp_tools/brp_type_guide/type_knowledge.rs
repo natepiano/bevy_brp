@@ -7,63 +7,67 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
+use error_stack::Report;
 use serde_json::Value;
 use serde_json::json;
 
+use super::constants::TYPE_ALLOC_STRING;
+use super::constants::TYPE_BEVY_CAMERA;
+use super::constants::TYPE_BEVY_COLOR;
+use super::constants::TYPE_BEVY_ENTITY;
+use super::constants::TYPE_BEVY_IMAGE_HANDLE;
+use super::constants::TYPE_BEVY_MAT2;
+use super::constants::TYPE_BEVY_MAT3;
+use super::constants::TYPE_BEVY_MAT4;
+use super::constants::TYPE_BEVY_NAME;
+use super::constants::TYPE_BEVY_QUAT;
+use super::constants::TYPE_BEVY_RECT;
+use super::constants::TYPE_BEVY_RENDER_TARGET;
+use super::constants::TYPE_BEVY_VEC2;
+use super::constants::TYPE_BEVY_VEC3;
+use super::constants::TYPE_BEVY_VEC3A;
+use super::constants::TYPE_BEVY_VEC4;
+use super::constants::TYPE_BLOOM;
+use super::constants::TYPE_BOOL;
+use super::constants::TYPE_CHAR;
+use super::constants::TYPE_F32;
+use super::constants::TYPE_F64;
+use super::constants::TYPE_GLAM_AFFINE2;
+use super::constants::TYPE_GLAM_AFFINE3A;
+use super::constants::TYPE_GLAM_IVEC2;
+use super::constants::TYPE_GLAM_IVEC3;
+use super::constants::TYPE_GLAM_IVEC4;
+use super::constants::TYPE_GLAM_MAT2;
+use super::constants::TYPE_GLAM_MAT3;
+use super::constants::TYPE_GLAM_MAT3A;
+use super::constants::TYPE_GLAM_MAT4;
+use super::constants::TYPE_GLAM_QUAT;
+use super::constants::TYPE_GLAM_UVEC2;
+use super::constants::TYPE_GLAM_UVEC3;
+use super::constants::TYPE_GLAM_UVEC4;
+use super::constants::TYPE_GLAM_VEC2;
+use super::constants::TYPE_GLAM_VEC3;
+use super::constants::TYPE_GLAM_VEC3A;
+use super::constants::TYPE_GLAM_VEC4;
+use super::constants::TYPE_I8;
+use super::constants::TYPE_I16;
+use super::constants::TYPE_I32;
+use super::constants::TYPE_I64;
+use super::constants::TYPE_I128;
+use super::constants::TYPE_ISIZE;
+use super::constants::TYPE_STD_STRING;
+use super::constants::TYPE_STR;
+use super::constants::TYPE_STR_REF;
+use super::constants::TYPE_STRING;
+use super::constants::TYPE_U8;
+use super::constants::TYPE_U16;
+use super::constants::TYPE_U32;
+use super::constants::TYPE_U64;
+use super::constants::TYPE_U128;
+use super::constants::TYPE_USIZE;
 use super::mutation_path_builder::VariantSignature;
 use crate::brp_tools::BrpTypeName;
-use crate::brp_tools::brp_type_guide::constants::TYPE_ALLOC_STRING;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_COLOR;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_ENTITY;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_IMAGE_HANDLE;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_MAT2;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_MAT3;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_MAT4;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_NAME;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_QUAT;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_RECT;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_VEC2;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_VEC3;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_VEC3A;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_VEC4;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BLOOM;
-use crate::brp_tools::brp_type_guide::constants::TYPE_BOOL;
-use crate::brp_tools::brp_type_guide::constants::TYPE_CHAR;
-use crate::brp_tools::brp_type_guide::constants::TYPE_F32;
-use crate::brp_tools::brp_type_guide::constants::TYPE_F64;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_AFFINE2;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_AFFINE3A;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_IVEC2;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_IVEC3;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_IVEC4;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_MAT2;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_MAT3;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_MAT3A;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_MAT4;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_QUAT;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_UVEC2;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_UVEC3;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_UVEC4;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_VEC2;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_VEC3;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_VEC3A;
-use crate::brp_tools::brp_type_guide::constants::TYPE_GLAM_VEC4;
-use crate::brp_tools::brp_type_guide::constants::TYPE_I8;
-use crate::brp_tools::brp_type_guide::constants::TYPE_I16;
-use crate::brp_tools::brp_type_guide::constants::TYPE_I32;
-use crate::brp_tools::brp_type_guide::constants::TYPE_I64;
-use crate::brp_tools::brp_type_guide::constants::TYPE_I128;
-use crate::brp_tools::brp_type_guide::constants::TYPE_ISIZE;
-use crate::brp_tools::brp_type_guide::constants::TYPE_STD_STRING;
-use crate::brp_tools::brp_type_guide::constants::TYPE_STR;
-use crate::brp_tools::brp_type_guide::constants::TYPE_STR_REF;
-use crate::brp_tools::brp_type_guide::constants::TYPE_STRING;
-use crate::brp_tools::brp_type_guide::constants::TYPE_U8;
-use crate::brp_tools::brp_type_guide::constants::TYPE_U16;
-use crate::brp_tools::brp_type_guide::constants::TYPE_U32;
-use crate::brp_tools::brp_type_guide::constants::TYPE_U64;
-use crate::brp_tools::brp_type_guide::constants::TYPE_U128;
-use crate::brp_tools::brp_type_guide::constants::TYPE_USIZE;
+use crate::error::Error;
 
 /// Format knowledge key for matching types
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -75,13 +79,13 @@ pub enum KnowledgeKey {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: BrpTypeName,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
     /// Match an indexed element within enum variants that share a signature
     EnumVariantSignature {
         enum_type: BrpTypeName,
         signature: VariantSignature,
-        index:     usize,
+        index: usize,
     },
 }
 
@@ -98,7 +102,7 @@ impl KnowledgeKey {
     ) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
     }
 
@@ -123,7 +127,7 @@ pub enum TypeKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }
@@ -167,11 +171,6 @@ impl TypeKnowledge {
     /// This is used for generating agent guidance messages that reference Entity IDs.
     /// Returns an error if the Entity type knowledge is missing or invalid.
     pub fn get_entity_example_value() -> crate::error::Result<u64> {
-        use error_stack::Report;
-
-        use crate::brp_tools::brp_type_guide::constants::TYPE_BEVY_ENTITY;
-        use crate::error::Error;
-
         BRP_TYPE_KNOWLEDGE
             .get(&KnowledgeKey::exact(TYPE_BEVY_ENTITY))
             .and_then(|knowledge| knowledge.example().as_u64())
@@ -458,6 +457,15 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
             TypeKnowledge::as_root_value(json!("Entity Name"), TYPE_STRING),
         );
 
+        // ===== Camera field-specific values =====
+        // Provide safe RenderTarget to prevent crashes from invalid TextureView handles
+        // TextureView variant requires handle to exist in ManualTextureViews resource
+        // Window::Primary is always valid and references the default primary window
+        map.insert(
+            KnowledgeKey::struct_field(TYPE_BEVY_CAMERA, "target"),
+            TypeKnowledge::as_root_value(json!({"Window": "Primary"}), TYPE_BEVY_RENDER_TARGET),
+        );
+
         // ===== Camera3d field-specific values =====
         // Camera3dDepthTextureUsage - wrapper around u32 texture usage flags
         // Valid flags: COPY_SRC=1, COPY_DST=2, TEXTURE_BINDING=4, STORAGE_BINDING=8,
@@ -493,8 +501,6 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
 
         // Affine2 - Used in UiGlobalTransform.0, serializes as flat array of 6 f32 values
         // Format: [matrix_row1(2), matrix_row2(2), translation(2)]
-        // Has matrix2 and translation fields but doesn't serialize with field names
-        // The error was: "invalid type: map, expected a sequence of 6 f32values"
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_AFFINE2),
             TypeKnowledge::new(json!([1.0, 0.0, 0.0, 1.0, 0.0, 0.0])),

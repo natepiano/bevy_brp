@@ -70,6 +70,8 @@ pub const TYPE_BEVY_COLOR: &str = "bevy_color::color::Color";
 pub const TYPE_BEVY_NAME: &str = "bevy_ecs::name::Name";
 pub const TYPE_BEVY_IMAGE_HANDLE: &str = "bevy_asset::handle::Handle<bevy_image::image::Image>";
 pub const TYPE_BLOOM: &str = "bevy_post_process::bloom::settings::Bloom";
+pub const TYPE_BEVY_CAMERA: &str = "bevy_camera::camera::Camera";
+pub const TYPE_BEVY_RENDER_TARGET: &str = "bevy_camera::camera::RenderTarget";
 
 // ============================================================================
 // REFLECTION TRAIT CONSTANTS
