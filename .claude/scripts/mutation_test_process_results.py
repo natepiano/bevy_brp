@@ -118,8 +118,12 @@ if types_per_subagent <= 0:
     sys.exit(1)
 
 
-def convert_test_to_result(test: TypeTest) -> TestResult:
-    """Convert a test plan test to a result format."""
+def convert_test_to_result(test: TypeTest) -> TestResult | None:
+    """Convert a test plan test to a result format.
+
+    Returns None if the test was not executed (all operations have null status),
+    indicating the type should remain untested for retry in the next run.
+    """
     type_name = test["type_name"]
     operations = test["operations"]
 
@@ -149,6 +153,16 @@ def convert_test_to_result(test: TypeTest) -> TestResult:
                     f"Warning: operation_id {operation_id} doesn't match array index {index} in {type_name}",
                     file=sys.stderr,
                 )
+
+    # Check if subagent never executed the test (all operations have null status)
+    # This indicates subagent workflow failure, not a BRP validation failure
+    all_null = all(op.get("status") is None for op in operations)
+    if all_null:
+        print(
+            f"Warning: Type {type_name} has all null status - subagent did not execute test. Will retry in next run.",
+            file=sys.stderr,
+        )
+        return None
 
     # Initialize result
     entity_id: int | None = None
@@ -310,7 +324,9 @@ for subagent_idx in range(subagent_count):
         tests = test_plan.get("tests", [])
         for test in tests:
             result = convert_test_to_result(test)
-            results.append(result)
+            # Skip tests that were not executed (None = incomplete, will retry next run)
+            if result is not None:
+                results.append(result)
 
     except json.JSONDecodeError as e:
         print(f"Error: Failed to parse {test_plan_file}: {e}", file=sys.stderr)

@@ -12,7 +12,7 @@
 </TestContext>
 
 <TestConfiguration>
-TYPES_PER_SUBAGENT = 1                                  # Types each subagent tests
+TYPES_PER_SUBAGENT = 2                                  # Types each subagent tests
 MAX_SUBAGENTS = 10                                      # Parallel subagents per batch
 BATCH_SIZE = ${TYPES_PER_SUBAGENT * MAX_SUBAGENTS}      # Types per batch
 BASE_PORT = 30001                                       # Starting port for subagents
@@ -187,7 +187,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     2. **Create Task** with:
        - description: Use `task_description` directly from assignment
-       - subagent_type: "mutation-test-executor"
+       - subagent_type: "mutation-tester"
        - prompt: See template below
 
     **TASK PROMPT TEMPLATE**:
