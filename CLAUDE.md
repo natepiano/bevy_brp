@@ -8,7 +8,7 @@ This is a Rust workspace with 4 crates serving distinct roles: `mcp` (MCP server
 The `mcp_macros` crate provides 4 key derive macros (`BrpTools`, `ToolDescription`, `ParamStruct`, `ResultStruct`) that automatically generate tool implementations from enum variants and struct definitions. This eliminates boilerplate and ensures consistency - tools are defined declaratively with attributes like `#[brp_tool(brp_method = "world.spawn_entity")]` rather than manually implementing handlers in `mcp/src/brp_tools/brp_type_guide/tool.rs`.
 
 ## Agentic Test Framework
-Tests in `.claude/commands/tests/` are not bash scripts but structured test specifications in markdown files. They validate BRP operations through a specialized test runner (`.claude/commands/test.md`) that prompts you to run tests using parallel execution (7 tests at once) with port isolation, log verification, and shutdown validation.
+Tests in `.claude/integration_tests/` are not bash scripts but structured test specifications in markdown files. They validate BRP operations through a specialized test runner (`.claude/commands/integration_tests.md`) that prompts you to run tests using parallel execution (12 tests at once) with port isolation, log verification, and shutdown validation.
 
 ## Tool Naming and BRP Protocol Mapping
 Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `WorldSpawnEntity`) map to snake_case MCP tool names (`world_spawn_entity`) and BRP methods (`world.spawn_entity`). The `#[brp_tool]` attribute connects MCP tools to BRP protocol methods, with parameter/result types automatically deriving field placement for proper JSON serialization between MCP and BRP layers.
@@ -24,7 +24,7 @@ Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `
 ./claude/commands/ - slash commands
 ./claude/plans/ - implementation plans
 ./claude/scripts/ - scripts used by slash commands
-./claude/tests/ - predefined test instructions used by ./claude/commands/integration_tests.md
+./claude/integration_tests/ - predefined test instructions used by ./claude/commands/integration_tests.md
 ./claude/transient/ - transient .gitignore'd test output
 ./claude/types/ - transient .gitignore'd test output
 

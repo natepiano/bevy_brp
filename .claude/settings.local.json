@@ -192,7 +192,9 @@
       "SlashCommand(/get_guide_baseline extras_plugin::TestVariantChainEnum)",
       "Bash(/dev/null)",
       "Bash(zed:*)",
-      "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)"
+      "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)",
+      "Bash(.claude/hooks/detect-mutation-tester.sh)",
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/hooks/simple-test.sh)"
     ],
     "deny": [
       "Bash(sed:*)",
@@ -202,6 +204,19 @@
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
       "/Users/natemccoy/rust"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/natemccoy/rust/bevy_brp/.claude/hooks/mutation-tester-hook.sh"
+          }
+        ]
+      }
     ]
   }
 }
