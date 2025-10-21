@@ -192,7 +192,9 @@
       "SlashCommand(/get_guide_baseline extras_plugin::TestVariantChainEnum)",
       "Bash(/dev/null)",
       "Bash(zed:*)",
-      "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)"
+      "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)",
+      "Bash(do python3 /Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test_operation_update.py --file \"/var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/mutation_test_subagent_30007_plan.json\" --operation-id $i --status SUCCESS)",
+      "Bash(do python3 /Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test_operation_update.py --file /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/mutation_test_subagent_30002_plan.json --operation-id $i --status SUCCESS)"
     ],
     "deny": [
       "Bash(sed:*)",

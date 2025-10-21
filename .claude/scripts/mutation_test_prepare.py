@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """
-Generate test plans for mutation testing subagents.
-Distributes batch types evenly across subagents and generates executable test plans.
+Mutation test preparation: batch renumbering and assignment generation.
 
-Single call generates ALL test plan files and returns complete assignment data.
+This script combines two operations:
+1. Batch renumbering (when batch=1): Reset failed tests and assign batch numbers
+2. Assignment generation (all batches): Create test plans and distribute types
 
 Usage:
-  python3 mutation_test_get_subagent_assignments.py --batch 1 --max-subagents 10 --types-per-subagent 1
+  python3 mutation_test_prepare.py --batch 1 --max-subagents 10 --types-per-subagent 1
 
 Output:
-  Returns AllAssignmentsOutput with:
-  - assignments[].type_names - for window titles
-  - assignments[].type_categories - for window titles
-  - assignments[].test_plan_file - path to pass to subagent
+  Returns AllAssignmentsOutput with assignments and test plan files.
 """
 
 import json
@@ -40,6 +38,8 @@ class TypeData(TypedDict):
     schema_info: dict[str, Any] | None  # pyright: ignore[reportExplicitAny] - JSON schema
     batch_number: int | None
     mutation_type: str | None  # "Component" or "Resource"
+    test_status: str | None  # "untested", "passed", "failed"
+    fail_reason: str | None
 
 
 class TypeGuideRoot(TypedDict):
@@ -102,10 +102,10 @@ class TestPlan(TypedDict):
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(
-    description="Get subagent assignments for mutation testing"
+    description="Prepare mutation test: renumber batches and generate assignments"
 )
 _ = parser.add_argument(
-    "--batch", type=int, required=True, help="Batch number to get assignments for"
+    "--batch", type=int, required=True, help="Batch number to process"
 )
 _ = parser.add_argument(
     "--max-subagents", type=int, required=True, help="Maximum number of subagents"
@@ -136,6 +136,67 @@ if types_per_subagent <= 0:
     )
     sys.exit(1)
 
+# Calculate batch size
+batch_size = max_subagents * types_per_subagent
+
+# Get the JSON file path
+json_file = ".claude/transient/all_types.json"
+
+if not os.path.exists(json_file):
+    print(f"Error: {json_file} not found!", file=sys.stderr)
+    sys.exit(1)
+
+
+def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
+    """
+    Renumber batches: reset failed tests to untested and assign batch numbers.
+    This happens only when batch == 1.
+    """
+    type_guide = data["type_guide"]
+
+    # Step 1: Reset failed tests to untested
+    for type_name, type_data in type_guide.items():
+        if type_data.get("test_status") == "failed":
+            type_data["test_status"] = "untested"
+            type_data["fail_reason"] = ""
+
+    # Step 2: Clear all batch numbers
+    for type_data in type_guide.values():
+        type_data["batch_number"] = None
+
+    # Step 3: Assign batch numbers to untested types
+    untested_types: list[str] = [
+        type_name
+        for type_name, type_data in type_guide.items()
+        if type_data.get("test_status") == "untested"
+    ]
+
+    for index, type_name in enumerate(untested_types):
+        batch_number = (index // batch_size) + 1
+        type_guide[type_name]["batch_number"] = batch_number
+
+    # Report statistics
+    total = len(type_guide)
+    untested = len([t for t in type_guide.values() if t.get("test_status") == "untested"])
+    failed = len([t for t in type_guide.values() if t.get("test_status") == "failed"])
+    passed = len([t for t in type_guide.values() if t.get("test_status") == "passed"])
+    max_batch = max(
+        (t.get("batch_number") or 0 for t in type_guide.values()),
+        default=0
+    )
+
+    print("✓ Batch renumbering complete!", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("Statistics:", file=sys.stderr)
+    print(f"  Total types: {total}", file=sys.stderr)
+    print(f"  Passed: {passed}", file=sys.stderr)
+    print(f"  Failed: {failed}", file=sys.stderr)
+    print(f"  Untested: {untested}", file=sys.stderr)
+    print(f"  Batches to process: {max_batch}", file=sys.stderr)
+    print("", file=sys.stderr)
+
+    return data
+
 
 def extract_mutation_type(schema_info: dict[str, object] | None) -> str | None:
     """Extract mutation_type from schema_info.reflect_traits."""
@@ -158,10 +219,12 @@ def extract_mutation_type(schema_info: dict[str, object] | None) -> str | None:
 ENTITY_ID_PLACEHOLDER = 8589934670  # Placeholder entity ID used in spawn_format
 
 
-def find_entity_id_placeholders(value: Any, path: str = "") -> dict[str, str]:  # pyright: ignore[reportExplicitAny]
+def find_entity_id_placeholders(value: Any, path: str = "") -> dict[str, str]:  # pyright: ignore[reportExplicitAny,reportAny]
     """
     Recursively find entity ID placeholders in a value and return paths to them.
     Returns dict of path -> "QUERY_ENTITY" for substitution.
+
+    Note: Uses Any type for recursive JSON traversal - unavoidable for arbitrary JSON structures.
     """
     substitutions: dict[str, str] = {}
 
@@ -209,7 +272,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
             )
 
             # Check for entity ID placeholders
-            substitutions = find_entity_id_placeholders({"components": {type_name: spawn_format}}, "")
+            substitutions = find_entity_id_placeholders({type_name: spawn_format}, "")
             if substitutions:
                 op["entity_id_substitution"] = substitutions
 
@@ -234,7 +297,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
             )
 
             # Check for entity ID placeholders
-            substitutions = find_entity_id_placeholders({"value": spawn_format}, "")
+            substitutions = find_entity_id_placeholders(spawn_format, "")
             if substitutions:
                 op["entity_id_substitution"] = substitutions
 
@@ -315,7 +378,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                     ),
                 )
 
-            substitutions = find_entity_id_placeholders({"value": root_example}, "")
+            substitutions = find_entity_id_placeholders(root_example, "")
             if substitutions:
                 op["entity_id_substitution"] = substitutions
 
@@ -376,7 +439,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                     ),
                 )
 
-            substitutions = find_entity_id_placeholders({"value": test_value}, "")
+            substitutions = find_entity_id_placeholders(test_value, "")
             if substitutions:
                 op["entity_id_substitution"] = substitutions
 
@@ -390,13 +453,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
     return operations
 
 
-# Get the JSON file path from .claude/transient
-json_file = ".claude/transient/all_types.json"
-
-if not os.path.exists(json_file):
-    print(f"Error: {json_file} not found!", file=sys.stderr)
-    sys.exit(1)
-
+# Load and parse JSON file
 try:
     with open(json_file, "r") as f:
         data = cast(TypeGuideRoot, json.load(f))
@@ -409,9 +466,21 @@ if "type_guide" not in data:
     print(f"Error: Expected dict with 'type_guide' at root", file=sys.stderr)
     sys.exit(1)
 
+# STEP 1: Renumber batches if this is batch 1
+if batch_num == 1:
+    data = renumber_batches(data, batch_size)
+
+    # Write updated data back to file
+    try:
+        with open(json_file, "w") as f:
+            json.dump(data, f, indent=2)
+    except IOError as e:
+        print(f"Error writing updated JSON: {e}", file=sys.stderr)
+        sys.exit(1)
+
 type_guide: dict[str, TypeData] = data["type_guide"]
 
-# Get types for the specified batch - type_guide is a dict
+# STEP 2: Get types for the specified batch
 batch_types: list[TypeData] = []
 for type_name, type_info in type_guide.items():
     if type_info.get("batch_number") == batch_num:
@@ -425,7 +494,7 @@ if not batch_types:
     print(f"No types found for batch {batch_num}", file=sys.stderr)
     sys.exit(1)
 
-# Calculate flexible distribution
+# STEP 3: Calculate flexible distribution
 total_available_types: int = len(batch_types)
 
 # Calculate optimal distribution: fill subagents with preferred count, handle remainder
@@ -439,7 +508,7 @@ if remainder_types > 0:
 else:
     actual_subagents_needed = min(full_subagents, max_subagents)
 
-# Distribute types across subagents flexibly
+# STEP 4: Distribute types across subagents and generate test plans
 assignments: list[SubagentAssignment] = []
 type_index = 0
 
@@ -506,7 +575,7 @@ for subagent_num in range(1, actual_subagents_needed + 1):
             }
             tests.append(test)
 
-        # Create test plan
+        # Create test plan file
         tmpdir = tempfile.gettempdir()
         test_plan_file = os.path.join(tmpdir, f"mutation_test_subagent_{port}_plan.json")
 
@@ -539,7 +608,7 @@ for subagent_num in range(1, actual_subagents_needed + 1):
         }
         assignments.append(assignment)
 
-# Return all assignments with test plan files generated
+# STEP 5: Return all assignments with test plan files generated
 all_assignments_output: AllAssignmentsOutput = {
     "batch_number": batch_num,
     "max_subagents": len(assignments),  # Report actual subagents used

@@ -26,13 +26,12 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **EXECUTE THESE STEPS IN ORDER:**
 
     **STEP 1:** Execute the <InitialSetup/>
-    **STEP 2:** Execute the <BatchRenumbering/>
-    **STEP 3:** Execute the <CleanupPreviousRuns/>
-    **STEP 4:** Execute the <ApplicationLaunch/>
-    **STEP 5:** Execute the <ApplicationVerification/>
-    **STEP 6:** Execute the <BatchProcessingLoop/>
-    **STEP 7:** Execute the <FinalCleanup/> (SILENTLY if failures detected)
-    **STEP 8:** Execute the <InteractiveFailureReview/> (ONLY if NEW failures detected)
+    **STEP 2:** Execute the <CleanupPreviousRuns/>
+    **STEP 3:** Execute the <ApplicationLaunch/>
+    **STEP 4:** Execute the <ApplicationVerification/>
+    **STEP 5:** Execute the <BatchProcessingLoop/>
+    **STEP 6:** Execute the <FinalCleanup/> (SILENTLY if failures detected)
+    **STEP 7:** Execute the <InteractiveFailureReview/> (ONLY if NEW failures detected)
 </ExecutionFlow>
 
 ## STEP 1: INITIAL SETUP
@@ -49,23 +48,6 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     **CRITICAL**: Use `.claude/transient/` prefix for all file paths in Write tool operations.
 </InitialSetup>
-
-## STEP 2: BATCH RENUMBERING
-
-<BatchRenumbering>
-    **Clear and reassign batch numbers for untested/failed types:**
-
-    ```bash
-    ./.claude/scripts/mutation_test_renumber_batches.sh [BATCH_SIZE]
-    ```
-
-    This script will:
-    - Clear all existing batch numbers
-    - Assign new batch numbers to untested/failed types
-    - Display statistics: total types, passed, failed, untested, batches to process
-
-    **STOP CONDITION**: If no untested types remain, stop execution and report completion.
-</BatchRenumbering>
 
 ## VALIDATION SECTIONS
 
@@ -109,7 +91,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
           - Actual: Port {port}
 </ValidateAssignmentFields>
 
-## STEP 3: CLEANUP PREVIOUS RUNS
+## STEP 2: CLEANUP PREVIOUS RUNS
 
 <CleanupPreviousRuns>
     **Remove leftover files from previous runs to prevent interference:**
@@ -124,7 +106,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     - Old failure log files to prevent confusion with new failures
 </CleanupPreviousRuns>
 
-## STEP 4: APPLICATION LAUNCH
+## STEP 3: APPLICATION LAUNCH
 
 <ApplicationLaunch>
     **Launch ${MAX_SUBAGENTS} extras_plugin instances on sequential ports starting at ${BASE_PORT}:**
@@ -146,7 +128,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     This will launch ${MAX_SUBAGENTS} instances on ports ${BASE_PORT}-${MAX_PORT} automatically.
 </ApplicationLaunch>
 
-## STEP 5: APPLICATION VERIFICATION
+## STEP 4: APPLICATION VERIFICATION
 
 <ApplicationVerification>
     **Verify BRP connectivity on all ports:**
@@ -158,7 +140,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **STOP CONDITION**: If any app fails to respond, stop and report error.
 </ApplicationVerification>
 
-## STEP 6: BATCH PROCESSING LOOP
+## STEP 5: BATCH PROCESSING LOOP
 
 <BatchProcessingLoop>
     **Process each batch sequentially with parallel subagents:**
@@ -182,24 +164,28 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 ### BATCH PROCESSING SUBSTEPS
 
 <GetBatchAssignments>
-    **Single call to get all assignments and generate test plan files:**
+    **Single call to prepare batch and generate assignments:**
 
     ```bash
-    python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
+    python3 ./.claude/scripts/mutation_test_prepare.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
     ```
 
     **This single call:**
-    - Generates ALL test plan files (one per subagent)
-    - Returns complete assignment data with type_names, type_categories, and test_plan_file paths
+    - **When batch == 1**: Automatically renumbers batches (resets failed to untested, assigns batch numbers)
+    - **For all batches**: Generates ALL test plan files (one per subagent)
+    - Returns complete assignment data with window_description, task_description, and test_plan_file paths
 
     **Extract from the JSON output:**
     - `assignments.length` - number of subagents to launch
     - `total_types` - number of types in the batch
-    - `assignments[i].type_names` - type names for window title
-    - `assignments[i].type_categories` - type categories (C/R) for window title
+    - `assignments[i].window_description` - pre-formatted window title
+    - `assignments[i].task_description` - pre-formatted task description
     - `assignments[i].test_plan_file` - path to pass to subagent
+    - `assignments[i].port` - port number for this subagent
 
     **Store the entire assignments array for use in SetWindowTitles and LaunchSubagents.**
+
+    **NOTE**: Batch renumbering statistics will be displayed only when batch == 1.
 </GetBatchAssignments>
 
 <SetWindowTitles>
@@ -207,30 +193,27 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     **For each assignment in assignments array:**
 
-    1. **Extract data from assignment**:
-       - `type_names` array
-       - `type_categories` array
-       - `port` number
-       - `subagent` number
+    1. **Extract pre-formatted data from assignment**:
+       - `window_description` - pre-formatted window title
+       - `port` - port number
 
-    2. **Format window title**:
-       - For each type: extract short name (text after last "::")
-       - Combine with category: "[ShortName] ([C|R])"
-       - Join with commas
-       - Final format: "Subagent [SUBAGENT_NUMBER]: [ShortName1] ([C|R]), [ShortName2] ([C|R]), ..."
+    2. **Set window title**:
+       Use the pre-formatted window_description directly
 
     **EXECUTE ALL WINDOW TITLE UPDATES IN PARALLEL:**
     Make all mcp__brp__brp_extras_set_window_title calls in parallel.
 
     **Example**:
     ```
-    For subagent_index=0:
-      Command output: {
-        "type_names": ["bevy_pbr::light::CascadeShadowConfig", "bevy_pbr::light::AmbientLight"],
-        "type_categories": ["C", "R"]
+    For assignment:
+      {
+        "port": 30001,
+        "window_description": "Subagent 1: CascadeShadowConfig (C), AmbientLight (R)"
       }
-      Window title: "Subagent 1: CascadeShadowConfig (C), AmbientLight (R)"
-      Tool call: mcp__brp__brp_extras_set_window_title(port=30001, title="Subagent 1: CascadeShadowConfig (C), AmbientLight (R)")
+      Tool call: mcp__brp__brp_extras_set_window_title(
+        port=30001,
+        title="Subagent 1: CascadeShadowConfig (C), AmbientLight (R)"
+      )
     ```
 </SetWindowTitles>
 
@@ -246,20 +229,13 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     **For each assignment in assignments array:**
 
-    1. **Extract data from assignment**:
-       - `type_names` array
-       - `type_categories` array
-       - `test_plan_file` path
-       - `port` number
-       - `subagent` number
+    1. **Extract pre-formatted data from assignment**:
+       - `task_description` - pre-formatted task description
+       - `test_plan_file` - path to test plan file
+       - `port` - port number
 
-    2. **Format task description**:
-       - For each type: extract short name (text after last "::")
-       - Combine with category: "[ShortName] ([C|R])"
-       - Join with commas
-
-    3. **Create Task** with:
-       - description: "Test [TYPE_NAMES_WITH_CATEGORIES] ([SUBAGENT_NUMBER] of [TOTAL_SUBAGENTS])"
+    2. **Create Task** with:
+       - description: Use `task_description` directly from assignment
        - subagent_type: "general-purpose"
        - prompt: See template below
 
@@ -268,7 +244,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     EXECUTE the mutation test workflow defined in @.claude/instructions/mutation_test_subagent.md
 
     Your configuration:
-    - TEST_PLAN_FILE = [test_plan_file path from assignment]
+    - TEST_PLAN_FILE = [test_plan_file from assignment]
     - PORT = [port from assignment]
 
     The test plan file contains ALL the operations you need to execute. Read it and execute each operation in sequence.
@@ -326,7 +302,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     - Stop execution
 </CheckForFailures>
 
-## STEP 7: FINAL CLEANUP
+## STEP 6: FINAL CLEANUP
 
 <FinalCleanup>
     **Shutdown all applications SILENTLY (no output):**
@@ -339,7 +315,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **CRITICAL**: Do NOT display shutdown status messages. Execute silently.
 </FinalCleanup>
 
-## STEP 8: INTERACTIVE FAILURE REVIEW (Only if NEW failures detected)
+## STEP 7: INTERACTIVE FAILURE REVIEW (Only if NEW failures detected)
 
 <InteractiveFailureReview>
     **MANDATORY: Create todos before any user interaction:**
