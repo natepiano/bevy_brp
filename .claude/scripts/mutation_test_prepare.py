@@ -18,6 +18,8 @@ import sys
 import os
 import argparse
 import tempfile
+import glob
+import subprocess
 from typing import Any, TypedDict, cast
 
 
@@ -466,7 +468,21 @@ if "type_guide" not in data:
     print(f"Error: Expected dict with 'type_guide' at root", file=sys.stderr)
     sys.exit(1)
 
-# STEP 1: Renumber batches if this is batch 1
+# STEP 1: Cleanup previous runs if this is batch 1
+if batch_num == 1:
+    # Remove leftover files from previous runs
+    cleanup_patterns = [
+        ".claude/transient/batch_results_*.json",
+        ".claude/transient/all_types_failures_*.json"
+    ]
+    for pattern in cleanup_patterns:
+        for filepath in glob.glob(pattern):
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass  # Ignore errors if files don't exist or can't be removed
+
+# STEP 2: Renumber batches if this is batch 1
 if batch_num == 1:
     data = renumber_batches(data, batch_size)
 
@@ -608,7 +624,17 @@ for subagent_num in range(1, actual_subagents_needed + 1):
         }
         assignments.append(assignment)
 
-# STEP 5: Return all assignments with test plan files generated
+# STEP 5: Open test plan files in Zed
+zed_cli = "/Applications/Zed.app/Contents/MacOS/cli"
+if os.path.exists(zed_cli):
+    for assignment in assignments:
+        test_plan_file = assignment["test_plan_file"]
+        try:
+            _ = subprocess.Popen([zed_cli, test_plan_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError:
+            pass  # Ignore if Zed fails to open
+
+# STEP 6: Return all assignments with test plan files generated
 all_assignments_output: AllAssignmentsOutput = {
     "batch_number": batch_num,
     "max_subagents": len(assignments),  # Report actual subagents used

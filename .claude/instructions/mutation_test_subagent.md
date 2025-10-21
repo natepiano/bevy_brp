@@ -1,5 +1,30 @@
 # Mutation Test Executor Instructions
 
+## ⚠️ CRITICAL: AVAILABLE TOOLS (READ THIS FIRST)
+
+**YOU HAVE ACCESS TO EXACTLY 7 TOOLS IN THIS ENVIRONMENT:**
+
+✅ **THE ONLY TOOLS YOU CAN USE:**
+1. `Read` - Read the test plan file ONCE at start
+2. `Bash` - ONLY to execute: `python3 .claude/scripts/mutation_test_operation_update.py`
+3. `mcp__brp__world_spawn_entity` - Spawn entities
+4. `mcp__brp__world_query` - Query entities (including entity ID substitution)
+5. `mcp__brp__world_mutate_components` - Mutate component fields
+6. `mcp__brp__world_mutate_resources` - Mutate resource fields
+7. `mcp__brp__world_insert_resources` - Insert/update resources
+
+🚫 **TOOLS THAT DO NOT EXIST IN THIS ENVIRONMENT:**
+- curl or HTTP requests - NOT AVAILABLE
+- jq, sed, awk, or JSON manipulation - NOT AVAILABLE
+
+**TEST PLAN UPDATES:**
+- The ONLY way to update the test plan: `Bash` tool with `mutation_test_operation_update.py`
+
+**NEVER**
+- NEVER create a custom script of any sort - NO PYTHON3, NO BASH, NOTHING!!
+
+---
+
 ## Configuration Parameters
 
 This subagent receives configuration from the parent command via Task prompt:
@@ -10,29 +35,7 @@ These values are provided by mutation_test.md when launching subagents.
 
 ## Your Job
 
-**Execute the test plan and update results per <UpdateOperationViaScript/> after each operation.**
-
-**CRITICAL**: You MUST update the test plan per <UpdateOperationViaScript/> after EVERY operation.
-
-## MANDATORY TOOL USAGE RULES
-
-**ABSOLUTE PROHIBITION**: NO curl, NO Write tool, NO custom scripts
-
-❌ **FORBIDDEN - IMMEDIATE TEST FAILURE**:
-- Using curl or making direct HTTP requests to any port
-- Using Write tool to update test plan (use <UpdateOperationViaScript/> instead)
-- Writing custom Python/Bash scripts or heredoc patterns
-- Using jq, sed, awk, or any command-line JSON tools for test plan manipulation
-- ANY tool not explicitly listed in the allowed list below
-
-✅ **ALLOWED TOOLS ONLY** (these are the ONLY 7 tools you may use):
-- `Read` - to read the test plan file ONCE at start
-- `Bash` - ONLY to execute the exact command shown in <UpdateOperationViaScript/>
-- `mcp__brp__world_spawn_entity` - for spawning entities
-- `mcp__brp__world_query` - for querying entities (including entity ID substitution)
-- `mcp__brp__world_mutate_components` - for mutating component fields
-- `mcp__brp__world_mutate_resources` - for mutating resource fields
-- `mcp__brp__world_insert_resources` - for inserting/updating resources
+**Execute the test plan and update results after each operation.**
 
 ## Test Plan Updates
 
@@ -50,12 +53,18 @@ These values are provided by mutation_test.md when launching subagents.
        - **Note the operation's `operation_id` field** (you'll need it for <UpdateOperationViaScript/>)
        - Apply entity ID substitution if `entity_id_substitution` field exists (see <EntityIdSubstitution/>)
        - Execute the MCP tool specified in `tool` field (see <OperationExecution/>)
-       - Apply error recovery if needed (see <ErrorRecovery/>)
-       - **CRITICAL**: Update operation per <UpdateOperationViaScript/> with the operation's `operation_id`
-       - Continue to next operation
+       - If operation succeeds:
+         - Update operation per <UpdateOperationViaScript/> with status SUCCESS
+         - Continue to next operation
+       - If operation fails:
+         - Apply error recovery if applicable (see <ErrorRecovery/>)
+         - If recovery succeeds: update with SUCCESS and continue
+         - If recovery fails or not applicable:
+           - Update operation per <UpdateOperationViaScript/> with status FAIL
+           - **STOP IMMEDIATELY** - return without processing remaining operations
 
 3. **Finish execution**:
-   - After all operations complete, execution is done
+   - After all operations complete successfully, or after first failure, execution is done
    - No final output needed - all results are in the test plan file
 
 ## Entity ID Substitution
@@ -128,6 +137,12 @@ python3 .claude/scripts/mutation_test_operation_update.py \
 - `--retry-count N` - If this is a retry after error recovery
 
 **This is the ONLY acceptable method. NO other approaches are allowed.**
+Executing the script in a loop via a for command is not allowed
+this form of executino example is **not allowed**:
+```
+ for i in {7..84}; do python3 /Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test_operation_update.py --file   /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/mutation_test_subagent_30001_plan.json --operation-id $i --status FAIL --error "Connection failed: BRP server unavailable"; done
+```
+
 </UpdateOperationViaScript>
 
 ### mcp__brp__world_spawn_entity
@@ -260,6 +275,57 @@ python3 .claude/scripts/mutation_test_operation_update.py \
 ```
 </OperationExecution>
 
+## JSON Primitive Rules
+
+<JsonPrimitiveRules>
+**CRITICAL JSON PRIMITIVE REQUIREMENTS**:
+- ALL numeric values MUST be JSON numbers, NOT strings
+- NEVER quote numbers: ❌ "3.1415927410125732" → ✅ 3.1415927410125732
+- This includes f32, f64, u32, i32, ALL numeric types
+- High-precision floats like 3.1415927410125732 are STILL JSON numbers
+- ALL boolean values MUST be JSON booleans, NOT strings
+- NEVER quote booleans: ❌ "true" → ✅ true, ❌ "false" → ✅ false
+- Numbers: ✅ 3.14, ✅ 42, ✅ 3.1415927410125732
+- Booleans: ✅ true, ✅ false
+- NEVER: ❌ "3.14", ❌ "42", ❌ "true", ❌ "false"
+- If you get "invalid type: string" error, you quoted a number or boolean
+
+**COMMON MISTAKES THAT CAUSE STRING CONVERSION**:
+❌ Converting example to string: `str(example)` or `f"{example}"`
+❌ String interpolation in values: treating numbers as text
+❌ Copy-pasting example values as strings instead of raw values
+❌ Using string formatting functions on numeric values
+
+✅ CORRECT: Use the example value DIRECTLY from the type guide without any string conversion
+✅ When constructing mutation params: assign the value AS-IS from the example
+✅ Keep numeric types as numbers, boolean types as booleans throughout your code
+
+**MANDATORY PRE-SEND VERIFICATION**:
+Before EVERY mutation request with a numeric or boolean value:
+1. **CHECK**: Look at the value you're about to send in `params["value"]`
+2. **VERIFY**: If it's a number like `42`, ensure you're sending the NUMBER 42, not the STRING "42"
+3. **TEST**: In your JSON structure, it should appear as `"value": 42` NOT `"value": "42"`
+4. **CONFIRM**: No quotes around numbers or booleans in the actual value field
+
+**VERIFICATION EXAMPLES**:
+- ❌ WRONG: `{"value": "42"}` - This is a STRING "42"
+- ✅ CORRECT: `{"value": 42}` - This is a NUMBER 42
+- ❌ WRONG: `{"value": "true"}` - This is a STRING "true"
+- ✅ CORRECT: `{"value": true}` - This is a BOOLEAN true
+- ❌ WRONG: `{"value": "3.14"}` - This is a STRING "3.14"
+- ✅ CORRECT: `{"value": 3.14}` - This is a NUMBER 3.14
+
+**ERROR RECOVERY PROTOCOL**:
+If you receive error: `invalid type: string "X", expected [numeric/boolean type]`:
+1. **RECOGNIZE**: This means you DEFINITELY sent "X" as a quoted string
+2. **DO NOT** report this as a test failure - this is YOUR bug, not a BRP bug
+3. **FIX IMMEDIATELY**: Retry the SAME mutation with the value as an unquoted primitive
+4. **VERIFY**: Before retry, confirm your value is a number/boolean, NOT a string
+5. **ONLY FAIL**: If the retry also fails with a DIFFERENT error message
+
+**VALIDATION**: Before sending ANY mutation, verify primitives are unquoted
+</JsonPrimitiveRules>
+
 ## Error Recovery
 
 <ErrorRecovery>
@@ -271,17 +337,13 @@ python3 .claude/scripts/mutation_test_operation_update.py \
 
 **Cause**: You sent a number/boolean as a string (YOUR bug, not BRP's)
 
-**Recovery**:
+**Recovery**: Follow the ERROR RECOVERY PROTOCOL in <JsonPrimitiveRules/>
 1. Parse the error to identify which parameter has the wrong type
-2. Convert the value to proper JSON type:
-   - `"42"` → `42` (number)
-   - `"true"` → `true` (boolean)
-   - `"[1,2]"` → `[1,2]` (array)
-   - `"{\"x\":1}"` → `{"x":1}` (object)
+2. Convert the value to proper JSON type (remove quotes from primitives)
 3. Re-execute the operation with corrected value
 4. Update per <UpdateOperationViaScript/> with retry count:
 
-**If retry succeeds:**
+**If retry succeeds**:
 ```bash
 python3 .claude/scripts/mutation_test_operation_update.py \
   --file TEST_PLAN_FILE \
@@ -291,7 +353,7 @@ python3 .claude/scripts/mutation_test_operation_update.py \
   [--entity-id ENTITY_ID] or [--entities "CSV"]
 ```
 
-**If retry fails:**
+**If retry fails**:
 ```bash
 python3 .claude/scripts/mutation_test_operation_update.py \
   --file TEST_PLAN_FILE \
@@ -312,7 +374,7 @@ python3 .claude/scripts/mutation_test_operation_update.py \
 3. Re-execute the operation
 4. Update per <UpdateOperationViaScript/> with retry count:
 
-**If retry succeeds:**
+**If retry succeeds**
 ```bash
 python3 .claude/scripts/mutation_test_operation_update.py \
   --file TEST_PLAN_FILE \
@@ -322,10 +384,10 @@ python3 .claude/scripts/mutation_test_operation_update.py \
   [--entity-id ENTITY_ID] or [--entities "CSV"]
 ```
 
-**If retry fails:**
+**If retry fails**
 ```bash
 python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
+  i-file TEST_PLAN_FILE \
   --operation-id OPERATION_ID_FROM_JSON \
   --status FAIL \
   --error "ERROR_MESSAGE"
@@ -342,7 +404,7 @@ python3 .claude/scripts/mutation_test_operation_update.py \
 2. Re-execute the operation with reordered parameters
 3. Update per <UpdateOperationViaScript/> with retry count:
 
-**If retry succeeds:**
+**If retry succeeds**
 ```bash
 python3 .claude/scripts/mutation_test_operation_update.py \
   --file TEST_PLAN_FILE \
@@ -352,7 +414,7 @@ python3 .claude/scripts/mutation_test_operation_update.py \
   [--entity-id ENTITY_ID] or [--entities "CSV"]
 ```
 
-**If retry fails:**
+**If retry fails**
 ```bash
 python3 .claude/scripts/mutation_test_operation_update.py \
   --file TEST_PLAN_FILE \
@@ -363,7 +425,7 @@ python3 .claude/scripts/mutation_test_operation_update.py \
 
 ### All Other Errors
 
-No recovery - just mark `status: "FAIL"`, record `error` per <UpdateOperationViaScript/>, and continue to next operation.
+No recovery - just mark `status: "FAIL"`, record `error` per <UpdateOperationViaScript/>, and **STOP IMMEDIATELY**.
 
 ```bash
 python3 .claude/scripts/mutation_test_operation_update.py \
@@ -373,7 +435,7 @@ python3 .claude/scripts/mutation_test_operation_update.py \
   --error "ERROR_MESSAGE_FROM_TOOL"
 ```
 
-**CRITICAL**: Never stop execution due to errors. Always complete all operations and update results per <UpdateOperationViaScript/>.
+**CRITICAL**: Stop execution immediately on first failure. Do NOT process any remaining operations. Mark only the failed operation and return.
 </ErrorRecovery>
 
 ## Complete Operation Flow Example
@@ -413,8 +475,6 @@ This section shows the complete flow for executing operations with updates per <
 4. Repeat steps 2-3 for each operation
 
 **NEVER**:
-- Use Write tool to update test plans
-- Manually manipulate JSON yourself
 - Use curl or make direct HTTP requests
 - Use jq, sed, awk, or other JSON manipulation tools
 - Write custom Python/Bash code or heredoc patterns for updates

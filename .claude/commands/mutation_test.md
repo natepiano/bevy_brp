@@ -24,43 +24,16 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
 <ExecutionFlow>
     **EXECUTE THESE STEPS IN ORDER:**
+    **STEP 1:** Execute the <ApplicationLaunch/>
+    **STEP 2:** Execute the <ApplicationVerification/>
+    **STEP 3:** Execute the <BatchProcessingLoop/>
+    **STEP 4:** Execute the <FinalCleanup/> (SILENTLY if failures detected)
+    **STEP 5:** Execute the <InteractiveFailureReview/> (ONLY if NEW failures detected)
 
-    **STEP 1:** Execute the <InitialSetup/>
-    **STEP 2:** Execute the <CleanupPreviousRuns/>
-    **STEP 3:** Execute the <ApplicationLaunch/>
-    **STEP 4:** Execute the <ApplicationVerification/>
-    **STEP 5:** Execute the <BatchProcessingLoop/>
-    **STEP 6:** Execute the <FinalCleanup/> (SILENTLY if failures detected)
-    **STEP 7:** Execute the <InteractiveFailureReview/> (ONLY if NEW failures detected)
+    **NOTE**: Cleanup of previous run files happens automatically in mutation_test_prepare.py when batch == 1
 </ExecutionFlow>
 
-## STEP 1: INITIAL SETUP
-
-<InitialSetup>
-    **Ensure types directory exists for all file operations:**
-
-    ```bash
-    mkdir -p .claude/transient
-    echo "Using .claude/transient/ for persistent storage"
-    ```
-
-    All mutation test files will be stored in `.claude/transient/` for persistence across reboots.
-
-    **CRITICAL**: Use `.claude/transient/` prefix for all file paths in Write tool operations.
-</InitialSetup>
-
 ## VALIDATION SECTIONS
-
-<ValidationErrorFormat>
-    **Standard validation error format:**
-    ```
-    ERROR: [Brief description]
-    Expected: [What should have happened]
-    Actual: [What was found instead]
-    ```
-
-    **Apply this format consistently across all validation errors.**
-</ValidationErrorFormat>
 
 <ValidateAssignmentsStructure>
     **Core assignments array validation:**
@@ -91,22 +64,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
           - Actual: Port {port}
 </ValidateAssignmentFields>
 
-## STEP 2: CLEANUP PREVIOUS RUNS
-
-<CleanupPreviousRuns>
-    **Remove leftover files from previous runs to prevent interference:**
-
-    ```bash
-    rm -f .claude/transient/batch_results_*.json
-    rm -f .claude/transient/all_types_failures_*.json
-    ```
-
-    Clean up:
-    - Batch result files from previous runs
-    - Old failure log files to prevent confusion with new failures
-</CleanupPreviousRuns>
-
-## STEP 3: APPLICATION LAUNCH
+## STEP 1: APPLICATION LAUNCH
 
 <ApplicationLaunch>
     **Launch ${MAX_SUBAGENTS} extras_plugin instances on sequential ports starting at ${BASE_PORT}:**
@@ -128,7 +86,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     This will launch ${MAX_SUBAGENTS} instances on ports ${BASE_PORT}-${MAX_PORT} automatically.
 </ApplicationLaunch>
 
-## STEP 4: APPLICATION VERIFICATION
+## STEP 2: APPLICATION VERIFICATION
 
 <ApplicationVerification>
     **Verify BRP connectivity on all ports:**
@@ -140,7 +98,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **STOP CONDITION**: If any app fails to respond, stop and report error.
 </ApplicationVerification>
 
-## STEP 5: BATCH PROCESSING LOOP
+## STEP 3: BATCH PROCESSING LOOP
 
 <BatchProcessingLoop>
     **Process each batch sequentially with parallel subagents:**
@@ -220,13 +178,6 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 <LaunchSubagents>
     **Launch parallel subagents using cached assignments array from GetBatchAssignments:**
 
-    **STEP 1: Open test plan files in Zed**
-    - For each assignment in assignments array:
-      - Execute: `/Applications/Zed.app/Contents/MacOS/cli [test_plan_file]`
-    - Execute all Zed CLI commands in parallel
-
-    **STEP 2: Launch all subagents in parallel**
-
     **For each assignment in assignments array:**
 
     1. **Extract pre-formatted data from assignment**:
@@ -236,7 +187,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     2. **Create Task** with:
        - description: Use `task_description` directly from assignment
-       - subagent_type: "general-purpose"
+       - subagent_type: "mutation-test-executor"
        - prompt: See template below
 
     **TASK PROMPT TEMPLATE**:
@@ -302,7 +253,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     - Stop execution
 </CheckForFailures>
 
-## STEP 6: FINAL CLEANUP
+## STEP 4: FINAL CLEANUP
 
 <FinalCleanup>
     **Shutdown all applications SILENTLY (no output):**
@@ -315,7 +266,7 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     **CRITICAL**: Do NOT display shutdown status messages. Execute silently.
 </FinalCleanup>
 
-## STEP 7: INTERACTIVE FAILURE REVIEW (Only if NEW failures detected)
+## STEP 5: INTERACTIVE FAILURE REVIEW (Only if NEW failures detected)
 
 <InteractiveFailureReview>
     **MANDATORY: Create todos before any user interaction:**
@@ -436,72 +387,14 @@ Please select one of the keywords above.
 5. Do NOT launch Task agents - handle investigation directly
 </InvestigateFailure>
 
-## JSON PRIMITIVE RULES
-
-<JsonPrimitiveRules>
-**CRITICAL JSON PRIMITIVE REQUIREMENTS**:
-- ALL numeric values MUST be JSON numbers, NOT strings
-- NEVER quote numbers: ❌ "3.1415927410125732" → ✅ 3.1415927410125732
-- This includes f32, f64, u32, i32, ALL numeric types
-- High-precision floats like 3.1415927410125732 are STILL JSON numbers
-- ALL boolean values MUST be JSON booleans, NOT strings
-- NEVER quote booleans: ❌ "true" → ✅ true, ❌ "false" → ✅ false
-- Numbers: ✅ 3.14, ✅ 42, ✅ 3.1415927410125732
-- Booleans: ✅ true, ✅ false
-- NEVER: ❌ "3.14", ❌ "42", ❌ "true", ❌ "false"
-- If you get "invalid type: string" error, you quoted a number or boolean
-
-**COMMON MISTAKES THAT CAUSE STRING CONVERSION**:
-❌ Converting example to string: `str(example)` or `f"{example}"`
-❌ String interpolation in values: treating numbers as text
-❌ Copy-pasting example values as strings instead of raw values
-❌ Using string formatting functions on numeric values
-
-✅ CORRECT: Use the example value DIRECTLY from the type guide without any string conversion
-✅ When constructing mutation params: assign the value AS-IS from the example
-✅ Keep numeric types as numbers, boolean types as booleans throughout your code
-
-**MANDATORY PRE-SEND VERIFICATION**:
-Before EVERY mutation request with a numeric or boolean value:
-1. **CHECK**: Look at the value you're about to send in `params["value"]`
-2. **VERIFY**: If it's a number like `42`, ensure you're sending the NUMBER 42, not the STRING "42"
-3. **TEST**: In your JSON structure, it should appear as `"value": 42` NOT `"value": "42"`
-4. **CONFIRM**: No quotes around numbers or booleans in the actual value field
-
-**VERIFICATION EXAMPLES**:
-- ❌ WRONG: `{"value": "42"}` - This is a STRING "42"
-- ✅ CORRECT: `{"value": 42}` - This is a NUMBER 42
-- ❌ WRONG: `{"value": "true"}` - This is a STRING "true"
-- ✅ CORRECT: `{"value": true}` - This is a BOOLEAN true
-- ❌ WRONG: `{"value": "3.14"}` - This is a STRING "3.14"
-- ✅ CORRECT: `{"value": 3.14}` - This is a NUMBER 3.14
-
-**ERROR RECOVERY PROTOCOL**:
-If you receive error: `invalid type: string "X", expected [numeric/boolean type]`:
-1. **RECOGNIZE**: This means you DEFINITELY sent "X" as a quoted string
-2. **DO NOT** report this as a test failure - this is YOUR bug, not a BRP bug
-3. **FIX IMMEDIATELY**: Retry the SAME mutation with the value as an unquoted primitive
-4. **VERIFY**: Before retry, confirm your value is a number/boolean, NOT a string
-5. **ONLY FAIL**: If the retry also fails with a DIFFERENT error message
-
-**VALIDATION**: Before sending ANY mutation, verify primitives are unquoted
-</JsonPrimitiveRules>
-
-## SUBAGENT INSTRUCTIONS
-
-Subagent instructions have been moved to `.claude/instructions/mutation_test_subagent.md` for performance optimization.
-
-The main agent references this file when launching subagents (see <LaunchSubagents/> section).
-
 ## CRITICAL RULES AND CONSTRAINTS
 
 <CoreRules>
 **Execution Rules**:
-1. ALWAYS reassign batch numbers before each run
-2. ALWAYS use parallel subagents (${MAX_SUBAGENTS} at once)
-3. Main agent orchestrates, subagents test
-4. STOP ON ANY FAILURE - no exceptions
-5. Simple pass/fail per type
+1. ALWAYS use parallel subagents (${MAX_SUBAGENTS} at once)
+2. Main agent orchestrates, subagents test
+3. STOP ON ANY FAILURE - no exceptions
+4. Simple pass/fail per type
 
 **Failure Handling**:
 - ANY failure = IMMEDIATE STOP
@@ -510,22 +403,6 @@ The main agent references this file when launching subagents (see <LaunchSubagen
 - DO NOT continue to next batch
 </CoreRules>
 
-<PrimitiveHandling>
-**JSON Primitive Requirements**: Follow <JsonPrimitiveRules/> for all JSON values.
-- This includes: u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64
-- Large numbers like 18446744073709551615 are STILL JSON numbers
-- "invalid type: string" = primitive serialization error - you sent a quoted value
-- **ERROR RECOVERY**: If you get this error, follow the ERROR RECOVERY PROTOCOL in <JsonPrimitiveRules/>
-- Retry immediately with unquoted value, only report failure if retry also fails
-</PrimitiveHandling>
-
-<PathHandling>
-**File Path Requirements**:
-- ALWAYS use `.claude/transient/` for persistent file storage
-- NEVER use $TMPDIR for mutation test files
-- Example: `.claude/transient/all_types.json` not `$TMPDIR/all_types.json`
-</PathHandling>
-
 <ParallelExecution>
 **Parallel Execution Requirements**:
 - ALL app launches in ONE message
@@ -533,52 +410,6 @@ The main agent references this file when launching subagents (see <LaunchSubagen
 - ALL subagent Tasks in ONE message per batch
 - NEVER send tools one at a time
 </ParallelExecution>
-
-## RESULT SCHEMAS
-
-<ResultFormat>
-**Subagent Result Schema**:
-```json
-{
-  "type": "string (type_name from assignment - authoritative)",
-  "tested_type": "string (actual type used in queries - must match 'type')",
-  "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
-  "entity_id": "number|null (entity ID if created)",
-  "operations_completed": {
-    "spawn_insert": "boolean",
-    "entity_query": "boolean",
-    "mutations_passed": "array of mutation paths that succeeded",
-    "total_mutations_attempted": "number"
-  },
-  "failure_details": {
-    "failed_operation": "spawn|insert|query|mutation",
-    "failed_mutation_path": "string (specific path that failed)",
-    "error_message": "string (complete error from BRP)",
-    "request_sent": "object (exact parameters that caused failure)",
-    "response_received": "object (complete error response)"
-  },
-  "query_details": {
-    "filter": "object (query filter used)",
-    "data": "object (query data requested)",
-    "entities_found": "number"
-  }
-}
-```
-
-**Progress File Schema** (`all_types.json`):
-```json
-{
-  "type_guide": [{
-    "type_name": "string",
-    "spawn_format": "object|null",
-    "mutation_paths": "object",
-    "test_status": "untested|passed|failed",
-    "batch_number": "number|null",
-    "fail_reason": "string"
-  }]
-}
-```
-</ResultFormat>
 
 ## ERROR DIAGNOSTICS
 
@@ -618,7 +449,6 @@ When failures occur, the system automatically:
 3. Review `mutations_passed` to identify working paths
 4. Use `response_received` error message for specific issue
 
-**Subagent non-response**: Check app logs at `/var/folders/.../bevy_brp_mcp_extras_plugin_port[PORT]_[timestamp].log` for assigned types' spawn crashes.
 </ErrorDiagnostics>
 
 ## REUSABLE PATTERNS
