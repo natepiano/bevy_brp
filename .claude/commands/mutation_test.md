@@ -12,7 +12,7 @@
 </TestContext>
 
 <TestConfiguration>
-TYPES_PER_SUBAGENT = 3                                  # Types each subagent tests
+TYPES_PER_SUBAGENT = 1                                  # Types each subagent tests
 MAX_SUBAGENTS = 10                                      # Parallel subagents per batch
 BATCH_SIZE = ${TYPES_PER_SUBAGENT * MAX_SUBAGENTS}      # Types per batch
 BASE_PORT = 30001                                       # Starting port for subagents
@@ -165,7 +165,6 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     For each batch N (starting from 1):
 
-    0. Re-read <NoOptimizationAllowed/> before processing this batch
     1. **REPORT PROGRESS**: Display "Processing batch N of [TOTAL_BATCHES] - Testing [TYPES_IN_BATCH] types ([REMAINING_TYPES] remaining)"
     2. Execute <GetBatchAssignments/> for batch N
     3. Execute <SetWindowTitles/> based on assignments
@@ -174,60 +173,54 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
        - NEVER combine or skip Task invocations
     5. Execute <ProcessBatchResults/> after all subagents complete
     6. Execute <CheckForFailures/> which will:
-       - Continue to next batch if all pass OR only known issues found
-       - Stop only if NEW (non-known) failures are detected
+       - Continue to next batch if all pass
+       - Stop if any failures are detected
 
-    Continue until all batches are processed or NEW failures occur.
+    Continue until all batches are processed or failures occur.
 </BatchProcessingLoop>
 
 ### BATCH PROCESSING SUBSTEPS
 
 <GetBatchAssignments>
-    **Determine how many subagents needed for current batch:**
+    **Single call to get all assignments and generate test plan files:**
 
-    **STEP 1: Get batch summary (lightweight call without full data)**:
     ```bash
     python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
     ```
 
-    **STEP 2: Extract only the count information**:
-    - Parse the JSON output
-    - Extract `assignments.length` - this tells you how many subagents to launch
-    - Extract `total_types` - this tells you how many types in the batch
-    - DO NOT try to parse or use the type names from this output
-    - Discard the rest of the data
+    **This single call:**
+    - Generates ALL test plan files (one per subagent)
+    - Returns complete assignment data with type_names, type_categories, and test_plan_file paths
 
-    **CRITICAL**: This step is ONLY for determining the number of subagents.
-    Type names and detailed assignments will be fetched individually in the next steps.
+    **Extract from the JSON output:**
+    - `assignments.length` - number of subagents to launch
+    - `total_types` - number of types in the batch
+    - `assignments[i].type_names` - type names for window title
+    - `assignments[i].type_categories` - type categories (C/R) for window title
+    - `assignments[i].test_plan_file` - path to pass to subagent
+
+    **Store the entire assignments array for use in SetWindowTitles and LaunchSubagents.**
 </GetBatchAssignments>
 
 <SetWindowTitles>
-    **Set window titles by fetching each subagent's assignment individually:**
+    **Set window titles using the cached assignments array from GetBatchAssignments:**
 
-    **For each subagent index (0 through subagent_count-1):**
+    **For each assignment in assignments array:**
 
-    1. **Fetch the specific subagent's assignment**:
-       ```bash
-       python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
-           --batch [BATCH_NUMBER] \
-           --max-subagents ${MAX_SUBAGENTS} \
-           --types-per-subagent ${TYPES_PER_SUBAGENT} \
-           --subagent-index [SUBAGENT_INDEX]
-       ```
+    1. **Extract data from assignment**:
+       - `type_names` array
+       - `type_categories` array
+       - `port` number
+       - `subagent` number
 
-    2. **Extract type names and categories from the result**:
-       - Parse the JSON output
-       - Extract the `type_names` array and `type_categories` array
-       - For each type: extract short name (text after last "::") and append category
-       - Format each as: "[ShortName] ([C|R])" where C=Component, R=Resource
+    2. **Format window title**:
+       - For each type: extract short name (text after last "::")
+       - Combine with category: "[ShortName] ([C|R])"
        - Join with commas
-
-    3. **Create window title**:
-       - Format: "Subagent [SUBAGENT_NUMBER]: [ShortName1] ([C|R]), [ShortName2] ([C|R]), ..."
-       - SUBAGENT_NUMBER = SUBAGENT_INDEX + 1 (for display purposes)
+       - Final format: "Subagent [SUBAGENT_NUMBER]: [ShortName1] ([C|R]), [ShortName2] ([C|R]), ..."
 
     **EXECUTE ALL WINDOW TITLE UPDATES IN PARALLEL:**
-    Make one Bash call per subagent to get assignments, then make all window title calls in parallel.
+    Make all mcp__brp__brp_extras_set_window_title calls in parallel.
 
     **Example**:
     ```
@@ -242,25 +235,27 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 </SetWindowTitles>
 
 <LaunchSubagents>
-    **Launch parallel subagents using individual assignment calls:**
+    **Launch parallel subagents using cached assignments array from GetBatchAssignments:**
 
-    **CRITICAL**: Both main agent and subagent must use the SAME command with `--subagent-index` to ensure consistency.
+    **STEP 1: Open test plan files in Zed**
+    - For each assignment in assignments array:
+      - Execute: `/Applications/Zed.app/Contents/MacOS/cli [test_plan_file]`
+    - Execute all Zed CLI commands in parallel
 
-    **For each subagent index (0 through subagent_count-1):**
+    **STEP 2: Launch all subagents in parallel**
 
-    1. **Fetch the specific subagent's assignment** (reuse from <SetWindowTitles/> if cached):
-       ```bash
-       python3 ./.claude/scripts/mutation_test_get_subagent_assignments.py \
-           --batch [BATCH_NUMBER] \
-           --max-subagents ${MAX_SUBAGENTS} \
-           --types-per-subagent ${TYPES_PER_SUBAGENT} \
-           --subagent-index [SUBAGENT_INDEX]
-       ```
+    **For each assignment in assignments array:**
 
-    2. **Extract type names and categories** for task description:
-       - Parse `type_names` array and `type_categories` array
-       - For each type: extract short name (text after last "::") and append category
-       - Format each as: "[ShortName] ([C|R])" where C=Component, R=Resource
+    1. **Extract data from assignment**:
+       - `type_names` array
+       - `type_categories` array
+       - `test_plan_file` path
+       - `port` number
+       - `subagent` number
+
+    2. **Format task description**:
+       - For each type: extract short name (text after last "::")
+       - Combine with category: "[ShortName] ([C|R])"
        - Join with commas
 
     3. **Create Task** with:
@@ -273,84 +268,62 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     EXECUTE the mutation test workflow defined in @.claude/instructions/mutation_test_subagent.md
 
     Your configuration:
-    - SUBAGENT_INDEX = [index]
-    - PORT = [port]
-    - BATCH_NUMBER = [batch]
-    - MAX_SUBAGENTS = ${MAX_SUBAGENTS}
-    - TYPES_PER_SUBAGENT = ${TYPES_PER_SUBAGENT}
+    - TEST_PLAN_FILE = [test_plan_file path from assignment]
+    - PORT = [port from assignment]
 
-    CRITICAL: You MUST return ONLY the JSON array result. NO explanations, NO commentary, NO test steps.
+    The test plan file contains ALL the operations you need to execute. Read it and execute each operation in sequence.
 
-    Expected output format:
-    <SubagentOutputFormat/>
-    (See @.claude/instructions/mutation_test_subagent.md for the complete JSON structure)
+    CRITICAL: After completing all operations, just finish. The test plan file will contain all results. Do not return any JSON output.
     ```
-
-    **CONSISTENCY GUARANTEE**:
-    - Main agent fetches assignment with `--subagent-index N`
-    - Subagent fetches assignment with same `--subagent-index N`
-    - Both see IDENTICAL type_names array
-    - Task description and window title match what subagent will test
 
     **Send ALL Tasks in ONE message for parallel execution.**
 </LaunchSubagents>
 
 <ProcessBatchResults>
-    **Collect and validate batch results:**
+    **Process test results from subagent test plans:**
 
-    1. **Collect Task outputs**: Extract JSON array from each subagent Task result
-       - **Record validation errors** if any Task returned empty/null (but continue to save results)
+    Execute result processing script:
+    ```bash
+    python3 ./.claude/scripts/mutation_test_process_results.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
+    ```
 
-    2. **Check completeness and record issues**:
-       - **Record error** if subagent_responses != assignments_count
-       - **Record error** if total_type_results != batch_size
-       - **Record error** if any type != tested_type
-       - Note: Record these issues but continue to step 3
+    The script automatically:
+    1. Reads test plan files from $TMPDIR (mutation_test_subagent_[PORT]_plan.json)
+    2. Converts test operations to result format
+    3. Merges results into `.claude/transient/all_types.json`
+    4. Reports statistics (passed/failed/missing)
+    5. Saves failure details to timestamped log file if failures exist
+    6. Cleans up temporary batch results file
 
-    3. **Write and merge** (always execute, even if validation errors were recorded):
-       - Save ALL successful results to `.claude/transient/batch_results_[BATCH_NUMBER].json`
-       - Execute merge script:
-         ```bash
-         ./.claude/scripts/mutation_test_merge_batch_results.sh [BATCH_NUMBER]
-         ```
-       - Script automatically uses:
-         - Input: `.claude/transient/batch_results_[BATCH_NUMBER].json`
-         - Output: `.claude/transient/all_types.json`
+    **Exit codes**:
+    - 0: Success (all passed)
+    - 2: Failures detected (stop and review)
+    - 1: Processing error
 
-    4. **Cleanup**: Remove temp file `.claude/transient/batch_results_[BATCH_NUMBER].json`
-
-    5. **Report validation errors**:
-       - **STOP IF** any validation errors were recorded in steps 1-2
-       - Report: "Subagent [N] no output (see port [PORT] logs)" for empty outputs
-       - Report: "Missing [N] subagent responses" if count mismatch
-       - Report: "Missing [N] type results" if result count mismatch
-       - Report: "Subagent hallucinated type" if type name mismatch
-       - Partial results have been saved before stopping
+    **Note**: Script output includes statistics and failure detection handled by <CheckForFailures/>
 </ProcessBatchResults>
 
 <CheckForFailures>
-    **Check merge script exit code and results:**
+    **Check result processing script exit code:**
 
-    **The merge script NOW handles known issue filtering automatically:**
-    - Exit code 0: All passed OR only known issues found → **CONTINUE TO NEXT BATCH**
-    - Exit code 2: **NEW FAILURES DETECTED** → Stop and review
+    **Exit code handling:**
+    - Exit code 0: All passed → **CONTINUE TO NEXT BATCH**
+    - Exit code 2: **FAILURES DETECTED** → Stop and review
+    - Exit code 1: Processing error → Stop
 
-    **MERGE SCRIPT BEHAVIOR**:
-    - Automatically loads `.claude/config/mutation_test_known_issues.json` if it exists
-    - Filters out known issues from the failure count
-    - Returns exit code 0 if only known issues were found
-    - Returns exit code 2 only if NEW (non-known) failures exist
-    - Displays appropriate messages for each case
-
-    **FAILURE PROTOCOL** (only if exit code 2):
-    1. Failure details are already saved by merge script to timestamped log
+    **FAILURE PROTOCOL** (exit code 2):
+    1. Failure details already saved by script to timestamped log
     2. Execute <FinalCleanup/> SILENTLY - no output during cleanup
-    3. Execute <InteractiveFailureReview/> to review NEW failures
+    3. Execute <InteractiveFailureReview/> to review failures
     4. **DO NOT CONTINUE** to next batch
 
     **SUCCESS PROTOCOL** (exit code 0):
     - Continue directly to next batch
-    - No manual filtering needed - script already handled it
+
+    **ERROR PROTOCOL** (exit code 1):
+    - Report processing error
+    - Execute <FinalCleanup/> SILENTLY
+    - Stop execution
 </CheckForFailures>
 
 ## STEP 7: FINAL CLEANUP
@@ -430,7 +403,6 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
 
     ## Available Actions
     - **investigate** - Investigate this specific failure in detail (DEFAULT - agent will always investigate unless told otherwise)
-    - **known** - Mark as known issue and continue to next (USER DECISION ONLY - agent never suggests this)
     - **skip** - Skip this failure and continue to the next
     - **stop** - Stop reviewing failures and exit
 
@@ -440,15 +412,13 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}                   # Port range for subagen
     3. **MANDATORY: Always investigate first**
     - Execute <InvestigateFailure/> IMMEDIATELY after presenting each failure
     - Present investigation findings to user
-    - NEVER suggest marking as "known" - this is user's decision only
     - Only proceed to next failure if user explicitly selects a keyword after investigation
 
     4. **Wait for User Response** after investigation findings
 
     5. **Handle User Choice**:
     - **Investigate**: Already completed - confirm findings and wait for next keyword
-    - **Known Issue**: Add to `.claude/config/mutation_test_known_issues.json` with full details and continue
-    - **Skip**: Continue to next failure without marking as known
+    - **Skip**: Continue to next failure
     - **Stop**: Exit failure review
 
     **CRITICAL**: Present failures ONE AT A TIME, investigate each one, and wait for user input between each one.
@@ -464,7 +434,6 @@ When presenting failures, ALWAYS use this exact format for the options:
 ```
 ## Available Actions
 - **investigate** - Investigate this specific failure in detail (DEFAULT - agent will always investigate unless told otherwise)
-- **known** - Mark as known issue and continue to next (USER DECISION ONLY - agent never suggests this)
 - **skip** - Skip this failure and continue to the next
 - **stop** - Stop reviewing failures and exit
 
@@ -473,36 +442,12 @@ Please select one of the keywords above.
 
 **CRITICAL AGENT BEHAVIOR**:
 - **ALWAYS** execute <InvestigateFailure/> first for every failure
-- **NEVER** suggest marking as "known issue" in your analysis
 - **ALWAYS** attempt to identify root cause and propose fixes
-- "known" keyword exists ONLY for user to override investigation - not for agent to suggest
 
 **Keyword Actions**:
 - **Investigate**: Already executed automatically - present findings
-- **Known Issue** (USER ONLY):
-  1. Add type to `.claude/config/mutation_test_known_issues.json`
-  2. Include a brief description of the issue
-  3. Continue to the next failure
-- **Skip**: Continue to the next failure without recording (temporary skip)
+- **Skip**: Continue to the next failure (temporary skip)
 - **Stop**: Exit the failure review process immediately
-
-**Known Issues Tracking** (USER-INITIATED ONLY):
-When user selects **known**, add to `.claude/config/mutation_test_known_issues.json`:
-```json
-{
-  "type": "fully::qualified::type::name",
-  "issue": "Brief description of the problem"
-}
-```
-
-**Note**: See `.claude/config/mutation_test_known_issues.json.example` for format reference.
-The merge script automatically loads `.claude/config/mutation_test_known_issues.json` if it exists to filter known issues.
-
-**Future Test Behavior**:
-- Check `.claude/config/mutation_test_known_issues.json` before presenting failures
-- Automatically skip known issues without presenting them
-- Summary should note: "X known issues skipped (see `.claude/config/mutation_test_known_issues.json`)"
-- Known issues are persistent across test runs
 </KeywordHandling>
 
 <InvestigateFailure>

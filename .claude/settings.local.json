@@ -188,7 +188,11 @@
       "Bash(~/.claude/scripts/post-tool-use-cargo-check.sh)",
       "Bash(/Users/natemccoy/.claude/scripts/post-tool-use-cargo-check.sh)",
       "Bash(test -f .todo.json)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test_subagent_log.sh: *)"
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test_subagent_log.sh: *)",
+      "SlashCommand(/get_guide_baseline extras_plugin::TestVariantChainEnum)",
+      "Bash(/dev/null)",
+      "Bash(zed:*)",
+      "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)"
     ],
     "deny": [
       "Bash(sed:*)",
