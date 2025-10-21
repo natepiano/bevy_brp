@@ -102,8 +102,21 @@ pub fn process_enum(
     let (enum_examples, child_mutation_paths, partial_root_examples) =
         process_signature_groups(&variants_grouped_by_signature, ctx)?;
 
-    // Select default example from the generated examples
-    let default_example = select_preferred_example(&enum_examples).unwrap_or(json!(null));
+    // Select default example - check knowledge first, then fall back to enum examples
+    // Knowledge allows struct-field-specific overrides (e.g., Camera.target should use
+    // Window::Primary)
+    let default_example = ctx
+        .find_knowledge()
+        .ok()
+        .flatten()
+        .map(|knowledge| knowledge.example().clone())
+        .or_else(|| select_preferred_example(&enum_examples))
+        .ok_or_else(|| {
+            BuilderError::SystemError(Report::new(Error::InvalidState(format!(
+                "Enum {} has no valid example: no struct field knowledge and no mutable variants",
+                ctx.type_name()
+            ))))
+        })?;
 
     // Create result paths including both root AND child paths
     Ok(create_enum_mutation_paths(
