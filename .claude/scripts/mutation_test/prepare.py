@@ -479,10 +479,10 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
 
 def calculate_type_slots(type_data: TypeData, max_slots_available: int, current_slot_count: int) -> int:
     """
-    Calculate how many slots a type will consume (1 or 2).
+    Calculate how many slots a type will consume (1, 2, 3, 4, ...).
 
     Shared splitting logic used by both renumbering and preparation.
-    A type is split into 2 parts if it has >30 operations.
+    Types are split to target ~10 operations per part.
 
     Args:
         type_data: The type to evaluate
@@ -490,18 +490,68 @@ def calculate_type_slots(type_data: TypeData, max_slots_available: int, current_
         current_slot_count: Number of slots already allocated in batch (not used currently)
 
     Returns:
-        Number of slots this type will consume (1 or 2)
+        Number of slots this type will consume
     """
     # Generate operations to count them (using placeholder port)
     all_operations = generate_test_operations(type_data, port=30001)
     operation_count = len(all_operations)
 
-    # Check if type should be split
-    # Split if >30 operations (deterministic, independent of batch state)
-    if operation_count > 30:
-        return 2  # Will be split into 2 parts
-    else:
-        return 1  # Single part
+    # Target ~10 operations per part
+    # If <= 10 operations, single part
+    if operation_count <= 10:
+        return 1
+
+    # Count non-mutation operations (spawn + query)
+    non_mutation_count = sum(
+        1 for op in all_operations
+        if op.get("tool") not in [
+            "mcp__brp__world_mutate_components",
+            "mcp__brp__world_mutate_resources"
+        ]
+    )
+
+    mutation_count = operation_count - non_mutation_count
+
+    # Part 1 gets: spawn + query + mutations (target 10 total)
+    # Remaining parts get: query + mutations (target 10 total, so 9 mutations)
+    part1_mutation_budget = max(1, 10 - non_mutation_count)
+    remaining_mutations = mutation_count - part1_mutation_budget
+
+    if remaining_mutations <= 0:
+        return 1
+
+    # Each additional part gets ~10 operations (1 query + 9 mutations)
+    # Ceiling division: (remaining_mutations + 8) // 9
+    additional_parts = (remaining_mutations + 8) // 9
+
+    return 1 + additional_parts
+
+
+def find_split_points(mutations: list[TestOperation], num_parts: int) -> list[int]:
+    """
+    Find split points that divide mutations into roughly equal parts.
+    Simple division with no root mutation backtracking - prepending handles correctness.
+
+    Args:
+        mutations: List of mutation operations to split
+        num_parts: Number of parts to split into
+
+    Returns:
+        List of split indices (length = num_parts - 1)
+        For 4 parts, returns 3 indices indicating where to split
+    """
+    if num_parts == 1:
+        return []
+
+    mutation_count = len(mutations)
+    mutations_per_part = mutation_count / num_parts
+
+    split_indices: list[int] = []
+    for part_num in range(1, num_parts):
+        split_idx = int(part_num * mutations_per_part)
+        split_indices.append(split_idx)
+
+    return split_indices
 
 
 def split_operations_for_part(
@@ -510,13 +560,13 @@ def split_operations_for_part(
     total_parts: int
 ) -> list[TestOperation]:
     """
-    Split operations for multi-part type testing.
+    Split operations for multi-part type testing with variable part counts.
 
-    Part 1: spawn/insert + query + first half of mutations
-    Part 2: query + root_mutation + second half of mutations (no spawn)
+    Part 1: spawn/insert + query + first chunk of mutations
+    Part 2+: query + root_mutation (if needed) + chunk of mutations (no spawn)
 
-    CRITICAL: Part 2 must include the most recent root mutation (path="")
-    before its first deep path operation to establish correct variant structure.
+    Root mutations (path="") are prepended to parts that start with deep paths
+    to establish correct variant structure.
     """
     if total_parts == 1:
         return all_operations
@@ -541,29 +591,11 @@ def split_operations_for_part(
     if mutation_start_idx is not None:
         mutations = all_operations[mutation_start_idx:]
 
-    # Find a good split point that respects root mutation groups
-    # We want to split AFTER a root mutation, not before one
-    mutations_count = len(mutations)
-    ideal_split = mutations_count // 2
-
-    # Search backward from ideal split to find the most recent root mutation
-    split_point = ideal_split
-    last_root_before_split: int | None = None
-
-    for i in range(ideal_split, -1, -1):
-        if mutations[i].get("path") == "":
-            last_root_before_split = i
-            # Split right after this root mutation
-            split_point = i + 1
-            break
-
-    # If no root mutation found before ideal split, use ideal split
-    # (this means there are no root mutations in first half, which is fine)
-    if last_root_before_split is None:
-        split_point = ideal_split
+    # Find all split points using simple fixed-size division
+    split_indices = find_split_points(mutations, total_parts)
 
     if part_number == 1:
-        # Part 1: spawn + query + first half of mutations
+        # Part 1: spawn + query + first chunk of mutations
         result: list[TestOperation] = []
 
         # Add spawn if it exists
@@ -574,32 +606,39 @@ def split_operations_for_part(
         if query_idx is not None:
             result.append(all_operations[query_idx])
 
-        # Add first half of mutations (up to split point)
-        result.extend(mutations[:split_point])
+        # Add mutations up to first split
+        if split_indices:
+            result.extend(mutations[:split_indices[0]])
+        else:
+            result.extend(mutations)
 
         return result
-    else:  # part_number == 2
-        # Part 2: query + second half of mutations (no spawn)
-        # CRITICAL: Must include root mutation if first operation is a deep path
+    else:
+        # Part 2+: query + possibly prepended root + chunk of mutations
         result = []
 
         # Add query for components
         if query_idx is not None:
             result.append(all_operations[query_idx])
 
-        # Check if we need to prepend a root mutation for Part 2
-        # If Part 2 starts with a deep path (not root) and there was a root mutation before split
-        if split_point < len(mutations):
-            first_op_in_part2 = mutations[split_point]
-            first_path = first_op_in_part2.get("path", "")
+        # Determine mutation range for this part
+        start_idx = split_indices[part_number - 2]  # Previous split point
+        end_idx = split_indices[part_number - 1] if part_number < total_parts else len(mutations)
 
-            # If first operation is NOT a root mutation, we need to find the most recent root
-            if first_path != "" and last_root_before_split is not None:
-                # Include the last root mutation from Part 1 at the start of Part 2
-                result.append(mutations[last_root_before_split])
+        # Check if we need to prepend a root mutation
+        if start_idx < len(mutations):
+            first_op = mutations[start_idx]
+            first_path = first_op.get("path", "")
 
-        # Add second half of mutations
-        result.extend(mutations[split_point:])
+            # If first operation is NOT a root mutation, find most recent root
+            if first_path != "":
+                for i in range(start_idx - 1, -1, -1):
+                    if mutations[i].get("path") == "":
+                        result.append(mutations[i])  # Duplicate the root mutation
+                        break
+
+        # Add this part's mutation chunk
+        result.extend(mutations[start_idx:end_idx])
 
         return result
 
@@ -704,30 +743,16 @@ for type_item in batch_types:
     # Use shared splitting logic to determine how many parts
     slots_needed = calculate_type_slots(type_data, max_slots, current_slot_count)
 
-    if slots_needed == 2:
-        # Split into 2 parts
+    # Create parts for this type (1 to N parts based on operation count)
+    for part_num in range(1, slots_needed + 1):
         type_parts.append(TypePart(
             type_data=type_data,
-            part_number=1,
-            total_parts=2,
+            part_number=part_num,
+            total_parts=slots_needed,
             all_operations=all_operations
         ))
-        type_parts.append(TypePart(
-            type_data=type_data,
-            part_number=2,
-            total_parts=2,
-            all_operations=all_operations
-        ))
-        current_slot_count += 2
-    else:
-        # Single part
-        type_parts.append(TypePart(
-            type_data=type_data,
-            part_number=1,
-            total_parts=1,
-            all_operations=all_operations
-        ))
-        current_slot_count += 1
+
+    current_slot_count += slots_needed
 
 # STEP 4: Calculate flexible distribution based on type parts
 total_available_parts: int = len(type_parts)

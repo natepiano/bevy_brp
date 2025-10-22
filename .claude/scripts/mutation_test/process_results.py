@@ -183,7 +183,7 @@ if types_per_subagent <= 0:
     sys.exit(1)
 
 
-def convert_test_to_result(test: TypeTest) -> TestResult | None:
+def convert_test_to_result(test: TypeTest, null_status_types: dict[str, list[tuple[int, int]]]) -> TestResult | None:
     """Convert a test plan test to a result format.
 
     Returns None if the test was not executed (all operations have null status),
@@ -223,9 +223,12 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
     # This indicates subagent workflow failure, not a BRP validation failure
     all_null = all(op.get("status") is None for op in operations)
     if all_null:
-        warnings.append(
-            f"Type {type_name} has all null status - subagent did not execute test. Will retry in next run."
-        )
+        # Track this type and part for grouped warning output
+        part_num = test.get("part_number", 1)
+        total_parts = test.get("total_parts", 1)
+        if type_name not in null_status_types:
+            null_status_types[type_name] = []
+        null_status_types[type_name].append((part_num, total_parts))
         return None
 
     # Initialize result
@@ -450,6 +453,8 @@ def aggregate_results_by_type(results: list[TestResult]) -> dict[str, TestResult
 base_port = 30001
 results: list[TestResult] = []
 warnings: list[str] = []
+# Track types with null status by type_name -> list of (part_number, total_parts)
+null_status_types: dict[str, list[tuple[int, int]]] = {}
 tmpdir = tempfile.gettempdir()
 
 # Determine how many subagents were actually used
@@ -477,7 +482,7 @@ for subagent_idx in range(subagent_count):
         # Convert each test to result format
         tests = test_plan.get("tests", [])
         for test in tests:
-            result = convert_test_to_result(test)
+            result = convert_test_to_result(test, null_status_types)
             # Skip tests that were not executed (None = incomplete, will retry next run)
             if result is not None:
                 results.append(result)
@@ -488,6 +493,26 @@ for subagent_idx in range(subagent_count):
     except Exception as e:
         print(f"Error: Failed to process {test_plan_file}: {e}", file=sys.stderr)
         sys.exit(1)
+
+# Build formatted warnings for types with null status
+# Group by type and show parts if there are multiple
+for type_name in sorted(null_status_types.keys()):
+    parts = null_status_types[type_name]
+    # Get total_parts from first entry (should be same for all parts of a type)
+    total_parts = parts[0][1] if parts else 1
+
+    if total_parts > 1:
+        # Multiple parts - show type once with indented part info
+        warnings.append(f"Type {type_name} - subagent did not execute test:")
+        for part_num, _ in sorted(parts):
+            warnings.append(f"  - Part {part_num}/{total_parts} all null status")
+    else:
+        # Single part - show simple format
+        warnings.append(f"Type {type_name} - subagent did not execute test")
+
+# Add summary about retries if there are warnings
+if warnings:
+    warnings.append("These types will be retried in next run.")
 
 # Write batch results to temp file
 batch_results_file = f".claude/transient/batch_results_{batch_num}.json"
