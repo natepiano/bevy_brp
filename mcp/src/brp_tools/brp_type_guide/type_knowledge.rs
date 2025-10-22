@@ -89,13 +89,13 @@ pub enum KnowledgeKey {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: BrpTypeName,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
     /// Match an indexed element within enum variants that share a signature
     EnumVariantSignature {
         enum_type: BrpTypeName,
         signature: VariantSignature,
-        index:     usize,
+        index: usize,
     },
 }
 
@@ -112,7 +112,7 @@ impl KnowledgeKey {
     ) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
     }
 
@@ -137,7 +137,7 @@ pub enum TypeKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }
@@ -443,14 +443,7 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
             })), // Has nested paths via Vec2 fields
         );
 
-        // ===== Bevy color types =====
-
-        // Color enum - tuple variants with flat array of RGBA values
-        // Note: BRP mutations expect [r, g, b, a] array, not the struct wrapper
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_COLOR),
-            TypeKnowledge::new(json!({"Srgba": [1.0, 0.0, 0.0, 1.0]})),
-        );
+        // // ===== Bevy color types =====
 
         // Color variant signatures - treat all as opaque root values to avoid nested mutation paths
         // All variants use compact array format
@@ -632,12 +625,6 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
         // ===== Asset Handle types =====
         // Handle<T> types - use Weak variant with UUID format for mutations
         // Schema provides non-functional examples, but this format works
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_IMAGE_HANDLE),
-            TypeKnowledge::new(
-                json!({"Weak": {"Uuid": {"uuid": "12345678-1234-1234-1234-123456789012"}}}),
-            ),
-        );
 
         // ===== WindowResolution field-specific values =====
         // Provide reasonable window dimension values to prevent GPU texture size errors
