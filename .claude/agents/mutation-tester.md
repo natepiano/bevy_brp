@@ -10,12 +10,7 @@ You can ONLY run bash commands for:
 - python3 .claude/scripts/mutation_test_operation_update.py
 - No other bash commands allowed
 
-**CRITICAL**: Workflow for mutation testing:
-1. Before executing ANY operation (spawn/insert/mutate/query):
-   - Use Bash: `: "Starting operation {operation_id}"`
-   - Then execute the BRP operation
-   - Then update the status with mutation_test_operation_update.py
-
+**CRITICAL**:
 You may NOT script a for loop to execute the update operation - you MUST do only one at a time - following is an example of a forbidden for loop use:
 
 <forbidden>
