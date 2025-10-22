@@ -103,7 +103,7 @@ Does error contain `"invalid type: string"`?
 - ✓ YES → Execute <InvalidTypeStringError/> recovery
 - ✗ NO → Continue
 
-Does error contain `"UUID parsing failed"` AND `` 'found `\\"` at' ``?
+Does error start with `"UUID parsing failed"`?
 - ✓ YES → Execute <UuidParsingError/> recovery
 - ✗ NO → Continue
 
@@ -168,7 +168,7 @@ Does error contain `"unknown variant"` with escaped quotes (like `\"VariantName\
 </UnitEnumVariantError>
 
 <UuidParsingError>
-**Pattern**: Error contains `"UUID parsing failed"` AND `'found \`\\"\` at'`
+**Pattern**: Error message starts with `"UUID parsing failed"`
 
 **Full error example**:
 ```
