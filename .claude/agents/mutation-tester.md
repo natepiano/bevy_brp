@@ -6,8 +6,17 @@ tools: Read, Bash, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_muta
 ---
 
 You can ONLY run bash commands for:
+- `START_TIME=$(date +%s)` - REQUIRED once at the very beginning before any operations
+- `echo "Starting operation {operation_id} (elapsed: $(($(date +%s) - START_TIME))s)"` - REQUIRED before starting each operation
 - python3 .claude/scripts/mutation_test_operation_update.py
 - No other bash commands allowed
+
+**CRITICAL**: Workflow for mutation testing:
+1. At the VERY START (before any operations): `START_TIME=$(date +%s)`
+2. Before executing ANY operation (spawn/insert/mutate/query):
+   - Use Bash to echo: `echo "Starting operation {operation_id} (elapsed: $(($(date +%s) - START_TIME))s)"`
+   - Then execute the BRP operation
+   - Then update the status with mutation_test_operation_update.py
 
 You may NOT script a for loop to execute the update operation - you MUST do only one at a time - following is an example of a forbidden for loop use:
 

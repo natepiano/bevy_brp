@@ -74,6 +74,16 @@ Add to PathInfo struct:
 pub hard_coded: Option<HardCodedInfo>,
 ```
 
+### STEP 2a: Add hard_coded Field to MutationPathInternal
+**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_path_internal.rs`
+
+Add to MutationPathInternal struct:
+```rust
+pub hard_coded: Option<HardCodedInfo>,
+```
+
+This field stores the hard_coded info during path building before it's transferred to PathInfo in the final external representation.
+
 ### STEP 3: Add TreatAsRootValueWithOriginal Variant
 **File**: `mcp/src/brp_tools/brp_type_guide/type_knowledge.rs`
 
@@ -182,12 +192,23 @@ map.insert(
 - **Xyza**: `{"x", "y", "z", "alpha"}`
 
 ### STEP 7: Add Import for HardCodedInfo
-**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
+**Files**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_path_internal.rs`
 
-Add import near line 52 with other type imports:
+Add import to **path_builder.rs** near line 52 with other type imports:
 ```rust
 use super::types::HardCodedInfo;
 ```
+
+Add import to **mutation_path_internal.rs** with other type imports:
+```rust
+use super::types::HardCodedInfo;
+```
+
+Both files need this import because:
+- `path_builder.rs` creates `HardCodedInfo` instances in `check_knowledge()`
+- `mutation_path_internal.rs` uses the `hard_coded` field in struct definition and clones it in `into_mutation_path_external()`
 
 ### STEP 8: Update matches! Macro
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
@@ -228,8 +249,9 @@ fn check_knowledge(
                             ctx,
                             PathExample::Simple(example),
                             Mutability::Mutable,
-                            None,
-                            None,  // No hard_coded info
+                            None,  // mutability_reason
+                            None,  // partial_root_examples (preserved from current code)
+                            None,  // hard_coded (NEW PARAMETER)
                         )])),
                         None,
                     );
@@ -250,8 +272,9 @@ fn check_knowledge(
                             ctx,
                             PathExample::Simple(example),
                             Mutability::Mutable,
-                            None,
-                            hard_coded,  // Include hard_coded info
+                            None,  // mutability_reason
+                            None,  // partial_root_examples (preserved from current code)
+                            hard_coded,  // hard_coded (NEW PARAMETER - Some for this variant)
                         )])),
                         None,
                     );
@@ -295,23 +318,51 @@ fn build_mutation_path_internal(
     mutability: Mutability,
     mutability_reason: Option<Value>,
     hard_coded: Option<HardCodedInfo>,  // NEW PARAMETER
-) -> MutationPath
+) -> MutationPathInternal  // Note: returns MutationPathInternal, not MutationPath
 ```
 
-Update PathInfo construction:
+Update MutationPathInternal construction (around line 450):
 ```rust
-let path_info = PathInfo {
-    path_kind,
-    type_name: ctx.type_name(),
-    type_kind: ctx.type_kind(),
-    mutability,
+MutationPathInternal {
+    mutation_path: ctx.mutation_path.clone(),
+    example,
+    type_name: ctx.type_name().display_name(),
+    path_kind: ctx.path_kind.clone(),
+    mutability: status,
     mutability_reason,
-    enum_instructions,
-    applicable_variants,
-    root_example,
-    hard_coded,  // NEW FIELD
-};
+    enum_path_data,
+    depth: *ctx.depth,
+    partial_root_examples,
+    hard_coded,  // NEW FIELD - store parameter in struct
+}
 ```
+
+**Note**: PathInfo is constructed separately in `mutation_path_internal.rs` (see STEP 10a below).
+
+### STEP 10a: Update PathInfo Construction in into_mutation_path_external()
+**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_path_internal.rs`
+
+Update the PathInfo construction in the `into_mutation_path_external()` method to include the `hard_coded` field:
+
+```rust
+MutationPathExternal {
+    description,
+    path_info: PathInfo {
+        path_kind: self.path_kind,
+        type_name: self.type_name,
+        type_kind,
+        mutability: self.mutability,
+        mutability_reason: self.mutability_reason,
+        enum_instructions,
+        applicable_variants,
+        root_example,
+        hard_coded: self.hard_coded.clone(),  // NEW FIELD - transfer from MutationPathInternal
+    },
+    path_example,
+}
+```
+
+This transfers the `hard_coded` info from `MutationPathInternal` to the final `PathInfo` in the external representation.
 
 ### STEP 11: Update All Call Sites of build_mutation_path_internal()
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
@@ -382,8 +433,9 @@ After implementation, color type guide will show:
 ## Files Modified
 
 1. `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs` - Add HardCodedInfo struct, add hard_coded field to PathInfo
-2. `mcp/src/brp_tools/brp_type_guide/type_knowledge.rs` - Add TreatAsRootValueWithOriginal variant, add constructor, update example() and get_simplified_name() methods, update all 10 color variant entries
-3. `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs` - Add import for HardCodedInfo, update matches! macro, update check_knowledge(), update build_mutation_path_internal() signature, update 4 call sites
+2. `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_path_internal.rs` - Add hard_coded field to MutationPathInternal, add import for HardCodedInfo, update PathInfo construction in into_mutation_path_external()
+3. `mcp/src/brp_tools/brp_type_guide/type_knowledge.rs` - Add TreatAsRootValueWithOriginal variant, add constructor, update example() and get_simplified_name() methods, update all 10 color variant entries
+4. `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs` - Add import for HardCodedInfo, update matches! macro, update check_knowledge(), update build_mutation_path_internal() signature, update 4 call sites
 
 ## Implementation Notes
 

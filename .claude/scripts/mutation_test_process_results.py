@@ -38,6 +38,8 @@ class TestOperation(TypedDict, total=False):
 class TypeTest(TypedDict):
     type_name: str
     mutation_type: str
+    part_number: int  # Which part of this type (1-indexed)
+    total_parts: int  # Total parts for this type
     operations: list[TestOperation]
 
 
@@ -76,6 +78,8 @@ class TestResult(TypedDict):
     tested_type: str
     status: str
     entity_id: int | None
+    part_number: int  # Which part of this type (1-indexed)
+    total_parts: int  # Total parts for this type
     operations_completed: OperationsCompleted
     failure_details: FailureDetails | None
     query_details: QueryDetails | None
@@ -310,6 +314,8 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
         "tested_type": type_name,
         "status": status,
         "entity_id": entity_id,
+        "part_number": test.get("part_number", 1),
+        "total_parts": test.get("total_parts", 1),
         "operations_completed": {
             "spawn_insert": spawn_insert,
             "entity_query": entity_query,
@@ -321,6 +327,74 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
     }
 
     return result
+
+
+def aggregate_results_by_type(results: list[TestResult]) -> dict[str, TestResult]:
+    """
+    Aggregate multi-part results by type.
+    ANY part failure = type failure.
+
+    Returns dict of type_name -> aggregated TestResult
+    """
+    type_parts: dict[str, list[TestResult]] = {}
+
+    # Group results by type
+    for result in results:
+        type_name = result["type"]
+        if type_name not in type_parts:
+            type_parts[type_name] = []
+        type_parts[type_name].append(result)
+
+    aggregated: dict[str, TestResult] = {}
+
+    for type_name, parts in type_parts.items():
+        # Sort by part_number
+        parts.sort(key=lambda p: p.get("part_number", 1))
+
+        # Check if any part failed
+        failed_part: TestResult | None = None
+        for part in parts:
+            if part["status"] != "PASS":
+                failed_part = part
+                break
+
+        # Aggregate operations
+        total_mutations = sum(
+            p["operations_completed"]["total_mutations_attempted"] for p in parts
+        )
+        all_mutations_passed: list[str] = []
+        for p in parts:
+            all_mutations_passed.extend(p["operations_completed"]["mutations_passed"])
+
+        # Build aggregated result
+        if failed_part:
+            # Use failed part's result (already has part_number info)
+            aggregated[type_name] = failed_part
+        else:
+            # Use first part as base, mark as passed
+            base = parts[0]
+            aggregated[type_name] = {
+                "type": type_name,
+                "tested_type": type_name,
+                "status": "PASS",
+                "entity_id": base.get("entity_id"),
+                "part_number": 1,
+                "total_parts": parts[0].get("total_parts", 1),
+                "operations_completed": {
+                    "spawn_insert": any(
+                        p["operations_completed"]["spawn_insert"] for p in parts
+                    ),
+                    "entity_query": any(
+                        p["operations_completed"]["entity_query"] for p in parts
+                    ),
+                    "mutations_passed": all_mutations_passed,
+                    "total_mutations_attempted": total_mutations,
+                },
+                "failure_details": None,
+                "query_details": base.get("query_details"),
+            }
+
+    return aggregated
 
 
 # Calculate port range and read test plans
@@ -382,23 +456,34 @@ with open(all_types_file, encoding="utf-8") as f:
     all_types_raw = json.load(f)  # pyright: ignore[reportAny]
     all_types = cast(dict[str, Any], all_types_raw)  # pyright: ignore[reportExplicitAny]
 
-# Create lookup map from batch results
-result_map = {result["type"]: result for result in results}
+# Aggregate multi-part results (ANY part failure = type failure)
+aggregated_results = aggregate_results_by_type(results)
 
-# Update type_guide entries with test results
+# Update type_guide entries with aggregated test results
 type_guide = all_types.get("type_guide", {})  # pyright: ignore[reportAny]
 for type_key, type_data in type_guide.items():  # pyright: ignore[reportAny]
-    if type_key in result_map:
-        batch_result = result_map[type_key]
-        type_data["test_status"] = "passed" if batch_result["status"] == "PASS" else "failed"
-        # Build fail_reason from failure_details if present
-        failure_details = batch_result.get("failure_details")
-        if failure_details:
-            fail_reason_parts = [failure_details.get("error_message", "")]
-            failed_path = failure_details.get("failed_mutation_path")
-            if failed_path:
-                fail_reason_parts.append(f"Path: {failed_path}")
-            type_data["fail_reason"] = " | ".join(fail_reason_parts)
+    if type_key in aggregated_results:
+        result = aggregated_results[type_key]
+        type_data["test_status"] = "passed" if result["status"] == "PASS" else "failed"
+
+        # Build fail_reason with part info
+        if result["status"] != "PASS":
+            failure_details = result.get("failure_details")
+            fail_parts: list[str] = []
+
+            # Include part number if type was split
+            if result.get("total_parts", 1) > 1:
+                fail_parts.append(
+                    f"Part {result.get('part_number', 1)}/{result.get('total_parts', 1)}"
+                )
+
+            if failure_details:
+                fail_parts.append(failure_details.get("error_message", ""))
+                failed_path = failure_details.get("failed_mutation_path")
+                if failed_path:
+                    fail_parts.append(f"Path: {failed_path}")
+
+            type_data["fail_reason"] = " | ".join(fail_parts)
         else:
             type_data["fail_reason"] = ""
 
@@ -434,12 +519,13 @@ if failed > 0 or missing > 0:
     failures = [r for r in results if r["status"] in ["FAIL", "COMPONENT_NOT_FOUND"]]
 
     # Check if all failures are due to null status (subagent execution failures)
-    null_status_failures = [
-        f
-        for f in failures
-        if f.get("failure_details")
-        and "status field is null" in f["failure_details"].get("error_message", "")
-    ]
+    null_status_failures: list[TestResult] = []
+    for f in failures:
+        fail_details = f.get("failure_details")
+        if fail_details is not None:
+            error_msg = fail_details.get("error_message", "")
+            if "status field is null" in error_msg:
+                null_status_failures.append(f)
     all_failures_are_null_status = len(null_status_failures) == len(failures)
 
     # Save detailed failure log
@@ -469,6 +555,12 @@ if failed > 0 or missing > 0:
                 failed_at = f"{failed_op} ({failed_path})"
             else:
                 failed_at = failed_op
+
+        # Add part info to failed_at if type was split
+        part_num = failure.get("part_number", 1)
+        total_parts = failure.get("total_parts", 1)
+        if total_parts > 1:
+            failed_at = f"{failed_at} [Part {part_num}/{total_parts}]"
 
         failure_summaries.append(
             FailureSummary(

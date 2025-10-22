@@ -68,6 +68,7 @@ class AllAssignmentsOutput(TypedDict):
 class TestOperation(TypedDict, total=False):
     tool: str  # MCP tool name
     # Common fields
+    operation_id: int  # Sequential ID for this operation
     port: int
     status: str | None
     error: str | None
@@ -91,6 +92,8 @@ class TestOperation(TypedDict, total=False):
 class TypeTest(TypedDict):
     type_name: str
     mutation_type: str  # "Component" or "Resource"
+    part_number: int  # Which part of this type (1-indexed)
+    total_parts: int  # Total parts for this type
     operations: list[TestOperation]
 
 
@@ -100,6 +103,18 @@ class TestPlan(TypedDict):
     port: int
     test_plan_file: str
     tests: list[TypeTest]
+
+
+class TypePart(TypedDict):
+    """Represents a part of a split type for distribution to subagents."""
+
+    type_name: str
+    type_data: TypeData
+    part_number: int
+    total_parts: int
+    operations: list[TestOperation]  # Just mutations for this part
+    is_first_part: bool  # First part globally (needs spawn)
+    previous_subagent: int | None  # Which subagent had previous part
 
 
 # Parse command line arguments
@@ -218,6 +233,10 @@ def extract_mutation_type(schema_info: dict[str, object] | None) -> str | None:
     return None
 
 
+# Maximum operations per test plan part
+# When a type has more than this many total operations, it will be split into multiple parts
+MAX_OPS_PER_PART = 15
+
 ENTITY_ID_PLACEHOLDER = 8589934670  # Placeholder entity ID used in spawn_format
 
 
@@ -242,6 +261,122 @@ def find_entity_id_placeholders(value: Any, path: str = "") -> dict[str, str]:  
             substitutions.update(find_entity_id_placeholders(val, val_path))
 
     return substitutions
+
+
+def split_type_into_parts(
+    type_data: TypeData, all_operations: list[TestOperation]
+) -> tuple[list[TestOperation], list[TestOperation], list[TypePart]]:
+    """
+    Split type operations into parts of MAX_OPS_PER_PART.
+
+    Returns:
+        (setup_ops, mutation_ops, parts)
+        - setup_ops: [spawn/insert, query] operations to inject as needed
+        - mutation_ops: all mutation operations
+        - parts: list of TypePart dicts with chunked mutations
+    """
+    # Separate setup from mutations
+    setup_ops: list[TestOperation] = []
+    mutation_ops: list[TestOperation] = []
+
+    for op in all_operations:
+        tool = op.get("tool", "")
+        if tool in [
+            "mcp__brp__world_spawn_entity",
+            "mcp__brp__world_insert_resources",
+            "mcp__brp__world_query",
+        ]:
+            setup_ops.append(op)
+        elif tool in [
+            "mcp__brp__world_mutate_components",
+            "mcp__brp__world_mutate_resources",
+        ]:
+            mutation_ops.append(op)
+
+    # If total ops <= MAX_OPS_PER_PART, no splitting needed
+    if len(all_operations) <= MAX_OPS_PER_PART:
+        return (
+            setup_ops,
+            mutation_ops,
+            [
+                cast(
+                    TypePart,
+                    cast(
+                        object,
+                        {
+                            "type_name": type_data["type_name"],
+                            "type_data": type_data,
+                            "part_number": 1,
+                            "total_parts": 1,
+                            "operations": mutation_ops,
+                            "is_first_part": True,
+                            "previous_subagent": None,
+                        },
+                    ),
+                )
+            ],
+        )
+
+    # Calculate how many parts we need
+    # First part includes setup ops + mutations up to MAX_OPS_PER_PART
+    setup_size = len(setup_ops)
+    first_part_mutations_count = MAX_OPS_PER_PART - setup_size
+
+    # Remaining mutations after first part
+    remaining_mutations_count = len(mutation_ops) - first_part_mutations_count
+
+    # Calculate total parts
+    # Part 1 + ceiling of remaining / MAX_OPS_PER_PART
+    total_parts = 1 + ((remaining_mutations_count + MAX_OPS_PER_PART - 1) // MAX_OPS_PER_PART)
+
+    parts: list[TypePart] = []
+
+    # Part 1: includes setup (spawn/query) + first chunk of mutations
+    parts.append(
+        cast(
+            TypePart,
+            cast(
+                object,
+                {
+                    "type_name": type_data["type_name"],
+                    "type_data": type_data,
+                    "part_number": 1,
+                    "total_parts": total_parts,
+                    "operations": mutation_ops[:first_part_mutations_count],
+                    "is_first_part": True,
+                    "previous_subagent": None,
+                },
+            ),
+        )
+    )
+
+    # Remaining parts: just mutations
+    remaining_mutations = mutation_ops[first_part_mutations_count:]
+    part_num = 2
+
+    while remaining_mutations:
+        chunk = remaining_mutations[:MAX_OPS_PER_PART]
+        parts.append(
+            cast(
+                TypePart,
+                cast(
+                    object,
+                    {
+                        "type_name": type_data["type_name"],
+                        "type_data": type_data,
+                        "part_number": part_num,
+                        "total_parts": total_parts,
+                        "operations": chunk,
+                        "is_first_part": False,
+                        "previous_subagent": None,  # Will be set during distribution
+                    },
+                ),
+            )
+        )
+        remaining_mutations = remaining_mutations[MAX_OPS_PER_PART:]
+        part_num += 1
+
+    return setup_ops, mutation_ops, parts
 
 
 def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperation]:
@@ -510,123 +645,152 @@ if not batch_types:
     print(f"No types found for batch {batch_num}", file=sys.stderr)
     sys.exit(1)
 
-# STEP 3: Calculate flexible distribution
-total_available_types: int = len(batch_types)
+# STEP 3: Generate parts for all types and split if needed
+all_parts: list[TypePart] = []
+setup_ops_by_type: dict[str, list[TestOperation]] = {}
 
-# Calculate optimal distribution: fill subagents with preferred count, handle remainder
-base_types_per_subagent: int = min(types_per_subagent, total_available_types)
-full_subagents: int = total_available_types // types_per_subagent
-remainder_types: int = total_available_types % types_per_subagent
+for type_item in batch_types:
+    schema_info = type_item.get("schema_info")
+    mutation_type = extract_mutation_type(schema_info)
+    type_data: TypeData = cast(
+        TypeData,
+        cast(
+            object,
+            {
+                "type_name": type_item["type_name"],
+                "spawn_format": type_item.get("spawn_format"),
+                "mutation_paths": type_item.get("mutation_paths"),
+                "supported_operations": type_item.get("supported_operations"),
+                "in_registry": type_item.get("in_registry"),
+                "schema_info": schema_info,
+                "mutation_type": mutation_type,
+            },
+        ),
+    )
 
-# Determine actual number of subagents needed
-if remainder_types > 0:
-    actual_subagents_needed: int = min(full_subagents + 1, max_subagents)
-else:
-    actual_subagents_needed = min(full_subagents, max_subagents)
+    # Generate all operations for this type (port will be set later)
+    all_operations = generate_test_operations(type_data, 0)
 
-# STEP 4: Distribute types across subagents and generate test plans
+    # Split into parts
+    setup_ops, mutation_ops, parts = split_type_into_parts(type_data, all_operations)
+    setup_ops_by_type[type_data["type_name"]] = setup_ops
+    all_parts.extend(parts)
+
+# STEP 4: Distribute parts to subagents (round-robin to balance load)
+subagent_parts: dict[int, list[TypePart]] = {}
+current_subagent = 1
+
+for part in all_parts:
+    if current_subagent not in subagent_parts:
+        subagent_parts[current_subagent] = []
+
+    # Track which subagent handled previous part of this type
+    if part["part_number"] > 1:
+        # Find previous part to determine previous_subagent
+        for sa_num, sa_parts in subagent_parts.items():
+            for p in sa_parts:
+                if (
+                    p["type_name"] == part["type_name"]
+                    and p["part_number"] == part["part_number"] - 1
+                ):
+                    part["previous_subagent"] = sa_num
+                    break
+            if part["previous_subagent"] is not None:
+                break
+
+    subagent_parts[current_subagent].append(part)
+
+    # Move to next subagent if current is full (types_per_subagent worth of parts)
+    # This balances parts across subagents
+    if len(subagent_parts[current_subagent]) >= types_per_subagent:
+        current_subagent += 1
+        if current_subagent > max_subagents:
+            current_subagent = max_subagents  # Cap at max
+
+# STEP 5: Build test plans with correct operations per part
 assignments: list[SubagentAssignment] = []
-type_index = 0
+tmpdir = tempfile.gettempdir()
 
-for subagent_num in range(1, actual_subagents_needed + 1):
-    # Determine how many types this subagent gets
-    if subagent_num <= full_subagents:
-        # This subagent gets the full amount
-        types_for_this_subagent = types_per_subagent
-    else:
-        # This is the last subagent, gets the remainder
-        types_for_this_subagent = remainder_types
+for subagent_num in sorted(subagent_parts.keys()):
+    parts = subagent_parts[subagent_num]
+    port = 30000 + subagent_num
 
-    subagent_types: list[TypeData] = []
-    for _ in range(types_for_this_subagent):
-        if type_index < len(batch_types):
-            type_item = batch_types[type_index]
-            schema_info = type_item.get("schema_info")
-            mutation_type = extract_mutation_type(schema_info)
-            type_data: TypeData = cast(
-                TypeData,
-                cast(
-                    object,
-                    {
-                        "type_name": type_item["type_name"],
-                        "spawn_format": type_item.get("spawn_format"),
-                        "mutation_paths": type_item.get("mutation_paths"),
-                        "supported_operations": type_item.get("supported_operations"),
-                        "in_registry": type_item.get("in_registry"),
-                        "schema_info": schema_info,
-                        "mutation_type": mutation_type,
-                    },
-                ),
+    tests: list[TypeTest] = []
+    type_descriptions: list[str] = []
+
+    for part in parts:
+        type_name = part["type_name"]
+        mutation_type = part["type_data"].get("mutation_type")
+        setup_ops = setup_ops_by_type[type_name]
+
+        # Determine which operations to include based on part context
+        operations: list[TestOperation] = []
+
+        if part["is_first_part"]:
+            # Part 1 globally: spawn/insert + query + mutations
+            operations = setup_ops + part["operations"]
+        elif part["previous_subagent"] != subagent_num:
+            # Continuation on NEW subagent: query + mutations (need to find entity)
+            query_op = [op for op in setup_ops if op.get("tool") == "mcp__brp__world_query"]
+            operations = query_op + part["operations"]
+        else:
+            # Continuation on SAME subagent: just mutations (entity persists)
+            operations = part["operations"]
+
+        # Update port for all operations
+        for op in operations:
+            op["port"] = port
+
+        # Renumber operation_ids sequentially
+        for idx, op in enumerate(operations):
+            op["operation_id"] = idx
+
+        # Create test entry
+        test: TypeTest = {
+            "type_name": type_name,
+            "mutation_type": mutation_type or "Unknown",
+            "part_number": part["part_number"],
+            "total_parts": part["total_parts"],
+            "operations": operations,
+        }
+        tests.append(test)
+
+        # Build description
+        short_name = type_name.split("::")[-1]
+        category = "C" if mutation_type == "Component" else "R" if mutation_type == "Resource" else "?"
+        op_count = len(operations)
+
+        if part["total_parts"] > 1:
+            type_descriptions.append(
+                f"{short_name} pt{part['part_number']}/{part['total_parts']} ({category}:{op_count})"
             )
-            subagent_types.append(type_data)
-            type_index += 1
+        else:
+            type_descriptions.append(f"{short_name} ({category}:{op_count})")
 
-    if subagent_types:  # Only create assignment if there are types
-        port = 30000 + subagent_num
+    # Create test plan file
+    test_plan_file = os.path.join(tmpdir, f"mutation_test_subagent_{port}_plan.json")
 
-        # Generate test plan and formatted descriptions
-        tests: list[TypeTest] = []
-        type_descriptions: list[str] = []
+    test_plan: TestPlan = {
+        "batch_number": batch_num,
+        "subagent_index": subagent_num - 1,
+        "port": port,
+        "test_plan_file": test_plan_file,
+        "tests": tests,
+    }
 
-        for type_data in subagent_types:
-            type_name = type_data["type_name"]
-            mutation_type = type_data.get("mutation_type")
+    with open(test_plan_file, "w") as f:
+        json.dump(test_plan, f, indent=2)
 
-            # Generate operations for this type
-            operations = generate_test_operations(type_data, port)
-
-            # Add to test plan
-            test: TypeTest = {
-                "type_name": type_name,
-                "mutation_type": mutation_type or "Unknown",
-                "operations": operations
-            }
-            tests.append(test)
-
-            # Extract short name (text after last ::)
-            short_name = type_name.split("::")[-1]
-
-            # Get category
-            category = "C" if mutation_type == "Component" else "R" if mutation_type == "Resource" else "?"
-
-            # Count operations
-            op_count = len(operations)
-
-            # Format as "ShortName (C: N ops)" or "ShortName (R: N ops)"
-            type_descriptions.append(f"{short_name} ({category}: {op_count} ops)")
-
-        # Create test plan file
-        tmpdir = tempfile.gettempdir()
-        test_plan_file = os.path.join(tmpdir, f"mutation_test_subagent_{port}_plan.json")
-
-        test_plan: TestPlan = {
-            "batch_number": batch_num,
-            "subagent_index": subagent_num - 1,  # 0-based index
-            "port": port,
-            "test_plan_file": test_plan_file,
-            "tests": tests
-        }
-
-        # Write test plan to temp file
-        try:
-            with open(test_plan_file, "w") as f:
-                json.dump(test_plan, f, indent=2)
-        except IOError as e:
-            print(f"Error writing test plan file: {e}", file=sys.stderr)
-            sys.exit(1)
-
-        # Create assignment with pre-formatted descriptions
-        # Join all type descriptions with commas
-        types_str = ", ".join(type_descriptions)
-
-        assignment: SubagentAssignment = {
-            "subagent": subagent_num,
-            "port": port,
-            "window_description": f"Subagent {subagent_num}: {types_str}",
-            "task_description": f"Test {types_str} ({subagent_num} of {actual_subagents_needed})",
-            "test_plan_file": test_plan_file
-        }
-        assignments.append(assignment)
+    # Create assignment
+    types_str = ", ".join(type_descriptions)
+    assignment: SubagentAssignment = {
+        "subagent": subagent_num,
+        "port": port,
+        "window_description": f"SA{subagent_num}: {types_str}",
+        "task_description": f"Test {types_str}",
+        "test_plan_file": test_plan_file,
+    }
+    assignments.append(assignment)
 
 # STEP 5: Open test plan files in Zed
 zed_cli = "/Applications/Zed.app/Contents/MacOS/cli"
@@ -639,11 +803,14 @@ if os.path.exists(zed_cli):
             pass  # Ignore if Zed fails to open
 
 # STEP 6: Return all assignments with test plan files generated
+# Calculate total unique types from parts
+total_types = len(set(part["type_name"] for part in all_parts))
+
 all_assignments_output: AllAssignmentsOutput = {
     "batch_number": batch_num,
     "max_subagents": len(assignments),  # Report actual subagents used
     "types_per_subagent": types_per_subagent,  # Keep original for reference
-    "total_types": total_available_types,
+    "total_types": total_types,
     "assignments": assignments,
 }
 print(json.dumps(all_assignments_output, indent=2))
