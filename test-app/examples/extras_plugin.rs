@@ -39,6 +39,7 @@ use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::gizmos::GizmoAsset;
 use bevy::gizmos::aabb::ShowAabbGizmo;
 use bevy::gizmos::config::GizmoLineConfig;
+use bevy::gizmos::light::ShowLightGizmo;
 use bevy::gizmos::retained::Gizmo;
 use bevy::input::gamepad::Gamepad;
 use bevy::input::gamepad::GamepadSettings;
@@ -693,6 +694,11 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
             image:          asset_server.load("lightmaps/caustic_directional_texture.png"),
             cubemap_layout: bevy::camera::primitives::CubemapLayout::CrossVertical,
         },
+        ShowLightGizmo {
+            color: Some(bevy::gizmos::light::LightGizmoColor::Manual(Color::srgb(
+                1.0, 0.0, 1.0,
+            ))),
+        },
     ));
 
     // Entity with DirectionalLight for testing mutations
@@ -712,6 +718,9 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
             image: asset_server.load("lightmaps/caustic_directional_texture.png"),
             tiled: true,
         },
+        ShowLightGizmo {
+            color: Some(bevy::gizmos::light::LightGizmoColor::MatchLightColor),
+        },
     ));
 
     // Entity with SpotLight for testing mutations
@@ -730,6 +739,9 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
         Name::new("SpotLightTestEntity"),
         SpotLightTexture {
             image: asset_server.load("lightmaps/caustic_directional_texture.png"),
+        },
+        ShowLightGizmo {
+            color: Some(bevy::gizmos::light::LightGizmoColor::Varied),
         },
     ));
 
