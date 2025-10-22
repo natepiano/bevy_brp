@@ -205,15 +205,21 @@ if matches!(knowledge, TypeKnowledge::TreatAsRootValue { .. }
 ### STEP 9: Update check_knowledge() to Extract HardCodedInfo
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
 
-Update the TreatAsRootValue handling:
+Replace the existing `if matches!` pattern with a nested match to handle all three TypeKnowledge variants explicitly:
+
 ```rust
-fn check_knowledge(ctx: &RecursionContext) -> (...) {
+fn check_knowledge(
+    ctx: &RecursionContext,
+) -> (
+    Option<std::result::Result<Vec<MutationPathInternal>, BuilderError>>,
+    Option<Value>,
+) {
     let knowledge_result = ctx.find_knowledge();
     match knowledge_result {
         Ok(Some(knowledge)) => {
             let example = knowledge.example().clone();
 
-            // Handle both TreatAsRootValue variants
+            // Handle all three TypeKnowledge variants explicitly
             match knowledge {
                 TypeKnowledge::TreatAsRootValue { .. } => {
                     // Simple case: no original to show
@@ -251,15 +257,32 @@ fn check_knowledge(ctx: &RecursionContext) -> (...) {
                     );
                 }
                 TypeKnowledge::TeachAndRecurse { .. } => {
-                    // Continue with normal recursion
-                    // ... existing TeachAndRecurse handling ...
+                    // CRITICAL: Preserve existing behavior from line 604
+                    // Return None for early return (continue processing),
+                    // Some(example) to provide example for mutation path assembly
+                    // This allows recursion to continue while using the provided example
+                    (None, Some(example))
                 }
             }
         }
-        // ... rest of function ...
+        Ok(None) => {
+            // Continue with normal processing, no hard coded mutation knowledge found
+            (None, None)
+        }
+        Err(e) => {
+            // Propagate error from find_knowledge()
+            (Some(Err(e)), None)
+        }
     }
 }
 ```
+
+**Key changes from current code:**
+1. Replace `if matches!` pattern (line 591) with nested `match knowledge`
+2. Explicitly handle all three variants instead of fall-through behavior
+3. TeachAndRecurse returns `(None, Some(example))` - same as current line 604
+4. Both TreatAsRootValue variants return early with mutation paths
+5. Outer match structure preserved for Ok(None) and Err cases
 
 ### STEP 10: Add hard_coded Parameter to build_mutation_path_internal()
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
