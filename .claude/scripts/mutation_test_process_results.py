@@ -111,9 +111,11 @@ class ProcessResultsOutput(TypedDict):
     status: str
     batch: BatchInfo
     stats: Stats
-    failures: list[FailureSummary]
+    retry_failures: list[FailureSummary]
+    review_failures: list[FailureSummary]
     warnings: list[str]
-    log_file: str | None
+    retry_log_file: str | None
+    review_log_file: str | None
 
 
 # Parse command line arguments
@@ -329,6 +331,25 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
     return result
 
 
+def is_retry_failure(result: TestResult) -> bool:
+    """
+    Determine if a failure should be retried (subagent crash) vs reviewed (real BRP error).
+
+    Retry scenarios:
+    - Subagent crashed mid-execution (some operations succeeded, rest are null)
+    - Error message contains "status field is null"
+
+    Review scenarios:
+    - Got actual BRP error response (like "0 entities found")
+    """
+    fail_details = result.get("failure_details")
+    if fail_details is None:
+        return False
+
+    error_msg = fail_details.get("error_message", "")
+    return "status field is null" in error_msg
+
+
 def aggregate_results_by_type(results: list[TestResult]) -> dict[str, TestResult]:
     """
     Aggregate multi-part results by type.
@@ -510,32 +531,40 @@ if total_types > 0 and batch_size > 0:
     total_batches = (total_types + batch_size - 1) // batch_size
 
 # Check for failures and build failure summaries
-failure_log_path: str | None = None
-failure_summaries: list[FailureSummary] = []
-all_failures_are_null_status = False
+retry_log_path: str | None = None
+review_log_path: str | None = None
+retry_summaries: list[FailureSummary] = []
+review_summaries: list[FailureSummary] = []
 
 if failed > 0 or missing > 0:
     # Get all failures
-    failures = [r for r in results if r["status"] in ["FAIL", "COMPONENT_NOT_FOUND"]]
+    all_failures = [r for r in results if r["status"] in ["FAIL", "COMPONENT_NOT_FOUND"]]
 
-    # Check if all failures are due to null status (subagent execution failures)
-    null_status_failures: list[TestResult] = []
-    for f in failures:
-        fail_details = f.get("failure_details")
-        if fail_details is not None:
-            error_msg = fail_details.get("error_message", "")
-            if "status field is null" in error_msg:
-                null_status_failures.append(f)
-    all_failures_are_null_status = len(null_status_failures) == len(failures)
+    # Classify failures: retry vs review
+    retry_failures: list[TestResult] = []
+    review_failures: list[TestResult] = []
 
-    # Save detailed failure log
+    for failure in all_failures:
+        if is_retry_failure(failure):
+            retry_failures.append(failure)
+        else:
+            review_failures.append(failure)
+
+    # Save detailed failure logs (separate files for retry vs review)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    failure_log_path = f".claude/transient/all_types_failures_{timestamp}.json"
-    with open(failure_log_path, "w", encoding="utf-8") as f:
-        json.dump(failures, f, indent=2)
+
+    if retry_failures:
+        retry_log_path = f".claude/transient/all_types_retry_failures_{timestamp}.json"
+        with open(retry_log_path, "w", encoding="utf-8") as f:
+            json.dump(retry_failures, f, indent=2)
+
+    if review_failures:
+        review_log_path = f".claude/transient/all_types_review_failures_{timestamp}.json"
+        with open(review_log_path, "w", encoding="utf-8") as f:
+            json.dump(review_failures, f, indent=2)
 
     # Build condensed failure summaries
-    for failure in failures:
+    def build_summary(failure: TestResult) -> FailureSummary:
         fail_details = failure.get("failure_details")
 
         # Determine summary message
@@ -562,24 +591,25 @@ if failed > 0 or missing > 0:
         if total_parts > 1:
             failed_at = f"{failed_at} [Part {part_num}/{total_parts}]"
 
-        failure_summaries.append(
-            FailureSummary(
-                type=failure["type"],
-                status=failure["status"],
-                summary=summary_msg,
-                entity_id=failure.get("entity_id"),
-                failed_at=failed_at,
-            )
+        return FailureSummary(
+            type=failure["type"],
+            status=failure["status"],
+            summary=summary_msg,
+            entity_id=failure.get("entity_id"),
+            failed_at=failed_at,
         )
 
+    retry_summaries = [build_summary(f) for f in retry_failures]
+    review_summaries = [build_summary(f) for f in review_failures]
+
 # Determine final status
-# NULL_STATUS_ONLY = all failures are subagent execution issues, not BRP validation errors
-# FAILURES_DETECTED = at least one real BRP validation failure
+# RETRY_ONLY = only retry failures (subagent crashes), will be retried automatically
+# FAILURES_DETECTED = at least one real BRP validation failure needing review
 # SUCCESS = no failures
 final_status = "SUCCESS"
 if failed > 0 or missing > 0:
-    if all_failures_are_null_status:
-        final_status = "NULL_STATUS_ONLY"
+    if len(review_summaries) == 0:
+        final_status = "RETRY_ONLY"
     else:
         final_status = "FAILURES_DETECTED"
 
@@ -597,9 +627,11 @@ output: ProcessResultsOutput = {
         "missing_components": missing,
         "remaining_types": remaining_types,
     },
-    "failures": failure_summaries,
+    "retry_failures": retry_summaries,
+    "review_failures": review_summaries,
     "warnings": warnings,
-    "log_file": failure_log_path,
+    "retry_log_file": retry_log_path,
+    "review_log_file": review_log_path,
 }
 
 # Output JSON to stdout

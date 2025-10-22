@@ -109,16 +109,18 @@ python3 ./.claude/scripts/mutation_test_process_results.py --batch [BATCH_NUMBER
 ```
 
 2. Parse JSON response (output is on stdout):
-- `status` - "SUCCESS", "FAILURES_DETECTED", or "ERROR"
+- `status` - "SUCCESS", "RETRY_ONLY", "FAILURES_DETECTED", or "ERROR"
 - `batch` - {number, total_batches}
 - `stats` - {types_tested, passed, failed, missing_components, remaining_types}
-- `failures` - array of failure summaries
+- `retry_failures` - array of retry failure summaries
+- `review_failures` - array of review failure summaries
 - `warnings` - array of warning messages
-- `log_file` - path to detailed failure log (null if no failures)
+- `retry_log_file` - path to detailed retry failure log (null if none)
+- `review_log_file` - path to detailed review failure log (null if none)
 
 3. Execute <TestResultOutput/> to present results immediately
 
-4. Store the parsed `failures` array for use in <InteractiveFailureReview/> if needed
+4. Store the complete JSON output for use in <CheckForFailures/> and <InteractiveFailureReview/>
 </ProcessBatchResults>
 
 <CheckForFailures>
@@ -126,13 +128,13 @@ Based on `status` field from ProcessBatchResults JSON:
 
 **"SUCCESS"**: Continue to next batch
 
-**"NULL_STATUS_ONLY"**:
-- Display <NullStatusRetryNotice/> using the stored `failures` array
+**"RETRY_ONLY"**:
+- Display retry notice showing `retry_failures` array
 - Continue to next batch (renumbering will retry these types)
 
 **"FAILURES_DETECTED"**:
 - Execute <FinalCleanup/> SILENTLY
-- Execute <InteractiveFailureReview/> using the stored `failures` array
+- Execute <InteractiveFailureReview/> using the stored JSON output
 
 **"ERROR"**:
 - Execute <FinalCleanup/> SILENTLY
@@ -148,46 +150,21 @@ Execute <ParallelPortOperation/> with:
 - Mode: SILENT (no output)
 </FinalCleanup>
 
-## NULL STATUS RETRY NOTICE
-
-<NullStatusRetryNotice>
-Display the following notice when status is "NULL_STATUS_ONLY":
-
----
-
-## Batch {batch.number} - Subagent Execution Failures (Retrying)
-
-**Status**: ⚠️ SUBAGENT EXECUTION ISSUES
-
-The following types had subagent execution failures (null status fields). These are NOT BRP validation errors.
-These types will be automatically retried in the next batch.
-
-**Affected Types** ({count}):
-{FOR each failure in failures array:}
-- `{failure.type}` - {failure.summary}
-{END FOR}
-
-**Details**: {log_file}
-
-**Next Action**: Continuing to next batch. The renumbering process will pick these up for retry.
-
----
-</NullStatusRetryNotice>
 
 ## STEP 3: INTERACTIVE FAILURE REVIEW
 
 <InteractiveFailureReview>
-**Input**: Use `log_file` path from ProcessBatchResults JSON output
+**Input**: Use `review_log_file` path from ProcessBatchResults JSON output
 
-1. Read detailed failure data from log file:
+1. Read detailed failure data from review log file:
 ```bash
-Read tool on {log_file}
+Read tool on {review_log_file}
 ```
 This gives full failure details including operations_completed, failure_details, query_details.
 
 2. Create todos using TodoWrite:
    - "Display failure summary and initialize review process"
-   - "Review failure [X] of [TOTAL]" (one per failure)
+   - "Review failure [X] of [TOTAL]" (one per review failure)
 
 3. Display summary:
 ```
@@ -196,7 +173,8 @@ This gives full failure details including operations_completed, failure_details,
 - **Status**: STOPPED DUE TO FAILURES
 - **Progress**: Batch [N] of [TOTAL] processed
 - **Results**: [PASS_COUNT] PASSED, [FAIL_COUNT] FAILED, [MISSING_COUNT] MISSING COMPONENTS
-- **Detailed failure log**: [log_file path]
+- **Review failures log**: [review_log_file path]
+- **Retry failures log**: [retry_log_file path] (if any)
 ```
 
 4. For each failure, present:
@@ -243,7 +221,7 @@ Please select one of the keywords above.
 6. Wait for user response
 7. Handle keyword: investigate (already done), skip (next failure), stop (exit)
 
-**Note**: Detailed failure data is read ONCE from the log file at the start of this phase, eliminating the need to hunt for files during review.
+**Note**: Only review failures (real BRP errors) are reviewed. Retry failures (subagent crashes) are automatically retried in the next batch.
 </InteractiveFailureReview>
 
 <InvestigateFailure>
@@ -279,14 +257,24 @@ After receiving JSON output from mutation_test_process_results.py, present resul
 - ⚠️ Missing Components: {stats.missing_components}
 - Remaining: {stats.remaining_types} types
 
-{IF failures array is not empty:}
-**Failures Summary**:
-{FOR each failure in failures array with index:}
+{IF retry_failures array is not empty:}
+**Retry Failures** (will be retried automatically):
+{FOR each failure in retry_failures array with index:}
 {index+1}. `{failure.type}` - {failure.summary}
-   Failed at: {failure.failed_at} operation
+   Failed at: {failure.failed_at}
 {END FOR}
 
-**Detailed Log**: {log_file}
+**Retry Log**: {retry_log_file}
+{END IF}
+
+{IF review_failures array is not empty:}
+**Review Failures** (need investigation):
+{FOR each failure in review_failures array with index:}
+{index+1}. `{failure.type}` - {failure.summary}
+   Failed at: {failure.failed_at}
+{END FOR}
+
+**Review Log**: {review_log_file}
 {END IF}
 
 {IF warnings array is not empty:}
@@ -300,7 +288,7 @@ After receiving JSON output from mutation_test_process_results.py, present resul
 
 **Status Icons**:
 - "SUCCESS" → ✅ ALL TESTS PASSED
-- "NULL_STATUS_ONLY" → ⚠️ SUBAGENT EXECUTION ISSUES (will retry)
+- "RETRY_ONLY" → ⚠️ SUBAGENT EXECUTION ISSUES (will retry)
 - "FAILURES_DETECTED" → ❌ FAILURES DETECTED
 - "ERROR" → 🔥 PROCESSING ERROR
 </TestResultOutput>
