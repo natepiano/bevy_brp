@@ -157,6 +157,8 @@ def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
     """
     Renumber batches: reset failed tests to untested and assign batch numbers.
     This happens only when batch == 1.
+
+    Uses shared splitting logic to ensure batch numbers match what preparation will deliver.
     """
     type_guide = data["type_guide"]
 
@@ -171,15 +173,31 @@ def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
         type_data["batch_number"] = None
 
     # Step 3: Assign batch numbers to untested types
-    untested_types: list[str] = [
-        type_name
+    # Account for splitting: some types consume 2 slots instead of 1
+    untested_types: list[tuple[str, TypeData]] = [
+        (type_name, type_data)
         for type_name, type_data in type_guide.items()
         if type_data.get("test_status") == "untested"
     ]
 
-    for index, type_name in enumerate(untested_types):
-        batch_number = (index // batch_size) + 1
-        type_guide[type_name]["batch_number"] = batch_number
+    current_batch = 1
+    current_batch_slots = 0
+
+    for type_name, type_data in untested_types:
+        # Calculate slots needed for this type
+        slots_needed = calculate_type_slots(type_data, batch_size, current_batch_slots)
+
+        # Check if this type fits in current batch
+        if current_batch_slots + slots_needed > batch_size:
+            # Start new batch
+            current_batch += 1
+            current_batch_slots = 0
+            # Recalculate slots for new batch (may be different if split logic changes)
+            slots_needed = calculate_type_slots(type_data, batch_size, current_batch_slots)
+
+        # Assign type to current batch
+        type_guide[type_name]["batch_number"] = current_batch
+        current_batch_slots += slots_needed
 
     # Report statistics
     total = len(type_guide)
@@ -459,6 +477,33 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
     return operations
 
 
+def calculate_type_slots(type_data: TypeData, max_slots_available: int, current_slot_count: int) -> int:
+    """
+    Calculate how many slots a type will consume (1 or 2).
+
+    Shared splitting logic used by both renumbering and preparation.
+    A type is split into 2 parts if it has >30 operations.
+
+    Args:
+        type_data: The type to evaluate
+        max_slots_available: Maximum slots in the batch (not used currently)
+        current_slot_count: Number of slots already allocated in batch (not used currently)
+
+    Returns:
+        Number of slots this type will consume (1 or 2)
+    """
+    # Generate operations to count them (using placeholder port)
+    all_operations = generate_test_operations(type_data, port=30001)
+    operation_count = len(all_operations)
+
+    # Check if type should be split
+    # Split if >30 operations (deterministic, independent of batch state)
+    if operation_count > 30:
+        return 2  # Will be split into 2 parts
+    else:
+        return 1  # Single part
+
+
 def split_operations_for_part(
     all_operations: list[TestOperation],
     part_number: int,
@@ -616,7 +661,7 @@ if not batch_types:
     print(f"No types found for batch {batch_num}", file=sys.stderr)
     sys.exit(1)
 
-# STEP 3: Identify large types for splitting
+# STEP 3: Identify large types for splitting using shared logic
 # Pre-generate operations to count them
 class TypePart(TypedDict):
     type_data: TypeData
@@ -628,6 +673,7 @@ type_parts: list[TypePart] = []
 
 # Calculate available subagent slots
 max_slots = max_subagents * types_per_subagent
+current_slot_count = 0
 
 for type_item in batch_types:
     # Extract mutation_type from schema_info
@@ -655,11 +701,10 @@ for type_item in batch_types:
     # Use a placeholder port - will be assigned later
     all_operations = generate_test_operations(type_data, port=30001)
 
-    operation_count = len(all_operations)
+    # Use shared splitting logic to determine how many parts
+    slots_needed = calculate_type_slots(type_data, max_slots, current_slot_count)
 
-    # Check if type should be split
-    # Split if: >15 operations AND we have room for an extra slot
-    if operation_count > 15 and len(type_parts) < max_slots - 1:
+    if slots_needed == 2:
         # Split into 2 parts
         type_parts.append(TypePart(
             type_data=type_data,
@@ -673,6 +718,7 @@ for type_item in batch_types:
             total_parts=2,
             all_operations=all_operations
         ))
+        current_slot_count += 2
     else:
         # Single part
         type_parts.append(TypePart(
@@ -681,6 +727,7 @@ for type_item in batch_types:
             total_parts=1,
             all_operations=all_operations
         ))
+        current_slot_count += 1
 
 # STEP 4: Calculate flexible distribution based on type parts
 total_available_parts: int = len(type_parts)

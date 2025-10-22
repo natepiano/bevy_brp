@@ -34,7 +34,7 @@ Continue until all batches processed or failures occur.
 <GetBatchAssignments>
 Execute script and capture JSON output:
 ```bash
-python3 ./.claude/scripts/mutation_test_prepare.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
+python3 ./.claude/scripts/mutation_test/prepare.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
 ```
 
 Parse JSON output (on stdout):
@@ -105,7 +105,7 @@ Send ALL Tasks in ONE message for parallel execution.
 <ProcessBatchResults>
 1. Execute script and capture JSON output:
 ```bash
-python3 ./.claude/scripts/mutation_test_process_results.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
+python3 ./.claude/scripts/mutation_test/process_results.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
 ```
 
 2. Parse JSON response (output is on stdout):
@@ -242,7 +242,7 @@ Execute in parallel for ports ${BASE_PORT}-${MAX_PORT}:
 </ParallelPortOperation>
 
 <TestResultOutput>
-After receiving JSON output from mutation_test_process_results.py, present results immediately:
+After receiving JSON output from process_results.py, present results immediately:
 
 ---
 
@@ -254,6 +254,7 @@ After receiving JSON output from mutation_test_process_results.py, present resul
 - Types Tested: {stats.types_tested}
 - ✓ Passed: {stats.passed}
 - ✗ Failed: {stats.failed}
+- 🔄 Retry: {stats.retry}
 - ⚠️ Missing Components: {stats.missing_components}
 - Remaining: {stats.remaining_types} types
 

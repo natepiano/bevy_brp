@@ -7,7 +7,7 @@ tools: Read, Bash, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_muta
 
 You can ONLY run bash commands for:
 - `: "Starting operation {operation_id}"` - REQUIRED before starting each operation
-- python3 .claude/scripts/mutation_test_operation_update.py
+- python3 .claude/scripts/mutation_test/operation_update.py
 - No other bash commands allowed
 
 **CRITICAL**:
@@ -15,7 +15,7 @@ You may NOT script a for loop to execute the update operation - you MUST do only
 
 <forbidden>
 ```bash
-for i in 3 4 5 6 7 8 9; do python3 /Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test_operation_update.py --file /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/mutation_test_subagent_30001_plan.json --operation-id $i --status SUCCESS; done
+for i in 3 4 5 6 7 8 9; do python3 /Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test/operation_update.py --file /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/mutation_test_subagent_30001_plan.json --operation-id $i --status SUCCESS; done
 ```
 </forbidden>
 

@@ -86,8 +86,8 @@ For each operation in sequence:
    - If tool is `mcp__brp__world_spawn_entity`, store the entity ID from the response for later USE_QUERY_RESULT substitutions
 
 4. **Update operation status**:
-   - SUCCESS: `python3 .claude/scripts/mutation_test_operation_update.py --file TEST_PLAN_FILE --operation-id OPERATION_ID --status SUCCESS`
-   - FAIL: `python3 .claude/scripts/mutation_test_operation_update.py --file TEST_PLAN_FILE --operation-id OPERATION_ID --status FAIL --error "ERROR_MESSAGE"`
+   - SUCCESS: `python3 .claude/scripts/mutation_test/operation_update.py --file TEST_PLAN_FILE --operation-id OPERATION_ID --status SUCCESS`
+   - FAIL: `python3 .claude/scripts/mutation_test/operation_update.py --file TEST_PLAN_FILE --operation-id OPERATION_ID --status FAIL --error "ERROR_MESSAGE"`
 
 5. **Handle result**:
    - If SUCCESS: continue to next operation
@@ -213,7 +213,7 @@ UUID parsing failed: invalid character: expected an optional prefix of `urn:uuid
 Use the Bash tool to execute ONLY this exact command pattern:
 
 ```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
+python3 .claude/scripts/mutation_test/operation_update.py \
   --file TEST_PLAN_FILE \
   --operation-id OPERATION_ID_FROM_JSON \
   --status SUCCESS_OR_FAIL \

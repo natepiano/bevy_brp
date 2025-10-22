@@ -12,6 +12,7 @@ import sys
 import os
 import argparse
 import tempfile
+import glob
 from datetime import datetime
 from typing import Any, TypedDict, cast
 
@@ -101,6 +102,7 @@ class Stats(TypedDict):
     types_tested: int
     passed: int
     failed: int
+    retry: int
     missing_components: int
     remaining_types: int | None
 
@@ -114,6 +116,34 @@ class ProcessResultsOutput(TypedDict):
     warnings: list[str]
     retry_log_file: str | None
     review_log_file: str | None
+
+
+def cleanup_old_logs(pattern: str, keep_count: int) -> None:
+    """
+    Remove old log files matching pattern, keeping only the most recent N files.
+
+    Args:
+        pattern: Glob pattern to match files (e.g., ".claude/transient/all_types_retry_failures_*.json")
+        keep_count: Number of most recent files to keep
+    """
+    # Get all matching files
+    matching_files = glob.glob(pattern)
+
+    if len(matching_files) <= keep_count:
+        # Nothing to clean up
+        return
+
+    # Sort by modification time (most recent last)
+    matching_files.sort(key=lambda f: os.path.getmtime(f))
+
+    # Remove oldest files, keep only keep_count most recent
+    files_to_remove = matching_files[:-keep_count]
+
+    for filepath in files_to_remove:
+        try:
+            os.remove(filepath)
+        except OSError:
+            pass  # Ignore errors if file can't be removed
 
 
 # Parse command line arguments
@@ -510,11 +540,16 @@ for type_key, type_data in type_guide.items():  # pyright: ignore[reportAny]
 with open(all_types_file, "w", encoding="utf-8") as f:
     json.dump(all_types, f, indent=2)
 
-# Calculate statistics
-total_results = len(results)
-passed = sum(1 for r in results if r["status"] == "PASS")
-failed = sum(1 for r in results if r["status"] == "FAIL")
-missing = sum(1 for r in results if r["status"] == "COMPONENT_NOT_FOUND")
+# Calculate statistics from aggregated results (unique types only)
+total_types_tested = len(aggregated_results)
+passed = sum(1 for r in aggregated_results.values() if r["status"] == "PASS")
+failed = sum(1 for r in aggregated_results.values() if r["status"] == "FAIL" and not is_retry_failure(r))
+retry = sum(1 for r in aggregated_results.values() if r["status"] == "FAIL" and is_retry_failure(r))
+missing = sum(1 for r in aggregated_results.values() if r["status"] == "COMPONENT_NOT_FOUND")
+
+# Count types that were not executed (all null status - these are retries too)
+# These are tracked in warnings but need to be counted in retry stats
+retry += len([w for w in warnings if "all null status" in w])
 
 # Calculate remaining types
 # Read summary from all_types.json to get total count
@@ -558,12 +593,18 @@ if failed > 0 or missing > 0:
         with open(retry_log_path, "w", encoding="utf-8") as f:
             json.dump(retry_failures, f, indent=2)
 
+        # Cleanup old retry failure logs, keep only 2 most recent
+        cleanup_old_logs(".claude/transient/all_types_retry_failures_*.json", keep_count=2)
+
     if review_failures:
         review_log_path = (
             f".claude/transient/all_types_review_failures_{timestamp}.json"
         )
         with open(review_log_path, "w", encoding="utf-8") as f:
             json.dump(review_failures, f, indent=2)
+
+        # Cleanup old review failure logs, keep only 2 most recent
+        cleanup_old_logs(".claude/transient/all_types_review_failures_*.json", keep_count=2)
 
     # Build condensed failure summaries
     def build_summary(failure: TestResult) -> FailureSummary:
@@ -623,9 +664,10 @@ output: ProcessResultsOutput = {
         "total_batches": total_batches,
     },
     "stats": {
-        "types_tested": total_results,
+        "types_tested": total_types_tested + retry,
         "passed": passed,
         "failed": failed,
+        "retry": retry,
         "missing_components": missing,
         "remaining_types": remaining_types,
     },
