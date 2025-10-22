@@ -185,7 +185,7 @@ def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
 
     for type_name, type_data in untested_types:
         # Calculate slots needed for this type
-        slots_needed = calculate_type_slots(type_data, batch_size, current_batch_slots)
+        slots_needed = calculate_type_slots(type_data)
 
         # Check if this type fits in current batch
         if current_batch_slots + slots_needed > batch_size:
@@ -193,7 +193,7 @@ def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
             current_batch += 1
             current_batch_slots = 0
             # Recalculate slots for new batch (may be different if split logic changes)
-            slots_needed = calculate_type_slots(type_data, batch_size, current_batch_slots)
+            slots_needed = calculate_type_slots(type_data)
 
         # Assign type to current batch
         type_guide[type_name]["batch_number"] = current_batch
@@ -477,7 +477,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
     return operations
 
 
-def calculate_type_slots(type_data: TypeData, max_slots_available: int, current_slot_count: int) -> int:
+def calculate_type_slots(type_data: TypeData) -> int:
     """
     Calculate how many slots a type will consume (1, 2, 3, 4, ...).
 
@@ -486,8 +486,6 @@ def calculate_type_slots(type_data: TypeData, max_slots_available: int, current_
 
     Args:
         type_data: The type to evaluate
-        max_slots_available: Maximum slots in the batch (not used currently)
-        current_slot_count: Number of slots already allocated in batch (not used currently)
 
     Returns:
         Number of slots this type will consume
@@ -710,10 +708,6 @@ class TypePart(TypedDict):
 
 type_parts: list[TypePart] = []
 
-# Calculate available subagent slots
-max_slots = max_subagents * types_per_subagent
-current_slot_count = 0
-
 for type_item in batch_types:
     # Extract mutation_type from schema_info
     schema_info = type_item.get("schema_info")
@@ -741,7 +735,7 @@ for type_item in batch_types:
     all_operations = generate_test_operations(type_data, port=30001)
 
     # Use shared splitting logic to determine how many parts
-    slots_needed = calculate_type_slots(type_data, max_slots, current_slot_count)
+    slots_needed = calculate_type_slots(type_data)
 
     # Create parts for this type (1 to N parts based on operation count)
     for part_num in range(1, slots_needed + 1):
@@ -751,8 +745,6 @@ for type_item in batch_types:
             total_parts=slots_needed,
             all_operations=all_operations
         ))
-
-    current_slot_count += slots_needed
 
 # STEP 4: Calculate flexible distribution based on type parts
 total_available_parts: int = len(type_parts)
@@ -794,6 +786,9 @@ for subagent_num in range(1, actual_subagents_needed + 1):
         tests: list[TypeTest] = []
         type_descriptions: list[str] = []
 
+        # Track operation IDs sequentially across all types for this subagent
+        operation_id_counter = 0
+
         for type_part in subagent_parts:
             type_data = type_part["type_data"]
             type_name = type_data["type_name"]
@@ -805,13 +800,11 @@ for subagent_num in range(1, actual_subagents_needed + 1):
             # Split operations if needed
             operations = split_operations_for_part(all_operations, part_number, total_parts)
 
-            # Renumber operation IDs after splitting
-            for idx, op in enumerate(operations):
-                op["operation_id"] = idx
-
-            # Update port for all operations
+            # Renumber operation IDs sequentially across all types and update port
             for op in operations:
+                op["operation_id"] = operation_id_counter
                 op["port"] = port
+                operation_id_counter += 1
 
             # Add to test plan
             test: TypeTest = {
@@ -838,9 +831,14 @@ for subagent_num in range(1, actual_subagents_needed + 1):
             else:
                 type_descriptions.append(f"{short_name} ({category}: {op_count} ops)")
 
-        # Create test plan file
-        tmpdir = tempfile.gettempdir()
-        test_plan_file = os.path.join(tmpdir, f"mutation_test_subagent_{port}_plan.json")
+        # Create test plan file using shared utility
+        result = subprocess.run(
+            ["python3", ".claude/scripts/mutation_test/get_plan_file_path.py", "--port", str(port)],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        test_plan_file = result.stdout.strip()
 
         test_plan: TestPlan = {
             "batch_number": batch_num,

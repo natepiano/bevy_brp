@@ -27,6 +27,7 @@ Usage:
 
 import argparse
 import json
+import subprocess
 import sys
 from typing import Any, TypedDict, cast
 
@@ -47,7 +48,7 @@ def parse_args() -> argparse.Namespace:
         description="Update a single operation in a mutation test plan file"
     )
     _ = parser.add_argument(
-        "--file", required=True, help="Path to test plan JSON file"
+        "--port", type=int, required=True, help="Port number (used to locate test plan file)"
     )
     _ = parser.add_argument(
         "--operation-id", type=int, required=True, help="Operation ID to update"
@@ -80,11 +81,20 @@ def main() -> None:
     args = parse_args()
     validate_args(args)
 
-    file_path: str = cast(str, args.file)
+    port: int = cast(int, args.port)
     operation_id: int = cast(int, args.operation_id)
     status: str = cast(str, args.status)
     error: str | None = cast(str | None, args.error)
     retry_count: int = cast(int, args.retry_count)
+
+    # Get file path using shared utility
+    result = subprocess.run(
+        ["python3", ".claude/scripts/mutation_test/get_plan_file_path.py", "--port", str(port)],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    file_path = result.stdout.strip()
 
     # Read test plan file
     try:

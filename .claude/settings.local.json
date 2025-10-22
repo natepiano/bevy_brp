@@ -193,8 +193,6 @@
       "Bash(/dev/null)",
       "Bash(zed:*)",
       "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)",
-      "Bash(.claude/hooks/detect-mutation-tester.sh)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/hooks/simple-test.sh)",
       "SlashCommand(/get_path_baseline extras_plugin::TestVariantChainEnum)"
     ],
     "deny": [
@@ -214,7 +212,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/natemccoy/rust/bevy_brp/.claude/hooks/mutation-tester-hook.sh"
+            "command": ".claude/hooks/mutation-tester-hook.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-bash-mutation-capture.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__brp__world_spawn_entity|mcp__brp__world_mutate_components|mcp__brp__world_mutate_resources|mcp__brp__world_insert_resources|mcp__brp__world_query",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-tool-mutation-update.sh"
           }
         ]
       }

@@ -19,17 +19,14 @@ These config values are provided:
 2. **Execute operations sequentially**:
    - For each test in `tests` array:
      - For each operation in `operations` array:
-       - **Note the operation's `operation_id` field** (you'll need it for <UpdateOperationViaScript/>)
        - Apply entity ID substitution if `entity_id_substitution` field exists (see <EntityIdSubstitution/>)
        - Execute the MCP tool specified in `tool` field (see <OperationExecution/>)
        - If operation succeeds:
-         - Update operation per <UpdateOperationViaScript/> with status SUCCESS
          - Continue to next operation
        - If operation fails:
          - **IMMEDIATELY execute <MatchErrorPattern/>** to identify and recover from error
          - If recovery succeeds: update with SUCCESS (with --retry-count 1) and continue
          - If no recovery applicable or recovery fails:
-           - Update operation per <UpdateOperationViaScript/> with status FAIL
            - **STOP IMMEDIATELY** - return without processing remaining operations
 
 3. **Finish execution**:
@@ -123,7 +120,6 @@ Does error contain `"unknown variant"` with escaped quotes (like `\"VariantName\
 
 **No pattern matched:**
 - No recovery available
-- Mark operation as FAIL per <UpdateOperationViaScript/>
 - STOP IMMEDIATELY - do not process remaining operations
 </MatchErrorPattern>
 
@@ -143,7 +139,6 @@ Does error contain `"unknown variant"` with escaped quotes (like `\"VariantName\
 1. Parse error to identify which parameter has the wrong type
 2. Convert to proper JSON type (remove quotes from primitives)
 3. Re-execute operation with corrected value
-4. Update per <UpdateOperationViaScript/> with `--retry-count 1`
 5. DO NOT report as test failure - this is YOUR bug, not BRP's
 6. Only fail if retry produces DIFFERENT error
 
@@ -159,7 +154,6 @@ Does error contain `"unknown variant"` with escaped quotes (like `\"VariantName\
 1. Re-read operation's `value` field from test plan JSON
 2. Pass it AS-IS to MCP tool without ANY transformation
 3. Re-execute operation
-4. Update per <UpdateOperationViaScript/> with `--retry-count 1`
 5. DO NOT report as test failure - this is YOUR bug
 
 **Examples**:
@@ -181,7 +175,6 @@ UUID parsing failed: invalid character: expected an optional prefix of `urn:uuid
 1. Find UUID value in operation params
 2. Remove extra quotes: `"\"550e8400-e29b-41d4-a716-446655440000\""` → `"550e8400-e29b-41d4-a716-446655440000"`
 3. Re-execute operation
-4. Update per <UpdateOperationViaScript/> with `--retry-count 1`
 </UuidParsingError>
 
 <EnumVariantError>
@@ -192,7 +185,6 @@ UUID parsing failed: invalid character: expected an optional prefix of `urn:uuid
 **Recovery**:
 1. Remove extra quotes: `"\"Low\""` → `"Low"`
 2. Re-execute operation
-3. Update per <UpdateOperationViaScript/> with `--retry-count 1`
 4. DO NOT report as test failure - this is YOUR bug
 </EnumVariantError>
 
@@ -204,29 +196,4 @@ UUID parsing failed: invalid character: expected an optional prefix of `urn:uuid
 **Recovery**:
 1. Reorder parameters in your tool call (change the order you pass them)
 2. Re-execute operation with reordered parameters
-3. Update per <UpdateOperationViaScript/> with `--retry-count 1`
 </ParameterExtractionError>
-
-<UpdateOperationViaScript>
-**THE ONLY WAY to update the test plan after an operation:**
-
-Use the Bash tool to execute ONLY this exact command pattern:
-
-```bash
-python3 .claude/scripts/mutation_test/operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status SUCCESS_OR_FAIL \
-  [conditional parameters below]
-```
-
-**Required parameters (ALWAYS include):**
-- `--file TEST_PLAN_FILE` - Path to test plan JSON file
-- `--operation-id OPERATION_ID_FROM_JSON` - The operation's `operation_id` field value from JSON
-- `--status SUCCESS|FAIL` - Result status
-
-**Conditional parameters (include based on operation type and result):**
-- `--error "MESSAGE"` - For operations that fail
-- `--retry-count N` - If this is a retry after error recovery
-
-</UpdateOperationViaScript>
