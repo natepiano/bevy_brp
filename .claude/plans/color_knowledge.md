@@ -85,7 +85,7 @@ This struct provides a clean, documented API for both path_builder and enum_buil
 ### STEP 2: Add hard_coded Field to PathInfo
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`
 
-Add to PathInfo struct:
+Add to PathInfo struct at the end (after `root_example` field):
 ```rust
 #[serde(skip_serializing_if = "Option::is_none")]
 pub hard_coded: Option<HardCodedInfo>,
