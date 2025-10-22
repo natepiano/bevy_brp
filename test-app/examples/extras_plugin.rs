@@ -271,6 +271,8 @@ enum BottomEnum {
     },
     #[default]
     VariantC,
+    /// Second tuple variant with same signature as VariantA
+    VariantD(u32),
 }
 
 /// Test enum with array field for testing array wrapping in enum variants
