@@ -468,7 +468,10 @@ def split_operations_for_part(
     Split operations for multi-part type testing.
 
     Part 1: spawn/insert + query + first half of mutations
-    Part 2: query + second half of mutations (no spawn)
+    Part 2: query + root_mutation + second half of mutations (no spawn)
+
+    CRITICAL: Part 2 must include the most recent root mutation (path="")
+    before its first deep path operation to establish correct variant structure.
     """
     if total_parts == 1:
         return all_operations
@@ -493,9 +496,26 @@ def split_operations_for_part(
     if mutation_start_idx is not None:
         mutations = all_operations[mutation_start_idx:]
 
-    # Split mutations in half
+    # Find a good split point that respects root mutation groups
+    # We want to split AFTER a root mutation, not before one
     mutations_count = len(mutations)
-    half_point = mutations_count // 2
+    ideal_split = mutations_count // 2
+
+    # Search backward from ideal split to find the most recent root mutation
+    split_point = ideal_split
+    last_root_before_split: int | None = None
+
+    for i in range(ideal_split, -1, -1):
+        if mutations[i].get("path") == "":
+            last_root_before_split = i
+            # Split right after this root mutation
+            split_point = i + 1
+            break
+
+    # If no root mutation found before ideal split, use ideal split
+    # (this means there are no root mutations in first half, which is fine)
+    if last_root_before_split is None:
+        split_point = ideal_split
 
     if part_number == 1:
         # Part 1: spawn + query + first half of mutations
@@ -509,20 +529,32 @@ def split_operations_for_part(
         if query_idx is not None:
             result.append(all_operations[query_idx])
 
-        # Add first half of mutations
-        result.extend(mutations[:half_point])
+        # Add first half of mutations (up to split point)
+        result.extend(mutations[:split_point])
 
         return result
     else:  # part_number == 2
         # Part 2: query + second half of mutations (no spawn)
+        # CRITICAL: Must include root mutation if first operation is a deep path
         result = []
 
         # Add query for components
         if query_idx is not None:
             result.append(all_operations[query_idx])
 
+        # Check if we need to prepend a root mutation for Part 2
+        # If Part 2 starts with a deep path (not root) and there was a root mutation before split
+        if split_point < len(mutations):
+            first_op_in_part2 = mutations[split_point]
+            first_path = first_op_in_part2.get("path", "")
+
+            # If first operation is NOT a root mutation, we need to find the most recent root
+            if first_path != "" and last_root_before_split is not None:
+                # Include the last root mutation from Part 1 at the start of Part 2
+                result.append(mutations[last_root_before_split])
+
         # Add second half of mutations
-        result.extend(mutations[half_point:])
+        result.extend(mutations[split_point:])
 
         return result
 
