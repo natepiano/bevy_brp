@@ -564,12 +564,24 @@ for subagent_num in range(1, actual_subagents_needed + 1):
     if subagent_types:  # Only create assignment if there are types
         port = 30000 + subagent_num
 
-        # Generate formatted descriptions
+        # Generate test plan and formatted descriptions
+        tests: list[TypeTest] = []
         type_descriptions: list[str] = []
 
         for type_data in subagent_types:
             type_name = type_data["type_name"]
             mutation_type = type_data.get("mutation_type")
+
+            # Generate operations for this type
+            operations = generate_test_operations(type_data, port)
+
+            # Add to test plan
+            test: TypeTest = {
+                "type_name": type_name,
+                "mutation_type": mutation_type or "Unknown",
+                "operations": operations
+            }
+            tests.append(test)
 
             # Extract short name (text after last ::)
             short_name = type_name.split("::")[-1]
@@ -577,19 +589,11 @@ for subagent_num in range(1, actual_subagents_needed + 1):
             # Get category
             category = "C" if mutation_type == "Component" else "R" if mutation_type == "Resource" else "?"
 
-            # Format as "ShortName (C)" or "ShortName (R)"
-            type_descriptions.append(f"{short_name} ({category})")
+            # Count operations
+            op_count = len(operations)
 
-        # Generate test plan
-        tests: list[TypeTest] = []
-        for type_data in subagent_types:
-            operations = generate_test_operations(type_data, port)
-            test: TypeTest = {
-                "type_name": type_data["type_name"],
-                "mutation_type": type_data.get("mutation_type") or "Unknown",
-                "operations": operations
-            }
-            tests.append(test)
+            # Format as "ShortName (C: N ops)" or "ShortName (R: N ops)"
+            type_descriptions.append(f"{short_name} ({category}: {op_count} ops)")
 
         # Create test plan file
         tmpdir = tempfile.gettempdir()

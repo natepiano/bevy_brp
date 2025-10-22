@@ -12,84 +12,69 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}
 </TestConfiguration>
 
 <ExecutionFlow>
-**STEP 1:** Execute <ApplicationLaunch/>
-**STEP 2:** Execute <ApplicationVerification/>
-**STEP 3:** Execute <BatchProcessingLoop/>
-**STEP 4:** Execute <FinalCleanup/> (SILENTLY if failures detected)
-**STEP 5:** Execute <InteractiveFailureReview/> (ONLY if failures detected)
+**STEP 1:** Execute <BatchProcessingLoop/>
+**STEP 2:** Execute <FinalCleanup/> (SILENTLY if failures detected)
+**STEP 3:** Execute <InteractiveFailureReview/> (ONLY if failures detected)
 </ExecutionFlow>
 
-## STEP 1: APPLICATION LAUNCH
-
-<ApplicationLaunch>
-1. Shutdown existing apps:
-Execute <ParallelPortOperation/> with:
-- Operation: mcp__brp__brp_shutdown
-- Parameters: app_name="extras_plugin"
-
-2. Launch ${MAX_SUBAGENTS} apps:
-```python
-mcp__brp__brp_launch_bevy_example(
-    example_name="extras_plugin",
-    port=${BASE_PORT},
-    instance_count=${MAX_SUBAGENTS}
-)
-```
-</ApplicationLaunch>
-
-## STEP 2: APPLICATION VERIFICATION
-
-<ApplicationVerification>
-Execute <ParallelPortOperation/> with:
-- Operation: mcp__brp__brp_status
-- Parameters: app_name="extras_plugin"
-
-**STOP IF** any app fails to respond.
-</ApplicationVerification>
-
-## STEP 3: BATCH PROCESSING LOOP
+## STEP 1: BATCH PROCESSING LOOP
 
 <BatchProcessingLoop>
 For each batch N (starting from 1):
-1. **REPORT PROGRESS**: "Processing batch N of [TOTAL_BATCHES] - Testing [TYPES_IN_BATCH] types ([REMAINING_TYPES] remaining)"
+1. Execute <ReportProgress/>
 2. Execute <GetBatchAssignments/>
-3. Execute <SetWindowTitles/>
-4. Execute <LaunchSubagents/>
+3. Execute <PrepareApplications/>
+4. Execute <LaunchMutationTestSubagents/>
 5. Execute <ProcessBatchResults/>
 6. Execute <CheckForFailures/>
 
 Continue until all batches processed or failures occur.
 </BatchProcessingLoop>
 
+<ReportProgress>
+Display: "Processing batch N of [TOTAL_BATCHES] - Testing [TYPES_IN_BATCH] types ([REMAINING_TYPES] remaining)"
+</ReportProgress>
+
 <GetBatchAssignments>
+Execute script and capture JSON output:
 ```bash
 python3 ./.claude/scripts/mutation_test_prepare.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
 ```
 
-Extract from JSON output:
-- `assignments` - array of subagent assignments
-- `assignments[i].window_description` - window title
-- `assignments[i].task_description` - task description
-- `assignments[i].test_plan_file` - test plan path
-- `assignments[i].port` - port number
+Parse JSON output (on stdout):
+- `assignments` - array of subagent assignments with fields:
+  - `window_description` - window title
+  - `task_description` - task description
+  - `test_plan_file` - test plan path
+  - `port` - port number
 
-Store assignments array for SetWindowTitles and LaunchSubagents.
+Store the complete JSON response for use in <PrepareApplications/> and <LaunchMutationTestSubagents/>.
 </GetBatchAssignments>
 
-<SetWindowTitles>
-For each assignment in assignments array:
+<PrepareApplications>
+Task a general-purpose subagent to prepare applications using the assignments JSON:
 
-```python
-mcp__brp__brp_extras_set_window_title(
-    port=assignment.port,
-    title=assignment.window_description
-)
+```
+description: "Prepare apps for batch N"
+subagent_type: "general-purpose"
+prompt: |
+  Execute the workflow defined in @.claude/instructions/mutation-test-prep.md
+
+  You are preparing application instances for mutation test batch N.
+
+  Use the following assignments JSON to set window titles in STEP 4:
+
+  ```json
+  [PASTE COMPLETE JSON FROM GetBatchAssignments]
+  ```
+
+  Follow all steps in the instruction file. Report any errors immediately.
 ```
 
-Execute ALL in parallel.
-</SetWindowTitles>
+Wait for subagent to complete before proceeding to <LaunchMutationTestSubagents/>.
+</PrepareApplications>
 
-<LaunchSubagents>
+<LaunchMutationTestSubagents>
 For each assignment in assignments array, create Task:
 
 ```
@@ -147,7 +132,7 @@ Based on `status` field from ProcessBatchResults JSON:
 - Stop with error message
 </CheckForFailures>
 
-## STEP 4: FINAL CLEANUP
+## STEP 2: FINAL CLEANUP
 
 <FinalCleanup>
 Execute <ParallelPortOperation/> with:
@@ -182,7 +167,7 @@ These types will be automatically retried in the next batch.
 ---
 </NullStatusRetryNotice>
 
-## STEP 5: INTERACTIVE FAILURE REVIEW
+## STEP 3: INTERACTIVE FAILURE REVIEW
 
 <InteractiveFailureReview>
 **Input**: Use `log_file` path from ProcessBatchResults JSON output
