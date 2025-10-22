@@ -4,7 +4,7 @@
 # Usage: ./get_mutation_path_list.sh TYPE_NAME
 # Example: ./get_mutation_path_list.sh "BoxShadow"
 
-BASELINE_FILE="${TMPDIR}/all_types_baseline.json"
+BASELINE_FILE=".claude/transient/all_types_baseline.json"
 
 if [ ! -f "$BASELINE_FILE" ]; then
     echo "❌ Baseline file not found: $BASELINE_FILE"
