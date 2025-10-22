@@ -529,16 +529,11 @@ This transfers the `hard_coded` info from `MutationPathInternal` to the final `P
 ### STEP 11: Update All Call Sites of build_mutation_path_internal()
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
 
-Update exactly **4 call sites** to add `None` for the new `hard_coded` parameter:
+Update exactly **3 call sites** to add `None` for the new `hard_coded` parameter:
 
-1. **Line ~522**: `build_final_result()` - PathAction::Create branch
-2. **Line ~536**: `build_final_result()` - PathAction::Skip branch
-3. **Line ~555**: `build_not_mutable_path()`
-4. **Line ~593**: `check_knowledge()` - TreatAsRootValue branch (this one may pass Some(HardCodedInfo) - see STEP 9)
-
-Note: Line numbers are approximate; search for `build_mutation_path_internal(` to find exact locations.
-
-**Only the calls from check_knowledge() (STEP 9) pass Some(HardCodedInfo) for the new variant.** All other calls pass `None`.
+1. **Line 522**: `build_final_result()` - PathAction::Create branch
+2. **Line 536**: `build_final_result()` - PathAction::Skip branch
+3. **Line 555**: `build_not_mutable_path()`
 
 ## Expected Output
 
