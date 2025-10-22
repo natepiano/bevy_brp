@@ -1,45 +1,14 @@
-# Mutation Test Executor Instructions
-
-## ⚠️ CRITICAL: AVAILABLE TOOLS (READ THIS FIRST)
-
-**YOU HAVE ACCESS TO EXACTLY 7 TOOLS IN THIS ENVIRONMENT:**
-
-✅ **THE ONLY TOOLS YOU CAN USE:**
-1. `Read` - Read the test plan file ONCE at start
-2. `Bash` - ONLY to execute: `python3 .claude/scripts/mutation_test_operation_update.py`
-3. `mcp__brp__world_spawn_entity` - Spawn entities
-4. `mcp__brp__world_query` - Query entities (including entity ID substitution)
-5. `mcp__brp__world_mutate_components` - Mutate component fields
-6. `mcp__brp__world_mutate_resources` - Mutate resource fields
-7. `mcp__brp__world_insert_resources` - Insert/update resources
-
-🚫 **TOOLS THAT DO NOT EXIST IN THIS ENVIRONMENT:**
-- curl or HTTP requests - NOT AVAILABLE
-- jq, sed, awk, or JSON manipulation - NOT AVAILABLE
-
-**TEST PLAN UPDATES:**
-- The ONLY way to update the test plan: `Bash` tool with `mutation_test_operation_update.py`
-
-**NEVER**
-- NEVER create a custom script of any sort - NO PYTHON3, NO BASH, NOTHING!!
-
----
+# Instructions
 
 ## Configuration Parameters
 
-This subagent receives configuration from the parent command via Task prompt:
+These config values are provided:
 - TEST_PLAN_FILE: Path to the JSON test plan file to execute
 - PORT: BRP port number for MCP tool operations
-
-These values are provided by mutation_test.md when launching subagents.
 
 ## Your Job
 
 **Execute the test plan and update results after each operation.**
-
-## Test Plan Updates
-
-**CRITICAL**: Each operation has an `operation_id` field. You MUST update after every operation using <UpdateOperationViaScript/>.
 
 ## Execution Steps
 
@@ -65,7 +34,6 @@ These values are provided by mutation_test.md when launching subagents.
 
 3. **Finish execution**:
    - After all operations complete successfully, or after first failure, execution is done
-   - No final output needed - all results are in the test plan file
 
 ## Entity ID Substitution
 
@@ -75,9 +43,6 @@ These values are provided by mutation_test.md when launching subagents.
 1. **Get available entities using MCP tool**:
    ```
    CORRECT: Use mcp__brp__world_query(data={}, filter={}, port=PORT)
-   WRONG: curl -X POST http://localhost:PORT/brp (FORBIDDEN!)
-   WRONG: Bash command="curl ..." (FORBIDDEN!)
-   WRONG: Python script to call curl (FORBIDDEN!)
    ```
    - Extract entity IDs from the result's "entities" field
    - Use first entity ID for substitutions
@@ -138,7 +103,7 @@ Does error contain `"invalid type: string"`?
 - ✓ YES → Execute <InvalidTypeStringError/> recovery
 - ✗ NO → Continue
 
-Does error contain `"UUID parsing failed"` AND `` 'found \`"\` at' ``?
+Does error contain `"UUID parsing failed"` AND `` 'found `\\"` at' ``?
 - ✓ YES → Execute <UuidParsingError/> recovery
 - ✗ NO → Continue
 
@@ -203,7 +168,12 @@ Does error contain `"unknown variant"` with escaped quotes (like `\"VariantName\
 </UnitEnumVariantError>
 
 <UuidParsingError>
-**Pattern**: Error contains `"UUID parsing failed"` AND `'found \`"\` at'`
+**Pattern**: Error contains `"UUID parsing failed"` AND `'found \`\\"\` at'`
+
+**Full error example**:
+```
+UUID parsing failed: invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `\"` at 1
+```
 
 **Cause**: You double-quoted a UUID string
 
@@ -256,11 +226,7 @@ python3 .claude/scripts/mutation_test_operation_update.py \
 - `--status SUCCESS|FAIL` - Result status
 
 **Conditional parameters (include based on operation type and result):**
-- `--entity-id ENTITY_ID` - For spawn operations that succeed
-- `--entities "ID1,ID2,..."` - For query operations that succeed (comma-separated entity IDs)
 - `--error "MESSAGE"` - For operations that fail
 - `--retry-count N` - If this is a retry after error recovery
-
-**This is the ONLY acceptable method. NO other approaches are allowed.**
 
 </UpdateOperationViaScript>
