@@ -67,6 +67,16 @@ pub const TYPE_GLAM_AFFINE3A: &str = "glam::Affine3A";
 // Bevy component types
 pub const TYPE_BEVY_ENTITY: &str = "bevy_ecs::entity::Entity";
 pub const TYPE_BEVY_COLOR: &str = "bevy_color::color::Color";
+pub const TYPE_BEVY_COLOR_SRGBA: &str = "bevy_color::srgba::Srgba";
+pub const TYPE_BEVY_COLOR_LINEAR_RGBA: &str = "bevy_color::linear_rgba::LinearRgba";
+pub const TYPE_BEVY_COLOR_HSLA: &str = "bevy_color::hsla::Hsla";
+pub const TYPE_BEVY_COLOR_HSVA: &str = "bevy_color::hsva::Hsva";
+pub const TYPE_BEVY_COLOR_HWBA: &str = "bevy_color::hwba::Hwba";
+pub const TYPE_BEVY_COLOR_LABA: &str = "bevy_color::laba::Laba";
+pub const TYPE_BEVY_COLOR_LCHA: &str = "bevy_color::lcha::Lcha";
+pub const TYPE_BEVY_COLOR_OKLABA: &str = "bevy_color::oklaba::Oklaba";
+pub const TYPE_BEVY_COLOR_OKLCHA: &str = "bevy_color::oklcha::Oklcha";
+pub const TYPE_BEVY_COLOR_XYZA: &str = "bevy_color::xyza::Xyza";
 pub const TYPE_BEVY_NAME: &str = "bevy_ecs::name::Name";
 pub const TYPE_BEVY_IMAGE_HANDLE: &str = "bevy_asset::handle::Handle<bevy_image::image::Image>";
 pub const TYPE_BLOOM: &str = "bevy_post_process::bloom::settings::Bloom";
