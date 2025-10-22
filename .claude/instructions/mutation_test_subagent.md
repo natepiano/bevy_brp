@@ -57,9 +57,9 @@ These values are provided by mutation_test.md when launching subagents.
          - Update operation per <UpdateOperationViaScript/> with status SUCCESS
          - Continue to next operation
        - If operation fails:
-         - Apply error recovery if applicable (see <ErrorRecovery/>)
-         - If recovery succeeds: update with SUCCESS and continue
-         - If recovery fails or not applicable:
+         - **IMMEDIATELY execute <MatchErrorPattern/>** to identify and recover from error
+         - If recovery succeeds: update with SUCCESS (with --retry-count 1) and continue
+         - If no recovery applicable or recovery fails:
            - Update operation per <UpdateOperationViaScript/> with status FAIL
            - **STOP IMMEDIATELY** - return without processing remaining operations
 
@@ -104,13 +104,138 @@ These values are provided by mutation_test.md when launching subagents.
    ```
 
 3. **For operations with `"entity": "USE_QUERY_RESULT"`**:
-   - Replace with actual entity ID from previous query operation's `result_entities[0]`
+   - Replace with the entity ID you stored from the spawn operation's MCP response
 </EntityIdSubstitution>
 
 ## Operation Execution
 
 <OperationExecution>
-**For each operation, invoke the MCP tool specified in the `tool` field:**
+For each operation in sequence:
+
+1. **Apply entity ID substitution** (if needed):
+   - If operation has `"entity": "USE_QUERY_RESULT"`, replace with stored entity ID from spawn
+
+2. **Execute the MCP tool** specified in `tool` field with all parameters from the operation
+
+3. **Store entity ID** (spawn only):
+   - If tool is `mcp__brp__world_spawn_entity`, store the entity ID from the response for later USE_QUERY_RESULT substitutions
+
+4. **Update operation status**:
+   - SUCCESS: `python3 .claude/scripts/mutation_test_operation_update.py --file TEST_PLAN_FILE --operation-id OPERATION_ID --status SUCCESS`
+   - FAIL: `python3 .claude/scripts/mutation_test_operation_update.py --file TEST_PLAN_FILE --operation-id OPERATION_ID --status FAIL --error "ERROR_MESSAGE"`
+
+5. **Handle result**:
+   - If SUCCESS: continue to next operation
+   - If FAIL: Execute <MatchErrorPattern/> for recovery, or stop if no recovery available
+</OperationExecution>
+
+## Error Pattern Matching
+
+<MatchErrorPattern>
+**When an operation fails, check the error message against these patterns IN THIS EXACT ORDER:**
+
+Does error contain `"invalid type: string"`?
+- ✓ YES → Execute <InvalidTypeStringError/> recovery
+- ✗ NO → Continue
+
+Does error contain `"UUID parsing failed"` AND `` 'found \`"\` at' ``?
+- ✓ YES → Execute <UuidParsingError/> recovery
+- ✗ NO → Continue
+
+Does error contain `"Unable to extract parameters"`?
+- ✓ YES → Execute <ParameterExtractionError/> recovery
+- ✗ NO → Continue
+
+Does error contain `"invalid type: null"`?
+- ✓ YES → Execute <UnitEnumVariantError/> recovery
+- ✗ NO → Continue
+
+Does error contain `"unknown variant"` with escaped quotes (like `\"VariantName\"`)?
+- ✓ YES → Check the test plan JSON for the original `value` field:
+  - If it was a plain string (like `"None"` or `"MaxClusterableObjectRange"`) → Execute <UnitEnumVariantError/> recovery
+  - Otherwise → Execute <EnumVariantError/> recovery
+- ✗ NO → Continue
+
+**No pattern matched:**
+- No recovery available
+- Mark operation as FAIL per <UpdateOperationViaScript/>
+- STOP IMMEDIATELY - do not process remaining operations
+</MatchErrorPattern>
+
+<InvalidTypeStringError>
+**Pattern**: Error contains `"invalid type: string"`
+
+**Cause**: You sent a number/boolean as a string (YOUR bug, not BRP's)
+
+**Critical Requirements**:
+- ALL numeric values MUST be JSON numbers, NOT strings: `{"value": 42}` NOT `{"value": "42"}`
+- ALL boolean values MUST be JSON booleans, NOT strings: `{"value": true}` NOT `{"value": "true"}`
+- Applies to ALL numeric types (f32, f64, u32, i32, etc.) and booleans
+- Common mistake: Converting values to strings via `str()`, `f"{}"`, or string interpolation
+- Correct approach: Use example values DIRECTLY from type guide without conversion
+
+**Recovery**:
+1. Parse error to identify which parameter has the wrong type
+2. Convert to proper JSON type (remove quotes from primitives)
+3. Re-execute operation with corrected value
+4. Update per <UpdateOperationViaScript/> with `--retry-count 1`
+5. DO NOT report as test failure - this is YOUR bug, not BRP's
+6. Only fail if retry produces DIFFERENT error
+
+**Before EVERY mutation**: Verify no quotes around numbers/booleans in value field.
+</InvalidTypeStringError>
+
+<UnitEnumVariantError>
+**Pattern**: Error contains `"invalid type: null"` OR `"unknown variant"` with escaped quotes, AND test plan has plain string value
+
+**Cause**: You transformed a unit enum variant string (e.g., `"None"` → `null` or `"MaxClusterableObjectRange"` → `"\"...\"`)
+
+**Recovery**:
+1. Re-read operation's `value` field from test plan JSON
+2. Pass it AS-IS to MCP tool without ANY transformation
+3. Re-execute operation
+4. Update per <UpdateOperationViaScript/> with `--retry-count 1`
+5. DO NOT report as test failure - this is YOUR bug
+
+**Examples**:
+- ✓ CORRECT: Pass `"None"` as string
+- ✗ WRONG: Convert to `null` or add quotes
+</UnitEnumVariantError>
+
+<UuidParsingError>
+**Pattern**: Error contains `"UUID parsing failed"` AND `'found \`"\` at'`
+
+**Cause**: You double-quoted a UUID string
+
+**Recovery**:
+1. Find UUID value in operation params
+2. Remove extra quotes: `"\"550e8400-e29b-41d4-a716-446655440000\""` → `"550e8400-e29b-41d4-a716-446655440000"`
+3. Re-execute operation
+4. Update per <UpdateOperationViaScript/> with `--retry-count 1`
+</UuidParsingError>
+
+<EnumVariantError>
+**Pattern**: Error contains `"unknown variant"` with escaped quotes like `\"VariantName\"`
+
+**Cause**: You double-quoted an enum variant
+
+**Recovery**:
+1. Remove extra quotes: `"\"Low\""` → `"Low"`
+2. Re-execute operation
+3. Update per <UpdateOperationViaScript/> with `--retry-count 1`
+4. DO NOT report as test failure - this is YOUR bug
+</EnumVariantError>
+
+<ParameterExtractionError>
+**Pattern**: Error contains `"Unable to extract parameters"`
+
+**Cause**: Tool framework issue with parameter order
+
+**Recovery**:
+1. Reorder parameters in your tool call (change the order you pass them)
+2. Re-execute operation with reordered parameters
+3. Update per <UpdateOperationViaScript/> with `--retry-count 1`
+</ParameterExtractionError>
 
 <UpdateOperationViaScript>
 **THE ONLY WAY to update the test plan after an operation:**
@@ -139,203 +264,3 @@ python3 .claude/scripts/mutation_test_operation_update.py \
 **This is the ONLY acceptable method. NO other approaches are allowed.**
 
 </UpdateOperationViaScript>
-
-### mcp__brp__world_spawn_entity
-
-**Execute MCP tool**:
-- Tool: `mcp__brp__world_spawn_entity`
-- Parameters: `components` (from operation), `port` (from operation)
-
-<UpdateOperationViaScript/>:
-
-IF SUCCESS:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status SUCCESS \
-  --entity-id ENTITY_ID_FROM_TOOL_RESULT
-```
-
-IF FAILURE:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status FAIL \
-  --error "ERROR_MESSAGE_FROM_TOOL"
-```
-
-### mcp__brp__world_query
-
-**Execute MCP tool**:
-- Tool: `mcp__brp__world_query`
-- Parameters: `filter`, `data`, `port` (all from operation)
-
-<UpdateOperationViaScript/>:
-
-IF SUCCESS:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status SUCCESS \
-  --entities "ENTITY_IDS_COMMA_SEPARATED"
-```
-Example: `--entities "4294967200,8589934477"`
-
-IF FAILURE:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status FAIL \
-  --error "ERROR_MESSAGE_FROM_TOOL"
-```
-
-### mcp__brp__world_mutate_components
-
-**Execute MCP tool**:
-- Tool: `mcp__brp__world_mutate_components`
-- Parameters: `entity`, `component`, `path`, `value`, `port` (all from operation)
-  - Note: `entity` should be after USE_QUERY_RESULT substitution if applicable
-
-<UpdateOperationViaScript/>:
-
-IF SUCCESS:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status SUCCESS
-```
-
-IF FAILURE:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status FAIL \
-  --error "ERROR_MESSAGE_FROM_TOOL"
-```
-
-### mcp__brp__world_mutate_resources
-
-**Execute MCP tool**:
-- Tool: `mcp__brp__world_mutate_resources`
-- Parameters: `resource`, `path`, `value`, `port` (all from operation)
-
-<UpdateOperationViaScript/>:
-
-IF SUCCESS:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status SUCCESS
-```
-
-IF FAILURE:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status FAIL \
-  --error "ERROR_MESSAGE_FROM_TOOL"
-```
-
-### mcp__brp__world_insert_resources
-
-**Execute MCP tool**:
-- Tool: `mcp__brp__world_insert_resources`
-- Parameters: `resource`, `value`, `port` (all from operation)
-
-<UpdateOperationViaScript/>:
-
-IF SUCCESS:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status SUCCESS
-```
-
-IF FAILURE:
-```bash
-python3 .claude/scripts/mutation_test_operation_update.py \
-  --file TEST_PLAN_FILE \
-  --operation-id OPERATION_ID_FROM_JSON \
-  --status FAIL \
-  --error "ERROR_MESSAGE_FROM_TOOL"
-```
-</OperationExecution>
-
-## Error Recovery
-
-<ErrorRecovery>
-**When an operation fails, check the error message and apply recovery:**
-
-### Invalid Type String Error
-
-**Pattern**: Error contains `"invalid type: string"`
-
-**Cause**: You sent a number/boolean as a string (YOUR bug, not BRP's)
-
-**Critical Requirements**:
-- ALL numeric values MUST be JSON numbers, NOT strings: `{"value": 42}` NOT `{"value": "42"}`
-- ALL boolean values MUST be JSON booleans, NOT strings: `{"value": true}` NOT `{"value": "true"}`
-- Applies to ALL numeric types (f32, f64, u32, i32, etc.) and booleans
-- Common mistake: Converting values to strings via `str()`, `f"{}"`, or string interpolation
-- Correct approach: Use example values DIRECTLY from type guide without conversion
-
-**Recovery**:
-1. Parse error to identify which parameter has the wrong type
-2. Convert to proper JSON type (remove quotes from primitives)
-3. Re-execute operation with corrected value
-4. Update per <UpdateOperationViaScript/> with `--retry-count 1`
-5. DO NOT report as test failure - this is YOUR bug, not BRP's
-6. Only fail if retry produces DIFFERENT error
-
-**Before EVERY mutation**: Verify no quotes around numbers/booleans in value field.
-
-### UUID Parsing Error
-
-**Pattern**: Error contains `"UUID parsing failed"` AND `'found \`"\` at'`
-
-**Cause**: You double-quoted a UUID string
-
-**Recovery**:
-1. Find UUID value in operation params
-2. Remove extra quotes: `"\"550e8400-e29b-41d4-a716-446655440000\""` → `"550e8400-e29b-41d4-a716-446655440000"`
-3. Re-execute operation
-4. Update per <UpdateOperationViaScript/> with `--retry-count 1`
-
-### Enum Variant Error
-
-**Pattern**: Error contains `"unknown variant"` with escaped quotes like `\"VariantName\"`
-
-**Cause**: You double-quoted an enum variant
-
-**Recovery**:
-1. Remove extra quotes: `"\"Low\""` → `"Low"`
-2. Re-execute operation
-3. Update per <UpdateOperationViaScript/> with `--retry-count 1`
-4. DO NOT report as test failure - this is YOUR bug
-
-### Parameter Extraction Error
-
-**Pattern**: Error contains `"Unable to extract parameters"`
-
-**Cause**: Tool framework issue with parameter order
-
-**Recovery**:
-1. Reorder parameters in your tool call (change the order you pass them)
-2. Re-execute operation with reordered parameters
-3. Update per <UpdateOperationViaScript/> with `--retry-count 1`
-
-### All Other Errors
-
-No recovery - mark FAIL, record error per <UpdateOperationViaScript/>, and **STOP IMMEDIATELY**.
-
-**CRITICAL**: Stop execution immediately on first failure. Do NOT process any remaining operations. Mark only the failed operation and return.
-</ErrorRecovery>

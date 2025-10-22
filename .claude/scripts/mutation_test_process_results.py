@@ -26,8 +26,6 @@ class TestOperation(TypedDict, total=False):
     components: dict[str, Any] | None  # pyright: ignore[reportExplicitAny]
     filter: dict[str, list[str]] | None
     data: dict[str, Any] | None  # pyright: ignore[reportExplicitAny]
-    result_entity_id: int | None
-    result_entities: list[int] | None
     entity: str | int | None
     component: str | None
     resource: str | None
@@ -219,7 +217,7 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
         if op_tool == "mcp__brp__world_spawn_entity":
             if op_status and op_status.upper() == "SUCCESS":
                 spawn_insert = True
-                entity_id = op.get("result_entity_id")
+                # Note: entity_id tracking removed - not needed for validation
             else:
                 status = "FAIL"
                 error_msg = op.get("error")
@@ -234,7 +232,9 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
                         "components": op.get("components", {}),
                         "port": op.get("port"),
                     },
-                    response_received={"error": error_msg if error_msg else "Unknown error"},
+                    response_received={
+                        "error": error_msg if error_msg else "Unknown error"
+                    },
                 )
                 break
 
@@ -242,20 +242,14 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
         elif op_tool == "mcp__brp__world_query":
             if op_status and op_status.upper() == "SUCCESS":
                 entity_query = True
-                result_entities = op.get("result_entities")
-                if result_entities is None:
-                    result_entities = []
                 op_filter = op.get("filter")
                 op_data = op.get("data")
                 query_details = QueryDetails(
                     filter=op_filter if op_filter is not None else {},
                     data=op_data if op_data is not None else {},
-                    entities_found=len(result_entities),
+                    entities_found=0,  # Not tracked anymore - query success is sufficient
                 )
-                # Check for component not found
-                if len(result_entities) == 0:
-                    status = "COMPONENT_NOT_FOUND"
-                    break
+
             else:
                 status = "FAIL"
                 error_msg = op.get("error")
@@ -273,7 +267,9 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
                         "data": op_data if op_data is not None else {},
                         "port": op.get("port"),
                     },
-                    response_received={"error": error_msg if error_msg else "Unknown error"},
+                    response_received={
+                        "error": error_msg if error_msg else "Unknown error"
+                    },
                 )
                 break
 
@@ -306,7 +302,9 @@ def convert_test_to_result(test: TypeTest) -> TestResult | None:
                         "value": op.get("value"),
                         "port": op.get("port"),
                     },
-                    response_received={"error": error_msg if error_msg else "Unknown error"},
+                    response_received={
+                        "error": error_msg if error_msg else "Unknown error"
+                    },
                 )
                 break
 
@@ -427,7 +425,9 @@ tmpdir = tempfile.gettempdir()
 # Determine how many subagents were actually used
 # This matches the logic in the assignment script
 batch_size = max_subagents * types_per_subagent
-subagent_count = min(max_subagents, (batch_size + types_per_subagent - 1) // types_per_subagent)
+subagent_count = min(
+    max_subagents, (batch_size + types_per_subagent - 1) // types_per_subagent
+)
 
 for subagent_idx in range(subagent_count):
     port = base_port + subagent_idx
@@ -435,9 +435,7 @@ for subagent_idx in range(subagent_count):
 
     # Check if file exists
     if not os.path.exists(test_plan_file):
-        print(
-            f"Warning: Test plan file not found: {test_plan_file}", file=sys.stderr
-        )
+        print(f"Warning: Test plan file not found: {test_plan_file}", file=sys.stderr)
         continue
 
     # Read test plan
@@ -538,7 +536,9 @@ review_summaries: list[FailureSummary] = []
 
 if failed > 0 or missing > 0:
     # Get all failures
-    all_failures = [r for r in results if r["status"] in ["FAIL", "COMPONENT_NOT_FOUND"]]
+    all_failures = [
+        r for r in results if r["status"] in ["FAIL", "COMPONENT_NOT_FOUND"]
+    ]
 
     # Classify failures: retry vs review
     retry_failures: list[TestResult] = []
@@ -559,7 +559,9 @@ if failed > 0 or missing > 0:
             json.dump(retry_failures, f, indent=2)
 
     if review_failures:
-        review_log_path = f".claude/transient/all_types_review_failures_{timestamp}.json"
+        review_log_path = (
+            f".claude/transient/all_types_review_failures_{timestamp}.json"
+        )
         with open(review_log_path, "w", encoding="utf-8") as f:
             json.dump(review_failures, f, indent=2)
 

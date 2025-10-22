@@ -3,19 +3,11 @@
 Atomically update a single operation in a mutation test plan file.
 
 Usage:
-  # Success with entity ID (spawn operations)
+  # Success (no additional parameters needed)
   python3 mutation_test_operation_update.py \\
     --file PATH \\
     --operation-id N \\
-    --status SUCCESS \\
-    --entity-id 12345
-
-  # Success with entity list (query operations)
-  python3 mutation_test_operation_update.py \\
-    --file PATH \\
-    --operation-id N \\
-    --status SUCCESS \\
-    --entities "4294967200,8589934477"
+    --status SUCCESS
 
   # Failure with error message
   python3 mutation_test_operation_update.py \\
@@ -66,13 +58,6 @@ def parse_args() -> argparse.Namespace:
         choices=["SUCCESS", "FAIL"],
         help="Operation status (SUCCESS or FAIL)",
     )
-    _ = parser.add_argument(
-        "--entity-id", type=int, help="Result entity ID (for spawn operations)"
-    )
-    _ = parser.add_argument(
-        "--entities",
-        help="Comma-separated entity IDs (for query operations)",
-    )
     _ = parser.add_argument("--error", help="Error message (for failed operations)")
     _ = parser.add_argument(
         "--retry-count", type=int, default=0, help="Retry count (default: 0)"
@@ -83,19 +68,6 @@ def parse_args() -> argparse.Namespace:
 
 def validate_args(args: argparse.Namespace) -> None:
     """Validate argument combinations."""
-    # Parse entities if provided
-    entities_arg = cast(str | None, args.entities)
-    if entities_arg:
-        try:
-            # Validate it's comma-separated integers
-            entity_list = [int(e.strip()) for e in entities_arg.split(",")]
-            if not entity_list:
-                print("Error: --entities must contain at least one integer", file=sys.stderr)
-                sys.exit(1)
-        except ValueError:
-            print("Error: --entities must be comma-separated integers", file=sys.stderr)
-            sys.exit(1)
-
     # Validate retry_count is non-negative
     retry_arg = cast(int, args.retry_count)
     if retry_arg < 0:
@@ -111,15 +83,8 @@ def main() -> None:
     file_path: str = cast(str, args.file)
     operation_id: int = cast(int, args.operation_id)
     status: str = cast(str, args.status)
-    entity_id: int | None = cast(int | None, args.entity_id)
-    entities_str: str | None = cast(str | None, args.entities)
     error: str | None = cast(str | None, args.error)
     retry_count: int = cast(int, args.retry_count)
-
-    # Parse entities if provided
-    entities: list[int] | None = None
-    if entities_str:
-        entities = [int(e.strip()) for e in entities_str.split(",")]
 
     # Read test plan file
     try:
@@ -166,10 +131,6 @@ def main() -> None:
 
     if status == "SUCCESS":
         operation["error"] = None
-        if entity_id is not None:
-            operation["result_entity_id"] = entity_id
-        if entities is not None:
-            operation["result_entities"] = entities
     else:  # FAIL
         operation["error"] = error if error else "Unknown error"
         # Don't set result fields on failure
