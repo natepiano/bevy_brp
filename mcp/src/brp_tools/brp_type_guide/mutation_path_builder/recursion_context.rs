@@ -92,6 +92,7 @@ use super::types::PathAction;
 use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
+use error_stack::Report;
 
 /// Type-safe wrapper for recursion depth tracking
 ///
@@ -130,19 +131,19 @@ impl Deref for RecursionDepth {
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind:                PathKind,
+    pub path_kind: PathKind,
     /// Reference to the type registry
-    pub registry:                 Arc<HashMap<BrpTypeName, Value>>,
+    pub registry: Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
-    pub mutation_path:            MutationPath,
+    pub mutation_path: MutationPath,
     /// Action to take regarding path creation (set by `MutationPathBuilder`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action:              PathAction,
+    pub path_action: PathAction,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
-    pub variant_chain:            Vec<VariantName>,
+    pub variant_chain: Vec<VariantName>,
     /// Recursion depth tracking to prevent infinite loops
-    pub depth:                    RecursionDepth,
+    pub depth: RecursionDepth,
     /// Parent enum variant signature (only set when processing enum variant children)
     /// The enum type is available via `path_kind.parent_type` - no need to store it redundantly
     pub parent_variant_signature: Option<VariantSignature>,
@@ -280,21 +281,9 @@ impl RecursionContext {
                 // Try struct field-specific knowledge first - this overrides generic type knowledge
                 // Example: Camera3d.depth_texture_usages needs value 20, not generic u32 value
                 let key = KnowledgeKey::struct_field(parent_type, field_name.as_str());
-                tracing::debug!("Trying struct field match with key: {:?}", key);
                 if let Some(knowledge) = BRP_TYPE_KNOWLEDGE.get(&key) {
-                    tracing::debug!(
-                        "Found struct field match for {}.{}: {:?}",
-                        parent_type,
-                        field_name,
-                        knowledge.example()
-                    );
                     return Ok(Some(knowledge));
                 }
-                tracing::debug!(
-                    "No struct field match found for {}.{}, falling back to exact type match",
-                    parent_type,
-                    field_name
-                );
 
                 // Fall through to exact type match for struct fields without specific knowledge
             }
@@ -315,10 +304,6 @@ impl RecursionContext {
                             );
 
                             if let Some(knowledge) = BRP_TYPE_KNOWLEDGE.get(&key) {
-                                tracing::debug!(
-                                    "Found enum signature knowledge for {parent_type}[{index}]: {:?}",
-                                    knowledge.example()
-                                );
                                 return Ok(Some(knowledge));
                             }
                         }
@@ -327,7 +312,6 @@ impl RecursionContext {
                             // IndexedElement should only occur with Tuple signatures
                             // create_paths_for_signature() creates StructField for Struct, nothing
                             // for Unit
-                            use error_stack::Report;
                             return Err(BuilderError::SystemError(Report::new(
                                 Error::InvalidState(format!(
                                     "IndexedElement path kind with {signature:?} variant signature for type {}. This indicates a bug in path generation logic.",
