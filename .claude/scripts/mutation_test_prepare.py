@@ -61,6 +61,7 @@ class AllAssignmentsOutput(TypedDict):
     max_subagents: int
     types_per_subagent: int
     total_types: int
+    progress_message: str  # Pre-formatted progress message for display
     assignments: list[SubagentAssignment]
 
 
@@ -777,14 +778,50 @@ if os.path.exists(zed_cli):
             pass  # Ignore if Zed fails to open
 
 # STEP 6: Return all assignments with test plan files generated
-# Calculate unique types count (some types may be split into multiple parts)
-unique_types = len(set(part["type_data"]["type_name"] for part in type_parts))
+# Calculate unique types that actually made it into assignments
+assigned_type_names: set[str] = set()
+for assignment in assignments:
+    # Open the test plan file to get the actual types assigned
+    try:
+        with open(assignment["test_plan_file"], "r") as f:
+            test_plan_raw = json.load(f)  # pyright: ignore[reportAny]
+            test_plan = cast(TestPlan, test_plan_raw)
+            for test in test_plan.get("tests", []):
+                type_name = test.get("type_name")
+                if type_name:
+                    assigned_type_names.add(type_name)
+    except (IOError, json.JSONDecodeError):
+        pass
+
+unique_types_count = len(assigned_type_names)
+subagent_count = len(assignments)
+
+# Calculate statistics for progress message
+total_batches = max(
+    (t.get("batch_number") or 0 for t in type_guide.values()),
+    default=0
+)
+untested_count = len([t for t in type_guide.values() if t.get("test_status") == "untested"])
+remaining_types = untested_count - unique_types_count  # Remaining after this batch
+
+# Generate progress message
+if unique_types_count == subagent_count:
+    distribution = f"{unique_types_count} types across {subagent_count} subagents"
+else:
+    distribution = f"{unique_types_count} types split across {subagent_count} subagents"
+
+progress_message = f"Processing batch {batch_num} of {total_batches} - Testing {distribution} ({remaining_types} remaining)"
 
 all_assignments_output: AllAssignmentsOutput = {
     "batch_number": batch_num,
-    "max_subagents": len(assignments),  # Report actual subagents used
+    "max_subagents": subagent_count,  # Report actual subagents used
     "types_per_subagent": types_per_subagent,  # Keep original for reference
-    "total_types": unique_types,
+    "total_types": unique_types_count,
+    "progress_message": progress_message,
     "assignments": assignments,
 }
+
+# Print summary to stderr for user visibility
+print(f"✓ {distribution}", file=sys.stderr)
+
 print(json.dumps(all_assignments_output, indent=2))

@@ -31,10 +31,6 @@ For each batch N (starting from 1):
 Continue until all batches processed or failures occur.
 </BatchProcessingLoop>
 
-<ReportProgress>
-Display: "Processing batch N of [TOTAL_BATCHES] - Testing [TYPES_IN_BATCH] types ([REMAINING_TYPES] remaining)"
-</ReportProgress>
-
 <GetBatchAssignments>
 Execute script and capture JSON output:
 ```bash
@@ -42,14 +38,25 @@ python3 ./.claude/scripts/mutation_test_prepare.py --batch [BATCH_NUMBER] --max-
 ```
 
 Parse JSON output (on stdout):
+- `batch_number` - current batch number
+- `total_types` - unique types being tested in this batch
+- `max_subagents` - number of subagents being used
+- `types_per_subagent` - configured types per subagent
+- `progress_message` - pre-formatted progress message for display
 - `assignments` - array of subagent assignments with fields:
   - `window_description` - window title
   - `task_description` - task description
   - `test_plan_file` - test plan path
   - `port` - port number
 
-Store the complete JSON response for use in <PrepareApplications/> and <LaunchMutationTestSubagents/>.
+Store the complete JSON response for use in <ReportProgress/>, <PrepareApplications/>, and <LaunchMutationTestSubagents/>.
 </GetBatchAssignments>
+
+<ReportProgress>
+Display the `progress_message` field from <GetBatchAssignments/> JSON output.
+
+Example: "Processing batch 1 of 16 - Testing 8 types split across 10 subagents (152 remaining)"
+</ReportProgress>
 
 <PrepareApplications>
 Task a general-purpose subagent to prepare applications using the assignments JSON:
