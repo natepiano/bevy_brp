@@ -28,6 +28,7 @@ use bevy::asset::RenderAssetUsages;
 use bevy::audio::PlaybackSettings;
 use bevy::audio::SpatialListener;
 use bevy::camera::ManualTextureViewHandle;
+use bevy::camera::primitives::Aabb;
 use bevy::camera::primitives::CascadesFrusta;
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::camera::visibility::RenderLayers;
@@ -36,6 +37,7 @@ use bevy::core_pipeline::Skybox;
 use bevy::core_pipeline::prepass::MotionVectorPrepass;
 use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::gizmos::GizmoAsset;
+use bevy::gizmos::aabb::ShowAabbGizmo;
 use bevy::gizmos::config::GizmoLineConfig;
 use bevy::gizmos::retained::Gizmo;
 use bevy::input::gamepad::Gamepad;
@@ -751,6 +753,10 @@ fn spawn_shadow_test_entities(commands: &mut Commands, asset_server: &AssetServe
         MeshMaterial3d::<StandardMaterial>(Handle::default()), // Dummy material handle
         Transform::from_xyz(-2.0, 1.0, 0.0),
         NotShadowCaster, // For testing mutations
+        Aabb::from_min_max(Vec3::new(-0.5, -0.5, -0.5), Vec3::new(0.5, 0.5, 0.5)),
+        ShowAabbGizmo {
+            color: Some(Color::srgb(1.0, 0.0, 0.0)),
+        },
         Name::new("NotShadowCasterTestEntity"),
     ));
 
