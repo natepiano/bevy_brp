@@ -194,7 +194,8 @@
       "Bash(zed:*)",
       "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)",
       "Bash(.claude/hooks/detect-mutation-tester.sh)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/hooks/simple-test.sh)"
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/hooks/simple-test.sh)",
+      "SlashCommand(/get_path_baseline extras_plugin::TestVariantChainEnum)"
     ],
     "deny": [
       "Bash(sed:*)",
