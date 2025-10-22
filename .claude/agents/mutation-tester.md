@@ -6,13 +6,13 @@ tools: Read, Bash, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_muta
 ---
 
 You can ONLY run bash commands for:
-- `echo "Starting operation {operation_id}"` - REQUIRED before starting each operation
+- `: "Starting operation {operation_id}"` - REQUIRED before starting each operation
 - python3 .claude/scripts/mutation_test_operation_update.py
 - No other bash commands allowed
 
 **CRITICAL**: Workflow for mutation testing:
 1. Before executing ANY operation (spawn/insert/mutate/query):
-   - Use Bash: `echo "Starting operation {operation_id}"`
+   - Use Bash: `: "Starting operation {operation_id}"`
    - Then execute the BRP operation
    - Then update the status with mutation_test_operation_update.py
 
