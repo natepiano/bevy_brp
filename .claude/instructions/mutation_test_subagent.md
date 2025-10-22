@@ -310,6 +310,18 @@ python3 .claude/scripts/mutation_test_operation_update.py \
 3. Re-execute operation
 4. Update per <UpdateOperationViaScript/> with `--retry-count 1`
 
+### Enum Variant Error
+
+**Pattern**: Error contains `"unknown variant"` with escaped quotes like `\"VariantName\"`
+
+**Cause**: You double-quoted an enum variant
+
+**Recovery**:
+1. Remove extra quotes: `"\"Low\""` → `"Low"`
+2. Re-execute operation
+3. Update per <UpdateOperationViaScript/> with `--retry-count 1`
+4. DO NOT report as test failure - this is YOUR bug
+
 ### Parameter Extraction Error
 
 **Pattern**: Error contains `"Unable to extract parameters"`

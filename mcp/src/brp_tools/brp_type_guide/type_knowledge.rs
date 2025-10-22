@@ -79,13 +79,13 @@ pub enum KnowledgeKey {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: BrpTypeName,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
     /// Match an indexed element within enum variants that share a signature
     EnumVariantSignature {
         enum_type: BrpTypeName,
         signature: VariantSignature,
-        index:     usize,
+        index: usize,
     },
 }
 
@@ -102,7 +102,7 @@ impl KnowledgeKey {
     ) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
     }
 
@@ -127,7 +127,7 @@ pub enum TypeKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }
@@ -196,15 +196,15 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I16),
-            TypeKnowledge::as_root_value(json!(1000), TYPE_I16),
+            TypeKnowledge::as_root_value(json!(1), TYPE_I16),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I32),
-            TypeKnowledge::as_root_value(json!(100_000), TYPE_I32),
+            TypeKnowledge::as_root_value(json!(1), TYPE_I32),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I64),
-            TypeKnowledge::as_root_value(json!(1_000_000_000_i64), TYPE_I64),
+            TypeKnowledge::as_root_value(json!(1), TYPE_I64),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I128),
@@ -220,11 +220,11 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U32),
-            TypeKnowledge::as_root_value(json!(1_000_000_u32), TYPE_U32),
+            TypeKnowledge::as_root_value(json!(1_u32), TYPE_U32),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U64),
-            TypeKnowledge::as_root_value(json!(10_000_000_000_u64), TYPE_U64),
+            TypeKnowledge::as_root_value(json!(1_u64), TYPE_U64),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U128),
@@ -242,11 +242,11 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
         // ===== Size types =====
         map.insert(
             KnowledgeKey::exact(TYPE_ISIZE),
-            TypeKnowledge::as_root_value(json!(1_000_000_i64), TYPE_ISIZE),
+            TypeKnowledge::as_root_value(json!(1_i64), TYPE_ISIZE),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_USIZE),
-            TypeKnowledge::as_root_value(json!(2_000_000_u64), TYPE_USIZE),
+            TypeKnowledge::as_root_value(json!(2_u64), TYPE_USIZE),
         );
 
         // ===== Text types =====

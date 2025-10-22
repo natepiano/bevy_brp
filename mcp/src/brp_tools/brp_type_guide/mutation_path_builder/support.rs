@@ -6,6 +6,7 @@
 
 use std::collections::HashMap;
 
+use itertools::Itertools;
 use serde_json::Value;
 
 use super::mutation_path_internal::MutationPathInternal;
@@ -76,8 +77,25 @@ fn extract_child_value_for_chain(
         child
             .partial_root_examples
             .as_ref()
-            .and_then(|partials| partials.get(chain))
-            .cloned()
+            .and_then(|partials| {
+                // Try exact match first (for non-enum children)
+                partials.get(chain).cloned().or_else(|| {
+                    // For enum children: find a mutable variant to include
+                    // Child enum has chains like ["Parent::Variant", "Child::Variant"]
+                    // We're looking for chains that extend the parent chain by one level
+                    partials
+                        .iter()
+                        .filter(|(child_chain, _)| {
+                            child_chain.len() == chain.len() + 1 && child_chain.starts_with(chain)
+                        })
+                        // Sort by variant chain for deterministic results
+                        .sorted_by_key(|(child_chain, _)| *child_chain)
+                        // Find first non-null value (mutable variant)
+                        // null = NotMutable variant (no example generated)
+                        .find(|(_, value)| !value.is_null())
+                        .map(|(_, value)| value.clone())
+                })
+            })
             .unwrap_or_else(fallback)
     })
 }

@@ -134,6 +134,10 @@ Based on `status` field from ProcessBatchResults JSON:
 
 **"SUCCESS"**: Continue to next batch
 
+**"NULL_STATUS_ONLY"**:
+- Display <NullStatusRetryNotice/> using the stored `failures` array
+- Continue to next batch (renumbering will retry these types)
+
 **"FAILURES_DETECTED"**:
 - Execute <FinalCleanup/> SILENTLY
 - Execute <InteractiveFailureReview/> using the stored `failures` array
@@ -151,6 +155,32 @@ Execute <ParallelPortOperation/> with:
 - Parameters: app_name="extras_plugin"
 - Mode: SILENT (no output)
 </FinalCleanup>
+
+## NULL STATUS RETRY NOTICE
+
+<NullStatusRetryNotice>
+Display the following notice when status is "NULL_STATUS_ONLY":
+
+---
+
+## Batch {batch.number} - Subagent Execution Failures (Retrying)
+
+**Status**: ⚠️ SUBAGENT EXECUTION ISSUES
+
+The following types had subagent execution failures (null status fields). These are NOT BRP validation errors.
+These types will be automatically retried in the next batch.
+
+**Affected Types** ({count}):
+{FOR each failure in failures array:}
+- `{failure.type}` - {failure.summary}
+{END FOR}
+
+**Details**: {log_file}
+
+**Next Action**: Continuing to next batch. The renumbering process will pick these up for retry.
+
+---
+</NullStatusRetryNotice>
 
 ## STEP 5: INTERACTIVE FAILURE REVIEW
 
@@ -278,6 +308,7 @@ After receiving JSON output from mutation_test_process_results.py, present resul
 
 **Status Icons**:
 - "SUCCESS" → ✅ ALL TESTS PASSED
+- "NULL_STATUS_ONLY" → ⚠️ SUBAGENT EXECUTION ISSUES (will retry)
 - "FAILURES_DETECTED" → ❌ FAILURES DETECTED
 - "ERROR" → 🔥 PROCESSING ERROR
 </TestResultOutput>

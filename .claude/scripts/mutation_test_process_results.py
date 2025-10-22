@@ -427,10 +427,20 @@ if total_types > 0 and batch_size > 0:
 # Check for failures and build failure summaries
 failure_log_path: str | None = None
 failure_summaries: list[FailureSummary] = []
+all_failures_are_null_status = False
 
 if failed > 0 or missing > 0:
     # Get all failures
     failures = [r for r in results if r["status"] in ["FAIL", "COMPONENT_NOT_FOUND"]]
+
+    # Check if all failures are due to null status (subagent execution failures)
+    null_status_failures = [
+        f
+        for f in failures
+        if f.get("failure_details")
+        and "status field is null" in f["failure_details"].get("error_message", "")
+    ]
+    all_failures_are_null_status = len(null_status_failures) == len(failures)
 
     # Save detailed failure log
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -470,9 +480,20 @@ if failed > 0 or missing > 0:
             )
         )
 
+# Determine final status
+# NULL_STATUS_ONLY = all failures are subagent execution issues, not BRP validation errors
+# FAILURES_DETECTED = at least one real BRP validation failure
+# SUCCESS = no failures
+final_status = "SUCCESS"
+if failed > 0 or missing > 0:
+    if all_failures_are_null_status:
+        final_status = "NULL_STATUS_ONLY"
+    else:
+        final_status = "FAILURES_DETECTED"
+
 # Build output JSON
 output: ProcessResultsOutput = {
-    "status": "FAILURES_DETECTED" if (failed > 0 or missing > 0) else "SUCCESS",
+    "status": final_status,
     "batch": {
         "number": batch_num,
         "total_batches": total_batches,
