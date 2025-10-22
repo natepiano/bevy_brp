@@ -570,11 +570,12 @@ fn build_partial_root_examples(
             let mut this_variant_chain = ctx.variant_chain.clone();
             this_variant_chain.push(variant_name.clone());
 
-            // Get base example for this variant (from spawn_format examples)
+            // Get base example for this variant - use mutable variant if this one is null
             let spawn_example = enum_examples
                 .iter()
                 .find(|ex| ex.applicable_variants.contains(variant_name))
                 .and_then(|ex| ex.example.clone())
+                .or_else(|| select_preferred_example(enum_examples))
                 .unwrap_or(json!(null));
 
             // Find all deeper nested chains that extend this variant
