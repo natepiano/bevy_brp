@@ -168,9 +168,9 @@ Vec<MutationPathExternal>
 
 ## INTERACTIVE IMPLEMENTATION SEQUENCE
 
-### STEP 1: Core Type System Refactoring ⏳ PENDING
+### STEP 1: Core Type System Refactoring ✅ COMPLETED
 
-**Status**: ⏳ PENDING
+**Status**: ✅ COMPLETED (2025-10-22)
 **Type**: ATOMIC GROUP - CRITICAL
 **Build Status**: ⚠️ Will not compile until Step 3 complete
 
@@ -345,9 +345,9 @@ cargo build  # Will fail - part of atomic group
 
 ---
 
-### STEP 2: API Layer Changes ⏳ PENDING
+### STEP 2: API Layer Changes ✅ COMPLETED
 
-**Status**: ⏳ PENDING
+**Status**: ✅ COMPLETED (2025-10-22)
 **Type**: ATOMIC GROUP - CRITICAL
 **Build Status**: ⚠️ Will not compile until Step 3 complete
 **Dependencies**: Requires Step 1
@@ -481,9 +481,9 @@ cargo build  # Will fail - part of atomic group
 
 ---
 
-### STEP 3: Enum Processing Refactor ⏳ PENDING
+### STEP 3: Enum Processing Refactor ✅ COMPLETED (BUG FOUND - FIX PENDING)
 
-**Status**: ⏳ PENDING
+**Status**: ✅ COMPLETED (2025-10-22) - ⚠️ BUG DISCOVERED - See "STEP 3 BUG DISCOVERY & FIX" section at end
 **Type**: ATOMIC GROUP - CRITICAL
 **Build Status**: ✅ Compiles successfully after this step
 **Dependencies**: Requires Steps 1-2
@@ -1631,3 +1631,263 @@ The `Color` enum has 10 variants, each with different color space fields but all
 - **Issue**: Finding claimed the plan doesn't specify how to update knowledge lookup logic for the new EnumVariant key
 - **Reasoning**: The finding misunderstood the architecture. The plan explicitly removes signature-based grouping (Step 1), making each variant process independently. The existing `find_knowledge()` method at recursion_context.rs:268-309 already handles knowledge lookups and will work with the new `EnumVariant` key structure without modification - it just matches on a different key structure (variant_name instead of signature+index). The plan's usage example demonstrates the complete picture. The suggested code location is for struct-field knowledge checks, not per-variant knowledge.
 - **Decision**: The plan correctly focuses on the data structure change and knowledge key change. The lookup integration is implicit because it reuses existing infrastructure.
+
+---
+
+## STEP 3 BUG DISCOVERY & FIX (2025-10-22)
+
+### Status Update
+
+**Steps 1-3**: ✅ COMPLETED with compilation success
+**Validation**: ❌ FAILED - Lost 2 examples during migration (11 baseline → 9 new)
+
+### Bug Discovery
+
+After completing Steps 1-3 and achieving successful compilation, validation testing against `extras_plugin::TestVariantChainEnum` revealed **critical data loss**:
+
+**Missing Examples**:
+1. Root path `""`: Had 2 examples (Empty + WithMiddleStruct variants), now only 1 (Empty)
+2. `.middle_struct.nested_enum`: Had 3 examples (Unit/Tuple/Struct signatures), now only 1
+
+**Duplicate Issues**:
+- Path `.middle_struct.nested_enum.0` appears twice but BOTH entries missing `root_example` differentiation
+
+### Root Cause Analysis
+
+**File**: `enum_path_builder.rs`  
+**Function**: `create_enum_mutation_paths()` (lines 410-445)
+
+**The Problem**:
+```rust
+// Line 422: Creates SINGLE root path
+let mut root_mutation_path =
+    build_enum_root_path(ctx, default_example, enum_mutability, mutability_reason);
+
+// Line 442: Returns ONE root + children
+let mut result = vec![root_mutation_path];  // ← BUG: Only one root
+result.extend(child_mutation_paths);
+result
+```
+
+**What's Wrong**:
+- `process_all_variants()` correctly produces `partial_root_examples` HashMap with ALL variants
+- `create_enum_mutation_paths()` creates only ONE root path using "default" example
+- Other variants' root examples are LOST
+- Child variant processing works correctly (not affected)
+
+**Evidence of Incomplete Work**:  
+Line 416-417 contains TODO comment:
+```rust
+// For now, assume Mutable (we'll refine this when we generate multiple root entries per variant)
+```
+
+This reveals the developer knew multiple root entries were needed but used a temporary shortcut.
+
+### Fix Strategy
+
+**Objective**: Create one root path entry per variant (not one total)
+
+**Changes Required**:
+
+#### 1. Modify `create_enum_mutation_paths()` (lines 410-445)
+
+**Remove**:
+- `default_example` parameter
+- Single root path creation (line 422-423)
+
+**Add**:
+```rust
+fn create_enum_mutation_paths(
+    ctx: &RecursionContext,
+    // REMOVED: default_example parameter
+    mut child_mutation_paths: Vec<MutationPathInternal>,
+    partial_root_examples: HashMap<VariantName, Value>,
+) -> Vec<MutationPathInternal> {
+    let mut result = Vec::new();
+    
+    // NEW: Iterate through EACH variant
+    for (variant_name, variant_example) in &partial_root_examples {
+        // Calculate mutability for THIS variant's children
+        let variant_mutability = calculate_variant_mutability(
+            variant_name,
+            &child_mutation_paths,
+            ctx,
+        );
+        
+        // Create root path entry for THIS variant
+        let variant_root = build_variant_root_path(
+            ctx,
+            variant_name,
+            variant_example.clone(),
+            variant_mutability,
+        );
+        
+        result.push(variant_root);
+    }
+    
+    // Convert and propagate to children (existing logic)
+    let partial_root_examples_chain = convert_to_chain_map(partial_root_examples);
+    propagate_partial_root_examples_to_children(
+        &mut child_mutation_paths,
+        &partial_root_examples_chain,
+        ctx,
+    );
+    
+    // Return ALL variant roots + children
+    result.extend(child_mutation_paths);
+    result
+}
+```
+
+#### 2. Create helper: `build_variant_root_path()`
+
+**Location**: After `build_enum_root_path()` (~line 391)
+
+```rust
+/// Build root path for a specific variant
+fn build_variant_root_path(
+    ctx: &RecursionContext,
+    variant_name: &VariantName,
+    variant_example: Value,
+    mutability: Mutability,
+) -> MutationPathInternal {
+    // Build enum_path_data with THIS variant's chain
+    let enum_path_data = if ctx.variant_chain.is_empty() {
+        // Top-level enum: Create single-element chain
+        Some(EnumPathData {
+            variant_chain: vec![variant_name.clone()],
+            root_example: Some(variant_example.clone()),
+        })
+    } else {
+        // Nested enum: Extend parent chain
+        let mut chain = ctx.variant_chain.clone();
+        chain.push(variant_name.clone());
+        Some(EnumPathData {
+            variant_chain: chain,
+            root_example: Some(variant_example.clone()),
+        })
+    };
+    
+    MutationPathInternal {
+        mutation_path: ctx.mutation_path.clone(),
+        example: Some(variant_example),
+        type_name: ctx.type_name().display_name(),
+        path_kind: ctx.path_kind.clone(),
+        mutability,
+        mutability_reason: None,
+        enum_path_data,
+        depth: *ctx.depth,
+        partial_root_examples: None,
+    }
+}
+```
+
+#### 3. Create helper: `calculate_variant_mutability()`
+
+**Location**: Near other mutability helpers
+
+```rust
+/// Calculate mutability for a specific variant based on its children
+fn calculate_variant_mutability(
+    variant_name: &VariantName,
+    child_paths: &[MutationPathInternal],
+    ctx: &RecursionContext,
+) -> Mutability {
+    // Filter to only THIS variant's direct children
+    let variant_children: Vec<Mutability> = child_paths
+        .iter()
+        .filter(|p| p.is_direct_child_at_depth(*ctx.depth))
+        .filter(|p| {
+            p.enum_path_data
+                .as_ref()
+                .map_or(false, |ed| ed.variant_chain.last() == Some(variant_name))
+        })
+        .map(|p| p.mutability)
+        .collect();
+    
+    if variant_children.is_empty() {
+        Mutability::Mutable  // Unit variants or no fields
+    } else {
+        support::aggregate_mutability(&variant_children)
+    }
+}
+```
+
+#### 4. Update `process_enum()` (lines 83-97)
+
+**Remove**:
+```rust
+// Lines 83-97: Remove default example selection
+let default_example = ctx
+    .find_knowledge()
+    .ok()
+    .flatten()
+    .map(|knowledge| knowledge.example().clone())
+    .or_else(|| {
+        partial_root_examples.values().next().cloned()
+    })
+    .ok_or_else(|| { /* error */ })?;
+```
+
+**Replace with**:
+```rust
+// Pass partial_root_examples directly - no default selection
+Ok(create_enum_mutation_paths(
+    ctx,
+    // REMOVED: default_example argument
+    child_mutation_paths,
+    partial_root_examples,
+))
+```
+
+### Expected Outcomes After Fix
+
+**For `TestVariantChainEnum`**:
+- Total entries: 11 (not 9) ✅
+- Root path `""`: 2 entries (Empty, WithMiddleStruct) ✅
+- `.middle_struct.nested_enum`: 3 entries (Unit, Tuple, Struct) ✅
+- `.middle_struct.nested_enum.0`: 2 entries with DIFFERENT `root_example` values ✅
+
+**General**:
+- All baseline examples preserved ✅
+- Each variant gets explicit root entry ✅
+- Proper `root_example` differentiation ✅
+- Child path logic unchanged (still works) ✅
+
+### Validation Command
+
+```bash
+# After fix, re-run validation
+python3 .claude/transient/compare_migration.py
+```
+
+**Expected output**:
+```
+✅ MIGRATION SUCCESSFUL: All data preserved and properly structured
+```
+
+### Risk Assessment
+
+**Complexity**: Medium
+- Remove ~20 lines (default selection)
+- Add ~80 lines (iteration + 2 helpers)
+- Modify 1 function signature
+- Update 2 call sites
+
+**Risk**: Low
+- Child path logic unchanged (isolated change)
+- Only affects root path creation
+- Clear TODO indicates incomplete work
+- Validation script catches regressions
+
+### Implementation Status
+
+- [ ] Remove default example selection from `process_enum()`
+- [ ] Add `build_variant_root_path()` helper
+- [ ] Add `calculate_variant_mutability()` helper  
+- [ ] Refactor `create_enum_mutation_paths()` to iterate variants
+- [ ] Update function call site
+- [ ] Build and validate
+- [ ] Re-run migration comparison test
+- [ ] Update plan status
+
