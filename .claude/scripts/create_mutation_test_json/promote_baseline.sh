@@ -14,8 +14,25 @@ fi
 # Create timestamp for backups
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-# Mark current version as the good baseline
-cp .claude/transient/all_types.json .claude/transient/all_types_baseline.json
+# Mark current version as the good baseline (strip out test metadata)
+# Remove test tracking fields: batch_number, test_status, fail_reason
+python3 -c '
+import json
+import sys
+
+with open(".claude/transient/all_types.json", "r") as f:
+    data = json.load(f)
+
+# Strip test metadata from each type in type_guide
+if "type_guide" in data:
+    for type_name, type_data in data["type_guide"].items():
+        type_data.pop("batch_number", None)
+        type_data.pop("test_status", None)
+        type_data.pop("fail_reason", None)
+
+with open(".claude/transient/all_types_baseline.json", "w") as f:
+    json.dump(data, f, indent=2)
+'
 
 # Create timestamped backup of the promoted baseline
 cp .claude/transient/all_types.json .claude/transient/all_types_good_${TIMESTAMP}.json

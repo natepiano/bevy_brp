@@ -75,6 +75,10 @@
     {
       "type_name": "bevy_camera::visibility::ViewVisibility",
       "reason": "Required component - cannot be directly spawned. Automatically added when `Visibility` component is added via #[require(InheritedVisibility, ViewVisibility)] attribute. System-managed and reset to false every frame by reset_view_visibility, then computed by check_visibility based on frustum culling. Designed as read-only output for rendering systems, not user-spawnable component. Spawn attempts report success but component is not found in queries (0 entities returned)."
+    },
+    {
+      "type_name": "bevy_camera::camera::Camera",
+      "reason": "Contains PartiallyMutable enum variant with non-deserializable field. The .viewport field is Option<Viewport> where Some(Viewport) contains depth: Range<f32>. Bevy registered Range<f32> for reflection but not ReflectDeserialize, causing deserialization error: 'type core::ops::Range<f32> did not register the ReflectDeserialize type data'. This makes Option<Viewport>::Some a PartiallyMutable variant that cannot be set via mutations, rendering child mutation paths like .viewport.0.physical_position unreachable. Path builder generates these paths but they fail with 'Expected variant index access to access a Tuple variant, found a Unit variant instead' because root_example uses None variant."
     }
   ]
 }

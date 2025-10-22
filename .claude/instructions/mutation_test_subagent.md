@@ -37,24 +37,6 @@ These values are provided by mutation_test.md when launching subagents.
 
 **Execute the test plan and update results after each operation.**
 
-## Type Continuation Parts
-
-Some types are split across multiple parts when they have more than 15 total operations:
-
-**Part 1 (first part globally)**:
-- Includes spawn/insert + query + mutations
-- This creates the entity
-
-**Continuation parts (same subagent)**:
-- Just mutations - entity persists from previous part
-- No spawn or query needed - reuse the entity ID
-
-**Continuation parts (different subagent)**:
-- Query + mutations - need to find the entity again
-- No spawn - entity already exists from Part 1
-
-**Your test plan is already correctly configured** with the right operations for each part. Just execute them in sequence as provided.
-
 ## Test Plan Updates
 
 **CRITICAL**: Each operation has an `operation_id` field. You MUST update after every operation using <UpdateOperationViaScript/>.

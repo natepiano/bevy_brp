@@ -55,11 +55,11 @@ use crate::error::Result;
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: TypeKindBuilder> {
@@ -417,9 +417,9 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain:       ctx.variant_chain.clone(),
+                variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example:        None,
+                root_example: None,
             })
         };
 
@@ -588,6 +588,8 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 let example = knowledge.example().clone();
 
                 // Only return early for TreatAsValue types - they should not recurse
+                // and we're returning this as our single Vec! `MutationPathInternal` in order fit with the return type
+                //
                 if matches!(knowledge, TypeKnowledge::TreatAsRootValue { .. }) {
                     return (
                         Some(Ok(vec![Self::build_mutation_path_internal(
@@ -601,6 +603,8 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                     );
                 }
 
+                // the second return value means we're returning the hard coded knowledge
+                // but allowing recursion - this is not obvious by the current return type
                 (None, Some(example))
             }
             Ok(None) => {
