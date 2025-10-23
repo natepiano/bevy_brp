@@ -518,6 +518,9 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
         )
 
     # Step 3: Mutations
+    # Track current root example to avoid duplicate emissions
+    current_root_example: object | None = None
+
     for path, path_info in mutation_paths.items():
         # Skip non-mutable paths
         # Note: path_info dict contains a "path_info" key that holds PathInfo
@@ -526,6 +529,60 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
             path_metadata_dict = cast(dict[str, object], path_metadata)
             if path_metadata_dict.get("mutability") == "not_mutable":
                 continue
+
+            # Check for root example requirement (variant-dependent paths)
+            root_example = path_metadata_dict.get("root_example")
+            if root_example is not None:
+                # Deep equality check via JSON serialization
+                current_serialized = json.dumps(current_root_example, sort_keys=True) if current_root_example else None
+                new_serialized = json.dumps(root_example, sort_keys=True)
+
+                if current_serialized != new_serialized:
+                    # Emit root example operation to set enum variant
+                    if mutation_type == "Component":
+                        root_op = cast(
+                            TestOperation,
+                            cast(
+                                object,
+                                {
+                                    "operation_id": len(operations),
+                                    "tool": "mcp__brp__world_mutate_components",
+                                    "entity": "USE_QUERY_RESULT",
+                                    "component": type_name,
+                                    "path": "",
+                                    "value": root_example,
+                                    "port": port,
+                                    "status": None,
+                                    "error": None,
+                                    "retry_count": 0,
+                                    "operation_announced": False,
+                                    "is_root_example": True,
+                                },
+                            ),
+                        )
+                    else:  # Resource
+                        root_op = cast(
+                            TestOperation,
+                            cast(
+                                object,
+                                {
+                                    "operation_id": len(operations),
+                                    "tool": "mcp__brp__world_mutate_resources",
+                                    "resource": type_name,
+                                    "path": "",
+                                    "value": root_example,
+                                    "port": port,
+                                    "status": None,
+                                    "error": None,
+                                    "retry_count": 0,
+                                    "operation_announced": False,
+                                    "is_root_example": True,
+                                },
+                            ),
+                        )
+
+                    operations.append(root_op)
+                    current_root_example = root_example
 
         # Get test value for this mutation path
         path_info_dict = cast(dict[str, object], path_info)
@@ -826,14 +883,14 @@ def split_operations_for_part_new(
 
             accumulated_mutations = accumulated_slots - total_overhead
 
-    # Find the most recent root mutation (path="") before the split point
-    # This will be prepended to parts 2+ to re-establish parent structure
+    # Find the most recent root example before the split point
+    # This will be prepended to parts 2+ to re-establish enum variant state
     most_recent_root_mutation: TestOperation | None = None
 
     if part_number > 1:
-        # Look backwards from the split point to find last root mutation
+        # Look backwards from the split point to find last root example
         for i in range(accumulated_mutations - 1, -1, -1):
-            if mutations[i].get("path") == "":
+            if mutations[i].get("is_root_example") == True:
                 most_recent_root_mutation = mutations[i]
                 break
 
@@ -843,12 +900,27 @@ def split_operations_for_part_new(
         overhead_ops += 1
     if query_idx is not None:
         overhead_ops += 1
+
+    # Calculate mutation range BEFORE checking if we'll propagate root example
+    # We need mutation_start to determine if first mutation is a root example
+    mutation_start = accumulated_mutations
+
+    # Check if we'll actually propagate the root example (only if first mutation is NOT a root example)
+    will_propagate_root_example = False
     if most_recent_root_mutation is not None:
-        overhead_ops += 1  # Add root mutation for parts 2+
+        # Check if first mutation in this part is a root example
+        if mutation_start < len(mutations):
+            first_mutation = mutations[mutation_start]
+            first_mutation_is_root_example = first_mutation.get("is_root_example") == True
+            will_propagate_root_example = not first_mutation_is_root_example
+        else:
+            will_propagate_root_example = True  # No mutations left, propagate anyway
+
+    if will_propagate_root_example:
+        overhead_ops += 1  # Add root example for parts 2+
 
     # Calculate mutation range based on accumulated mutations (GREEDY)
     mutations_in_this_part = slots_per_subagent - overhead_ops
-    mutation_start = accumulated_mutations
     mutation_end = accumulated_mutations + mutations_in_this_part
 
     # Clamp to actual mutation count
@@ -867,8 +939,9 @@ def split_operations_for_part_new(
     if query_idx is not None:
         result.append(all_operations[query_idx])
 
-    # Parts 2+: prepend most recent root mutation to re-establish parent structure
-    if most_recent_root_mutation is not None:
+    # Parts 2+: prepend most recent root example to re-establish variant state
+    # (only if we determined we should propagate it based on overhead calculation)
+    if will_propagate_root_example and most_recent_root_mutation is not None:
         result.append(most_recent_root_mutation)
 
     # Add this part's mutations

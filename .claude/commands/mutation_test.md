@@ -6,7 +6,8 @@ Configuration is loaded from `.claude/config/mutation_test_config.json`.
 **STEP 1:** Execute <BatchProcessingLoop/> (DO NOT output results yet)
 **STEP 2:** Execute <FinalCleanup/> (ALWAYS - shutdown apps)
 **STEP 3:** Execute <TestResultOutput/> followed by <FinalDiagnosticOutput/> (ALWAYS - show summary and diagnostic table)
-**STEP 4:** Execute <InteractiveFailureReview/> (ONLY if failures detected)
+**STEP 4:** Execute <AskUserToReviewFailures/> (ONLY if review failures detected - ask user before proceeding)
+**STEP 5:** Execute <InteractiveFailureReview/> (ONLY if user confirms they want to review)
 </ExecutionFlow>
 
 ## STEP 1: BATCH PROCESSING LOOP
@@ -179,24 +180,48 @@ Using the `diagnostic_info` array from the ProcessBatchResults JSON output:
 
 **Tested Types**:
 
-| Type | Status | Failed Op |
-|------|--------|-----------|
+| Port | Type | Status | Failed Op |
+|------|------|--------|-----------|
 {FOR each entry in diagnostic_info:}
-| `{entry.type_name}` | {entry.status} | {entry.failed_operation_id if not None else "N/A"} |
+| {entry.port} | `{entry.type_name}` | {entry.status} | {entry.failed_operation_id if not None else ""} |
 {END FOR}
 
 ---
 ```
 
 **Purpose**: Provides quick access to all test artifacts for debugging:
+- Port numbers for filtering debug logs and identifying test instances
 - Test plan files showing operation status
-- Port numbers for filtering debug logs
 - Failed operation IDs for pinpointing issues
 - Hook debug log for comprehensive execution trace
 </FinalDiagnosticOutput>
 
 
-## STEP 4: INTERACTIVE FAILURE REVIEW
+## STEP 4: ASK USER TO REVIEW FAILURES
+
+<AskUserToReviewFailures>
+**Only execute if `review_failures` array is not empty in ProcessBatchResults JSON.**
+
+After displaying TestResultOutput and FinalDiagnosticOutput, ask the user:
+
+```
+## Next Steps
+
+Review failures were detected. Would you like to:
+- **review** - Start interactive failure review
+- **stop** - Stop here (you can review failures later using the log files)
+
+Please choose an option.
+```
+
+Wait for user response:
+- If user chooses "review": Proceed to STEP 5 <InteractiveFailureReview/>
+- If user chooses "stop": End command execution
+- If unclear: Ask for clarification
+</AskUserToReviewFailures>
+
+
+## STEP 5: INTERACTIVE FAILURE REVIEW
 
 <InteractiveFailureReview>
 **Input**: Use `review_log_file` path from ProcessBatchResults JSON output
