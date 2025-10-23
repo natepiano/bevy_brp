@@ -15,14 +15,20 @@ import sys
 import os
 import glob
 from datetime import datetime
+from pathlib import Path
 from typing import Any, TypedDict, cast
 
-# Import shared config module using relative import
-from .config import (
-    AllTypesData,
-    find_current_batch,
-    load_config,
-)
+# Add script directory to path for local imports
+_script_dir = Path(__file__).parent
+sys.path.insert(0, str(_script_dir))
+
+# Import shared config module - must come after sys.path modification
+if True:  # Scope block for import after sys.path change
+    from config import (  # type: ignore[import-not-found]
+        AllTypesData,
+        find_current_batch,
+        load_config,
+    )
 
 
 # Test plan types (matching assignment script)
@@ -175,7 +181,7 @@ except FileNotFoundError as e:
     sys.exit(1)
 
 max_subagents: int = config["max_subagents"]
-types_per_subagent: int = config["types_per_subagent"]
+ops_per_subagent: int = config["ops_per_subagent"]
 base_port: int = config["base_port"]
 
 # Get the JSON file path
@@ -539,11 +545,9 @@ diagnostic_entries: list[DiagnosticEntry] = []
 tmpdir = "/tmp"
 
 # Determine how many subagents were actually used
-# This matches the logic in the assignment script
-batch_size = max_subagents * types_per_subagent
-subagent_count = min(
-    max_subagents, (batch_size + types_per_subagent - 1) // types_per_subagent
-)
+# With operation-based packing, we use up to max_subagents
+# The actual count depends on how many test plans were created
+subagent_count = max_subagents
 
 for subagent_idx in range(subagent_count):
     port = base_port + subagent_idx
@@ -697,10 +701,13 @@ total_types: int = cast(int, summary.get("total_types", 0))  # pyright: ignore[r
 tested_count: int = cast(int, summary.get("tested_count", 0))  # pyright: ignore[reportAny]
 remaining_types: int | None = total_types - tested_count if total_types > 0 else None
 
-# Calculate total batches
-total_batches: int | None = None
-if total_types > 0 and batch_size > 0:
-    total_batches = (total_types + batch_size - 1) // batch_size
+# Calculate total batches from actual batch assignments
+# Note: With operation-based packing, batch count is determined by actual packing results
+# We find the max batch number from the type_guide
+total_batches: int | None = max(
+    (t.get("batch_number") or 0 for t in all_types_data["type_guide"].values()),
+    default=None
+) if all_types_data else None
 
 # Check for failures and build failure summaries
 retry_log_path: str | None = None

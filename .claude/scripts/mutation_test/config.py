@@ -14,7 +14,7 @@ from typing import TypedDict
 class MutationTestConfig(TypedDict):
     """Configuration for mutation testing."""
 
-    types_per_subagent: int
+    ops_per_subagent: int
     max_subagents: int
     base_port: int
     stop_after_each_batch: bool
@@ -81,7 +81,7 @@ def load_config() -> MutationTestConfig:
         config_data: dict[str, int | bool] = json.load(f)  # pyright: ignore[reportAny]
 
     return MutationTestConfig(
-        types_per_subagent=int(config_data["types_per_subagent"]),
+        ops_per_subagent=int(config_data["ops_per_subagent"]),
         max_subagents=int(config_data["max_subagents"]),
         base_port=int(config_data["base_port"]),
         stop_after_each_batch=bool(config_data["stop_after_each_batch"]),
@@ -110,9 +110,9 @@ def find_current_batch(all_types_data: AllTypesData) -> int | str:
     return "COMPLETE"
 
 
-def get_batch_size(config: MutationTestConfig) -> int:
-    """Calculate batch size from config."""
-    return config["types_per_subagent"] * config["max_subagents"]
+def get_batch_capacity(config: MutationTestConfig) -> int:
+    """Calculate total operation capacity for a batch."""
+    return config["ops_per_subagent"] * config["max_subagents"]
 
 
 def get_max_port(config: MutationTestConfig) -> int:
@@ -123,3 +123,17 @@ def get_max_port(config: MutationTestConfig) -> int:
 def get_port_range(config: MutationTestConfig) -> str:
     """Get port range string for display."""
     return f"{config['base_port']}-{get_max_port(config)}"
+
+
+def calculate_port(subagent_num: int, config: MutationTestConfig) -> int:
+    """
+    Calculate port number for a subagent.
+
+    Args:
+        subagent_num: Subagent number (1-indexed)
+        config: Mutation test configuration
+
+    Returns:
+        Port number for the subagent
+    """
+    return config["base_port"] + subagent_num - 1
