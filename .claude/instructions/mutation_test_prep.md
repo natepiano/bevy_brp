@@ -10,14 +10,13 @@ Prepare Bevy application instances for mutation testing by shutting down existin
 - `assignments` - JSON array of subagent assignments with fields:
   - `port` - port number for this instance
   - `window_description` - window title to set
+- `max_subagents` - number of subagents to prepare (equals length of assignments array)
 
-**Constants:**
-```
-MAX_SUBAGENTS = 10
-BASE_PORT = 30001
-MAX_PORT = ${BASE_PORT + MAX_SUBAGENTS - 1}
-PORT_RANGE = ${BASE_PORT}-${MAX_PORT}
-```
+**Derived values from assignments JSON:**
+- `INSTANCE_COUNT` = length of assignments array
+- `BASE_PORT` = lowest port number in assignments
+- `MAX_PORT` = highest port number in assignments
+- `PORTS` = list of all port numbers from assignments
 
 <ExecutionSteps>
 **EXECUTE THESE STEPS IN ORDER:**
@@ -31,31 +30,52 @@ PORT_RANGE = ${BASE_PORT}-${MAX_PORT}
 ## STEP 1: SHUTDOWN EXISTING APPS
 
 <ShutdownExistingApps>
-Execute <ParallelPortOperation/> with:
-- Operation: mcp__brp__brp_shutdown
-- Parameters: app_name="extras_plugin"
+For each port in the assignments JSON, execute in parallel:
+
+```python
+mcp__brp__brp_shutdown(
+    app_name="extras_plugin",
+    port=assignment.port
+)
+```
+
+Execute ALL shutdown operations in parallel using the port values from the assignments array.
 </ShutdownExistingApps>
 
 ## STEP 2: LAUNCH FRESH APPS
 
 <LaunchFreshApps>
-Launch ${MAX_SUBAGENTS} application instances:
+Launch application instances for all assigned ports:
 
+1. Extract values from assignments JSON:
+   - `instance_count` = length of assignments array
+   - `base_port` = lowest port in assignments array
+
+2. Launch instances:
 ```python
 mcp__brp__brp_launch_bevy_example(
-    example_name="extras_plugin",
-    port=${BASE_PORT},
-    instance_count=${MAX_SUBAGENTS}
+    target_name="extras_plugin",
+    port=base_port,
+    instance_count=instance_count
 )
 ```
+
+This will launch exactly the number of instances needed for this batch.
 </LaunchFreshApps>
 
 ## STEP 3: VERIFY APPS RUNNING
 
 <VerifyAppsRunning>
-Execute <ParallelPortOperation/> with:
-- Operation: mcp__brp__brp_status
-- Parameters: app_name="extras_plugin"
+For each port in the assignments JSON, execute in parallel:
+
+```python
+mcp__brp__brp_status(
+    app_name="extras_plugin",
+    port=assignment.port
+)
+```
+
+Execute ALL status checks in parallel using the port values from the assignments array.
 
 **CRITICAL**: If any app fails to respond with `running_with_brp` status, report the error and STOP.
 Do not proceed to window title setting if verification fails.
@@ -75,17 +95,3 @@ mcp__brp__brp_extras_set_window_title(
 
 Execute ALL window title operations in parallel.
 </SetWindowTitles>
-
-## REUSABLE PATTERNS
-
-<ParallelPortOperation>
-Execute in parallel for ports ${BASE_PORT} through ${MAX_PORT}:
-```python
-[Operation](app_name=[Parameters.app_name], port=PORT)
-```
-
-Where:
-- `[Operation]` is the MCP tool to execute (e.g., `mcp__brp__brp_shutdown`, `mcp__brp__brp_status`)
-- `[Parameters.app_name]` is the app_name parameter value (e.g., "extras_plugin")
-- `PORT` ranges from ${BASE_PORT} to ${MAX_PORT}
-</ParallelPortOperation>

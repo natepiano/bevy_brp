@@ -4,11 +4,14 @@
 
 <TestConfiguration>
 TYPES_PER_SUBAGENT = 1
-MAX_SUBAGENTS = 10
+MAX_SUBAGENTS = 4
 BATCH_SIZE = ${TYPES_PER_SUBAGENT * MAX_SUBAGENTS}
 BASE_PORT = 30001
 MAX_PORT = ${BASE_PORT + MAX_SUBAGENTS - 1}
 PORT_RANGE = ${BASE_PORT}-${MAX_PORT}
+
+# Execution Mode
+STOP_AFTER_EACH_BATCH = true   # Set to true for diagnostic mode, false for continuous execution
 </TestConfiguration>
 
 <ExecutionFlow>
@@ -65,7 +68,7 @@ Task a general-purpose subagent to prepare applications using the assignments JS
 description: "Prepare apps for batch N"
 subagent_type: "general-purpose"
 prompt: |
-  Execute the workflow defined in @.claude/instructions/mutation-test-prep.md
+  Execute the workflow defined in @.claude/instructions/mutation_test_prep.md
 
   You are preparing application instances for mutation test batch N.
 
@@ -126,11 +129,14 @@ python3 ./.claude/scripts/mutation_test/process_results.py --batch [BATCH_NUMBER
 <CheckForFailures>
 Based on `status` field from ProcessBatchResults JSON:
 
-**"SUCCESS"**: Continue to next batch
+**"SUCCESS"**:
+- If STOP_AFTER_EACH_BATCH is true: Execute <FinalCleanup/> and STOP
+- If STOP_AFTER_EACH_BATCH is false: Continue to next batch
 
 **"RETRY_ONLY"**:
 - Display retry notice showing `retry_failures` array
-- Continue to next batch (renumbering will retry these types)
+- If STOP_AFTER_EACH_BATCH is true: Execute <FinalCleanup/> and STOP
+- If STOP_AFTER_EACH_BATCH is false: Continue to next batch (renumbering will retry these types)
 
 **"FAILURES_DETECTED"**:
 - Execute <FinalCleanup/> SILENTLY
