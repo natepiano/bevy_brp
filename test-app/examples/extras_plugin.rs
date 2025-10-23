@@ -69,6 +69,7 @@ use bevy::pbr::Lightmap;
 use bevy::pbr::ScreenSpaceAmbientOcclusion;
 use bevy::pbr::ScreenSpaceReflections;
 use bevy::pbr::decal::ForwardDecalMaterialExt;
+use bevy::pbr::wireframe::WireframeConfig;
 use bevy::post_process::auto_exposure::AutoExposure;
 use bevy::post_process::bloom::Bloom;
 use bevy::post_process::dof::DepthOfField;
@@ -493,6 +494,10 @@ fn main() {
         .add_plugins(brp_plugin)
         .init_resource::<KeyboardInputHistory>()
         .insert_resource(CurrentPort(port))
+        .insert_resource(WireframeConfig {
+            global:        true,
+            default_color: Color::WHITE,
+        })
         .add_systems(
             Startup,
             (setup_test_entities, setup_ui, minimize_window_on_start),

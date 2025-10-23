@@ -27,7 +27,7 @@ if [ ! -f /tmp/mutation_hook_debug.log ]; then
     exit 0
 fi
 
-OPERATION_ID=$(grep "port=${PORT} tool=announcement" /tmp/mutation_hook_debug.log 2>/dev/null | tail -1 | sed -n 's/.*op_id=\([0-9]*\).*/\1/p')
+OPERATION_ID=$(grep "port=${PORT} op_id=" /tmp/mutation_hook_debug.log 2>/dev/null | grep "is next" | tail -1 | sed -n 's/.*op_id=\([0-9]*\).*/\1/p')
 if [ -z "$OPERATION_ID" ]; then
     MESSAGE="Hook: No announcement found for port ${PORT} in debug log"
     echo "{\"continue\": true, \"systemMessage\": \"${MESSAGE}\", \"hookSpecificOutput\": {\"hookEventName\": \"PostToolUse\", \"additionalContext\": \"${MESSAGE}\"}}"
@@ -44,8 +44,7 @@ else
     STATUS="FAIL"
 fi
 
-# Log complete operation details (matches first log entry by timestamp)
-echo "[${TIMESTAMP}] port=${PORT} tool=${TOOL_NAME} op_id=${OPERATION_ID} status=${STATUS}" >> /tmp/mutation_hook_debug.log
+# Note: operation_update.py handles all logging, this hook just coordinates
 
 # STEP 5: Call operation_update.py with proper escaping
 if [ "$STATUS" = "FAIL" ]; then

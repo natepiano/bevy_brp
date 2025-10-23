@@ -19,8 +19,8 @@ Output:
 import json
 import sys
 import os
-import glob
 import subprocess
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, TypedDict, cast
@@ -32,6 +32,12 @@ sys.path.insert(0, str(_script_dir))
 # Import shared config module - must come after sys.path modification
 if True:  # Scope block for import after sys.path change
     import config as mutation_config  # type: ignore[import-not-found]
+
+# Type definitions for config module
+class MutationConfig(TypedDict):
+    max_subagents: int
+    types_per_subagent: int
+    base_port: int
 
 # Constants
 OPERATION_ID_START = 1  # Operation IDs start at 1 for better human readability
@@ -67,6 +73,7 @@ class SubagentAssignment(TypedDict):
     window_description: str  # Pre-formatted window title
     task_description: str  # Pre-formatted task description
     test_plan_file: str  # Path to generated test plan file
+    type_descriptions: list[str]  # List of type descriptions for debug log
 
 
 class AllAssignmentsOutput(TypedDict):
@@ -121,14 +128,15 @@ class TestPlan(TypedDict):
 # Load configuration from config file
 # Type checking disabled for runtime-imported module
 try:
-    config = mutation_config.load_config()  # pyright: ignore[reportAttributeAccessIssue]
+    config_raw = mutation_config.load_config()  # pyright: ignore[reportAttributeAccessIssue,reportUnknownVariableType,reportUnknownMemberType]
+    config = cast(MutationConfig, config_raw)
 except FileNotFoundError as e:
     print(f"Error loading config: {e}", file=sys.stderr)
     sys.exit(1)
 
-max_subagents: int = config["max_subagents"]  # pyright: ignore[reportAny]
-types_per_subagent: int = config["types_per_subagent"]  # pyright: ignore[reportAny]
-base_port: int = config["base_port"]  # pyright: ignore[reportAny]
+max_subagents: int = config["max_subagents"]
+types_per_subagent: int = config["types_per_subagent"]
+base_port: int = config["base_port"]
 
 # Calculate batch size
 batch_size: int = max_subagents * types_per_subagent
@@ -149,15 +157,8 @@ except json.JSONDecodeError as e:
     print(f"Error parsing JSON: {e}", file=sys.stderr)
     sys.exit(1)
 
-# Auto-discover current batch number
-batch_result: int | str = mutation_config.find_current_batch(all_types_data)  # pyright: ignore[reportAttributeAccessIssue]
-if batch_result == "COMPLETE":
-    print("All tests complete! No untested batches remaining.", file=sys.stderr)
-    sys.exit(0)
-
-# At this point batch_result must be int (we exited if it was "COMPLETE")
-assert isinstance(batch_result, int)
-batch_num: int = batch_result
+# Batch number will be discovered after renumbering
+batch_num: int = -1  # Placeholder, will be set after renumbering
 
 
 def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
@@ -200,17 +201,59 @@ def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
     current_batch = max_batch + 1
     current_batch_slots = 0
 
-    for type_name, type_data in untested_types:
+    # Get config values for proper capacity checking
+    # Note: We reconstruct these from batch_size since config isn't passed here
+    # batch_size = max_subagents * types_per_subagent
+    # We'll use common default: types_per_subagent = 2
+    types_per_subagent_val = 2  # Common config value
+    max_subagents_val = batch_size // types_per_subagent_val
+
+    for type_name, type_data_raw in untested_types:
+        # Extract mutation_type to match preparation phase
+        schema_info = type_data_raw.get("schema_info")
+        mutation_type = extract_mutation_type(schema_info)
+
+        # Build complete type_data with mutation_type (same as preparation phase)
+        type_data: TypeData = cast(
+            TypeData,
+            cast(
+                object,
+                {
+                    "type_name": type_name,
+                    "spawn_format": type_data_raw.get("spawn_format"),
+                    "mutation_paths": type_data_raw.get("mutation_paths"),
+                    "supported_operations": type_data_raw.get("supported_operations"),
+                    "in_registry": type_data_raw.get("in_registry"),
+                    "schema_info": schema_info,
+                    "mutation_type": mutation_type,
+                },
+            ),
+        )
+
         # Calculate slots needed for this type
         slots_needed = calculate_type_slots(type_data)
 
-        # Check if this type fits in current batch
-        if current_batch_slots + slots_needed > batch_size:
+        # Calculate how many subagents this type needs
+        subagents_needed = (slots_needed + types_per_subagent_val - 1) // types_per_subagent_val
+
+        # Calculate how many subagents are currently used in this batch (running total)
+        current_subagents_used = (current_batch_slots + types_per_subagent_val - 1) // types_per_subagent_val
+
+        # Check if adding this type would exceed subagent capacity
+        # This ensures we don't orphan parts due to subagent packing
+        if current_subagents_used + subagents_needed > max_subagents_val:
             # Start new batch
             current_batch += 1
             current_batch_slots = 0
-            # Recalculate slots for new batch (may be different if split logic changes)
-            slots_needed = calculate_type_slots(type_data)
+
+            # Verify the type can fit in an empty batch
+            if subagents_needed > max_subagents_val:
+                error_msg = (
+                    f"Type '{type_name}' requires {slots_needed} slots ({subagents_needed} subagents) "
+                    + f"but batch can only provide {max_subagents_val} subagents. "
+                    + "Increase max_subagents in config."
+                )
+                raise ValueError(error_msg)
 
         # Assign type to current batch
         type_guide[type_name]["batch_number"] = current_batch
@@ -503,8 +546,9 @@ def calculate_type_slots(type_data: TypeData) -> int:
     """
     Calculate how many slots a type will consume (1, 2, 3, 4, ...).
 
-    Shared splitting logic used by both renumbering and preparation.
-    Types are split to target ~10 operations per part.
+    Based on original operation count, targeting ~10 operations per part.
+    Prepended root mutations may add at most 1 extra operation per part,
+    which is acceptable (parts can go slightly over 10).
 
     Args:
         type_data: The type to evaluate
@@ -517,34 +561,10 @@ def calculate_type_slots(type_data: TypeData) -> int:
     operation_count = len(all_operations)
 
     # Target ~10 operations per part
-    # If <= 10 operations, single part
-    if operation_count <= 10:
-        return 1
+    # Ceiling division: (operation_count + 9) // 10
+    slots_needed = (operation_count + 9) // 10
 
-    # Count non-mutation operations (spawn + query)
-    non_mutation_count = sum(
-        1 for op in all_operations
-        if op.get("tool") not in [
-            "mcp__brp__world_mutate_components",
-            "mcp__brp__world_mutate_resources"
-        ]
-    )
-
-    mutation_count = operation_count - non_mutation_count
-
-    # Part 1 gets: spawn + query + mutations (target 10 total)
-    # Remaining parts get: query + mutations (target 10 total, so 9 mutations)
-    part1_mutation_budget = max(1, 10 - non_mutation_count)
-    remaining_mutations = mutation_count - part1_mutation_budget
-
-    if remaining_mutations <= 0:
-        return 1
-
-    # Each additional part gets ~10 operations (1 query + 9 mutations)
-    # Ceiling division: (remaining_mutations + 8) // 9
-    additional_parts = (remaining_mutations + 8) // 9
-
-    return 1 + additional_parts
+    return slots_needed
 
 
 def find_split_points(mutations: list[TestOperation], num_parts: int) -> list[int]:
@@ -676,22 +696,7 @@ if "type_guide" not in data:
     print(f"Error: Expected dict with 'type_guide' at root", file=sys.stderr)
     sys.exit(1)
 
-# STEP 1: Cleanup previous runs if this is batch 1
-if batch_num == 1:
-    # Remove leftover files from previous runs
-    cleanup_patterns = [
-        ".claude/transient/batch_results_*.json",
-        ".claude/transient/all_types_failures_*.json",
-        "/tmp/mutation_test_*.json"
-    ]
-    for pattern in cleanup_patterns:
-        for filepath in glob.glob(pattern):
-            try:
-                os.remove(filepath)
-            except OSError:
-                pass  # Ignore errors if files don't exist or can't be removed
-
-# STEP 1.5: Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
+# STEP 1: Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
 data = renumber_batches(data, batch_size)
 
 # Write updated data back to file
@@ -701,6 +706,17 @@ try:
 except IOError as e:
     print(f"Error writing updated JSON: {e}", file=sys.stderr)
     sys.exit(1)
+
+# NOW discover current batch number using the renumbered data
+batch_result_raw = mutation_config.find_current_batch(data)  # pyright: ignore[reportAttributeAccessIssue,reportUnknownVariableType,reportUnknownMemberType]
+batch_result: int | str = cast(int | str, batch_result_raw)
+if batch_result == "COMPLETE":
+    print("All tests complete! No untested batches remaining.", file=sys.stderr)
+    sys.exit(0)
+
+# At this point batch_result must be int (we exited if it was "COMPLETE")
+assert isinstance(batch_result, int)
+batch_num = batch_result
 
 type_guide: dict[str, TypeData] = data["type_guide"]
 
@@ -806,7 +822,7 @@ for subagent_num in range(1, actual_subagents_needed + 1):
         tests: list[TypeTest] = []
         type_descriptions: list[str] = []
 
-        # Track operation IDs sequentially across all types for this subagent
+        # Track operation IDs sequentially across all tests in this file
         operation_id_counter = OPERATION_ID_START
 
         for type_part in subagent_parts:
@@ -819,6 +835,9 @@ for subagent_num in range(1, actual_subagents_needed + 1):
 
             # Split operations if needed
             operations = split_operations_for_part(all_operations, part_number, total_parts)
+
+            # Deep copy operations to avoid modifying shared references across subagents
+            operations = deepcopy(operations)
 
             # Renumber operation IDs sequentially across all types and update port
             for op in operations:
@@ -847,7 +866,7 @@ for subagent_num in range(1, actual_subagents_needed + 1):
 
             # Format description with part info if split
             if total_parts > 1:
-                type_descriptions.append(f"{short_name} ({category}: {op_count} ops, part {part_number}/{total_parts})")
+                type_descriptions.append(f"{short_name} ({category}: {op_count} ops, {part_number} of {total_parts})")
             else:
                 type_descriptions.append(f"{short_name} ({category}: {op_count} ops)")
 
@@ -880,13 +899,20 @@ for subagent_num in range(1, actual_subagents_needed + 1):
         # Join all type descriptions with commas
         types_str = ", ".join(type_descriptions)
 
-        assignment: SubagentAssignment = {
-            "subagent": subagent_num,
-            "port": port,
-            "window_description": f"Subagent {subagent_num}: {types_str}",
-            "task_description": f"Test {types_str} ({subagent_num} of {actual_subagents_needed})",
-            "test_plan_file": test_plan_file
-        }
+        assignment: SubagentAssignment = cast(
+            SubagentAssignment,
+            cast(
+                object,
+                {
+                    "subagent": subagent_num,
+                    "port": port,
+                    "window_description": f"Subagent {subagent_num}: {types_str}",
+                    "task_description": f"Test {types_str} ({subagent_num} of {actual_subagents_needed})",
+                    "test_plan_file": test_plan_file,
+                    "type_descriptions": type_descriptions,
+                },
+            ),
+        )
         assignments.append(assignment)
 
 # STEP 5: Backup and initialize debug log
@@ -925,7 +951,6 @@ if os.path.exists(DEBUG_LOG):
 
 # Create new debug log with metadata for current batch
 ports_str = ", ".join(str(a["port"]) for a in assignments)
-types_str = ", ".join(a["window_description"] for a in assignments)
 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 with open(DEBUG_LOG, "w", encoding="utf-8") as f:
@@ -933,28 +958,140 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
     _ = f.write(f"# Batch Number: {batch_num}\n")
     _ = f.write(f"# Started: {timestamp}\n")
     _ = f.write(f"# Ports: {ports_str}\n")
-    _ = f.write(f"# Types: {types_str}\n")
+    _ = f.write(f"# Subagent - Types\n")
+
+    # Calculate total ops for each assignment and find max width for alignment
+    assignment_ops: list[int] = []
+    for assignment in assignments:
+        total_ops = 0
+        try:
+            with open(assignment["test_plan_file"], "r") as plan_f:
+                plan_data = json.load(plan_f)  # pyright: ignore[reportAny]
+                plan = cast(TestPlan, plan_data)
+                for test in plan.get("tests", []):
+                    total_ops += len(test.get("operations", []))
+        except (IOError, json.JSONDecodeError):
+            pass
+        assignment_ops.append(total_ops)
+
+    # Find max width for right alignment
+    max_ops_width = max(len(str(ops)) for ops in assignment_ops) if assignment_ops else 1
+    max_subagent_width = len(str(len(assignments)))
+
+    # Calculate indentation for multi-line type lists
+    # Format: "#   {subagent_num} ({total_ops} ops): "
+    # Total prefix length includes: "#   " (4) + num + " (" (2) + ops + " ops): " (7)
+    prefix_length = 4 + max_subagent_width + 2 + max_ops_width + 7
+    # For continuation lines, we need prefix_length - 1 spaces after the "#"
+    continuation_indent = prefix_length - 1
+
+    # Find longest type name across ALL assignments for global columnar alignment
+    # Also find max operation count for right-aligning op counts
+    max_type_name_length = 0
+    max_op_count_per_type = 0
+    for assignment in assignments:
+        for type_desc in assignment["type_descriptions"]:
+            # Split on first opening paren to get type name
+            type_name_part = type_desc.split(" (")[0] if " (" in type_desc else type_desc
+            max_type_name_length = max(max_type_name_length, len(type_name_part))
+
+            # Extract operation count (e.g., "C: 7 ops" or "R: 11 ops")
+            # Format is "TypeName (X: NN ops[, part info])"
+            if " (" in type_desc and " ops" in type_desc:
+                # Extract the number between ": " and " ops"
+                parts = type_desc.split(": ")
+                if len(parts) >= 2:
+                    ops_part = parts[1].split(" ops")[0]
+                    try:
+                        op_count = int(ops_part)
+                        max_op_count_per_type = max(max_op_count_per_type, op_count)
+                    except ValueError:
+                        pass
+
+    # Calculate width needed for operation count alignment
+    op_count_width = len(str(max_op_count_per_type)) if max_op_count_per_type > 0 else 1
+
+    def format_ops_count(rest: str, width: int) -> str:
+        """Format operation count with right alignment.
+
+        Input: "C: 7 ops, 1 of 2)" or "R: 11 ops)"
+        Output: "C:  7 ops, 1 of 2)" or "R: 11 ops)" (right-aligned count)
+        """
+        if ": " in rest and " ops" in rest:
+            # Split on ": " to get prefix (C or R) and the rest
+            prefix, after_colon = rest.split(": ", 1)
+            # Split on " ops" to get the count and the suffix
+            count_str, after_ops = after_colon.split(" ops", 1)
+            # Right-align the count
+            aligned_count = count_str.rjust(width)
+            return f"{prefix}: {aligned_count} ops{after_ops}"
+        return rest
+
+    # Write formatted subagent lines
+    for idx, assignment in enumerate(assignments):
+        total_ops = assignment_ops[idx]
+        subagent_num = assignment["subagent"]
+        type_list = assignment["type_descriptions"]
+
+        if type_list:
+            # First type on same line as subagent info
+            first_desc = type_list[0]
+            if " (" in first_desc:
+                type_name, rest = first_desc.split(" (", 1)
+                # Right-align operation count in the rest part
+                formatted_rest = format_ops_count(rest, op_count_width)
+                padded_first = f"{type_name:<{max_type_name_length}} ({formatted_rest}"
+            else:
+                padded_first = first_desc
+            _ = f.write(f"#   {subagent_num:>{max_subagent_width}} ({total_ops:>{max_ops_width}} ops): {padded_first}\n")
+
+            # Subsequent types indented on their own lines with columnar alignment
+            for type_desc in type_list[1:]:
+                if " (" in type_desc:
+                    type_name, rest = type_desc.split(" (", 1)
+                    # Right-align operation count in the rest part
+                    formatted_rest = format_ops_count(rest, op_count_width)
+                    padded_desc = f"{type_name:<{max_type_name_length}} ({formatted_rest}"
+                else:
+                    padded_desc = type_desc
+                _ = f.write(f"#{' ' * continuation_indent}{padded_desc}\n")
+
+    _ = f.write(f"# Test Plans\n")
+    for assignment in assignments:
+        _ = f.write(f"#   {assignment['test_plan_file']}\n")
     _ = f.write(f"# ----------------------------------------\n\n")
 
-    # Write initial announcements for first operation on each port
-    for assignment in assignments:
-        port = assignment["port"]
-        _ = f.write(f"[{timestamp}] port={port} tool=announcement op_id={OPERATION_ID_START}\n")
+# Write initial announcements for first operation on each port using operation_update.py
+for assignment in assignments:
+    port = assignment["port"]
+    try:
+        _ = subprocess.run(
+            [
+                "python3",
+                ".claude/scripts/mutation_test/operation_update.py",
+                "--port", str(port),
+                "--operation-id", str(OPERATION_ID_START),
+                "--announced"
+            ],
+            check=True,
+            capture_output=True
+        )
+    except subprocess.CalledProcessError:
+        # Ignore announcement failures - not critical
+        pass
 
 print(f"Created new debug log: {DEBUG_LOG}", file=sys.stderr)
 print(f"  Batch: {batch_num}", file=sys.stderr)
 print(f"  Ports: {ports_str}", file=sys.stderr)
 print(f"  Types count: {len(assignments)}", file=sys.stderr)
 
-# STEP 6: Open test plan files in Zed
+# STEP 6: Open debug log in Zed
 zed_cli = "/Applications/Zed.app/Contents/MacOS/cli"
 if os.path.exists(zed_cli):
-    for assignment in assignments:
-        test_plan_file = assignment["test_plan_file"]
-        try:
-            _ = subprocess.Popen([zed_cli, test_plan_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except OSError:
-            pass  # Ignore if Zed fails to open
+    try:
+        _ = subprocess.Popen([zed_cli, DEBUG_LOG], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        pass  # Ignore if Zed fails to open
 
 # STEP 7: Return all assignments with test plan files generated
 # Calculate unique types that actually made it into assignments

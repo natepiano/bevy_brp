@@ -179,10 +179,10 @@ Using the `diagnostic_info` array from the ProcessBatchResults JSON output:
 
 **Tested Types**:
 
-| Type | Status | Test Plan | Failed Op |
-|------|--------|-----------|-----------|
+| Type | Status | Failed Op |
+|------|--------|-----------|
 {FOR each entry in diagnostic_info:}
-| `{entry.type_name}` | {entry.status} | [plan](file://{entry.test_plan_file}) | {entry.failed_operation_id if not None else "N/A"} |
+| `{entry.type_name}` | {entry.status} | {entry.failed_operation_id if not None else "N/A"} |
 {END FOR}
 
 ---

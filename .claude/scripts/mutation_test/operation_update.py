@@ -94,6 +94,18 @@ def validate_args(args: argparse.Namespace) -> None:
             sys.exit(1)
 
 
+def shorten_tool_name(tool_name: str) -> str:
+    """Shorten common tool names for logging."""
+    tool_map = {
+        "mcp__brp__world_insert_resources": "insert_resources",
+        "mcp__brp__world_spawn_entity": "spawn_entity",
+        "mcp__brp__world_mutate_resources": "mutate_resources",
+        "mcp__brp__world_query": "query",
+        "mcp__brp__world_mutate_components": "mutate_components",
+    }
+    return tool_map.get(tool_name, tool_name)
+
+
 def main() -> None:
     """Main entry point."""
     args = parse_args()
@@ -125,27 +137,29 @@ def main() -> None:
         print(f"Error: Invalid JSON in test plan file: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Find operation by operation_id
+    # Find operation by operation_id across all tests
     tests = test_plan.get("tests", [])
     if not tests:
         print("Error: No tests found in test plan", file=sys.stderr)
         sys.exit(1)
 
-    # We only have one test per plan currently
-    test = tests[0]
-    operations = cast(list[dict[str, Any]], test.get("operations", []))  # pyright: ignore[reportExplicitAny]
-
-    # Find operation with matching operation_id
+    # Search for operation across all tests (plan may contain multiple type parts)
     operation: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
-    for op in operations:
-        if op.get("operation_id") == operation_id:
-            if operation is not None:
-                print(
-                    f"Error: Duplicate operation ID {operation_id} found",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-            operation = op
+    all_operations: list[dict[str, Any]] = []  # pyright: ignore[reportExplicitAny]
+
+    for test in tests:
+        operations = cast(list[dict[str, Any]], test.get("operations", []))  # pyright: ignore[reportExplicitAny]
+        all_operations.extend(operations)
+
+        for op in operations:
+            if op.get("operation_id") == operation_id:
+                if operation is not None:
+                    print(
+                        f"Error: Duplicate operation ID {operation_id} found",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+                operation = op
 
     if operation is None:
         print(
@@ -154,9 +168,20 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Handle --announced flag (just mark as announced)
+    # Handle --announced flag (just mark as announced and log it)
     if announced:
         operation["operation_announced"] = True
+
+        # Log announcement to debug log
+        debug_log = "/tmp/mutation_hook_debug.log"
+        try:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(debug_log, "a", encoding="utf-8") as f:
+                _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} is next\n")
+        except Exception:
+            # Silently ignore debug log write failures
+            pass
     # Handle status update
     elif status:
         operation["status"] = status
@@ -172,6 +197,19 @@ def main() -> None:
         current_call_count: int = cast(int, operation.get("call_count", 0))
         operation["call_count"] = current_call_count + 1
 
+        # Log status update to debug log
+        debug_log = "/tmp/mutation_hook_debug.log"
+        try:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            tool = cast(str, operation.get("tool", "unknown"))
+            short_tool = shorten_tool_name(tool)
+            with open(debug_log, "a", encoding="utf-8") as f:
+                _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} status={status} tool={short_tool}\n")
+        except Exception:
+            # Silently ignore debug log write failures
+            pass
+
     # Write updated test plan back atomically
     try:
         with open(file_path, "w", encoding="utf-8") as f:
@@ -183,26 +221,28 @@ def main() -> None:
     # If we just completed an operation successfully, write next operation announcement
     # On FAIL, don't announce next - allow subagent to retry the failed operation
     if status == "SUCCESS":
-        # Find next operation in sequence
+        # Find next operation in sequence across all tests
         next_operation_id = operation_id + 1
         next_operation_exists = False
 
-        for op in operations:
+        for op in all_operations:
             if op.get("operation_id") == next_operation_id:
                 next_operation_exists = True
                 break
 
-        # Write announcement for next operation if it exists
-        if next_operation_exists:
-            debug_log = "/tmp/mutation_hook_debug.log"
-            try:
-                from datetime import datetime
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                with open(debug_log, "a", encoding="utf-8") as f:
-                    _ = f.write(f"[{timestamp}] port={port} tool=announcement op_id={next_operation_id}\n")
-            except Exception:
-                # Silently ignore debug log write failures
-                pass
+        # Write announcement for next operation if it exists, otherwise mark as finished
+        debug_log = "/tmp/mutation_hook_debug.log"
+        try:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(debug_log, "a", encoding="utf-8") as f:
+                if next_operation_exists:
+                    _ = f.write(f"[{timestamp}] port={port} op_id={next_operation_id} is next\n")
+                else:
+                    _ = f.write(f"[{timestamp}] port={port} **FINISHED**\n")
+        except Exception:
+            # Silently ignore debug log write failures
+            pass
 
     # No output - test plan file is the source of truth
     pass

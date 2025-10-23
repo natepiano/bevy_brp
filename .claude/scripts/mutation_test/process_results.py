@@ -124,7 +124,6 @@ class Stats(TypedDict):
 
 class DiagnosticEntry(TypedDict):
     type_name: str
-    test_plan_file: str
     failed_operation_id: int | None
     status: str  # "PASS", "RETRY", or "FAIL"
     hook_debug_log: str
@@ -217,7 +216,7 @@ def build_diagnostic_entry(
 
     Args:
         test: The test data
-        test_plan_file: Path to the test plan file
+        test_plan_file: Path to the test plan file (not used in output, kept for compatibility)
 
     Returns:
         Diagnostic entry with status and failure info
@@ -247,12 +246,17 @@ def build_diagnostic_entry(
     else:
         diag_status = "FAIL"
 
-    return DiagnosticEntry(
-        type_name=type_name,
-        test_plan_file=test_plan_file,
-        failed_operation_id=failed_op_id,
-        status=diag_status,
-        hook_debug_log="/tmp/mutation_hook_debug.log",
+    return cast(
+        DiagnosticEntry,
+        cast(
+            object,
+            {
+                "type_name": type_name,
+                "failed_operation_id": failed_op_id,
+                "status": diag_status,
+                "hook_debug_log": "/tmp/mutation_hook_debug.log",
+            },
+        ),
     )
 
 
@@ -282,20 +286,13 @@ def convert_test_to_result(
                 file=sys.stderr,
             )
         else:
-            # Check for duplicates
+            # Check for duplicates within this test plan file
             if operation_id in seen_operation_ids:
                 print(
                     f"Warning: Duplicate operation_id {operation_id} found in {type_name}",
                     file=sys.stderr,
                 )
             seen_operation_ids.add(operation_id)
-
-            # Check if operation_id matches expected 1-based position
-            if operation_id != index + 1:
-                print(
-                    f"Warning: operation_id {operation_id} doesn't match expected position {index + 1} (array index {index}) in {type_name}",
-                    file=sys.stderr,
-                )
 
     # Check if subagent never executed the test (all operations have null status)
     # This indicates subagent workflow failure, not a BRP validation failure
@@ -591,25 +588,7 @@ for subagent_idx in range(subagent_count):
         print(f"Error: Failed to process {test_plan_file}: {e}", file=sys.stderr)
         sys.exit(1)
 
-# Build formatted warnings for types with null status
-# Group by type and show parts if there are multiple
-for type_name in sorted(null_status_types.keys()):
-    parts = null_status_types[type_name]
-    # Get total_parts from first entry (should be same for all parts of a type)
-    total_parts = parts[0][1] if parts else 1
-
-    if total_parts > 1:
-        # Multiple parts - show type once with indented part info
-        warnings.append(f"Type {type_name} - subagent did not execute test:")
-        for part_num, _ in sorted(parts):
-            warnings.append(f"  - Part {part_num}/{total_parts} all null status")
-    else:
-        # Single part - show simple format
-        warnings.append(f"Type {type_name} - subagent did not execute test")
-
-# Add summary about retries if there are warnings
-if warnings:
-    warnings.append("These types will be retried in next run.")
+# Note: Warnings for null status types removed - this information is shown in diagnostic table
 
 # Write batch results to temp file
 batch_results_file = f".claude/transient/batch_results_{batch_num}.json"
@@ -630,48 +609,85 @@ with open(all_types_file, encoding="utf-8") as f:
 # Aggregate multi-part results (ANY part failure = type failure)
 aggregated_results = aggregate_results_by_type(results)
 
+# Calculate statistics from aggregated results (unique types only)
+# Include types from both aggregated_results and null_status_types
+all_tested_types = set(aggregated_results.keys()) | set(null_status_types.keys())
+total_types_tested = len(all_tested_types)
+
+# Identify types with incomplete execution (appear in both aggregated and null status)
+# These types had SOME parts execute but OTHER parts didn't - they're retries
+incomplete_types = set(aggregated_results.keys()) & set(null_status_types.keys())
+
 # Update type_guide entries with aggregated test results
 type_guide = all_types.get("type_guide", {})  # pyright: ignore[reportAny]
 for type_key, type_data in type_guide.items():  # pyright: ignore[reportAny]
     if type_key in aggregated_results:
         result = aggregated_results[type_key]
-        type_data["test_status"] = "passed" if result["status"] == "PASS" else "failed"
 
-        # Build fail_reason with part info
-        if result["status"] != "PASS":
-            failure_details = result.get("failure_details")
-            fail_parts: list[str] = []
-
-            # Include part number if type was split
-            if result.get("total_parts", 1) > 1:
-                fail_parts.append(
-                    f"Part {result.get('part_number', 1)}/{result.get('total_parts', 1)}"
-                )
-
-            if failure_details:
-                fail_parts.append(failure_details.get("error_message", ""))
-                failed_path = failure_details.get("failed_mutation_path")
-                if failed_path:
-                    fail_parts.append(f"Path: {failed_path}")
-
-            type_data["fail_reason"] = " | ".join(fail_parts)
+        # Check if type has incomplete execution (some parts didn't execute)
+        if type_key in incomplete_types:
+            # Mark as failed - not all parts completed
+            type_data["test_status"] = "failed"
+            type_data["fail_reason"] = "Incomplete execution - some parts not executed"
         else:
-            type_data["fail_reason"] = ""
+            # All parts executed - use aggregated status
+            type_data["test_status"] = "passed" if result["status"] == "PASS" else "failed"
+
+            # Build fail_reason with part info
+            if result["status"] != "PASS":
+                failure_details = result.get("failure_details")
+                fail_parts: list[str] = []
+
+                # Include part number if type was split
+                if result.get("total_parts", 1) > 1:
+                    fail_parts.append(
+                        f"Part {result.get('part_number', 1)}/{result.get('total_parts', 1)}"
+                    )
+
+                if failure_details:
+                    fail_parts.append(failure_details.get("error_message", ""))
+                    failed_path = failure_details.get("failed_mutation_path")
+                    if failed_path:
+                        fail_parts.append(f"Path: {failed_path}")
+
+                type_data["fail_reason"] = " | ".join(fail_parts)
+            else:
+                type_data["fail_reason"] = ""
 
 # Write updated all_types.json
 with open(all_types_file, "w", encoding="utf-8") as f:
     json.dump(all_types, f, indent=2)
 
-# Calculate statistics from aggregated results (unique types only)
-total_types_tested = len(aggregated_results)
-passed = sum(1 for r in aggregated_results.values() if r["status"] == "PASS")
-failed = sum(1 for r in aggregated_results.values() if r["status"] == "FAIL" and not is_retry_failure(r))
-retry = sum(1 for r in aggregated_results.values() if r["status"] == "FAIL" and is_retry_failure(r))
-missing = sum(1 for r in aggregated_results.values() if r["status"] == "COMPONENT_NOT_FOUND")
+# Count statistics:
+# PASS: In aggregated_results with status=PASS AND not in null_status_types (all parts executed)
+# FAIL: In aggregated_results with status=FAIL and not a retry failure
+# RETRY: In aggregated_results with status=FAIL and is a retry failure, OR has incomplete execution
+# MISSING: In aggregated_results with status=COMPONENT_NOT_FOUND
 
-# Count types that were not executed (all null status - these are retries too)
-# These are tracked in warnings but need to be counted in retry stats
-retry += len([w for w in warnings if "all null status" in w])
+passed = sum(
+    1 for type_name, r in aggregated_results.items()
+    if r["status"] == "PASS" and type_name not in incomplete_types
+)
+failed = sum(
+    1 for r in aggregated_results.values()
+    if r["status"] == "FAIL" and not is_retry_failure(r)
+)
+retry = sum(
+    1 for r in aggregated_results.values()
+    if r["status"] == "FAIL" and is_retry_failure(r)
+)
+missing = sum(
+    1 for r in aggregated_results.values()
+    if r["status"] == "COMPONENT_NOT_FOUND"
+)
+
+# Count types with incomplete execution as retries
+retry += len(incomplete_types)
+
+# Count types that were not executed at all (all null status - these are retries too)
+# Only count types that don't appear in aggregated_results at all
+null_only_types = set(null_status_types.keys()) - set(aggregated_results.keys())
+retry += len(null_only_types)
 
 # Calculate remaining types
 # Read summary from all_types.json to get total count
