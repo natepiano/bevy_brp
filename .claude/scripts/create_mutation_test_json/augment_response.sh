@@ -71,32 +71,16 @@ jq --arg excluded "$EXCLUDED_TYPES" --argjson previous "$PREVIOUS_RESULTS" '
                 })
             }
         else
-            # New type - initialize with default test metadata
+            # New type - initialize with placeholder metadata
+            # The initialize_test_metadata.py script will apply proper auto-pass logic
             {
                 key: $entry.key,
                 value: ($entry.value + {
                     # Add the type field from the key
                     "type": $entry.key,
-                    # Add test tracking fields
+                    # Add placeholder test tracking fields
                     "batch_number": null,
-                    "test_status": (
-                        # Auto-pass only types with no mutation paths or empty root-only paths
-                        # Types with examples in root path should be tested
-                        if ($entry.value.mutation_paths == null or $entry.value.mutation_paths == {}) then
-                            "passed"
-                        elif (($entry.value.mutation_paths | type == "object") and ($entry.value.mutation_paths | length == 1) and ($entry.value.mutation_paths | has(""))) then
-                            # Check if root path is testable
-                            if (($entry.value.mutation_paths[""].path_info.mutability // "") == "not_mutable") then
-                                "passed"
-                            elif ($entry.value.mutation_paths[""].example == {} and ($entry.value.mutation_paths[""].examples == null or $entry.value.mutation_paths[""].examples == [])) then
-                                "passed"
-                            else
-                                "untested"
-                            end
-                        else
-                            "untested"
-                        end
-                    ),
+                    "test_status": "untested",
                     "fail_reason": ""
                 })
             }
@@ -107,6 +91,16 @@ jq --arg excluded "$EXCLUDED_TYPES" --argjson previous "$PREVIOUS_RESULTS" '
 
 if [ $? -eq 0 ]; then
     echo "Successfully augmented BRP response to $TARGET_FILE"
+
+    # Always apply auto-pass logic using the standalone script
+    # This ensures a single source of truth for auto-pass logic
+    if [[ "$MODE" == "init" || "$MODE" == "initialize" ]]; then
+        echo "Applying auto-pass logic (init mode - all types reset)..."
+        python3 .claude/scripts/mutation_test/initialize_test_metadata.py --file "$TARGET_FILE" --reset-all
+    else
+        echo "Applying auto-pass logic (preserve mode - only new types)..."
+        python3 .claude/scripts/mutation_test/initialize_test_metadata.py --file "$TARGET_FILE"
+    fi
 
     # Calculate comprehensive statistics about the augmented file
     STATS_JSON=$(jq -r '

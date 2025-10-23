@@ -74,12 +74,11 @@ class TestOperation(TypedDict, total=False):
     status: str | None
     error: str | None
     retry_count: int
+    operation_announced: bool
     # Spawn/query specific
     components: dict[str, Any] | None  # pyright: ignore[reportExplicitAny]
     filter: dict[str, list[str]] | None
     data: dict[str, Any] | None  # pyright: ignore[reportExplicitAny]
-    result_entity_id: int | None
-    result_entities: list[int] | None
     # Mutation specific
     entity: str | int | None  # "USE_QUERY_RESULT" or actual entity ID
     component: str | None
@@ -288,9 +287,9 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                         "components": {type_name: spawn_format},
                         "port": port,
                         "status": None,
-                        "result_entity_id": None,
                         "error": None,
                         "retry_count": 0,
+                        "operation_announced": False,
                     },
                 ),
             )
@@ -316,6 +315,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                         "status": None,
                         "error": None,
                         "retry_count": 0,
+                        "operation_announced": False,
                     },
                 ),
             )
@@ -341,8 +341,8 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                         "data": {},
                         "port": port,
                         "status": None,
-                        "result_entities": None,
                         "error": None,
+                        "operation_announced": False,
                     },
                 ),
             )
@@ -380,6 +380,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                             "status": None,
                             "error": None,
                             "retry_count": 0,
+                            "operation_announced": False,
                         },
                     ),
                 )
@@ -398,6 +399,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                             "status": None,
                             "error": None,
                             "retry_count": 0,
+                            "operation_announced": False,
                         },
                     ),
                 )
@@ -441,6 +443,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                             "status": None,
                             "error": None,
                             "retry_count": 0,
+                            "operation_announced": False,
                         },
                     ),
                 )
@@ -459,6 +462,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                             "status": None,
                             "error": None,
                             "retry_count": 0,
+                            "operation_announced": False,
                         },
                     ),
                 )
