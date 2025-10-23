@@ -1,29 +1,18 @@
 # Type Guide Comprehensive Validation Test
 
-<ExecutionFlow/>
-
-<TestConfiguration>
-TYPES_PER_SUBAGENT = 1
-MAX_SUBAGENTS = 4
-BATCH_SIZE = ${TYPES_PER_SUBAGENT * MAX_SUBAGENTS}
-BASE_PORT = 30001
-MAX_PORT = ${BASE_PORT + MAX_SUBAGENTS - 1}
-PORT_RANGE = ${BASE_PORT}-${MAX_PORT}
-
-# Execution Mode
-STOP_AFTER_EACH_BATCH = true   # Set to true for diagnostic mode, false for continuous execution
-</TestConfiguration>
+Configuration is loaded from `.claude/config/mutation_test_config.json`.
 
 <ExecutionFlow>
-**STEP 1:** Execute <BatchProcessingLoop/>
-**STEP 2:** Execute <FinalCleanup/> (SILENTLY if failures detected)
-**STEP 3:** Execute <InteractiveFailureReview/> (ONLY if failures detected)
+**STEP 1:** Execute <BatchProcessingLoop/> (DO NOT output results yet)
+**STEP 2:** Execute <FinalCleanup/> (ALWAYS - shutdown apps)
+**STEP 3:** Execute <TestResultOutput/> followed by <FinalDiagnosticOutput/> (ALWAYS - show summary and diagnostic table)
+**STEP 4:** Execute <InteractiveFailureReview/> (ONLY if failures detected)
 </ExecutionFlow>
 
 ## STEP 1: BATCH PROCESSING LOOP
 
 <BatchProcessingLoop>
-For each batch N (starting from 1):
+For each batch (auto-discovered from all_types.json):
 1. Execute <ReportProgress/>
 2. Execute <GetBatchAssignments/>
 3. Execute <PrepareApplications/>
@@ -37,11 +26,13 @@ Continue until all batches processed or failures occur.
 <GetBatchAssignments>
 Execute script and capture JSON output:
 ```bash
-python3 ./.claude/scripts/mutation_test/prepare.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
+python3 ./.claude/scripts/mutation_test/prepare.py
 ```
 
+The script auto-discovers the current batch number and loads configuration from `.claude/config/mutation_test_config.json`.
+
 Parse JSON output (on stdout):
-- `batch_number` - current batch number
+- `batch_number` - current batch number (auto-discovered)
 - `total_types` - unique types being tested in this batch
 - `max_subagents` - number of subagents being used
 - `types_per_subagent` - configured types per subagent
@@ -52,7 +43,7 @@ Parse JSON output (on stdout):
   - `test_plan_file` - test plan path
   - `port` - port number
 
-Store the complete JSON response for use in <ReportProgress/>, <PrepareApplications/>, and <LaunchMutationTestSubagents/>.
+Store the complete JSON response for use in <ReportProgress/>, <PrepareApplications/>, <LaunchMutationTestSubagents/>, and <FinalCleanup/>.
 </GetBatchAssignments>
 
 <ReportProgress>
@@ -108,8 +99,10 @@ Send ALL Tasks in ONE message for parallel execution.
 <ProcessBatchResults>
 1. Execute script and capture JSON output:
 ```bash
-python3 ./.claude/scripts/mutation_test/process_results.py --batch [BATCH_NUMBER] --max-subagents ${MAX_SUBAGENTS} --types-per-subagent ${TYPES_PER_SUBAGENT}
+python3 ./.claude/scripts/mutation_test/process_results.py
 ```
+
+The script auto-discovers the current batch number and loads configuration from `.claude/config/mutation_test_config.json`.
 
 2. Parse JSON response (output is on stdout):
 - `status` - "SUCCESS", "RETRY_ONLY", "FAILURES_DETECTED", or "ERROR"
@@ -120,44 +113,90 @@ python3 ./.claude/scripts/mutation_test/process_results.py --batch [BATCH_NUMBER
 - `warnings` - array of warning messages
 - `retry_log_file` - path to detailed retry failure log (null if none)
 - `review_log_file` - path to detailed review failure log (null if none)
+- `diagnostic_info` - array of diagnostic entries for all tested types
 
-3. Execute <TestResultOutput/> to present results immediately
+3. Store the complete JSON output for use in <CheckForFailures/>, <TestResultOutput/>, <FinalDiagnosticOutput/>, and <InteractiveFailureReview/>
 
-4. Store the complete JSON output for use in <CheckForFailures/> and <InteractiveFailureReview/>
+**IMPORTANT**: DO NOT output results yet - results will be displayed in STEP 3 after cleanup.
 </ProcessBatchResults>
 
 <CheckForFailures>
 Based on `status` field from ProcessBatchResults JSON:
 
 **"SUCCESS"**:
-- If STOP_AFTER_EACH_BATCH is true: Execute <FinalCleanup/> and STOP
+- If STOP_AFTER_EACH_BATCH is true: EXIT batch loop
 - If STOP_AFTER_EACH_BATCH is false: Continue to next batch
 
 **"RETRY_ONLY"**:
-- Display retry notice showing `retry_failures` array
-- If STOP_AFTER_EACH_BATCH is true: Execute <FinalCleanup/> and STOP
+- If STOP_AFTER_EACH_BATCH is true: EXIT batch loop (retries will be picked up on next run)
 - If STOP_AFTER_EACH_BATCH is false: Continue to next batch (renumbering will retry these types)
 
 **"FAILURES_DETECTED"**:
-- Execute <FinalCleanup/> SILENTLY
-- Execute <InteractiveFailureReview/> using the stored JSON output
+- EXIT batch loop (will show results and review failures in later steps)
 
 **"ERROR"**:
-- Execute <FinalCleanup/> SILENTLY
-- Stop with error message
+- EXIT batch loop with error flag
+
+**Note**: FinalCleanup, TestResultOutput, and Diagnostic Output happen in STEP 2-3 after batch loop exits.
 </CheckForFailures>
 
 ## STEP 2: FINAL CLEANUP
 
 <FinalCleanup>
-Execute <ParallelPortOperation/> with:
-- Operation: mcp__brp__brp_shutdown
-- Parameters: app_name="extras_plugin"
-- Mode: SILENT (no output)
+For each port in the assignments array (stored from <GetBatchAssignments/>), execute in parallel:
+
+```
+mcp__brp__brp_shutdown(app_name="extras_plugin", port=PORT)
+```
+
+Where PORT is each assignment's port value from the assignments JSON.
+
+Mode: SILENT (no output to user)
 </FinalCleanup>
 
 
-## STEP 3: INTERACTIVE FAILURE REVIEW
+## STEP 3: RESULT OUTPUT AND DIAGNOSTICS
+
+**ALWAYS execute both sections below, regardless of STOP_AFTER_EACH_BATCH setting or test status.**
+
+### Test Result Summary
+
+<TestResultOutput>
+Using the stored JSON output from <ProcessBatchResults/>, present results using the template defined in the <TestResultOutput/> section below.
+</TestResultOutput>
+
+### Diagnostic Information
+
+<FinalDiagnosticOutput>
+Using the `diagnostic_info` array from the ProcessBatchResults JSON output:
+
+```
+---
+
+## DIAGNOSTIC INFORMATION
+
+**Hook Debug Log**: /tmp/mutation_hook_debug.log
+
+**Tested Types**:
+
+| Type | Status | Test Plan | Failed Op |
+|------|--------|-----------|-----------|
+{FOR each entry in diagnostic_info:}
+| `{entry.type_name}` | {entry.status} | [plan](file://{entry.test_plan_file}) | {entry.failed_operation_id if not None else "N/A"} |
+{END FOR}
+
+---
+```
+
+**Purpose**: Provides quick access to all test artifacts for debugging:
+- Test plan files showing operation status
+- Port numbers for filtering debug logs
+- Failed operation IDs for pinpointing issues
+- Hook debug log for comprehensive execution trace
+</FinalDiagnosticOutput>
+
+
+## STEP 4: INTERACTIVE FAILURE REVIEW
 
 <InteractiveFailureReview>
 **Input**: Use `review_log_file` path from ProcessBatchResults JSON output
@@ -239,13 +278,6 @@ Please select one of the keywords above.
 </InvestigateFailure>
 
 ## REUSABLE PATTERNS
-
-<ParallelPortOperation>
-Execute in parallel for ports ${BASE_PORT}-${MAX_PORT}:
-```python
-[Operation](app_name=[Parameters.app_name], port=PORT)
-```
-</ParallelPortOperation>
 
 <TestResultOutput>
 After receiving JSON output from process_results.py, present results immediately:

@@ -1,17 +1,14 @@
 ---
 name: mutation-tester
 description: Execute mutation tests for BRP type validation by reading test plans and running spawn/insert/mutate operations
-tools: Read, Bash, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_mutate_components, mcp__brp__world_mutate_resources, mcp__brp__world_insert_resources, mcp__brp__world_query
+tools: Read, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_mutate_components, mcp__brp__world_mutate_resources, mcp__brp__world_insert_resources, mcp__brp__world_query
 
 ---
 
-You can ONLY run bash commands for:
-- `: "Starting operation {operation_id} on port {port}"` - REQUIRED before starting each operation
-- No other bash commands allowed (operation_update.py is called automatically by hooks)
-
-**CRITICAL**: Status updates are now automatic via hooks
-- You ONLY need to announce the operation with `: "Starting operation {operation_id} on port {port}"`
+**CRITICAL**: Status updates are automatic via hooks
+- Execute MCP tools directly without manual announcements
 - The hook system automatically updates the test plan file after each tool call
+- Operation announcements are written to debug log automatically by the update script
 - DO NOT call operation_update.py manually - hooks handle this
 - DO NOT create custom scripts to execute operations
 

@@ -10,9 +10,8 @@ PORT=$(echo "$INPUT" | jq -r '.tool_input.port // empty')
 # Extract tool name for logging
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"')
 
-# Log hook execution to single file
+# Get timestamp for detailed log entry
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-echo "[${TIMESTAMP}] port=${PORT} tool=${TOOL_NAME}" >> /tmp/mutation_hook_debug.log
 
 # STEP 2: Check if port is in mutation test range (30001-30010)
 if [ -z "$PORT" ] || [ "$PORT" -lt 30001 ] || [ "$PORT" -gt 30010 ]; then
@@ -21,17 +20,16 @@ if [ -z "$PORT" ] || [ "$PORT" -lt 30001 ] || [ "$PORT" -gt 30010 ]; then
     exit 0
 fi
 
-# STEP 3: Read operation_id from temp file
-TEMP_FILE="/tmp/mutation_test_op_${PORT}.txt"
-if [ ! -f "$TEMP_FILE" ]; then
-    MESSAGE="Hook: No operation announcement found at ${TEMP_FILE}"
+# STEP 3: Read operation_id from debug log (most recent announcement for this port)
+if [ ! -f /tmp/mutation_hook_debug.log ]; then
+    MESSAGE="Hook: No debug log found at /tmp/mutation_hook_debug.log"
     echo "{\"continue\": true, \"systemMessage\": \"${MESSAGE}\", \"hookSpecificOutput\": {\"hookEventName\": \"PostToolUse\", \"additionalContext\": \"${MESSAGE}\"}}"
     exit 0
 fi
 
-OPERATION_ID=$(tail -1 "$TEMP_FILE" 2>/dev/null)
+OPERATION_ID=$(grep "port=${PORT} tool=announcement" /tmp/mutation_hook_debug.log 2>/dev/null | tail -1 | sed -n 's/.*op_id=\([0-9]*\).*/\1/p')
 if [ -z "$OPERATION_ID" ]; then
-    MESSAGE="Hook: Empty operation_id in ${TEMP_FILE}"
+    MESSAGE="Hook: No announcement found for port ${PORT} in debug log"
     echo "{\"continue\": true, \"systemMessage\": \"${MESSAGE}\", \"hookSpecificOutput\": {\"hookEventName\": \"PostToolUse\", \"additionalContext\": \"${MESSAGE}\"}}"
     exit 0
 fi
@@ -54,9 +52,9 @@ if [ "$STATUS" = "FAIL" ]; then
     # Extract error message and escape it for command line
     ERROR_MSG=$(echo "$INPUT" | jq -r '.tool_response[0].text | fromjson | .metadata.original_error // .message // "Unknown error"')
     # Use Python script with stdin for error message to avoid escaping issues
-    python3 .claude/scripts/mutation_test/operation_update.py --port "$PORT" --operation-id "$OPERATION_ID" --status "$STATUS" --error "$ERROR_MSG" > /tmp/mutation_hook_update_${PORT}_${OPERATION_ID}.log 2>&1
+    python3 .claude/scripts/mutation_test/operation_update.py --port "$PORT" --operation-id "$OPERATION_ID" --status "$STATUS" --error "$ERROR_MSG"
 else
-    python3 .claude/scripts/mutation_test/operation_update.py --port "$PORT" --operation-id "$OPERATION_ID" --status "$STATUS" > /tmp/mutation_hook_update_${PORT}_${OPERATION_ID}.log 2>&1
+    python3 .claude/scripts/mutation_test/operation_update.py --port "$PORT" --operation-id "$OPERATION_ID" --status "$STATUS"
 fi
 UPDATE_RESULT=$?
 
@@ -68,7 +66,7 @@ if [ $UPDATE_RESULT -eq 0 ]; then
         MESSAGE="💥 Op ${OPERATION_ID}: FAIL"
     fi
 else
-    MESSAGE="⚠️ Failed to update op ${OPERATION_ID} (see /tmp/mutation_hook_update_${PORT}_${OPERATION_ID}.log)"
+    MESSAGE="⚠️ Failed to update op ${OPERATION_ID}"
 fi
 
 # Output message visible to both user and agent

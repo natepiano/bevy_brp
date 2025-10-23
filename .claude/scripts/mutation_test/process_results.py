@@ -3,18 +3,28 @@
 Process mutation test results from subagent test plans.
 Converts test plan JSON files into batch results format for merging.
 
+Configuration is loaded from .claude/config/mutation_test_config.json.
+The batch number is auto-discovered by finding the first untested batch.
+
 Usage:
-  python3 mutation_test_process_results.py --batch 1 --max-subagents 10 --types-per-subagent 3
+  python3 mutation_test_process_results.py
 """
 
 import json
 import sys
 import os
-import argparse
-import tempfile
 import glob
 from datetime import datetime
+from pathlib import Path
 from typing import Any, TypedDict, cast
+
+# Add script directory to path for local imports
+_script_dir = Path(__file__).parent
+sys.path.insert(0, str(_script_dir))
+
+# Import shared config module - must come after sys.path modification
+if True:  # Scope block for import after sys.path change
+    import config as mutation_config  # type: ignore[import-not-found]
 
 
 # Test plan types (matching assignment script)
@@ -82,6 +92,9 @@ class TestResult(TypedDict):
     operations_completed: OperationsCompleted
     failure_details: FailureDetails | None
     query_details: QueryDetails | None
+    test_plan_file: str
+    port: int
+    failed_operation_id: int | None
 
 
 # Output JSON types
@@ -91,6 +104,8 @@ class FailureSummary(TypedDict):
     summary: str
     entity_id: int | None
     failed_at: str
+    test_plan_file: str
+    failed_operation_id: int | None
 
 
 class BatchInfo(TypedDict):
@@ -107,6 +122,14 @@ class Stats(TypedDict):
     remaining_types: int | None
 
 
+class DiagnosticEntry(TypedDict):
+    type_name: str
+    test_plan_file: str
+    failed_operation_id: int | None
+    status: str  # "PASS", "RETRY", or "FAIL"
+    hook_debug_log: str
+
+
 class ProcessResultsOutput(TypedDict):
     status: str
     batch: BatchInfo
@@ -116,6 +139,7 @@ class ProcessResultsOutput(TypedDict):
     warnings: list[str]
     retry_log_file: str | None
     review_log_file: str | None
+    diagnostic_info: list[DiagnosticEntry]
 
 
 def cleanup_old_logs(pattern: str, keep_count: int) -> None:
@@ -146,44 +170,98 @@ def cleanup_old_logs(pattern: str, keep_count: int) -> None:
             pass  # Ignore errors if file can't be removed
 
 
-# Parse command line arguments
-parser = argparse.ArgumentParser(
-    description="Process mutation test results from subagent test plans"
-)
-_ = parser.add_argument(
-    "--batch", type=int, required=True, help="Batch number to process results for"
-)
-_ = parser.add_argument(
-    "--max-subagents", type=int, required=True, help="Maximum number of subagents"
-)
-_ = parser.add_argument(
-    "--types-per-subagent",
-    type=int,
-    required=True,
-    help="Number of types each subagent should test",
-)
-
-args = parser.parse_args()
-
-batch_num: int = cast(int, args.batch)
-max_subagents: int = cast(int, args.max_subagents)
-types_per_subagent: int = cast(int, args.types_per_subagent)
-
-if max_subagents <= 0:
-    print(
-        f"Error: max_subagents must be positive, got: {max_subagents}", file=sys.stderr
-    )
+# Load configuration from config file
+# Type checking disabled for runtime-imported module
+try:
+    config = mutation_config.load_config()  # pyright: ignore[reportAttributeAccessIssue]
+except FileNotFoundError as e:
+    print(f"Error loading config: {e}", file=sys.stderr)
     sys.exit(1)
 
-if types_per_subagent <= 0:
-    print(
-        f"Error: types_per_subagent must be positive, got: {types_per_subagent}",
-        file=sys.stderr,
-    )
+max_subagents: int = config["max_subagents"]  # pyright: ignore[reportAny]
+types_per_subagent: int = config["types_per_subagent"]  # pyright: ignore[reportAny]
+base_port: int = config["base_port"]  # pyright: ignore[reportAny]
+
+# Get the JSON file path
+json_file = ".claude/transient/all_types.json"
+
+if not os.path.exists(json_file):
+    print(f"Error: {json_file} not found!", file=sys.stderr)
     sys.exit(1)
 
+# Load all_types.json to discover current batch
+try:
+    with open(json_file, "r", encoding="utf-8") as f:
+        all_types_raw = json.load(f)  # pyright: ignore[reportAny]
+        all_types_data: dict[str, object] = all_types_raw  # pyright: ignore[reportAny]
+except json.JSONDecodeError as e:
+    print(f"Error parsing JSON: {e}", file=sys.stderr)
+    sys.exit(1)
 
-def convert_test_to_result(test: TypeTest, null_status_types: dict[str, list[tuple[int, int]]]) -> TestResult | None:
+# Auto-discover current batch number
+batch_result: int | str = mutation_config.find_current_batch(all_types_data)  # pyright: ignore[reportAttributeAccessIssue]
+if batch_result == "COMPLETE":
+    print("All tests complete! No untested batches remaining.", file=sys.stderr)
+    sys.exit(0)
+
+# At this point batch_result must be int (we exited if it was "COMPLETE")
+assert isinstance(batch_result, int)
+batch_num: int = batch_result
+
+
+def build_diagnostic_entry(
+    test: TypeTest,
+    test_plan_file: str
+) -> DiagnosticEntry:
+    """Build a diagnostic entry from a test.
+
+    Args:
+        test: The test data
+        test_plan_file: Path to the test plan file
+
+    Returns:
+        Diagnostic entry with status and failure info
+    """
+    type_name = test["type_name"]
+    operations = test["operations"]
+
+    # Find first failed operation (if any) and determine status
+    failed_op_id: int | None = None
+    has_null_status = False
+
+    for op in operations:
+        op_status = op.get("status")
+        if op_status is None:
+            has_null_status = True
+            if failed_op_id is None:
+                failed_op_id = cast(int | None, op.get("operation_id"))
+        elif op_status.upper() != "SUCCESS":
+            if failed_op_id is None:
+                failed_op_id = cast(int | None, op.get("operation_id"))
+
+    # Determine diagnostic status
+    if failed_op_id is None:
+        diag_status = "PASS"
+    elif has_null_status:
+        diag_status = "RETRY"
+    else:
+        diag_status = "FAIL"
+
+    return DiagnosticEntry(
+        type_name=type_name,
+        test_plan_file=test_plan_file,
+        failed_operation_id=failed_op_id,
+        status=diag_status,
+        hook_debug_log="/tmp/mutation_hook_debug.log",
+    )
+
+
+def convert_test_to_result(
+    test: TypeTest,
+    null_status_types: dict[str, list[tuple[int, int]]],
+    test_plan_file: str,
+    port: int
+) -> TestResult | None:
     """Convert a test plan test to a result format.
 
     Returns None if the test was not executed (all operations have null status),
@@ -212,10 +290,10 @@ def convert_test_to_result(test: TypeTest, null_status_types: dict[str, list[tup
                 )
             seen_operation_ids.add(operation_id)
 
-            # Check if operation_id matches index
-            if operation_id != index:
+            # Check if operation_id matches expected 1-based position
+            if operation_id != index + 1:
                 print(
-                    f"Warning: operation_id {operation_id} doesn't match array index {index} in {type_name}",
+                    f"Warning: operation_id {operation_id} doesn't match expected position {index + 1} (array index {index}) in {type_name}",
                     file=sys.stderr,
                 )
 
@@ -240,6 +318,7 @@ def convert_test_to_result(test: TypeTest, null_status_types: dict[str, list[tup
     status = "PASS"
     failure_details: FailureDetails | None = None
     query_details: QueryDetails | None = None
+    failed_operation_id: int | None = None
 
     # Process operations to determine status
     for op in operations:
@@ -253,6 +332,7 @@ def convert_test_to_result(test: TypeTest, null_status_types: dict[str, list[tup
                 # Note: entity_id tracking removed - not needed for validation
             else:
                 status = "FAIL"
+                failed_operation_id = cast(int | None, op.get("operation_id"))
                 error_msg = op.get("error")
                 # Detect subagent failure (never executed operation)
                 if op_status is None:
@@ -285,6 +365,7 @@ def convert_test_to_result(test: TypeTest, null_status_types: dict[str, list[tup
 
             else:
                 status = "FAIL"
+                failed_operation_id = cast(int | None, op.get("operation_id"))
                 error_msg = op.get("error")
                 # Detect subagent failure (never executed operation)
                 if op_status is None:
@@ -319,6 +400,7 @@ def convert_test_to_result(test: TypeTest, null_status_types: dict[str, list[tup
                     mutations_passed.append(mutation_path)
             else:
                 status = "FAIL"
+                failed_operation_id = cast(int | None, op.get("operation_id"))
                 error_msg = op.get("error")
                 # Detect subagent failure (never executed operation)
                 if op_status is None:
@@ -357,6 +439,9 @@ def convert_test_to_result(test: TypeTest, null_status_types: dict[str, list[tup
         },
         "failure_details": failure_details,
         "query_details": query_details,
+        "test_plan_file": test_plan_file,
+        "port": port,
+        "failed_operation_id": failed_operation_id,
     }
 
     return result
@@ -444,6 +529,9 @@ def aggregate_results_by_type(results: list[TestResult]) -> dict[str, TestResult
                 },
                 "failure_details": None,
                 "query_details": base.get("query_details"),
+                "test_plan_file": base.get("test_plan_file", ""),
+                "port": base.get("port", 0),
+                "failed_operation_id": None,
             }
 
     return aggregated
@@ -455,7 +543,10 @@ results: list[TestResult] = []
 warnings: list[str] = []
 # Track types with null status by type_name -> list of (part_number, total_parts)
 null_status_types: dict[str, list[tuple[int, int]]] = {}
-tmpdir = tempfile.gettempdir()
+# Diagnostic entries for all tested types (built during first loop)
+diagnostic_entries: list[DiagnosticEntry] = []
+# Use /tmp consistently with prepare.py and get_plan_file_path.py
+tmpdir = "/tmp"
 
 # Determine how many subagents were actually used
 # This matches the logic in the assignment script
@@ -466,7 +557,9 @@ subagent_count = min(
 
 for subagent_idx in range(subagent_count):
     port = base_port + subagent_idx
-    test_plan_file = os.path.join(tmpdir, f"mutation_test_subagent_{port}_plan.json")
+    test_plan_file = os.path.join(tmpdir, f"mutation_test_{port}.json")
+    # Normalize path for display (use /tmp/ instead of full macOS path)
+    normalized_test_plan_file = test_plan_file.replace(tmpdir, "/tmp")
 
     # Check if file exists
     if not os.path.exists(test_plan_file):
@@ -479,10 +572,14 @@ for subagent_idx in range(subagent_count):
             test_plan_raw = json.load(f)  # pyright: ignore[reportAny]
             test_plan = cast(TestPlan, test_plan_raw)
 
-        # Convert each test to result format
+        # Convert each test to result format AND build diagnostic entries
         tests = test_plan.get("tests", [])
         for test in tests:
-            result = convert_test_to_result(test, null_status_types)
+            # Build diagnostic entry for all tests
+            diagnostic_entries.append(build_diagnostic_entry(test, normalized_test_plan_file))
+
+            # Build result for executed tests
+            result = convert_test_to_result(test, null_status_types, normalized_test_plan_file, port)
             # Skip tests that were not executed (None = incomplete, will retry next run)
             if result is not None:
                 results.append(result)
@@ -665,6 +762,8 @@ if failed > 0 or missing > 0:
             summary=summary_msg,
             entity_id=failure.get("entity_id"),
             failed_at=failed_at,
+            test_plan_file=failure.get("test_plan_file", ""),
+            failed_operation_id=failure.get("failed_operation_id"),
         )
 
     retry_summaries = [build_summary(f) for f in retry_failures]
@@ -701,6 +800,7 @@ output: ProcessResultsOutput = {
     "warnings": warnings,
     "retry_log_file": retry_log_path,
     "review_log_file": review_log_path,
+    "diagnostic_info": diagnostic_entries,
 }
 
 # Output JSON to stdout

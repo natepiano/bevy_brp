@@ -1,0 +1,6 @@
+{
+  "types_per_subagent": 1,
+  "max_subagents": 4,
+  "base_port": 30001,
+  "stop_after_each_batch": true
+}

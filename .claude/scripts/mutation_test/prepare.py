@@ -3,11 +3,14 @@
 Mutation test preparation: batch renumbering and assignment generation.
 
 This script combines two operations:
-1. Batch renumbering (when batch=1): Reset failed tests and assign batch numbers
-2. Assignment generation (all batches): Create test plans and distribute types
+1. Batch renumbering: Reset failed tests and assign batch numbers
+2. Assignment generation: Create test plans and distribute types
+
+Configuration is loaded from .claude/config/mutation_test_config.json.
+The batch number is auto-discovered by finding the first untested batch.
 
 Usage:
-  python3 mutation_test_prepare.py --batch 1 --max-subagents 10 --types-per-subagent 1
+  python3 mutation_test_prepare.py
 
 Output:
   Returns AllAssignmentsOutput with assignments and test plan files.
@@ -16,12 +19,22 @@ Output:
 import json
 import sys
 import os
-import argparse
-import tempfile
 import glob
 import subprocess
+from datetime import datetime
+from pathlib import Path
 from typing import Any, TypedDict, cast
 
+# Add script directory to path for local imports
+_script_dir = Path(__file__).parent
+sys.path.insert(0, str(_script_dir))
+
+# Import shared config module - must come after sys.path modification
+if True:  # Scope block for import after sys.path change
+    import config as mutation_config  # type: ignore[import-not-found]
+
+# Constants
+OPERATION_ID_START = 1  # Operation IDs start at 1 for better human readability
 
 # Type definitions for JSON structures
 class MutationPathData(TypedDict, total=False):
@@ -73,7 +86,7 @@ class TestOperation(TypedDict, total=False):
     port: int
     status: str | None
     error: str | None
-    retry_count: int
+    call_count: int
     operation_announced: bool
     # Spawn/query specific
     components: dict[str, Any] | None  # pyright: ignore[reportExplicitAny]
@@ -105,44 +118,20 @@ class TestPlan(TypedDict):
     tests: list[TypeTest]
 
 
-# Parse command line arguments
-parser = argparse.ArgumentParser(
-    description="Prepare mutation test: renumber batches and generate assignments"
-)
-_ = parser.add_argument(
-    "--batch", type=int, required=True, help="Batch number to process"
-)
-_ = parser.add_argument(
-    "--max-subagents", type=int, required=True, help="Maximum number of subagents"
-)
-_ = parser.add_argument(
-    "--types-per-subagent",
-    type=int,
-    required=True,
-    help="Number of types each subagent should test",
-)
-
-args = parser.parse_args()
-
-batch_num: int = cast(int, args.batch)
-max_subagents: int = cast(int, args.max_subagents)
-types_per_subagent: int = cast(int, args.types_per_subagent)
-
-if max_subagents <= 0:
-    print(
-        f"Error: max_subagents must be positive, got: {max_subagents}", file=sys.stderr
-    )
+# Load configuration from config file
+# Type checking disabled for runtime-imported module
+try:
+    config = mutation_config.load_config()  # pyright: ignore[reportAttributeAccessIssue]
+except FileNotFoundError as e:
+    print(f"Error loading config: {e}", file=sys.stderr)
     sys.exit(1)
 
-if types_per_subagent <= 0:
-    print(
-        f"Error: types_per_subagent must be positive, got: {types_per_subagent}",
-        file=sys.stderr,
-    )
-    sys.exit(1)
+max_subagents: int = config["max_subagents"]  # pyright: ignore[reportAny]
+types_per_subagent: int = config["types_per_subagent"]  # pyright: ignore[reportAny]
+base_port: int = config["base_port"]  # pyright: ignore[reportAny]
 
 # Calculate batch size
-batch_size = max_subagents * types_per_subagent
+batch_size: int = max_subagents * types_per_subagent
 
 # Get the JSON file path
 json_file = ".claude/transient/all_types.json"
@@ -150,6 +139,25 @@ json_file = ".claude/transient/all_types.json"
 if not os.path.exists(json_file):
     print(f"Error: {json_file} not found!", file=sys.stderr)
     sys.exit(1)
+
+# Load all_types.json to discover current batch
+try:
+    with open(json_file, "r", encoding="utf-8") as f:
+        all_types_raw = json.load(f)  # pyright: ignore[reportAny]
+        all_types_data: dict[str, object] = all_types_raw  # pyright: ignore[reportAny]
+except json.JSONDecodeError as e:
+    print(f"Error parsing JSON: {e}", file=sys.stderr)
+    sys.exit(1)
+
+# Auto-discover current batch number
+batch_result: int | str = mutation_config.find_current_batch(all_types_data)  # pyright: ignore[reportAttributeAccessIssue]
+if batch_result == "COMPLETE":
+    print("All tests complete! No untested batches remaining.", file=sys.stderr)
+    sys.exit(0)
+
+# At this point batch_result must be int (we exited if it was "COMPLETE")
+assert isinstance(batch_result, int)
+batch_num: int = batch_result
 
 
 def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
@@ -298,7 +306,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                         "port": port,
                         "status": None,
                         "error": None,
-                        "retry_count": 0,
+                        "call_count": 0,
                         "operation_announced": False,
                     },
                 ),
@@ -324,7 +332,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
                         "port": port,
                         "status": None,
                         "error": None,
-                        "retry_count": 0,
+                        "call_count": 0,
                         "operation_announced": False,
                     },
                 ),
@@ -671,11 +679,10 @@ if "type_guide" not in data:
 # STEP 1: Cleanup previous runs if this is batch 1
 if batch_num == 1:
     # Remove leftover files from previous runs
-    tmpdir = tempfile.gettempdir()
     cleanup_patterns = [
         ".claude/transient/batch_results_*.json",
         ".claude/transient/all_types_failures_*.json",
-        os.path.join(tmpdir, "mutation_test_subagent_*_plan.json")
+        "/tmp/mutation_test_*.json"
     ]
     for pattern in cleanup_patterns:
         for filepath in glob.glob(pattern):
@@ -684,7 +691,7 @@ if batch_num == 1:
             except OSError:
                 pass  # Ignore errors if files don't exist or can't be removed
 
-# STEP 2: Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
+# STEP 1.5: Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
 data = renumber_batches(data, batch_size)
 
 # Write updated data back to file
@@ -800,7 +807,7 @@ for subagent_num in range(1, actual_subagents_needed + 1):
         type_descriptions: list[str] = []
 
         # Track operation IDs sequentially across all types for this subagent
-        operation_id_counter = 0
+        operation_id_counter = OPERATION_ID_START
 
         for type_part in subagent_parts:
             type_data = type_part["type_data"]
@@ -882,7 +889,64 @@ for subagent_num in range(1, actual_subagents_needed + 1):
         }
         assignments.append(assignment)
 
-# STEP 5: Open test plan files in Zed
+# STEP 5: Backup and initialize debug log
+DEBUG_LOG = "/tmp/mutation_hook_debug.log"
+
+# Backup existing log if it exists
+if os.path.exists(DEBUG_LOG):
+    # Extract batch number and timestamp from existing log metadata
+    batch_num_str = "unknown"
+    log_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    try:
+        with open(DEBUG_LOG, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("# Batch Number:"):
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        batch_num_str = parts[3]
+                elif line.startswith("# Started:"):
+                    # Extract timestamp from "# Started: 2025-10-22 22:16:12"
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        date_part = parts[2].replace("-", "")
+                        time_part = parts[3].replace(":", "")
+                        log_timestamp = f"{date_part}_{time_part}"
+                    break  # Found both metadata lines
+    except Exception:
+        pass  # Use defaults if parsing fails
+
+    backup_file = f"/tmp/mutation_hook_debug_batch{batch_num_str}_{log_timestamp}.log"
+    try:
+        os.rename(DEBUG_LOG, backup_file)
+        print(f"Backed up previous log to: {backup_file}", file=sys.stderr)
+    except OSError:
+        pass  # Ignore if backup fails
+
+# Create new debug log with metadata for current batch
+ports_str = ", ".join(str(a["port"]) for a in assignments)
+types_str = ", ".join(a["window_description"] for a in assignments)
+timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+with open(DEBUG_LOG, "w", encoding="utf-8") as f:
+    _ = f.write(f"# Mutation Test Debug Log\n")
+    _ = f.write(f"# Batch Number: {batch_num}\n")
+    _ = f.write(f"# Started: {timestamp}\n")
+    _ = f.write(f"# Ports: {ports_str}\n")
+    _ = f.write(f"# Types: {types_str}\n")
+    _ = f.write(f"# ----------------------------------------\n\n")
+
+    # Write initial announcements for first operation on each port
+    for assignment in assignments:
+        port = assignment["port"]
+        _ = f.write(f"[{timestamp}] port={port} tool=announcement op_id={OPERATION_ID_START}\n")
+
+print(f"Created new debug log: {DEBUG_LOG}", file=sys.stderr)
+print(f"  Batch: {batch_num}", file=sys.stderr)
+print(f"  Ports: {ports_str}", file=sys.stderr)
+print(f"  Types count: {len(assignments)}", file=sys.stderr)
+
+# STEP 6: Open test plan files in Zed
 zed_cli = "/Applications/Zed.app/Contents/MacOS/cli"
 if os.path.exists(zed_cli):
     for assignment in assignments:
@@ -892,7 +956,7 @@ if os.path.exists(zed_cli):
         except OSError:
             pass  # Ignore if Zed fails to open
 
-# STEP 6: Return all assignments with test plan files generated
+# STEP 7: Return all assignments with test plan files generated
 # Calculate unique types that actually made it into assignments
 assigned_type_names: set[str] = set()
 for assignment in assignments:

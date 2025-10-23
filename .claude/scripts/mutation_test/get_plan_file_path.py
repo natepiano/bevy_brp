@@ -6,11 +6,10 @@ Usage:
   python3 get_plan_file_path.py --port 30001
 
 Output:
-  /var/folders/.../mutation_test_subagent_30001_plan.json
+  /var/folders/.../mutation_test_30001.json
 """
 
 import argparse
-import os
 from typing import cast
 
 
@@ -24,15 +23,7 @@ def get_plan_file_path(port: int) -> str:
     Returns:
         Absolute path to the test plan file
     """
-    tmpdir = os.environ.get("TMPDIR")
-    if tmpdir is None:
-        tmpdir = "/tmp"
-
-    # Remove trailing slash if present
-    if tmpdir.endswith("/"):
-        tmpdir = tmpdir[:-1]
-
-    return f"{tmpdir}/mutation_test_subagent_{port}_plan.json"
+    return f"/tmp/mutation_test_{port}.json"
 
 
 def main() -> None:

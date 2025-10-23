@@ -25,7 +25,7 @@ These config values are provided:
          - Continue to next operation
        - If operation fails:
          - **IMMEDIATELY execute <MatchErrorPattern/>** to identify and recover from error
-         - If recovery succeeds: update with SUCCESS (with --retry-count 1) and continue
+         - If recovery succeeds: continue to next operation (hook tracks call_count automatically)
          - If no recovery applicable or recovery fails:
            - **STOP IMMEDIATELY** - return without processing remaining operations
 
@@ -114,7 +114,7 @@ Does error contain `"invalid type: null"`?
 
 Does error contain `"unknown variant"` with escaped quotes (like `\"VariantName\"`)?
 - ✓ YES → Check the test plan JSON for the original `value` field:
-  - If it was a plain string (like `"None"` or `"MaxClusterableObjectRange"`) → Execute <UnitEnumVariantError/> recovery
+  - If it was a plain string (like "None" or "Low") → Execute <UnitEnumVariantError/> recovery
   - Otherwise → Execute <EnumVariantError/> recovery
 - ✗ NO → Continue
 
@@ -146,9 +146,9 @@ Does error contain `"unknown variant"` with escaped quotes (like `\"VariantName\
 </InvalidTypeStringError>
 
 <UnitEnumVariantError>
-**Pattern**: Error contains `"invalid type: null"` OR `"unknown variant"` with escaped quotes, AND test plan has plain string value
+**Pattern**: Error contains `"unknown variant"` with escaped quotes, AND test plan has plain string value
 
-**Cause**: You transformed a unit enum variant string (e.g., `"None"` → `null` or `"MaxClusterableObjectRange"` → `"\"...\"`)
+**Cause**: You're double quoting a string turning "Low" into "\"Low\"" - this is breaking things.
 
 **Recovery**:
 1. Re-read operation's `value` field from test plan JSON

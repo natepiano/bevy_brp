@@ -16,13 +16,13 @@ Usage:
     --status FAIL \\
     --error "Framework error: Unable to extract parameters"
 
-  # Success with retry count
+  # Success with call count
   python3 mutation_test_operation_update.py \\
     --file PATH \\
     --operation-id N \\
     --status SUCCESS \\
     --entity-id 12345 \\
-    --retry-count 1
+    --call-count 1
 """
 
 import argparse
@@ -61,7 +61,7 @@ def parse_args() -> argparse.Namespace:
     )
     _ = parser.add_argument("--error", help="Error message (for failed operations)")
     _ = parser.add_argument(
-        "--retry-count", type=int, default=0, help="Retry count (default: 0)"
+        "--call-count", type=int, default=0, help="Call count (default: 0)"
     )
     _ = parser.add_argument(
         "--announced",
@@ -86,11 +86,11 @@ def validate_args(args: argparse.Namespace) -> None:
         print("Error: --status is required unless using --announced", file=sys.stderr)
         sys.exit(1)
 
-    # Validate retry_count is non-negative
-    if hasattr(args, "retry_count"):
-        retry_arg = cast(int, args.retry_count)
-        if retry_arg < 0:
-            print(f"Error: --retry-count must be non-negative, got {retry_arg}", file=sys.stderr)
+    # Validate call_count is non-negative
+    if hasattr(args, "call_count"):
+        call_arg = cast(int, args.call_count)
+        if call_arg < 0:
+            print(f"Error: --call-count must be non-negative, got {call_arg}", file=sys.stderr)
             sys.exit(1)
 
 
@@ -103,7 +103,6 @@ def main() -> None:
     operation_id: int = cast(int, args.operation_id)
     status: str | None = cast(str | None, getattr(args, "status", None))
     error: str | None = cast(str | None, getattr(args, "error", None))
-    retry_count: int = cast(int, getattr(args, "retry_count", 0))
     announced: bool = cast(bool, args.announced)
 
     # Get file path using shared utility
@@ -161,6 +160,7 @@ def main() -> None:
     # Handle status update
     elif status:
         operation["status"] = status
+        operation["operation_announced"] = True
 
         if status == "SUCCESS":
             operation["error"] = None
@@ -168,9 +168,9 @@ def main() -> None:
             operation["error"] = error if error else "Unknown error"
             # Don't set result fields on failure
 
-        # Set retry_count if provided (or default to 0)
-        if "retry_count" in operation or retry_count > 0:
-            operation["retry_count"] = retry_count
+        # Increment call_count (read current value, increment by 1)
+        current_call_count: int = cast(int, operation.get("call_count", 0))
+        operation["call_count"] = current_call_count + 1
 
     # Write updated test plan back atomically
     try:
@@ -179,6 +179,30 @@ def main() -> None:
     except IOError as e:
         print(f"Error: Failed to write test plan file: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # If we just completed an operation successfully, write next operation announcement
+    # On FAIL, don't announce next - allow subagent to retry the failed operation
+    if status == "SUCCESS":
+        # Find next operation in sequence
+        next_operation_id = operation_id + 1
+        next_operation_exists = False
+
+        for op in operations:
+            if op.get("operation_id") == next_operation_id:
+                next_operation_exists = True
+                break
+
+        # Write announcement for next operation if it exists
+        if next_operation_exists:
+            debug_log = "/tmp/mutation_hook_debug.log"
+            try:
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                with open(debug_log, "a", encoding="utf-8") as f:
+                    _ = f.write(f"[{timestamp}] port={port} tool=announcement op_id={next_operation_id}\n")
+            except Exception:
+                # Silently ignore debug log write failures
+                pass
 
     # No output - test plan file is the source of truth
     pass

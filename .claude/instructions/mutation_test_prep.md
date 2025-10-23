@@ -21,51 +21,11 @@ Prepare Bevy application instances for mutation testing by shutting down existin
 <ExecutionSteps>
 **EXECUTE THESE STEPS IN ORDER:**
 
-**STEP 0:** Execute <BackupDebugLog/>
 **STEP 1:** Execute <ShutdownExistingApps/>
 **STEP 2:** Execute <LaunchFreshApps/>
 **STEP 3:** Execute <VerifyAppsRunning/>
 **STEP 4:** Execute <SetWindowTitles/>
 </ExecutionSteps>
-
-## STEP 0: BACKUP DEBUG LOG
-
-<BackupDebugLog>
-Backup the existing debug log to a timestamped file for later analysis:
-
-```bash
-if [ -f /tmp/mutation_hook_debug.log ]; then
-  # Extract batch number and timestamp from existing log metadata
-  BATCH_NUM=$(grep "^# Batch Number:" /tmp/mutation_hook_debug.log | head -1 | awk '{print $4}')
-  LOG_TIMESTAMP=$(grep "^# Started:" /tmp/mutation_hook_debug.log | head -1 | awk '{print $3, $4}' | tr -d ':' | tr ' ' '_' | tr -d '-')
-
-  # Use extracted metadata in backup filename (or defaults if parsing fails)
-  BATCH_NUM=${BATCH_NUM:-unknown}
-  LOG_TIMESTAMP=${LOG_TIMESTAMP:-$(date '+%Y%m%d_%H%M%S')}
-
-  BACKUP_FILE="/tmp/mutation_hook_debug_batch${BATCH_NUM}_${LOG_TIMESTAMP}.log"
-
-  # Move existing log to backup (preserves all content including metadata)
-  mv /tmp/mutation_hook_debug.log "$BACKUP_FILE"
-fi
-
-# Create new debug log with metadata for current batch
-TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-BATCH_NUM=$(echo "$assignments" | jq -r '.batch_number // "unknown"')
-
-cat > /tmp/mutation_hook_debug.log << EOF
-# Mutation Test Debug Log
-# Batch Number: ${BATCH_NUM}
-# Started: $(date '+%Y-%m-%d %H:%M:%S')
-# Ports: $(echo "$assignments" | jq -r '.assignments | map(.port) | join(", ")')
-# Types: $(echo "$assignments" | jq -r '.assignments | map(.window_description) | join(", ")')
-# ----------------------------------------
-
-EOF
-```
-
-This creates a fresh debug log with metadata for the current batch while preserving previous batch logs for analysis.
-</BackupDebugLog>
 
 ## STEP 1: SHUTDOWN EXISTING APPS
 
