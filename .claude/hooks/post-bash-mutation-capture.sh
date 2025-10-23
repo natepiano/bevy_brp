@@ -25,8 +25,12 @@ if echo "$COMMAND" | grep -qE '^\s*(:|echo)\s+"Starting operation [0-9]+ on port
 
     # Validate we extracted both values
     if [ -n "$OPERATION_ID" ] && [ -n "$PORT" ]; then
-        # Write operation_id to port-specific temp file
-        echo "$OPERATION_ID" > "/tmp/mutation_test_op_${PORT}.txt"
+        # Reset file on first operation, append on subsequent operations
+        if [ "$OPERATION_ID" = "0" ]; then
+            echo "$OPERATION_ID" > "/tmp/mutation_test_op_${PORT}.txt"
+        else
+            echo "$OPERATION_ID" >> "/tmp/mutation_test_op_${PORT}.txt"
+        fi
 
         # Mark operation as announced in test plan
         python3 .claude/scripts/mutation_test/operation_update.py \

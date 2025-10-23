@@ -29,7 +29,7 @@ if [ ! -f "$TEMP_FILE" ]; then
     exit 0
 fi
 
-OPERATION_ID=$(cat "$TEMP_FILE" 2>/dev/null)
+OPERATION_ID=$(tail -1 "$TEMP_FILE" 2>/dev/null)
 if [ -z "$OPERATION_ID" ]; then
     MESSAGE="Hook: Empty operation_id in ${TEMP_FILE}"
     echo "{\"continue\": true, \"systemMessage\": \"${MESSAGE}\", \"hookSpecificOutput\": {\"hookEventName\": \"PostToolUse\", \"additionalContext\": \"${MESSAGE}\"}}"
