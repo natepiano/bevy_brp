@@ -7,6 +7,13 @@ INPUT=$(cat)
 # STEP 1: Extract port from tool_input
 PORT=$(echo "$INPUT" | jq -r '.tool_input.port // empty')
 
+# Extract tool name for logging
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"')
+
+# Log hook execution to single file
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "[${TIMESTAMP}] port=${PORT} tool=${TOOL_NAME}" >> /tmp/mutation_hook_debug.log
+
 # STEP 2: Check if port is in mutation test range (30001-30010)
 if [ -z "$PORT" ] || [ "$PORT" -lt 30001 ] || [ "$PORT" -gt 30010 ]; then
     MESSAGE="Hook: Port ${PORT} not in test range, skipping"
@@ -38,6 +45,9 @@ if [ "$STATUS_FIELD" = "success" ]; then
 else
     STATUS="FAIL"
 fi
+
+# Log complete operation details (matches first log entry by timestamp)
+echo "[${TIMESTAMP}] port=${PORT} tool=${TOOL_NAME} op_id=${OPERATION_ID} status=${STATUS}" >> /tmp/mutation_hook_debug.log
 
 # STEP 5: Call operation_update.py with proper escaping
 if [ "$STATUS" = "FAIL" ]; then

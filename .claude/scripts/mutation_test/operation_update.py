@@ -138,8 +138,7 @@ def main() -> None:
 
     # Find operation with matching operation_id
     operation: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
-    operation_index: int = -1
-    for idx, op in enumerate(operations):
+    for op in operations:
         if op.get("operation_id") == operation_id:
             if operation is not None:
                 print(
@@ -148,7 +147,6 @@ def main() -> None:
                 )
                 sys.exit(1)
             operation = op
-            operation_index = idx
 
     if operation is None:
         print(
@@ -182,14 +180,8 @@ def main() -> None:
         print(f"Error: Failed to write test plan file: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Output next operation ID or completion message (unless just marking announced)
-    if announced:
-        print(f"Operation {operation_id} marked as announced")
-    elif operation_index + 1 < len(operations):
-        next_op_id = operations[operation_index + 1].get("operation_id")
-        print(f"Next operation id: {next_op_id}")
-    else:
-        print("testing_complete")
+    # No output - test plan file is the source of truth
+    pass
 
 
 if __name__ == "__main__":
