@@ -17,8 +17,8 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Check if this is a mutation test operation announcement
-# Pattern: : "Starting operation N on port P"
-if echo "$COMMAND" | grep -qE '^\s*:\s*"Starting operation [0-9]+ on port [0-9]+"'; then
+# Pattern: : "Starting operation N on port P" OR echo "Starting operation N on port P"
+if echo "$COMMAND" | grep -qE '^\s*(:|echo)\s+"Starting operation [0-9]+ on port [0-9]+"'; then
     # Extract operation_id and port
     OPERATION_ID=$(echo "$COMMAND" | sed -n 's/.*Starting operation \([0-9]*\) on port.*/\1/p')
     PORT=$(echo "$COMMAND" | sed -n 's/.*on port \([0-9]*\).*/\1/p')
@@ -27,6 +27,13 @@ if echo "$COMMAND" | grep -qE '^\s*:\s*"Starting operation [0-9]+ on port [0-9]+
     if [ -n "$OPERATION_ID" ] && [ -n "$PORT" ]; then
         # Write operation_id to port-specific temp file
         echo "$OPERATION_ID" > "/tmp/mutation_test_op_${PORT}.txt"
+
+        # Mark operation as announced in test plan
+        python3 .claude/scripts/mutation_test/operation_update.py \
+            --port "$PORT" \
+            --operation-id "$OPERATION_ID" \
+            --announced \
+            > /tmp/mutation_announce_${PORT}_${OPERATION_ID}.log 2>&1
     fi
 fi
 

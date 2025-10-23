@@ -689,7 +689,7 @@ output: ProcessResultsOutput = {
         "total_batches": total_batches,
     },
     "stats": {
-        "types_tested": total_types_tested + retry,
+        "types_tested": total_types_tested,
         "passed": passed,
         "failed": failed,
         "retry": retry,

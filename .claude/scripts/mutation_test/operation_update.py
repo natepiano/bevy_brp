@@ -55,13 +55,18 @@ def parse_args() -> argparse.Namespace:
     )
     _ = parser.add_argument(
         "--status",
-        required=True,
+        required=False,
         choices=["SUCCESS", "FAIL"],
-        help="Operation status (SUCCESS or FAIL)",
+        help="Operation status (SUCCESS or FAIL) - not required if using --announced",
     )
     _ = parser.add_argument("--error", help="Error message (for failed operations)")
     _ = parser.add_argument(
         "--retry-count", type=int, default=0, help="Retry count (default: 0)"
+    )
+    _ = parser.add_argument(
+        "--announced",
+        action="store_true",
+        help="Mark operation as announced (set operation_announced=true)",
     )
 
     return parser.parse_args()
@@ -69,11 +74,24 @@ def parse_args() -> argparse.Namespace:
 
 def validate_args(args: argparse.Namespace) -> None:
     """Validate argument combinations."""
-    # Validate retry_count is non-negative
-    retry_arg = cast(int, args.retry_count)
-    if retry_arg < 0:
-        print(f"Error: --retry-count must be non-negative, got {retry_arg}", file=sys.stderr)
+    announced = cast(bool, args.announced)
+    status = cast(str | None, getattr(args, "status", None))
+
+    # If announced flag, status is optional
+    if announced:
+        return
+
+    # Otherwise, status is required
+    if not status:
+        print("Error: --status is required unless using --announced", file=sys.stderr)
         sys.exit(1)
+
+    # Validate retry_count is non-negative
+    if hasattr(args, "retry_count"):
+        retry_arg = cast(int, args.retry_count)
+        if retry_arg < 0:
+            print(f"Error: --retry-count must be non-negative, got {retry_arg}", file=sys.stderr)
+            sys.exit(1)
 
 
 def main() -> None:
@@ -83,9 +101,10 @@ def main() -> None:
 
     port: int = cast(int, args.port)
     operation_id: int = cast(int, args.operation_id)
-    status: str = cast(str, args.status)
-    error: str | None = cast(str | None, args.error)
-    retry_count: int = cast(int, args.retry_count)
+    status: str | None = cast(str | None, getattr(args, "status", None))
+    error: str | None = cast(str | None, getattr(args, "error", None))
+    retry_count: int = cast(int, getattr(args, "retry_count", 0))
+    announced: bool = cast(bool, args.announced)
 
     # Get file path using shared utility
     result = subprocess.run(
@@ -138,18 +157,22 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Update operation fields
-    operation["status"] = status
+    # Handle --announced flag (just mark as announced)
+    if announced:
+        operation["operation_announced"] = True
+    # Handle status update
+    elif status:
+        operation["status"] = status
 
-    if status == "SUCCESS":
-        operation["error"] = None
-    else:  # FAIL
-        operation["error"] = error if error else "Unknown error"
-        # Don't set result fields on failure
+        if status == "SUCCESS":
+            operation["error"] = None
+        else:  # FAIL
+            operation["error"] = error if error else "Unknown error"
+            # Don't set result fields on failure
 
-    # Set retry_count if provided (or default to 0)
-    if "retry_count" in operation or retry_count > 0:
-        operation["retry_count"] = retry_count
+        # Set retry_count if provided (or default to 0)
+        if "retry_count" in operation or retry_count > 0:
+            operation["retry_count"] = retry_count
 
     # Write updated test plan back atomically
     try:
@@ -159,8 +182,10 @@ def main() -> None:
         print(f"Error: Failed to write test plan file: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Output next operation ID or completion message
-    if operation_index + 1 < len(operations):
+    # Output next operation ID or completion message (unless just marking announced)
+    if announced:
+        print(f"Operation {operation_id} marked as announced")
+    elif operation_index + 1 < len(operations):
         next_op_id = operations[operation_index + 1].get("operation_id")
         print(f"Next operation id: {next_op_id}")
     else:
