@@ -155,23 +155,33 @@ if not os.path.exists(json_file):
 def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
     """
     Renumber batches: reset failed tests to untested and assign batch numbers.
-    This happens only when batch == 1.
+    This happens before every batch to ensure retry failures are picked up.
 
     Uses shared splitting logic to ensure batch numbers match what preparation will deliver.
     """
     type_guide = data["type_guide"]
 
-    # Step 1: Reset failed tests to untested
+    # Step 1: Reset failed tests to untested and clear their batch numbers
     for type_name, type_data in type_guide.items():
         if type_data.get("test_status") == "failed":
             type_data["test_status"] = "untested"
             type_data["fail_reason"] = ""
+            type_data["batch_number"] = None
 
-    # Step 2: Clear all batch numbers
+    # Step 2: Find highest batch number assigned to passed/auto-passed tests
+    max_batch = 0
     for type_data in type_guide.values():
-        type_data["batch_number"] = None
+        if type_data.get("test_status") in ["passed", "auto_passed"]:
+            batch_num = type_data.get("batch_number")
+            if batch_num is not None and batch_num > max_batch:
+                max_batch = batch_num
 
-    # Step 3: Assign batch numbers to untested types
+    # Step 3: Clear batch numbers only for untested types (retries + never tested)
+    for type_data in type_guide.values():
+        if type_data.get("test_status") == "untested":
+            type_data["batch_number"] = None
+
+    # Step 4: Assign batch numbers to untested types, starting after highest batch
     # Account for splitting: some types consume 2 slots instead of 1
     untested_types: list[tuple[str, TypeData]] = [
         (type_name, type_data)
@@ -179,7 +189,7 @@ def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
         if type_data.get("test_status") == "untested"
     ]
 
-    current_batch = 1
+    current_batch = max_batch + 1
     current_batch_slots = 0
 
     for type_name, type_data in untested_types:
@@ -674,17 +684,16 @@ if batch_num == 1:
             except OSError:
                 pass  # Ignore errors if files don't exist or can't be removed
 
-# STEP 2: Renumber batches if this is batch 1
-if batch_num == 1:
-    data = renumber_batches(data, batch_size)
+# STEP 2: Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
+data = renumber_batches(data, batch_size)
 
-    # Write updated data back to file
-    try:
-        with open(json_file, "w") as f:
-            json.dump(data, f, indent=2)
-    except IOError as e:
-        print(f"Error writing updated JSON: {e}", file=sys.stderr)
-        sys.exit(1)
+# Write updated data back to file
+try:
+    with open(json_file, "w") as f:
+        json.dump(data, f, indent=2)
+except IOError as e:
+    print(f"Error writing updated JSON: {e}", file=sys.stderr)
+    sys.exit(1)
 
 type_guide: dict[str, TypeData] = data["type_guide"]
 
