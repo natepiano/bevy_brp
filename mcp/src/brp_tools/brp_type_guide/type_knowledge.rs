@@ -25,7 +25,6 @@ use super::constants::TYPE_BEVY_COLOR_OKLCHA;
 use super::constants::TYPE_BEVY_COLOR_SRGBA;
 use super::constants::TYPE_BEVY_COLOR_XYZA;
 use super::constants::TYPE_BEVY_ENTITY;
-use super::constants::TYPE_BEVY_IMAGE_HANDLE;
 use super::constants::TYPE_BEVY_MAT2;
 use super::constants::TYPE_BEVY_MAT3;
 use super::constants::TYPE_BEVY_MAT4;
@@ -89,13 +88,13 @@ pub enum KnowledgeKey {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: BrpTypeName,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
     /// Match an indexed element within enum variants that share a signature
     EnumVariantSignature {
         enum_type: BrpTypeName,
         signature: VariantSignature,
-        index:     usize,
+        index: usize,
     },
 }
 
@@ -112,7 +111,7 @@ impl KnowledgeKey {
     ) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
     }
 
@@ -137,7 +136,7 @@ pub enum TypeKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }

@@ -17,9 +17,9 @@ Output:
 """
 
 import json
-import sys
 import os
 import subprocess
+import sys
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -31,7 +31,8 @@ sys.path.insert(0, str(_script_dir))
 
 # Import shared config module - must come after sys.path modification
 if True:  # Scope block for import after sys.path change
-    import config as mutation_config  # type: ignore[import-not-found]
+    import config as mutation_config  # type: ignore[import-not-found]  # pyright: ignore[reportImplicitRelativeImport]
+
 
 # Type definitions for config module
 class MutationConfig(TypedDict):
@@ -39,8 +40,10 @@ class MutationConfig(TypedDict):
     types_per_subagent: int
     base_port: int
 
+
 # Constants
 OPERATION_ID_START = 1  # Operation IDs start at 1 for better human readability
+
 
 # Type definitions for JSON structures
 class MutationPathData(TypedDict, total=False):
@@ -234,10 +237,14 @@ def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
         slots_needed = calculate_type_slots(type_data)
 
         # Calculate how many subagents this type needs
-        subagents_needed = (slots_needed + types_per_subagent_val - 1) // types_per_subagent_val
+        subagents_needed = (
+            slots_needed + types_per_subagent_val - 1
+        ) // types_per_subagent_val
 
         # Calculate how many subagents are currently used in this batch (running total)
-        current_subagents_used = (current_batch_slots + types_per_subagent_val - 1) // types_per_subagent_val
+        current_subagents_used = (
+            current_batch_slots + types_per_subagent_val - 1
+        ) // types_per_subagent_val
 
         # Check if adding this type would exceed subagent capacity
         # This ensures we don't orphan parts due to subagent packing
@@ -261,12 +268,13 @@ def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
 
     # Report statistics
     total = len(type_guide)
-    untested = len([t for t in type_guide.values() if t.get("test_status") == "untested"])
+    untested = len(
+        [t for t in type_guide.values() if t.get("test_status") == "untested"]
+    )
     failed = len([t for t in type_guide.values() if t.get("test_status") == "failed"])
     passed = len([t for t in type_guide.values() if t.get("test_status") == "passed"])
     max_batch = max(
-        (t.get("batch_number") or 0 for t in type_guide.values()),
-        default=0
+        (t.get("batch_number") or 0 for t in type_guide.values()), default=0
     )
 
     print("✓ Batch renumbering complete!", file=sys.stderr)
@@ -422,8 +430,16 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
         root_example = path_info.get("path_info", {}).get("root_example")
         # Only set root if: it exists, this is a nested path, and it differs from last root
         # Use JSON serialization for deep equality comparison
-        root_example_json = json.dumps(root_example, sort_keys=True) if root_example is not None else None
-        if root_example is not None and path != "" and root_example_json != last_root_example_json:
+        root_example_json = (
+            json.dumps(root_example, sort_keys=True)
+            if root_example is not None
+            else None
+        )
+        if (
+            root_example is not None
+            and path != ""
+            and root_example_json != last_root_example_json
+        ):
             # Need to set root first
             if mutation_type == "Component":
                 op = cast(
@@ -477,7 +493,9 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
         examples = path_info.get("examples")
 
         # Handle enum variants (multiple examples)
-        test_values = examples if examples else ([example] if example is not None else [])
+        test_values = (
+            examples if examples else ([example] if example is not None else [])
+        )
 
         for test_value in test_values:  # pyright: ignore[reportAny]
             # For enum variants: only process if it has an "example" key
@@ -595,9 +613,7 @@ def find_split_points(mutations: list[TestOperation], num_parts: int) -> list[in
 
 
 def split_operations_for_part(
-    all_operations: list[TestOperation],
-    part_number: int,
-    total_parts: int
+    all_operations: list[TestOperation], part_number: int, total_parts: int
 ) -> list[TestOperation]:
     """
     Split operations for multi-part type testing with variable part counts.
@@ -622,7 +638,10 @@ def split_operations_for_part(
             spawn_idx = idx
         elif tool == "mcp__brp__world_query":
             query_idx = idx
-        elif tool in ["mcp__brp__world_mutate_components", "mcp__brp__world_mutate_resources"]:
+        elif tool in [
+            "mcp__brp__world_mutate_components",
+            "mcp__brp__world_mutate_resources",
+        ]:
             if mutation_start_idx is None:
                 mutation_start_idx = idx
 
@@ -648,7 +667,7 @@ def split_operations_for_part(
 
         # Add mutations up to first split
         if split_indices:
-            result.extend(mutations[:split_indices[0]])
+            result.extend(mutations[: split_indices[0]])
         else:
             result.extend(mutations)
 
@@ -663,7 +682,11 @@ def split_operations_for_part(
 
         # Determine mutation range for this part
         start_idx = split_indices[part_number - 2]  # Previous split point
-        end_idx = split_indices[part_number - 1] if part_number < total_parts else len(mutations)
+        end_idx = (
+            split_indices[part_number - 1]
+            if part_number < total_parts
+            else len(mutations)
+        )
 
         # Check if we need to prepend a root mutation
         if start_idx < len(mutations):
@@ -693,7 +716,7 @@ except json.JSONDecodeError as e:
 
 # Expect type_guide at root
 if "type_guide" not in data:
-    print(f"Error: Expected dict with 'type_guide' at root", file=sys.stderr)
+    print("Error: Expected dict with 'type_guide' at root", file=sys.stderr)
     sys.exit(1)
 
 # STEP 1: Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
@@ -734,6 +757,7 @@ if not batch_types:
     print(f"No types found for batch {batch_num}", file=sys.stderr)
     sys.exit(1)
 
+
 # STEP 3: Identify large types for splitting using shared logic
 # Pre-generate operations to count them
 class TypePart(TypedDict):
@@ -741,6 +765,7 @@ class TypePart(TypedDict):
     part_number: int  # 1-indexed
     total_parts: int
     all_operations: list[TestOperation]  # All operations for this type
+
 
 type_parts: list[TypePart] = []
 
@@ -775,12 +800,14 @@ for type_item in batch_types:
 
     # Create parts for this type (1 to N parts based on operation count)
     for part_num in range(1, slots_needed + 1):
-        type_parts.append(TypePart(
-            type_data=type_data,
-            part_number=part_num,
-            total_parts=slots_needed,
-            all_operations=all_operations
-        ))
+        type_parts.append(
+            TypePart(
+                type_data=type_data,
+                part_number=part_num,
+                total_parts=slots_needed,
+                all_operations=all_operations,
+            )
+        )
 
 # STEP 4: Calculate flexible distribution based on type parts
 total_available_parts: int = len(type_parts)
@@ -834,7 +861,9 @@ for subagent_num in range(1, actual_subagents_needed + 1):
             all_operations = type_part["all_operations"]
 
             # Split operations if needed
-            operations = split_operations_for_part(all_operations, part_number, total_parts)
+            operations = split_operations_for_part(
+                all_operations, part_number, total_parts
+            )
 
             # Deep copy operations to avoid modifying shared references across subagents
             operations = deepcopy(operations)
@@ -851,7 +880,7 @@ for subagent_num in range(1, actual_subagents_needed + 1):
                 "mutation_type": mutation_type or "Unknown",
                 "part_number": part_number,
                 "total_parts": total_parts,
-                "operations": operations
+                "operations": operations,
             }
             tests.append(test)
 
@@ -859,23 +888,36 @@ for subagent_num in range(1, actual_subagents_needed + 1):
             short_name = type_name.split("::")[-1]
 
             # Get category
-            category = "C" if mutation_type == "Component" else "R" if mutation_type == "Resource" else "?"
+            category = (
+                "C"
+                if mutation_type == "Component"
+                else "R"
+                if mutation_type == "Resource"
+                else "?"
+            )
 
             # Count operations
             op_count = len(operations)
 
             # Format description with part info if split
             if total_parts > 1:
-                type_descriptions.append(f"{short_name} ({category}: {op_count} ops, {part_number} of {total_parts})")
+                type_descriptions.append(
+                    f"{short_name} ({category}: {op_count} ops, {part_number} of {total_parts})"
+                )
             else:
                 type_descriptions.append(f"{short_name} ({category}: {op_count} ops)")
 
         # Create test plan file using shared utility
         result = subprocess.run(
-            ["python3", ".claude/scripts/mutation_test/get_plan_file_path.py", "--port", str(port)],
+            [
+                "python3",
+                ".claude/scripts/mutation_test/get_plan_file_path.py",
+                "--port",
+                str(port),
+            ],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         test_plan_file = result.stdout.strip()
 
@@ -884,7 +926,7 @@ for subagent_num in range(1, actual_subagents_needed + 1):
             "subagent_index": subagent_num - 1,  # 0-based index
             "port": port,
             "test_plan_file": test_plan_file,
-            "tests": tests
+            "tests": tests,
         }
 
         # Write test plan to temp file
@@ -954,11 +996,11 @@ ports_str = ", ".join(str(a["port"]) for a in assignments)
 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 with open(DEBUG_LOG, "w", encoding="utf-8") as f:
-    _ = f.write(f"# Mutation Test Debug Log\n")
+    _ = f.write("# Mutation Test Debug Log\n")
     _ = f.write(f"# Batch Number: {batch_num}\n")
     _ = f.write(f"# Started: {timestamp}\n")
     _ = f.write(f"# Ports: {ports_str}\n")
-    _ = f.write(f"# Subagent - Types\n")
+    _ = f.write("# Subagent - Types\n")
 
     # Calculate total ops for each assignment and find max width for alignment
     assignment_ops: list[int] = []
@@ -975,7 +1017,9 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
         assignment_ops.append(total_ops)
 
     # Find max width for right alignment
-    max_ops_width = max(len(str(ops)) for ops in assignment_ops) if assignment_ops else 1
+    max_ops_width = (
+        max(len(str(ops)) for ops in assignment_ops) if assignment_ops else 1
+    )
     max_subagent_width = len(str(len(assignments)))
 
     # Calculate indentation for multi-line type lists
@@ -992,7 +1036,9 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
     for assignment in assignments:
         for type_desc in assignment["type_descriptions"]:
             # Split on first opening paren to get type name
-            type_name_part = type_desc.split(" (")[0] if " (" in type_desc else type_desc
+            type_name_part = (
+                type_desc.split(" (")[0] if " (" in type_desc else type_desc
+            )
             max_type_name_length = max(max_type_name_length, len(type_name_part))
 
             # Extract operation count (e.g., "C: 7 ops" or "R: 11 ops")
@@ -1043,7 +1089,9 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
                 padded_first = f"{type_name:<{max_type_name_length}} ({formatted_rest}"
             else:
                 padded_first = first_desc
-            _ = f.write(f"#   {subagent_num:>{max_subagent_width}} ({total_ops:>{max_ops_width}} ops): {padded_first}\n")
+            _ = f.write(
+                f"#   {subagent_num:>{max_subagent_width}} ({total_ops:>{max_ops_width}} ops): {padded_first}\n"
+            )
 
             # Subsequent types indented on their own lines with columnar alignment
             for type_desc in type_list[1:]:
@@ -1051,15 +1099,17 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
                     type_name, rest = type_desc.split(" (", 1)
                     # Right-align operation count in the rest part
                     formatted_rest = format_ops_count(rest, op_count_width)
-                    padded_desc = f"{type_name:<{max_type_name_length}} ({formatted_rest}"
+                    padded_desc = (
+                        f"{type_name:<{max_type_name_length}} ({formatted_rest}"
+                    )
                 else:
                     padded_desc = type_desc
                 _ = f.write(f"#{' ' * continuation_indent}{padded_desc}\n")
 
-    _ = f.write(f"# Test Plans\n")
+    _ = f.write("# Test Plans\n")
     for assignment in assignments:
         _ = f.write(f"#   {assignment['test_plan_file']}\n")
-    _ = f.write(f"# ----------------------------------------\n\n")
+    _ = f.write("# ----------------------------------------\n\n")
 
 # Write initial announcements for first operation on each port using operation_update.py
 for assignment in assignments:
@@ -1069,12 +1119,14 @@ for assignment in assignments:
             [
                 "python3",
                 ".claude/scripts/mutation_test/operation_update.py",
-                "--port", str(port),
-                "--operation-id", str(OPERATION_ID_START),
-                "--announced"
+                "--port",
+                str(port),
+                "--operation-id",
+                str(OPERATION_ID_START),
+                "--announced",
             ],
             check=True,
-            capture_output=True
+            capture_output=True,
         )
     except subprocess.CalledProcessError:
         # Ignore announcement failures - not critical
@@ -1089,7 +1141,9 @@ print(f"  Types count: {len(assignments)}", file=sys.stderr)
 zed_cli = "/Applications/Zed.app/Contents/MacOS/cli"
 if os.path.exists(zed_cli):
     try:
-        _ = subprocess.Popen([zed_cli, DEBUG_LOG], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        _ = subprocess.Popen(
+            [zed_cli, DEBUG_LOG], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
     except OSError:
         pass  # Ignore if Zed fails to open
 
@@ -1114,10 +1168,11 @@ subagent_count = len(assignments)
 
 # Calculate statistics for progress message
 total_batches = max(
-    (t.get("batch_number") or 0 for t in type_guide.values()),
-    default=0
+    (t.get("batch_number") or 0 for t in type_guide.values()), default=0
 )
-untested_count = len([t for t in type_guide.values() if t.get("test_status") == "untested"])
+untested_count = len(
+    [t for t in type_guide.values() if t.get("test_status") == "untested"]
+)
 remaining_types = untested_count - unique_types_count  # Remaining after this batch
 
 # Generate progress message

@@ -21,6 +21,7 @@ These config values are provided:
      - For each operation in `operations` array:
        - Apply entity ID substitution if `entity_id_substitution` field exists (see <EntityIdSubstitution/>)
        - Execute the MCP tool specified in `tool` field (see <OperationExecution/>)
+       - If tool is `mcp__brp__world_query`, execute <QueryResultValidation/>
        - If operation succeeds:
          - Continue to next operation
        - If operation fails:
@@ -66,7 +67,7 @@ These config values are provided:
    ```
 
 3. **For operations with `"entity": "USE_QUERY_RESULT"`**:
-   - Replace with the entity ID you stored from the spawn operation's MCP response
+   - Replace with the entity ID you stored from the spawn or query operation's MCP response
 </EntityIdSubstitution>
 
 ## Operation Execution
@@ -75,12 +76,13 @@ These config values are provided:
 For each operation in sequence:
 
 1. **Apply entity ID substitution** (if needed):
-   - If operation has `"entity": "USE_QUERY_RESULT"`, replace with stored entity ID from spawn
+   - If operation has `"entity": "USE_QUERY_RESULT"`, replace with stored entity ID from spawn or query (see <QueryResultValidation/>)
 
 2. **Execute the MCP tool** specified in `tool` field with all parameters from the operation
 
 3. **Store entity ID** (spawn only):
    - If tool is `mcp__brp__world_spawn_entity`, store the entity ID from the response for later USE_QUERY_RESULT substitutions
+   - Query operations store entity IDs via <QueryResultValidation/>
 
 4. **Update operation status**:
    - SUCCESS: `python3 .claude/scripts/mutation_test/operation_update.py --file TEST_PLAN_FILE --operation-id OPERATION_ID --status SUCCESS`
@@ -90,6 +92,36 @@ For each operation in sequence:
    - If SUCCESS: continue to next operation
    - If FAIL: Execute <MatchErrorPattern/> for recovery, or stop if no recovery available
 </OperationExecution>
+
+## Query Result Validation
+
+<QueryResultValidation>
+**After executing `mcp__brp__world_query` operation:**
+
+1. **Parse query response**:
+   - Extract the "entities" array from the MCP tool response
+   - Count = length of entities array
+
+2. **Look ahead to next operation**:
+   - Read the next operation in the test plan's operations array
+   - Check if it has `"entity": "USE_QUERY_RESULT"`
+
+3. **Validate entity availability**:
+   - If next operation uses `USE_QUERY_RESULT`:
+     - If count = 0:
+       - Update current query operation status to FAIL
+       - Error message: "Query returned 0 entities but next operation requires USE_QUERY_RESULT"
+       - Execute <MatchErrorPattern/> (will find no recovery pattern)
+       - STOP IMMEDIATELY per <MatchErrorPattern/> rules
+     - If count ≥ 1:
+       - Store first entity ID from entities array for USE_QUERY_RESULT substitution
+       - Continue to next operation normally
+   - If next operation does NOT use `USE_QUERY_RESULT`:
+     - Query returning 0 entities is valid
+     - Continue to next operation normally
+
+**Note**: This prevents "Attempting to deserialize an invalid entity" errors by catching the issue at query time rather than mutation time.
+</QueryResultValidation>
 
 ## Error Pattern Matching
 
