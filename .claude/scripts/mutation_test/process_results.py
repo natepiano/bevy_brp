@@ -15,16 +15,14 @@ import sys
 import os
 import glob
 from datetime import datetime
-from pathlib import Path
 from typing import Any, TypedDict, cast
 
-# Add script directory to path for local imports
-_script_dir = Path(__file__).parent
-sys.path.insert(0, str(_script_dir))
-
-# Import shared config module - must come after sys.path modification
-if True:  # Scope block for import after sys.path change
-    import config as mutation_config  # type: ignore[import-not-found]
+# Import shared config module using relative import
+from .config import (
+    AllTypesData,
+    find_current_batch,
+    load_config,
+)
 
 
 # Test plan types (matching assignment script)
@@ -34,14 +32,14 @@ class TestOperation(TypedDict, total=False):
     status: str | None
     error: str | None
     retry_count: int
-    components: dict[str, Any] | None  # pyright: ignore[reportExplicitAny]
+    components: dict[str, object] | None
     filter: dict[str, list[str]] | None
-    data: dict[str, Any] | None  # pyright: ignore[reportExplicitAny]
+    data: dict[str, object] | None
     entity: str | int | None
     component: str | None
     resource: str | None
     path: str | None
-    value: Any  # pyright: ignore[reportExplicitAny]
+    value: object
 
 
 class TypeTest(TypedDict):
@@ -170,16 +168,15 @@ def cleanup_old_logs(pattern: str, keep_count: int) -> None:
 
 
 # Load configuration from config file
-# Type checking disabled for runtime-imported module
 try:
-    config = mutation_config.load_config()  # pyright: ignore[reportAttributeAccessIssue]
+    config = load_config()
 except FileNotFoundError as e:
     print(f"Error loading config: {e}", file=sys.stderr)
     sys.exit(1)
 
-max_subagents: int = config["max_subagents"]  # pyright: ignore[reportAny]
-types_per_subagent: int = config["types_per_subagent"]  # pyright: ignore[reportAny]
-base_port: int = config["base_port"]  # pyright: ignore[reportAny]
+max_subagents: int = config["max_subagents"]
+types_per_subagent: int = config["types_per_subagent"]
+base_port: int = config["base_port"]
 
 # Get the JSON file path
 json_file = ".claude/transient/all_types.json"
@@ -191,14 +188,13 @@ if not os.path.exists(json_file):
 # Load all_types.json to discover current batch
 try:
     with open(json_file, "r", encoding="utf-8") as f:
-        all_types_raw = json.load(f)  # pyright: ignore[reportAny]
-        all_types_data: dict[str, object] = all_types_raw  # pyright: ignore[reportAny]
+        all_types_data: AllTypesData = cast(AllTypesData, json.load(f))
 except json.JSONDecodeError as e:
     print(f"Error parsing JSON: {e}", file=sys.stderr)
     sys.exit(1)
 
 # Auto-discover current batch number
-batch_result: int | str = mutation_config.find_current_batch(all_types_data)  # pyright: ignore[reportAttributeAccessIssue]
+batch_result: int | str = find_current_batch(all_types_data)
 if batch_result == "COMPLETE":
     print("All tests complete! No untested batches remaining.", file=sys.stderr)
     sys.exit(0)
@@ -208,10 +204,7 @@ assert isinstance(batch_result, int)
 batch_num: int = batch_result
 
 
-def build_diagnostic_entry(
-    test: TypeTest,
-    test_plan_file: str
-) -> DiagnosticEntry:
+def build_diagnostic_entry(test: TypeTest, _test_plan_file: str) -> DiagnosticEntry:
     """Build a diagnostic entry from a test.
 
     Args:
@@ -264,7 +257,7 @@ def convert_test_to_result(
     test: TypeTest,
     null_status_types: dict[str, list[tuple[int, int]]],
     test_plan_file: str,
-    port: int
+    port: int,
 ) -> TestResult | None:
     """Convert a test plan test to a result format.
 
@@ -573,10 +566,14 @@ for subagent_idx in range(subagent_count):
         tests = test_plan.get("tests", [])
         for test in tests:
             # Build diagnostic entry for all tests
-            diagnostic_entries.append(build_diagnostic_entry(test, normalized_test_plan_file))
+            diagnostic_entries.append(
+                build_diagnostic_entry(test, normalized_test_plan_file)
+            )
 
             # Build result for executed tests
-            result = convert_test_to_result(test, null_status_types, normalized_test_plan_file, port)
+            result = convert_test_to_result(
+                test, null_status_types, normalized_test_plan_file, port
+            )
             # Skip tests that were not executed (None = incomplete, will retry next run)
             if result is not None:
                 results.append(result)
@@ -631,7 +628,9 @@ for type_key, type_data in type_guide.items():  # pyright: ignore[reportAny]
             type_data["fail_reason"] = "Incomplete execution - some parts not executed"
         else:
             # All parts executed - use aggregated status
-            type_data["test_status"] = "passed" if result["status"] == "PASS" else "failed"
+            type_data["test_status"] = (
+                "passed" if result["status"] == "PASS" else "failed"
+            )
 
             # Build fail_reason with part info
             if result["status"] != "PASS":
@@ -665,20 +664,22 @@ with open(all_types_file, "w", encoding="utf-8") as f:
 # MISSING: In aggregated_results with status=COMPONENT_NOT_FOUND
 
 passed = sum(
-    1 for type_name, r in aggregated_results.items()
+    1
+    for type_name, r in aggregated_results.items()
     if r["status"] == "PASS" and type_name not in incomplete_types
 )
 failed = sum(
-    1 for r in aggregated_results.values()
+    1
+    for r in aggregated_results.values()
     if r["status"] == "FAIL" and not is_retry_failure(r)
 )
 retry = sum(
-    1 for r in aggregated_results.values()
+    1
+    for r in aggregated_results.values()
     if r["status"] == "FAIL" and is_retry_failure(r)
 )
 missing = sum(
-    1 for r in aggregated_results.values()
-    if r["status"] == "COMPONENT_NOT_FOUND"
+    1 for r in aggregated_results.values() if r["status"] == "COMPONENT_NOT_FOUND"
 )
 
 # Count types with incomplete execution as retries
@@ -732,7 +733,9 @@ if failed > 0 or missing > 0:
             json.dump(retry_failures, f, indent=2)
 
         # Cleanup old retry failure logs, keep only 2 most recent
-        cleanup_old_logs(".claude/transient/all_types_retry_failures_*.json", keep_count=2)
+        cleanup_old_logs(
+            ".claude/transient/all_types_retry_failures_*.json", keep_count=2
+        )
 
     if review_failures:
         review_log_path = (
@@ -742,7 +745,9 @@ if failed > 0 or missing > 0:
             json.dump(review_failures, f, indent=2)
 
         # Cleanup old review failure logs, keep only 2 most recent
-        cleanup_old_logs(".claude/transient/all_types_review_failures_*.json", keep_count=2)
+        cleanup_old_logs(
+            ".claude/transient/all_types_review_failures_*.json", keep_count=2
+        )
 
     # Build condensed failure summaries
     def build_summary(failure: TestResult) -> FailureSummary:

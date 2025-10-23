@@ -20,18 +20,36 @@ class MutationTestConfig(TypedDict):
     stop_after_each_batch: bool
 
 
-class TypeData(TypedDict, total=False):
+class TypeData(TypedDict):
     """Type data structure from all_types.json."""
 
-    type_name: str
+    type_name: str  # Required field
+
+
+class TypeDataOptional(TypedDict, total=False):
+    """Optional fields for TypeData."""
+
+    spawn_format: object | None
+    mutation_paths: dict[str, object] | None
+    supported_operations: list[str] | None
+    in_registry: bool | None
+    schema_info: dict[str, object] | None
     batch_number: int | None
+    mutation_type: str | None
     test_status: str | None
+    fail_reason: str | None
+
+
+# Combine required and optional fields
+class TypeDataComplete(TypeData, TypeDataOptional):
+    """Complete TypeData with required and optional fields."""
+    pass
 
 
 class AllTypesData(TypedDict):
     """Structure of all_types.json."""
 
-    type_guide: dict[str, TypeData]
+    type_guide: dict[str, TypeDataComplete]
 
 
 def load_config() -> MutationTestConfig:

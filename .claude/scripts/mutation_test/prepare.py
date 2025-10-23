@@ -22,52 +22,38 @@ import subprocess
 import sys
 from copy import deepcopy
 from datetime import datetime
-from pathlib import Path
 from typing import Any, TypedDict, cast
 
-# Add script directory to path for local imports
-_script_dir = Path(__file__).parent
-sys.path.insert(0, str(_script_dir))
+# Import shared config module using relative import
+from .config import (
+    AllTypesData,
+    MutationTestConfig,
+    TypeData,
+    TypeDataComplete,
+    find_current_batch,
+    load_config,
+)
 
-# Import shared config module - must come after sys.path modification
-if True:  # Scope block for import after sys.path change
-    import config as mutation_config  # type: ignore[import-not-found]  # pyright: ignore[reportImplicitRelativeImport]
-
-
-# Type definitions for config module
-class MutationConfig(TypedDict):
-    max_subagents: int
-    types_per_subagent: int
-    base_port: int
-
+# Type alias for backward compatibility
+TypeGuideRoot = AllTypesData
+MutationConfig = MutationTestConfig
 
 # Constants
 OPERATION_ID_START = 1  # Operation IDs start at 1 for better human readability
 
 
-# Type definitions for JSON structures
+# Type definitions for JSON structures (extends config.py's TypeData)
+class PathInfo(TypedDict, total=False):
+    """Path metadata including mutability and root examples."""
+    mutability: str
+    root_example: object
+
+
 class MutationPathData(TypedDict, total=False):
     description: str
-    example: Any  # pyright: ignore[reportExplicitAny] - arbitrary JSON value
-    path_info: dict[str, str]
-
-
-class TypeData(TypedDict):
-    type_name: str  # Required field
-    # Optional fields
-    spawn_format: Any | None  # pyright: ignore[reportExplicitAny] - arbitrary JSON structure
-    mutation_paths: dict[str, MutationPathData] | None
-    supported_operations: list[str] | None
-    in_registry: bool | None
-    schema_info: dict[str, Any] | None  # pyright: ignore[reportExplicitAny] - JSON schema
-    batch_number: int | None
-    mutation_type: str | None  # "Component" or "Resource"
-    test_status: str | None  # "untested", "passed", "failed"
-    fail_reason: str | None
-
-
-class TypeGuideRoot(TypedDict):
-    type_guide: dict[str, TypeData]
+    example: object
+    examples: list[object]
+    path_info: PathInfo
 
 
 class SubagentAssignment(TypedDict):
@@ -99,15 +85,15 @@ class TestOperation(TypedDict, total=False):
     call_count: int
     operation_announced: bool
     # Spawn/query specific
-    components: dict[str, Any] | None  # pyright: ignore[reportExplicitAny]
+    components: dict[str, object] | None
     filter: dict[str, list[str]] | None
-    data: dict[str, Any] | None  # pyright: ignore[reportExplicitAny]
+    data: dict[str, object] | None
     # Mutation specific
     entity: str | int | None  # "USE_QUERY_RESULT" or actual entity ID
     component: str | None
     resource: str | None
     path: str | None
-    value: Any  # pyright: ignore[reportExplicitAny]
+    value: object
     # Entity ID substitution
     entity_id_substitution: dict[str, str] | None
 
@@ -129,10 +115,8 @@ class TestPlan(TypedDict):
 
 
 # Load configuration from config file
-# Type checking disabled for runtime-imported module
 try:
-    config_raw = mutation_config.load_config()  # pyright: ignore[reportAttributeAccessIssue,reportUnknownVariableType,reportUnknownMemberType]
-    config = cast(MutationConfig, config_raw)
+    config = load_config()
 except FileNotFoundError as e:
     print(f"Error loading config: {e}", file=sys.stderr)
     sys.exit(1)
@@ -164,7 +148,7 @@ except json.JSONDecodeError as e:
 batch_num: int = -1  # Placeholder, will be set after renumbering
 
 
-def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
+def renumber_batches(data: AllTypesData, batch_size: int) -> AllTypesData:
     """
     Renumber batches: reset failed tests to untested and assign batch numbers.
     This happens before every batch to ensure retry failures are picked up.
@@ -217,8 +201,8 @@ def renumber_batches(data: TypeGuideRoot, batch_size: int) -> TypeGuideRoot:
         mutation_type = extract_mutation_type(schema_info)
 
         # Build complete type_data with mutation_type (same as preparation phase)
-        type_data: TypeData = cast(
-            TypeData,
+        type_data: TypeDataComplete = cast(
+            TypeDataComplete,
             cast(
                 object,
                 {
@@ -334,7 +318,7 @@ def find_entity_id_placeholders(value: Any, path: str = "") -> dict[str, str]:  
     return substitutions
 
 
-def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperation]:
+def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[TestOperation]:
     """Generate test operations for a single type."""
     operations: list[TestOperation] = []
     type_name = type_data["type_name"]
@@ -423,11 +407,15 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
 
     for path, path_info in mutation_paths.items():
         # Skip non-mutable paths
-        if path_info.get("path_info", {}).get("mutability") == "not_mutable":
-            continue
-
-        # Check if root mutation is needed first
-        root_example = path_info.get("path_info", {}).get("root_example")
+        # Note: path_info dict contains a "path_info" key that holds PathInfo
+        path_metadata = cast(dict[str, object], path_info).get("path_info")
+        if path_metadata:
+            path_metadata_dict = cast(dict[str, object], path_metadata)
+            if path_metadata_dict.get("mutability") == "not_mutable":
+                continue
+            root_example = path_metadata_dict.get("root_example")
+        else:
+            root_example = None
         # Only set root if: it exists, this is a nested path, and it differs from last root
         # Use JSON serialization for deep equality comparison
         root_example_json = (
@@ -489,15 +477,17 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
             last_root_example_json = root_example_json
 
         # Main mutation
-        example = path_info.get("example")
-        examples = path_info.get("examples")
+        path_info_dict = cast(dict[str, object], path_info)
+        example = path_info_dict.get("example")
+        examples = path_info_dict.get("examples")
 
         # Handle enum variants (multiple examples)
-        test_values = (
+        test_values: list[object] = cast(
+            list[object],
             examples if examples else ([example] if example is not None else [])
         )
 
-        for test_value in test_values:  # pyright: ignore[reportAny]
+        for test_value in test_values:
             # For enum variants: only process if it has an "example" key
             if isinstance(test_value, dict):
                 if "example" not in test_value:
@@ -560,7 +550,7 @@ def generate_test_operations(type_data: TypeData, port: int) -> list[TestOperati
     return operations
 
 
-def calculate_type_slots(type_data: TypeData) -> int:
+def calculate_type_slots(type_data: TypeDataComplete) -> int:
     """
     Calculate how many slots a type will consume (1, 2, 3, 4, ...).
 
@@ -709,7 +699,7 @@ def split_operations_for_part(
 # Load and parse JSON file
 try:
     with open(json_file, "r") as f:
-        data = cast(TypeGuideRoot, json.load(f))
+        data = cast(AllTypesData, json.load(f))
 except json.JSONDecodeError as e:
     print(f"Error parsing JSON: {e}", file=sys.stderr)
     sys.exit(1)
@@ -731,8 +721,7 @@ except IOError as e:
     sys.exit(1)
 
 # NOW discover current batch number using the renumbered data
-batch_result_raw = mutation_config.find_current_batch(data)  # pyright: ignore[reportAttributeAccessIssue,reportUnknownVariableType,reportUnknownMemberType]
-batch_result: int | str = cast(int | str, batch_result_raw)
+batch_result: int | str = find_current_batch(data)
 if batch_result == "COMPLETE":
     print("All tests complete! No untested batches remaining.", file=sys.stderr)
     sys.exit(0)
@@ -741,15 +730,15 @@ if batch_result == "COMPLETE":
 assert isinstance(batch_result, int)
 batch_num = batch_result
 
-type_guide: dict[str, TypeData] = data["type_guide"]
+type_guide: dict[str, TypeDataComplete] = data["type_guide"]
 
 # STEP 2: Get types for the specified batch
-batch_types: list[TypeData] = []
+batch_types: list[TypeDataComplete] = []
 for type_name, type_info in type_guide.items():
     if type_info.get("batch_number") == batch_num:
         # Add type_name to the dict for consistency
-        type_item: TypeData = cast(
-            TypeData, cast(object, {"type_name": type_name, **type_info})
+        type_item: TypeDataComplete = cast(
+            TypeDataComplete, cast(object, {"type_name": type_name, **type_info})
         )
         batch_types.append(type_item)
 
@@ -761,7 +750,7 @@ if not batch_types:
 # STEP 3: Identify large types for splitting using shared logic
 # Pre-generate operations to count them
 class TypePart(TypedDict):
-    type_data: TypeData
+    type_data: TypeDataComplete
     part_number: int  # 1-indexed
     total_parts: int
     all_operations: list[TestOperation]  # All operations for this type
@@ -775,8 +764,8 @@ for type_item in batch_types:
     mutation_type = extract_mutation_type(schema_info)
 
     # Build complete type_data with mutation_type
-    type_data: TypeData = cast(
-        TypeData,
+    type_data: TypeDataComplete = cast(
+        TypeDataComplete,
         cast(
             object,
             {
