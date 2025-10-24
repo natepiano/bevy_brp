@@ -17,7 +17,7 @@ Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `
 **CRITICAL**: After modifying MCP tool code, you cannot test it until the user reloads the MCP server because MCP tools run as subprocesses. The tool in use is always the OLD version until reloaded. You need to follow <McpEditProcedure/>.
 
 ## getting an example to test with
-- use `mcp__brp__brp_launch_example` with extras_plugin if you want to test something
+- use `mcp__brp__brp_launch_example` with extras_plugin if you want to test something, always launch it with debug profile
 
 ## folders
 .claude/bug_reports/ - for bugs we want to track
