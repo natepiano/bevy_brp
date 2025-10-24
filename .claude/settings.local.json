@@ -193,7 +193,8 @@
       "Bash(/dev/null)",
       "Bash(zed:*)",
       "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)",
-      "SlashCommand(/get_path_baseline extras_plugin::TestVariantChainEnum)"
+      "SlashCommand(/get_path_baseline extras_plugin::TestVariantChainEnum)",
+      "WebFetch(domain:zed.dev)"
     ],
     "deny": [
       "Bash(sed:*)",
