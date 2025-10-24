@@ -4,14 +4,19 @@
 # Read the JSON input from stdin
 INPUT=$(cat)
 
+# STEP 0: Check if we're in the bevy_brp project root
+# Look for the presence of the mutation test script directory
+if [ ! -d ".claude/scripts/mutation_test" ]; then
+    # Not in project root, silently exit
+    echo '{"continue": true}'
+    exit 0
+fi
+
 # STEP 1: Extract port from tool_input
 PORT=$(echo "$INPUT" | jq -r '.tool_input.port // empty')
 
 # Extract tool name for logging
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"')
-
-# Get timestamp for detailed log entry
-TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
 # STEP 2: Check if port is in mutation test range (30001-30010)
 if [ -z "$PORT" ] || [ "$PORT" -lt 30001 ] || [ "$PORT" -gt 30010 ]; then
@@ -46,20 +51,18 @@ fi
 
 # Note: operation_update.py handles all logging, this hook just coordinates
 
-# STEP 5: Call operation_update.py with proper escaping
-if [ "$STATUS" = "FAIL" ]; then
-    # Extract error message and escape it for command line
-    ERROR_MSG=$(echo "$INPUT" | jq -r '.tool_response[0].text | fromjson | .metadata.original_error // .message // "Unknown error"')
-    # Use Python script with stdin for error message to avoid escaping issues
-    python3 .claude/scripts/mutation_test/operation_update.py --port "$PORT" --operation-id "$OPERATION_ID" --status "$STATUS" --error "$ERROR_MSG"
-else
-    python3 .claude/scripts/mutation_test/operation_update.py --port "$PORT" --operation-id "$OPERATION_ID" --status "$STATUS"
-fi
+# STEP 5: Call operation_update.py - pass full MCP response, get back final status
+FINAL_STATUS=$(echo "$INPUT" | python3 .claude/scripts/mutation_test/operation_update.py \
+    --port "$PORT" \
+    --operation-id "$OPERATION_ID" \
+    --tool-name "$TOOL_NAME" \
+    --mcp-response -)
+
 UPDATE_RESULT=$?
 
 if [ $UPDATE_RESULT -eq 0 ]; then
-    # Update succeeded - show icon based on tool call result
-    if [ "$STATUS" = "SUCCESS" ]; then
+    # Use final status from operation_update.py (after validation)
+    if [ "$FINAL_STATUS" = "SUCCESS" ]; then
         MESSAGE="✅ Op ${OPERATION_ID}: SUCCESS"
     else
         MESSAGE="💥 Op ${OPERATION_ID}: FAIL"

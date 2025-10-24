@@ -10,25 +10,24 @@ Usage:
   python3 mutation_test_process_results.py
 """
 
-import json
 import sys
-import os
-import glob
-from datetime import datetime
 from pathlib import Path
+
+# Add script directory to path so we can import config
+sys.path.insert(0, str(Path(__file__).parent))
+
+import glob
+import json
+import os
+from datetime import datetime
 from typing import Any, TypedDict, cast
 
-# Add script directory to path for local imports
-_script_dir = Path(__file__).parent
-sys.path.insert(0, str(_script_dir))
-
-# Import shared config module - must come after sys.path modification
-if True:  # Scope block for import after sys.path change
-    from config import (  # type: ignore[import-not-found]
-        AllTypesData,
-        find_current_batch,
-        load_config,
-    )
+import config
+from config import (
+    AllTypesData,
+    find_current_batch,
+    load_config,
+)
 
 
 # Test plan types (matching assignment script)
@@ -37,7 +36,6 @@ class TestOperation(TypedDict, total=False):
     port: int
     status: str | None
     error: str | None
-    retry_count: int
     components: dict[str, object] | None
     filter: dict[str, list[str]] | None
     data: dict[str, object] | None

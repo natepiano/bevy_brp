@@ -16,30 +16,29 @@ Output:
   Returns AllAssignmentsOutput with assignments and test plan files.
 """
 
+import sys
+from pathlib import Path
+
+# Add script directory to path so we can import config
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import os
 import subprocess
-import sys
 from copy import deepcopy
 from datetime import datetime
-from pathlib import Path
 from typing import Any, TypedDict, cast
 
-# Add script directory to path for local imports
-_script_dir = Path(__file__).parent
-sys.path.insert(0, str(_script_dir))
-
-# Import shared config module - must come after sys.path modification
-if True:  # Scope block for import after sys.path change
-    from config import (
-        AllTypesData,
-        MutationTestConfig,
-        TypeData,
-        TypeDataComplete,
-        calculate_port,
-        find_current_batch,
-        load_config,
-    )
+import config
+from config import (
+    AllTypesData,
+    MutationTestConfig,
+    TypeData,
+    TypeDataComplete,
+    calculate_port,
+    find_current_batch,
+    load_config,
+)
 
 # Type alias for backward compatibility
 TypeGuideRoot = AllTypesData
@@ -518,9 +517,6 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
         )
 
     # Step 3: Mutations
-    # Track current root example to avoid duplicate emissions
-    current_root_example: object | None = None
-
     for path, path_info in mutation_paths.items():
         # Skip non-mutable paths
         # Note: path_info dict contains a "path_info" key that holds PathInfo
@@ -531,58 +527,51 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                 continue
 
             # Check for root example requirement (variant-dependent paths)
+            # Always emit root example if present - no optimization
             root_example = path_metadata_dict.get("root_example")
             if root_example is not None:
-                # Deep equality check via JSON serialization
-                current_serialized = json.dumps(current_root_example, sort_keys=True) if current_root_example else None
-                new_serialized = json.dumps(root_example, sort_keys=True)
+                # Emit root example operation to set enum variant
+                if mutation_type == "Component":
+                    root_op = cast(
+                        TestOperation,
+                        cast(
+                            object,
+                            {
+                                "operation_id": len(operations),
+                                "tool": "mcp__brp__world_mutate_components",
+                                "entity": "USE_QUERY_RESULT",
+                                "component": type_name,
+                                "path": "",
+                                "value": root_example,
+                                "port": port,
+                                "status": None,
+                                "error": None,
+                                "operation_announced": False,
+                                "is_root_example": True,
+                            },
+                        ),
+                    )
+                else:  # Resource
+                    root_op = cast(
+                        TestOperation,
+                        cast(
+                            object,
+                            {
+                                "operation_id": len(operations),
+                                "tool": "mcp__brp__world_mutate_resources",
+                                "resource": type_name,
+                                "path": "",
+                                "value": root_example,
+                                "port": port,
+                                "status": None,
+                                "error": None,
+                                "operation_announced": False,
+                                "is_root_example": True,
+                            },
+                        ),
+                    )
 
-                if current_serialized != new_serialized:
-                    # Emit root example operation to set enum variant
-                    if mutation_type == "Component":
-                        root_op = cast(
-                            TestOperation,
-                            cast(
-                                object,
-                                {
-                                    "operation_id": len(operations),
-                                    "tool": "mcp__brp__world_mutate_components",
-                                    "entity": "USE_QUERY_RESULT",
-                                    "component": type_name,
-                                    "path": "",
-                                    "value": root_example,
-                                    "port": port,
-                                    "status": None,
-                                    "error": None,
-                                    "retry_count": 0,
-                                    "operation_announced": False,
-                                    "is_root_example": True,
-                                },
-                            ),
-                        )
-                    else:  # Resource
-                        root_op = cast(
-                            TestOperation,
-                            cast(
-                                object,
-                                {
-                                    "operation_id": len(operations),
-                                    "tool": "mcp__brp__world_mutate_resources",
-                                    "resource": type_name,
-                                    "path": "",
-                                    "value": root_example,
-                                    "port": port,
-                                    "status": None,
-                                    "error": None,
-                                    "retry_count": 0,
-                                    "operation_announced": False,
-                                    "is_root_example": True,
-                                },
-                            ),
-                        )
-
-                    operations.append(root_op)
-                    current_root_example = root_example
+                operations.append(root_op)
 
         # Get test value for this mutation path
         path_info_dict = cast(dict[str, object], path_info)
@@ -626,7 +615,6 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                         "port": port,
                         "status": None,
                         "error": None,
-                        "retry_count": 0,
                         "operation_announced": False,
                     },
                 ),
@@ -645,7 +633,6 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                         "port": port,
                         "status": None,
                         "error": None,
-                        "retry_count": 0,
                         "operation_announced": False,
                     },
                 ),
@@ -850,8 +837,8 @@ def split_operations_for_part_new(
         # Part 1 overhead: spawn + query (only counted once)
         part1_overhead = (1 if spawn_idx is not None else 0) + (1 if query_idx is not None else 0)
 
-        # Parts 2+ overhead per part: query + root_mutation (re-emitted, not consuming new mutations)
-        parts_2plus_overhead = 2  # query + root_mutation
+        # Parts 2+ overhead per part: query only (root examples are now emitted inline)
+        parts_2plus_overhead = 1  # query only
 
         # How many parts have already run (part_number - 1)
         # Part 1 consumed: (accumulated_slots for part 1) - part1_overhead
@@ -883,43 +870,16 @@ def split_operations_for_part_new(
 
             accumulated_mutations = accumulated_slots - total_overhead
 
-    # Find the most recent root example before the split point
-    # This will be prepended to parts 2+ to re-establish enum variant state
-    most_recent_root_mutation: TestOperation | None = None
-
-    if part_number > 1:
-        # Look backwards from the split point to find last root example
-        for i in range(accumulated_mutations - 1, -1, -1):
-            if mutations[i].get("is_root_example") == True:
-                most_recent_root_mutation = mutations[i]
-                break
-
-    # Calculate how many operations are overhead (spawn + query + root_mutation)
+    # Calculate how many operations are overhead (spawn + query only)
+    # No propagation logic needed - root examples are always emitted
     overhead_ops = 0
     if spawn_idx is not None and part_number == 1:
         overhead_ops += 1
     if query_idx is not None:
         overhead_ops += 1
 
-    # Calculate mutation range BEFORE checking if we'll propagate root example
-    # We need mutation_start to determine if first mutation is a root example
-    mutation_start = accumulated_mutations
-
-    # Check if we'll actually propagate the root example (only if first mutation is NOT a root example)
-    will_propagate_root_example = False
-    if most_recent_root_mutation is not None:
-        # Check if first mutation in this part is a root example
-        if mutation_start < len(mutations):
-            first_mutation = mutations[mutation_start]
-            first_mutation_is_root_example = first_mutation.get("is_root_example") == True
-            will_propagate_root_example = not first_mutation_is_root_example
-        else:
-            will_propagate_root_example = True  # No mutations left, propagate anyway
-
-    if will_propagate_root_example:
-        overhead_ops += 1  # Add root example for parts 2+
-
     # Calculate mutation range based on accumulated mutations (GREEDY)
+    mutation_start = accumulated_mutations
     mutations_in_this_part = slots_per_subagent - overhead_ops
     mutation_end = accumulated_mutations + mutations_in_this_part
 
@@ -927,6 +887,16 @@ def split_operations_for_part_new(
     total_mutations = len(mutations)
     mutation_start = max(0, min(mutation_start, total_mutations))
     mutation_end = max(mutation_start, min(mutation_end, total_mutations))
+
+    # Never split a root example from its follow-on operation
+    # If last operation in this part is a root example, extend by 1 to include the pair
+    if mutation_end > mutation_start and mutation_end < total_mutations:
+        last_included_idx = mutation_end - 1
+        if last_included_idx >= 0 and last_included_idx < len(mutations):
+            last_op = mutations[last_included_idx]
+            if last_op.get("is_root_example") == True:
+                # Extend to include the follow-on operation (allows 1 op overage)
+                mutation_end = min(mutation_end + 1, total_mutations)
 
     result: list[TestOperation] = []
 
@@ -939,12 +909,7 @@ def split_operations_for_part_new(
     if query_idx is not None:
         result.append(all_operations[query_idx])
 
-    # Parts 2+: prepend most recent root example to re-establish variant state
-    # (only if we determined we should propagate it based on overhead calculation)
-    if will_propagate_root_example and most_recent_root_mutation is not None:
-        result.append(most_recent_root_mutation)
-
-    # Add this part's mutations
+    # Add this part's mutations (includes root examples which are now always emitted)
     result.extend(mutations[mutation_start:mutation_end])
 
     return result
@@ -1134,6 +1099,11 @@ for type_with_ops in types_with_ops:
     type_name = type_data["type_name"]
     mutation_type = type_data.get("mutation_type")
 
+    # Check if we've exhausted available subagents
+    if current_subagent_num > max_subagents:
+        # No more subagents available - stop processing types
+        break
+
     # Check if this type can fit in current subagent without splitting
     ops_remaining_in_subagent = ops_per_subagent - current_subagent_ops_used
 
@@ -1230,11 +1200,8 @@ for type_with_ops in types_with_ops:
             else:
                 slots_for_this_part = ops_per_subagent
 
-            # Calculate how many operations will actually be generated for this part
-            # (accounting for re-emission overhead)
-            ops_in_this_subagent = min(remaining_ops, slots_for_this_part)
-
-            if ops_in_this_subagent > 0:
+            # Check if we have slots available for this part
+            if slots_for_this_part > 0 and remaining_ops > 0:
                 # Get operations for this part (pass slots available, not ops consumed)
                 operations = split_operations_for_part_new(
                     all_operations,
@@ -1245,6 +1212,9 @@ for type_with_ops in types_with_ops:
                     accumulated_ops_so_far,  # How many operations previous parts used
                 )
                 operations = deepcopy(operations)
+
+                # Use ACTUAL operation count (accounts for pair-preservation overage)
+                actual_ops_in_this_part = len(operations)
 
                 # Renumber operation IDs
                 port = calculate_port(current_subagent_num, config)
@@ -1275,11 +1245,11 @@ for type_with_ops in types_with_ops:
                 )
                 current_subagent_descriptions.append(description)
 
-                # Update counters
-                current_subagent_ops_used += ops_in_this_subagent
-                ops_remaining_in_subagent -= ops_in_this_subagent
-                remaining_ops -= ops_in_this_subagent
-                accumulated_ops_so_far += ops_in_this_subagent
+                # Update counters with actual operation count
+                current_subagent_ops_used += actual_ops_in_this_part
+                ops_remaining_in_subagent -= actual_ops_in_this_part
+                remaining_ops -= actual_ops_in_this_part
+                accumulated_ops_so_far += actual_ops_in_this_part
                 part_number += 1
 
             # Check if we need to finalize current subagent and start a new one
@@ -1297,13 +1267,15 @@ for type_with_ops in types_with_ops:
                 current_subagent_tests = []
                 current_subagent_descriptions = []
 
+                # Always increment subagent counter after finalizing
+                current_subagent_num += 1
+
                 # Check if we can start a new subagent
-                if current_subagent_num >= max_subagents:
+                if current_subagent_num > max_subagents:
                     # We've reached the limit - stop splitting this type
                     break
 
                 # Start new subagent
-                current_subagent_num += 1
                 current_subagent_ops_used = 0
                 ops_remaining_in_subagent = ops_per_subagent
                 operation_id_counter = OPERATION_ID_START  # Reset operation IDs for new subagent
@@ -1329,11 +1301,14 @@ if os.path.exists(DEBUG_LOG):
 
     try:
         with open(DEBUG_LOG, encoding="utf-8") as f:
+            found_batch = False
+            found_started = False
             for line in f:
                 if line.startswith("# Batch Number:"):
                     parts = line.split()
                     if len(parts) >= 4:
                         batch_num_str = parts[3]
+                        found_batch = True
                 elif line.startswith("# Started:"):
                     # Extract timestamp from "# Started: 2025-10-22 22:16:12"
                     parts = line.split()
@@ -1341,7 +1316,11 @@ if os.path.exists(DEBUG_LOG):
                         date_part = parts[2].replace("-", "")
                         time_part = parts[3].replace(":", "")
                         log_timestamp = f"{date_part}_{time_part}"
-                    break  # Found both metadata lines
+                        found_started = True
+
+                # Break after finding both
+                if found_batch and found_started:
+                    break
     except Exception:
         pass  # Use defaults if parsing fails
 
@@ -1364,12 +1343,12 @@ timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 with open(DEBUG_LOG, "w", encoding="utf-8") as f:
     _ = f.write("# Mutation Test Debug Log\n")
-    _ = f.write(f"# Batch Number: {batch_num}\n")
     _ = f.write(f"# Started: {timestamp}\n")
+    _ = f.write(f"# Batch Number:             {batch_num:>2}\n")
     ops_per_batch = max_subagents * ops_per_subagent
-    _ = f.write(f"# Max subagents:   {max_subagents:3}\n")
-    _ = f.write(f"# Ops per Subagent: {ops_per_subagent:3}\n")
-    _ = f.write(f"# Ops per Batch:   {ops_per_batch:3}\n")
+    _ = f.write(f"# Max subagents:            {max_subagents:>2}\n")
+    _ = f.write(f"# Ops per Subagent:         {ops_per_subagent:>2}\n")
+    _ = f.write(f"# Ops per Batch:           {ops_per_batch:>3}\n")
     _ = f.write(f"# Ports: {ports_str}\n")
 
     # Calculate total ops for each assignment and find max width for alignment

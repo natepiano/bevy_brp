@@ -67,7 +67,32 @@ These config values are provided:
    ```
 
 3. **For operations with `"entity": "USE_QUERY_RESULT"`**:
-   - Replace with the entity ID you stored from the spawn or query operation's MCP response
+   - Find the most recent query operation (tool = `mcp__brp__world_query`) in the test plan
+   - Extract the `"entity"` field from that query operation (added by the hook)
+   - Use that entity ID for this operation
+
+   Example:
+   ```json
+   Query operation (updated by hook):
+   {
+     "operation_id": 1,
+     "tool": "mcp__brp__world_query",
+     "status": "SUCCESS",
+     "entity": 4294967251
+   }
+
+   Mutation operation (before substitution):
+   {
+     "operation_id": 2,
+     "tool": "mcp__brp__world_mutate_components",
+     "entity": "USE_QUERY_RESULT"
+   }
+
+   After substitution:
+   {
+     "entity": 4294967251
+   }
+   ```
 </EntityIdSubstitution>
 
 ## Operation Execution
@@ -76,51 +101,32 @@ These config values are provided:
 For each operation in sequence:
 
 1. **Apply entity ID substitution** (if needed):
-   - If operation has `"entity": "USE_QUERY_RESULT"`, replace with stored entity ID from spawn or query (see <QueryResultValidation/>)
+   - If operation has `"entity": "USE_QUERY_RESULT"`, look back in the test plan for the most recent query operation and extract its `"entity"` field (see <EntityIdSubstitution/>)
 
 2. **Execute the MCP tool** specified in `tool` field with all parameters from the operation
 
-3. **Store entity ID** (spawn only):
-   - If tool is `mcp__brp__world_spawn_entity`, store the entity ID from the response for later USE_QUERY_RESULT substitutions
-   - Query operations store entity IDs via <QueryResultValidation/>
-
-4. **Update operation status**:
-   - SUCCESS: `python3 .claude/scripts/mutation_test/operation_update.py --file TEST_PLAN_FILE --operation-id OPERATION_ID --status SUCCESS`
-   - FAIL: `python3 .claude/scripts/mutation_test/operation_update.py --file TEST_PLAN_FILE --operation-id OPERATION_ID --status FAIL --error "ERROR_MESSAGE"`
-
-5. **Handle result**:
+3. **Handle result**:
+   - The post-tool hook automatically updates the operation status based on the MCP response
+   - If query operation: Hook adds `"entity"` field or marks as FAIL if no entities found (see <QueryResultValidation/>)
    - If SUCCESS: continue to next operation
    - If FAIL: Execute <MatchErrorPattern/> for recovery, or stop if no recovery available
+
+**Note**: You don't need to manually call `operation_update.py` - the hook does this automatically after every MCP tool execution.
 </OperationExecution>
 
 ## Query Result Validation
 
 <QueryResultValidation>
-**After executing `mcp__brp__world_query` operation:**
+Query result validation is handled automatically by the mutation test infrastructure.
 
-1. **Parse query response**:
-   - Extract the "entities" array from the MCP tool response
-   - Count = length of entities array
+When you execute `mcp__brp__world_query`, the post-tool hook will:
+- Extract entities from the query result
+- If entities found: Add `"entity"` field to the query operation in the test plan
+- If no entities found: Mark the query as FAIL with error "Query returned 0 entities"
 
-2. **Look ahead to next operation**:
-   - Read the next operation in the test plan's operations array
-   - Check if it has `"entity": "USE_QUERY_RESULT"`
+**Your responsibility**: Just execute the query operation. If it fails (status = FAIL), stop execution immediately per the normal error handling rules in <OperationExecution/>.
 
-3. **Validate entity availability**:
-   - If next operation uses `USE_QUERY_RESULT`:
-     - If count = 0:
-       - Update current query operation status to FAIL
-       - Error message: "Query returned 0 entities but next operation requires USE_QUERY_RESULT"
-       - Execute <MatchErrorPattern/> (will find no recovery pattern)
-       - STOP IMMEDIATELY per <MatchErrorPattern/> rules
-     - If count ≥ 1:
-       - Store first entity ID from entities array for USE_QUERY_RESULT substitution
-       - Continue to next operation normally
-   - If next operation does NOT use `USE_QUERY_RESULT`:
-     - Query returning 0 entities is valid
-     - Continue to next operation normally
-
-**Note**: This prevents "Attempting to deserialize an invalid entity" errors by catching the issue at query time rather than mutation time.
+**Note**: You don't need to validate query results or look ahead to check if the next operation needs an entity - the hook handles all of this automatically.
 </QueryResultValidation>
 
 ## Error Pattern Matching
