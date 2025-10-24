@@ -86,6 +86,7 @@ class TestOperation(TypedDict, total=False):
     tool: str  # MCP tool name
     # Common fields
     port: int
+    # Runtime tracking fields (added by operation_update.py)
     status: str | None
     error: str | None
     call_count: int
@@ -453,11 +454,6 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                         "operation_id": len(operations),
                         "tool": "mcp__brp__world_spawn_entity",
                         "components": {type_name: spawn_format},
-                        "port": port,
-                        "status": None,
-                        "error": None,
-                        "call_count": 0,
-                        "operation_announced": False,
                     },
                 ),
             )
@@ -479,11 +475,6 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                         "tool": "mcp__brp__world_insert_resources",
                         "resource": type_name,
                         "value": spawn_format,
-                        "port": port,
-                        "status": None,
-                        "error": None,
-                        "call_count": 0,
-                        "operation_announced": False,
                     },
                 ),
             )
@@ -507,10 +498,7 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                         "tool": "mcp__brp__world_query",
                         "filter": {"with": [type_name]},
                         "data": {},
-                        "port": port,
-                        "status": None,
-                        "error": None,
-                        "operation_announced": False,
+                        "entity": "USE_QUERY_RESULT",
                     },
                 ),
             )
@@ -543,10 +531,6 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                                 "component": type_name,
                                 "path": "",
                                 "value": root_example,
-                                "port": port,
-                                "status": None,
-                                "error": None,
-                                "operation_announced": False,
                                 "is_root_example": True,
                             },
                         ),
@@ -562,10 +546,6 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                                 "resource": type_name,
                                 "path": "",
                                 "value": root_example,
-                                "port": port,
-                                "status": None,
-                                "error": None,
-                                "operation_announced": False,
                                 "is_root_example": True,
                             },
                         ),
@@ -612,10 +592,6 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                         "component": type_name,
                         "path": path,
                         "value": test_value,
-                        "port": port,
-                        "status": None,
-                        "error": None,
-                        "operation_announced": False,
                     },
                 ),
             )
@@ -630,10 +606,6 @@ def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[Tes
                         "resource": type_name,
                         "path": path,
                         "value": test_value,
-                        "port": port,
-                        "status": None,
-                        "error": None,
-                        "operation_announced": False,
                     },
                 ),
             )
@@ -1290,6 +1262,28 @@ if current_subagent_tests:
         assignments,
     )
 
+# Calculate unique types that made it into assignments (for debug log and progress)
+assigned_type_names: set[str] = set()
+for assignment in assignments:
+    try:
+        with open(assignment["test_plan_file"], "r") as f:
+            test_plan_raw = json.load(f)  # pyright: ignore[reportAny]
+            test_plan = cast(TestPlan, test_plan_raw)
+            for test in test_plan.get("tests", []):
+                type_name = test.get("type_name")
+                if type_name:
+                    assigned_type_names.add(type_name)
+    except (IOError, json.JSONDecodeError):
+        pass
+
+unique_types_count = len(assigned_type_names)
+
+# Calculate types remaining after this batch
+untested_count = len(
+    [t for t in type_guide.values() if t.get("test_status") == "untested"]
+)
+remaining_types = untested_count - unique_types_count
+
 # STEP 5: Backup and initialize debug log
 DEBUG_LOG = "/tmp/mutation_hook_debug.log"
 
@@ -1349,6 +1343,7 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
     _ = f.write(f"# Max subagents:            {max_subagents:>2}\n")
     _ = f.write(f"# Ops per Subagent:         {ops_per_subagent:>2}\n")
     _ = f.write(f"# Ops per Batch:           {ops_per_batch:>3}\n")
+    _ = f.write(f"# Types remaining:         {remaining_types:>3}\n")
     _ = f.write(f"# Ports: {ports_str}\n")
 
     # Calculate total ops for each assignment and find max width for alignment
@@ -1500,30 +1495,6 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
 
     # Write separator line between table and logs
     _ = f.write(f"{separator_line}\n")
-
-# Write initial announcements for first operation on each port using operation_update.py
-for assignment in assignments:
-    port = assignment["port"]
-    try:
-        result = subprocess.run(
-            [
-                "python3",
-                ".claude/scripts/mutation_test/operation_update.py",
-                "--port",
-                str(port),
-                "--operation-id",
-                str(OPERATION_ID_START),
-                "--announced",
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except subprocess.CalledProcessError as e:
-        # Log announcement failures for debugging - stderr is str because text=True
-        stderr_msg: str = cast(str, e.stderr)
-        print(f"Warning: Failed to announce operation for port {port}: {stderr_msg}", file=sys.stderr)
-        pass
 
 print(f"Created new debug log: {DEBUG_LOG}", file=sys.stderr)
 print(f"  Batch: {batch_num}", file=sys.stderr)

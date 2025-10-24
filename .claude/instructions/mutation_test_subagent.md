@@ -12,121 +12,85 @@ These config values are provided:
 
 ## Execution Steps
 
-1. **Read test plan once**:
-   - Use Read tool on TEST_PLAN_FILE path
-   - Parse the JSON to identify operations and their `operation_id` fields
+Loop until finished:
 
-2. **Execute operations sequentially**:
-   - For each test in `tests` array:
-     - For each operation in `operations` array:
-       - Apply entity ID substitution if `entity_id_substitution` field exists (see <EntityIdSubstitution/>)
-       - Execute the MCP tool specified in `tool` field (see <OperationExecution/>)
-       - If tool is `mcp__brp__world_query`, execute <QueryResultValidation/>
-       - If operation succeeds:
-         - Continue to next operation
-       - If operation fails:
-         - **IMMEDIATELY execute <MatchErrorPattern/>** to identify and recover from error
-         - If recovery succeeds: continue to next operation (hook tracks call_count automatically)
-         - If no recovery applicable or recovery fails:
-           - **STOP IMMEDIATELY** - return without processing remaining operations
+1. **Get next assignment**:
+   ```bash
+   python3 .claude/scripts/mutation_test/operation_manager.py --port PORT --action get-next
+   ```
+   Parse the JSON response
 
-3. **Finish execution**:
-   - After all operations complete successfully, or after first failure, execution is done
+2. **Check response status**:
+   - If `"status": "finished"` → All operations complete, EXIT with success message
+   - If `"status": "next_operation"` → Continue to step 3
+
+3. **Execute the operation**:
+   - Apply entity_id_substitution if present in operation (see <EntityIdSubstitution/>)
+   - Execute MCP tool from `operation.tool` with parameters from `operation` object
+   - Hook automatically updates operation status (SUCCESS or FAIL)
+
+4. **Handle result**:
+   - If SUCCESS → Loop back to step 1 (get next operation)
+   - If FAIL → Execute <MatchErrorPattern/>:
+     - If recoverable → Fix parameters and retry from step 3 (operation still marked FAIL, next_assignment returns same operation)
+     - If unrecoverable → EXIT with error message (stop execution)
+
+5. **On exit**:
+   - Report final state: "All operations completed successfully" or "Stopped on unrecoverable error at operation"
 
 ## Entity ID Substitution
 
 <EntityIdSubstitution>
-**BEFORE executing any operation that has `entity_id_substitution` field:**
+**Some operations need to reference existing entities** (e.g., spawning a `Children` component that contains entity IDs).
 
-1. **Get available entities using MCP tool**:
+**ONLY IF** an operation has `entity_id_substitution` field:
+
+1. **Get an available entity using MCP tool**:
+   ```bash
+   mcp__brp__world_query(data={}, filter={}, port=PORT)
    ```
-   CORRECT: Use mcp__brp__world_query(data={}, filter={}, port=PORT)
-   ```
-   - Extract entity IDs from the result's "entities" field
-   - Use first entity ID for substitutions
+   - Extract first entity ID from the result array
+   - Use this entity ID for all substitutions
 
 2. **Apply substitutions**:
-   - For each `path → marker` in `entity_id_substitution`:
-     - If marker is `"QUERY_ENTITY"`:
-       - Navigate to the path in operation params
-       - Replace the placeholder value with the first available entity ID
+   - For each `path → "QUERY_ENTITY"` in `entity_id_substitution`:
+     - Navigate to that path in the operation parameters
+     - Replace the placeholder value with the entity ID from step 1
 
-   **Example**:
-   ```
-   Original operation:
-   {
-     "tool": "mcp__brp__world_spawn_entity",
-     "components": {"bevy_ecs::hierarchy::Children": [8589934670]},
-     "entity_id_substitution": {"components.bevy_ecs::hierarchy::Children[0]": "QUERY_ENTITY"}
-   }
+**Example**:
+```json
+Operation with entity_id_substitution:
+{
+  "tool": "mcp__brp__world_spawn_entity",
+  "components": {"bevy_ecs::hierarchy::Children": [8589934670]},
+  "entity_id_substitution": {"components.bevy_ecs::hierarchy::Children[0]": "QUERY_ENTITY"}
+}
 
-   After substitution (using entity ID 4294967297 from query):
-   {
-     "components": {"bevy_ecs::hierarchy::Children": [4294967297]}
-   }
-   ```
+After substitution (using entity ID 4294967297):
+{
+  "tool": "mcp__brp__world_spawn_entity",
+  "components": {"bevy_ecs::hierarchy::Children": [4294967297]}
+}
+```
 
-3. **For operations with `"entity": "USE_QUERY_RESULT"`**:
-   - Find the most recent query operation (tool = `mcp__brp__world_query`) in the test plan
-   - Extract the `"entity"` field from that query operation (added by the hook)
-   - Use that entity ID for this operation
-
-   Example:
-   ```json
-   Query operation (updated by hook):
-   {
-     "operation_id": 1,
-     "tool": "mcp__brp__world_query",
-     "status": "SUCCESS",
-     "entity": 4294967251
-   }
-
-   Mutation operation (before substitution):
-   {
-     "operation_id": 2,
-     "tool": "mcp__brp__world_mutate_components",
-     "entity": "USE_QUERY_RESULT"
-   }
-
-   After substitution:
-   {
-     "entity": 4294967251
-   }
-   ```
+**Note**: The `entity` field in operations is pre-resolved automatically by the hook - you don't need to do anything with it.
 </EntityIdSubstitution>
-
-## Operation Execution
-
-<OperationExecution>
-For each operation in sequence:
-
-1. **Apply entity ID substitution** (if needed):
-   - If operation has `"entity": "USE_QUERY_RESULT"`, look back in the test plan for the most recent query operation and extract its `"entity"` field (see <EntityIdSubstitution/>)
-
-2. **Execute the MCP tool** specified in `tool` field with all parameters from the operation
-
-3. **Handle result**:
-   - The post-tool hook automatically updates the operation status based on the MCP response
-   - If query operation: Hook adds `"entity"` field or marks as FAIL if no entities found (see <QueryResultValidation/>)
-   - If SUCCESS: continue to next operation
-   - If FAIL: Execute <MatchErrorPattern/> for recovery, or stop if no recovery available
-
-**Note**: You don't need to manually call `operation_update.py` - the hook does this automatically after every MCP tool execution.
-</OperationExecution>
 
 ## Query Result Validation
 
 <QueryResultValidation>
-Query result validation is handled automatically by the mutation test infrastructure.
+Query result validation and entity ID propagation are handled automatically by the mutation test infrastructure.
 
 When you execute `mcp__brp__world_query`, the post-tool hook will:
 - Extract entities from the query result
-- If entities found: Add `"entity"` field to the query operation in the test plan
+- If entities found:
+  - Add `"entity"` field to the query operation in the test plan
+  - **Propagate the entity ID to all subsequent operations in the same test** that have `"entity": "USE_QUERY_RESULT"`
 - If no entities found: Mark the query as FAIL with error "Query returned 0 entities"
 
 **Your responsibility**: Just execute the query operation. If it fails (status = FAIL), stop execution immediately per the normal error handling rules in <OperationExecution/>.
 
-**Note**: You don't need to validate query results or look ahead to check if the next operation needs an entity - the hook handles all of this automatically.
+**Note**: You don't need to validate query results, propagate entity IDs, or look back at previous operations - the hook handles all of this automatically. Entity IDs are isolated to each test (don't cross type boundaries).
 </QueryResultValidation>
 
 ## Error Pattern Matching

@@ -3,6 +3,14 @@
 # Read hook input
 input=$(cat)
 
+# STEP 0: Check if we're in the bevy_brp project root
+# Look for the presence of the mutation test script directory
+if [ ! -d ".claude/scripts/mutation_test" ]; then
+    # Not in project root, silently exit
+    echo '{"continue": true}'
+    exit 0
+fi
+
 # Extract the bash command
 command=$(echo "$input" | jq -r '.tool_input.command')
 
