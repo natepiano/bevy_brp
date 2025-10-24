@@ -16,27 +16,27 @@ Output:
   Returns AllAssignmentsOutput with assignments and test plan files.
 """
 
-import sys
-from pathlib import Path
-
-# Add script directory to path so we can import config
-sys.path.insert(0, str(Path(__file__).parent))
-
 import json
 import os
 import subprocess
+import sys
 from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 from typing import Any, TypedDict, cast
 
-import config
-from config import (
+# Add the script directory to Python path for imports
+script_dir = Path(__file__).parent
+sys.path.insert(0, str(script_dir))
+
+from config import (  # pyright: ignore[reportImplicitRelativeImport]  # noqa: E402
     AllTypesData,
     MutationTestConfig,
     TypeData,
     TypeDataComplete,
     calculate_port,
     find_current_batch,
+    get_mutation_test_log,
     load_config,
 )
 
@@ -51,6 +51,7 @@ OPERATION_ID_START = 1  # Operation IDs start at 1 for better human readability
 # Type definitions for JSON structures (extends config.py's TypeData)
 class PathInfo(TypedDict, total=False):
     """Path metadata including mutability and root examples."""
+
     mutability: str
     root_example: object
 
@@ -131,14 +132,14 @@ class OperationIndices(TypedDict):
 
 # Load configuration from config file
 try:
-    config = load_config()
+    mutation_config = load_config()
 except FileNotFoundError as e:
     print(f"Error loading config: {e}", file=sys.stderr)
     sys.exit(1)
 
-max_subagents: int = config["max_subagents"]
-ops_per_subagent: int = config["ops_per_subagent"]
-base_port: int = config["base_port"]
+max_subagents: int = mutation_config["max_subagents"]
+ops_per_subagent: int = mutation_config["ops_per_subagent"]
+base_port: int = mutation_config["base_port"]
 
 # Calculate batch capacity (total operations across all subagents)
 batch_capacity: int = max_subagents * ops_per_subagent
@@ -242,8 +243,12 @@ def renumber_batches(
 
         # Calculate remaining capacity in current batch
         ops_remaining_in_current_subagent = ops_per_subagent - current_ops_in_subagent
-        remaining_subagents = max_subagents - current_subagent_idx - 1  # Not including current
-        total_remaining_ops = ops_remaining_in_current_subagent + remaining_subagents * ops_per_subagent
+        remaining_subagents = (
+            max_subagents - current_subagent_idx - 1
+        )  # Not including current
+        total_remaining_ops = (
+            ops_remaining_in_current_subagent + remaining_subagents * ops_per_subagent
+        )
 
         # Can this type fit in remaining batch capacity?
         if ops_needed <= total_remaining_ops:
@@ -253,7 +258,9 @@ def renumber_batches(
             # Advance position (may span multiple subagents)
             ops_to_place = ops_needed
             while ops_to_place > 0:
-                ops_in_this_subagent = min(ops_to_place, ops_per_subagent - current_ops_in_subagent)
+                ops_in_this_subagent = min(
+                    ops_to_place, ops_per_subagent - current_ops_in_subagent
+                )
                 current_ops_in_subagent += ops_in_this_subagent
                 ops_to_place -= ops_in_this_subagent
 
@@ -290,7 +297,10 @@ def renumber_batches(
 
                     if check_ops_needed <= total_remaining_ops:
                         # Found a smaller type that fits - swap and process it
-                        untested_types[type_idx], untested_types[check_idx] = untested_types[check_idx], untested_types[type_idx]
+                        untested_types[type_idx], untested_types[check_idx] = (
+                            untested_types[check_idx],
+                            untested_types[type_idx],
+                        )
                         found_smaller = True
                         break
 
@@ -404,7 +414,9 @@ def format_type_description(
     )
 
     if part_number is not None and total_parts is not None:
-        return f"{short_name} ({category}: {op_count} ops, {part_number} of {total_parts})"
+        return (
+            f"{short_name} ({category}: {op_count} ops, {part_number} of {total_parts})"
+        )
     return f"{short_name} ({category}: {op_count} ops)"
 
 
@@ -434,7 +446,7 @@ def find_entity_id_placeholders(value: Any, path: str = "") -> dict[str, str]:  
     return substitutions
 
 
-def generate_test_operations(type_data: TypeDataComplete, port: int) -> list[TestOperation]:
+def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]:
     """Generate test operations for a single type."""
     operations: list[TestOperation] = []
     type_name = type_data["type_name"]
@@ -630,7 +642,7 @@ def calculate_type_operations(type_data: TypeDataComplete) -> int:
         Number of operations this type will generate
     """
     # Generate operations to count them (using placeholder port)
-    all_operations = generate_test_operations(type_data, port=30001)
+    all_operations = generate_test_operations(type_data)
     return len(all_operations)
 
 
@@ -713,7 +725,7 @@ def finalize_subagent(
     if not current_subagent_tests:
         return  # Nothing to finalize
 
-    port = calculate_port(current_subagent_num, config)
+    port = calculate_port(current_subagent_num, mutation_config)
     result = subprocess.run(
         [
             "python3",
@@ -764,7 +776,6 @@ def split_operations_for_part_new(
     all_operations: list[TestOperation],
     part_number: int,
     total_parts: int,
-    total_slots: int,
     slots_per_subagent: int,
     accumulated_slots: int = 0,
 ) -> list[TestOperation]:
@@ -782,7 +793,6 @@ def split_operations_for_part_new(
         all_operations: All operations for this type
         part_number: Which part this is (1-indexed)
         total_parts: Total number of parts
-        total_slots: Total slots needed for all operations
         slots_per_subagent: How many slots THIS part gets (greedy allocation)
         accumulated_slots: How many slots have been used by previous parts
     """
@@ -807,7 +817,9 @@ def split_operations_for_part_new(
     else:
         # For part 2+: Calculate actual mutation consumption
         # Part 1 overhead: spawn + query (only counted once)
-        part1_overhead = (1 if spawn_idx is not None else 0) + (1 if query_idx is not None else 0)
+        part1_overhead = (1 if spawn_idx is not None else 0) + (
+            1 if query_idx is not None else 0
+        )
 
         # Parts 2+ overhead per part: query only (root examples are now emitted inline)
         parts_2plus_overhead = 1  # query only
@@ -866,7 +878,7 @@ def split_operations_for_part_new(
         last_included_idx = mutation_end - 1
         if last_included_idx >= 0 and last_included_idx < len(mutations):
             last_op = mutations[last_included_idx]
-            if last_op.get("is_root_example") == True:
+            if last_op.get("is_root_example"):
                 # Extend to include the follow-on operation (allows 1 op overage)
                 mutation_end = min(mutation_end + 1, total_mutations)
 
@@ -1042,7 +1054,7 @@ for type_item in batch_types:
 
     # Generate all operations for this type
     # Use a placeholder port - will be assigned later
-    all_operations = generate_test_operations(type_data, port=30001)
+    all_operations = generate_test_operations(type_data)
 
     # Use actual operation count from generated operations
     ops_needed = len(all_operations)
@@ -1100,7 +1112,7 @@ for type_with_ops in types_with_ops:
         operations = deepcopy(all_operations)
 
         # Renumber operation IDs
-        port = calculate_port(current_subagent_num, config)
+        port = calculate_port(current_subagent_num, mutation_config)
         for op in operations:
             op["operation_id"] = operation_id_counter
             op["port"] = port
@@ -1144,20 +1156,26 @@ for type_with_ops in types_with_ops:
             # Start new subagent
             current_subagent_num += 1
             current_subagent_ops_used = 0
-            operation_id_counter = OPERATION_ID_START  # Reset operation IDs for new subagent
+            operation_id_counter = (
+                OPERATION_ID_START  # Reset operation IDs for new subagent
+            )
 
     else:
         # Type needs to span multiple subagents - split at boundaries with GREEDY filling
         remaining_ops = ops_needed
         part_number = 1
-        accumulated_ops_so_far = 0  # Track how many operations we've used for greedy splitting
+        accumulated_ops_so_far = (
+            0  # Track how many operations we've used for greedy splitting
+        )
 
         # Calculate total_parts considering current subagent's available space
         # First part uses ops_remaining_in_subagent, remaining parts use full ops_per_subagent
         if ops_remaining_in_subagent > 0:
             after_first_part = ops_needed - ops_remaining_in_subagent
             if after_first_part > 0:
-                total_parts = 1 + ((after_first_part + ops_per_subagent - 1) // ops_per_subagent)
+                total_parts = 1 + (
+                    (after_first_part + ops_per_subagent - 1) // ops_per_subagent
+                )
             else:
                 total_parts = 1
         else:
@@ -1179,7 +1197,6 @@ for type_with_ops in types_with_ops:
                     all_operations,
                     part_number,
                     total_parts,
-                    ops_needed,
                     slots_for_this_part,  # How many slots available in this subagent
                     accumulated_ops_so_far,  # How many operations previous parts used
                 )
@@ -1189,7 +1206,7 @@ for type_with_ops in types_with_ops:
                 actual_ops_in_this_part = len(operations)
 
                 # Renumber operation IDs
-                port = calculate_port(current_subagent_num, config)
+                port = calculate_port(current_subagent_num, mutation_config)
                 for op in operations:
                     op["operation_id"] = operation_id_counter
                     op["port"] = port
@@ -1225,7 +1242,9 @@ for type_with_ops in types_with_ops:
                 part_number += 1
 
             # Check if we need to finalize current subagent and start a new one
-            if current_subagent_ops_used >= ops_per_subagent or (remaining_ops > 0 and ops_remaining_in_subagent == 0):
+            if current_subagent_ops_used >= ops_per_subagent or (
+                remaining_ops > 0 and ops_remaining_in_subagent == 0
+            ):
                 # Finalize current subagent
                 finalize_subagent(
                     current_subagent_num,
@@ -1250,7 +1269,9 @@ for type_with_ops in types_with_ops:
                 # Start new subagent
                 current_subagent_ops_used = 0
                 ops_remaining_in_subagent = ops_per_subagent
-                operation_id_counter = OPERATION_ID_START  # Reset operation IDs for new subagent
+                operation_id_counter = (
+                    OPERATION_ID_START  # Reset operation IDs for new subagent
+                )
 
 # Finalize last subagent if it has tests (and wasn't already finalized)
 if current_subagent_tests:
@@ -1263,7 +1284,7 @@ if current_subagent_tests:
     )
 
 # Calculate unique types that made it into assignments (for debug log and progress)
-assigned_type_names: set[str] = set()
+debug_assigned_type_names: set[str] = set()
 for assignment in assignments:
     try:
         with open(assignment["test_plan_file"], "r") as f:
@@ -1272,11 +1293,11 @@ for assignment in assignments:
             for test in test_plan.get("tests", []):
                 type_name = test.get("type_name")
                 if type_name:
-                    assigned_type_names.add(type_name)
+                    debug_assigned_type_names.add(type_name)
     except (IOError, json.JSONDecodeError):
         pass
 
-unique_types_count = len(assigned_type_names)
+unique_types_count = len(debug_assigned_type_names)
 
 # Calculate types remaining after this batch
 untested_count = len(
@@ -1285,7 +1306,7 @@ untested_count = len(
 remaining_types = untested_count - unique_types_count
 
 # STEP 5: Backup and initialize debug log
-DEBUG_LOG = "/tmp/mutation_hook_debug.log"
+DEBUG_LOG = get_mutation_test_log(mutation_config)
 
 # Backup existing log if it exists
 if os.path.exists(DEBUG_LOG):
@@ -1318,7 +1339,9 @@ if os.path.exists(DEBUG_LOG):
     except Exception:
         pass  # Use defaults if parsing fails
 
-    backup_file = f"/tmp/mutation_hook_debug_batch{batch_num_str}_{log_timestamp}.log"
+    log_dir = os.path.dirname(DEBUG_LOG)
+    log_name = os.path.splitext(os.path.basename(DEBUG_LOG))[0]
+    backup_file = f"{log_dir}/{log_name}_batch{batch_num_str}_{log_timestamp}.log"
     try:
         os.rename(DEBUG_LOG, backup_file)
         print(f"Backed up previous log to: {backup_file}", file=sys.stderr)
@@ -1513,7 +1536,7 @@ if os.path.exists(zed_cli):
 
 # STEP 7: Return all assignments with test plan files generated
 # Calculate unique types that actually made it into assignments
-assigned_type_names: set[str] = set()
+output_assigned_type_names: set[str] = set()
 for assignment in assignments:
     # Open the test plan file to get the actual types assigned
     try:
@@ -1523,11 +1546,11 @@ for assignment in assignments:
             for test in test_plan.get("tests", []):
                 type_name = test.get("type_name")
                 if type_name:
-                    assigned_type_names.add(type_name)
+                    output_assigned_type_names.add(type_name)
     except (IOError, json.JSONDecodeError):
         pass
 
-unique_types_count = len(assigned_type_names)
+unique_types_count = len(output_assigned_type_names)
 subagent_count = len(assignments)
 
 # Calculate statistics for progress message

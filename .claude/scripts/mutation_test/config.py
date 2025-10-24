@@ -18,6 +18,7 @@ class MutationTestConfig(TypedDict):
     max_subagents: int
     base_port: int
     stop_after_each_batch: bool
+    mutation_test_log: str
 
 
 class TypeData(TypedDict):
@@ -78,13 +79,14 @@ def load_config() -> MutationTestConfig:
         )
 
     with open(config_path, "r", encoding="utf-8") as f:
-        config_data: dict[str, int | bool] = json.load(f)  # pyright: ignore[reportAny]
+        config_data: dict[str, int | bool | str] = json.load(f)  # pyright: ignore[reportAny]
 
     return MutationTestConfig(
         ops_per_subagent=int(config_data["ops_per_subagent"]),
         max_subagents=int(config_data["max_subagents"]),
         base_port=int(config_data["base_port"]),
         stop_after_each_batch=bool(config_data["stop_after_each_batch"]),
+        mutation_test_log=str(config_data["mutation_test_log"]),
     )
 
 
@@ -137,3 +139,8 @@ def calculate_port(subagent_num: int, config: MutationTestConfig) -> int:
         Port number for the subagent
     """
     return config["base_port"] + subagent_num - 1
+
+
+def get_mutation_test_log(config: MutationTestConfig) -> str:
+    """Get the mutation test log file path from config."""
+    return config["mutation_test_log"]

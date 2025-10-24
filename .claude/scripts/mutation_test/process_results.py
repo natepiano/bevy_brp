@@ -10,22 +10,22 @@ Usage:
   python3 mutation_test_process_results.py
 """
 
-import sys
-from pathlib import Path
-
-# Add script directory to path so we can import config
-sys.path.insert(0, str(Path(__file__).parent))
-
 import glob
 import json
 import os
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Any, TypedDict, cast
 
-import config
-from config import (
+# Add the script directory to Python path for imports
+script_dir = Path(__file__).parent
+sys.path.insert(0, str(script_dir))
+
+from config import (  # noqa: E402  # pyright: ignore[reportImplicitRelativeImport]
     AllTypesData,
     find_current_batch,
+    get_mutation_test_log,
     load_config,
 )
 
@@ -173,14 +173,14 @@ def cleanup_old_logs(pattern: str, keep_count: int) -> None:
 
 # Load configuration from config file
 try:
-    config = load_config()
+    mutation_config = load_config()
 except FileNotFoundError as e:
     print(f"Error loading config: {e}", file=sys.stderr)
     sys.exit(1)
 
-max_subagents: int = config["max_subagents"]
-ops_per_subagent: int = config["ops_per_subagent"]
-base_port: int = config["base_port"]
+max_subagents: int = mutation_config["max_subagents"]
+ops_per_subagent: int = mutation_config["ops_per_subagent"]
+base_port: int = mutation_config["base_port"]
 
 # Get the JSON file path
 json_file = ".claude/transient/all_types.json"
@@ -208,7 +208,9 @@ assert isinstance(batch_result, int)
 batch_num: int = batch_result
 
 
-def build_diagnostic_entry(test: TypeTest, _test_plan_file: str) -> DiagnosticEntry:
+def build_diagnostic_entry(
+    test: TypeTest, _test_plan_file: str, log_path: str
+) -> DiagnosticEntry:
     """Build a diagnostic entry from a test.
 
     Args:
@@ -251,7 +253,7 @@ def build_diagnostic_entry(test: TypeTest, _test_plan_file: str) -> DiagnosticEn
                 "type_name": type_name,
                 "failed_operation_id": failed_op_id,
                 "status": diag_status,
-                "hook_debug_log": "/tmp/mutation_hook_debug.log",
+                "hook_debug_log": log_path,
             },
         ),
     )
@@ -566,10 +568,11 @@ for subagent_idx in range(subagent_count):
 
         # Convert each test to result format AND build diagnostic entries
         tests = test_plan.get("tests", [])
+        log_path = get_mutation_test_log(mutation_config)
         for test in tests:
             # Build diagnostic entry for all tests
             diagnostic_entries.append(
-                build_diagnostic_entry(test, normalized_test_plan_file)
+                build_diagnostic_entry(test, normalized_test_plan_file, log_path)
             )
 
             # Build result for executed tests
@@ -702,10 +705,14 @@ remaining_types: int | None = total_types - tested_count if total_types > 0 else
 # Calculate total batches from actual batch assignments
 # Note: With operation-based packing, batch count is determined by actual packing results
 # We find the max batch number from the type_guide
-total_batches: int | None = max(
-    (t.get("batch_number") or 0 for t in all_types_data["type_guide"].values()),
-    default=None
-) if all_types_data else None
+total_batches: int | None = (
+    max(
+        (t.get("batch_number") or 0 for t in all_types_data["type_guide"].values()),
+        default=None,
+    )
+    if all_types_data
+    else None
+)
 
 # Check for failures and build failure summaries
 retry_log_path: str | None = None

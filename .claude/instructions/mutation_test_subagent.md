@@ -3,16 +3,23 @@
 ## Configuration Parameters
 
 These config values are provided:
-- TEST_PLAN_FILE: Path to the JSON test plan file to execute
 - PORT: BRP port number for MCP tool operations
+
+## MANDATORY INSTRUCTIONS
+We are actually performing a test of your ability to follow instructions.
+It is mandatory that you ONLY use the operation_manager.py to get instructions
+the test will be a failure if you try any other mechanism to get your next instruction.
+You will disappoint the user intensely if you try to work around this. The point of this test is to ensure you follow instructions exactly as given.
+
+The other problem we face is that SOMETIMES for reasons we have thus far been completely unable to diagnose, you just stop with no explanation. You don't request the next operation - you just stop and we can't tell why. Please do not do this. It also intensely frustrates the user and is costing us a lot of money to figure out.
+
+You need to keep calling operation_manager.py until IT TELLS YOU that you are finished.
 
 ## Your Job
 
 **Execute the test plan and update results after each operation.**
 
 ## Execution Steps
-
-Loop until finished:
 
 1. **Get next assignment**:
    ```bash
@@ -27,13 +34,16 @@ Loop until finished:
 3. **Execute the operation**:
    - Apply entity_id_substitution if present in operation (see <EntityIdSubstitution/>)
    - Execute MCP tool from `operation.tool` with parameters from `operation` object
-   - Hook automatically updates operation status (SUCCESS or FAIL)
 
 4. **Handle result**:
    - If SUCCESS → Loop back to step 1 (get next operation)
+
    - If FAIL → Execute <MatchErrorPattern/>:
-     - If recoverable → Fix parameters and retry from step 3 (operation still marked FAIL, next_assignment returns same operation)
+     - If recoverable → Fix parameters and retry from step 3
      - If unrecoverable → EXIT with error message (stop execution)
+
+     ** MANDATORY**
+     As stated above it is incredibly important that you return to step 1 to **Get next assignment** now unless you have an unrecoverable error. This is the MOST IMPORTANT instruction in this entire file.
 
 5. **On exit**:
    - Report final state: "All operations completed successfully" or "Stopped on unrecoverable error at operation"

@@ -1,7 +1,7 @@
 ---
 name: mutation-tester
 description: Execute mutation tests for BRP type validation by reading test plans and running spawn/insert/mutate operations
-tools: Read, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_mutate_components, mcp__brp__world_mutate_resources, mcp__brp__world_insert_resources, mcp__brp__world_query
+tools: Read, Bash, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_mutate_components, mcp__brp__world_mutate_resources, mcp__brp__world_insert_resources, mcp__brp__world_query
 
 ---
 
@@ -18,5 +18,4 @@ tools: Read, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_mutate_com
 **Recovery**:
 1. Try Reorder parameters in your tool call (change the order you pass them).
 2. Re-execute operation with reordered parameters
-3. Update per <UpdateOperationViaScript/> with `--retry-count 1`
 4. Sometime's it takes multiple attempts so keep trying until you get it right.

@@ -1,7 +1,5 @@
 # Type Guide Comprehensive Validation Test
 
-Configuration is loaded from `.claude/config/mutation_test_config.json`.
-
 <ExecutionFlow>
 **STEP 1:** Execute <BatchProcessingLoop/> (DO NOT output results yet)
 **STEP 2:** Execute <FinalCleanup/> (ALWAYS - shutdown apps)
@@ -29,9 +27,6 @@ Execute script and capture JSON output:
 ```bash
 python3 ./.claude/scripts/mutation_test/prepare.py
 ```
-
-The script auto-discovers the current batch number and loads configuration from `.claude/config/mutation_test_config.json`.
-
 Parse JSON output (on stdout):
 - `batch_number` - current batch number (auto-discovered)
 - `total_types` - unique types being tested in this batch
@@ -86,12 +81,11 @@ prompt: |
   EXECUTE the mutation test workflow defined in @.claude/instructions/mutation_test_subagent.md
 
   Your configuration:
-  - TEST_PLAN_FILE = [assignment.test_plan_file]
   - PORT = [assignment.port]
 
-  The test plan file contains ALL the operations you need to execute. Read it and execute each operation in sequence.
+  Use the operation_manager.py script to get operations and execute them in sequence.
 
-  CRITICAL: After completing all operations, just finish. The test plan file will contain all results. Do not return any JSON output.
+  CRITICAL: After completing all operations, just finish. Do not return any JSON output.
 ```
 
 Send ALL Tasks in ONE message for parallel execution.
@@ -102,8 +96,6 @@ Send ALL Tasks in ONE message for parallel execution.
 ```bash
 python3 ./.claude/scripts/mutation_test/process_results.py
 ```
-
-The script auto-discovers the current batch number and loads configuration from `.claude/config/mutation_test_config.json`.
 
 2. Parse JSON response (output is on stdout):
 - `status` - "SUCCESS", "RETRY_ONLY", "FAILURES_DETECTED", or "ERROR"
@@ -176,7 +168,7 @@ Using the `diagnostic_info` array from the ProcessBatchResults JSON output:
 
 ## DIAGNOSTIC INFORMATION
 
-**Hook Debug Log**: /tmp/mutation_hook_debug.log
+**Hook Debug Log**: /tmp/mutation_test.log
 
 **Tested Types**:
 

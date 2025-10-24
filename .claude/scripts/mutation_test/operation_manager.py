@@ -26,6 +26,61 @@ from datetime import datetime
 from typing import Any, TypedDict, cast
 
 
+def load_config() -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
+    """Load mutation test configuration."""
+    config_path = ".claude/config/mutation_test_config.json"
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            config_data = json.load(f)  # pyright: ignore[reportAny]
+            return cast(dict[str, Any], config_data)  # pyright: ignore[reportExplicitAny]
+    except FileNotFoundError:
+        print(f"Error: Config file not found: {config_path}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON in config file: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+# Load configuration at module level
+CONFIG = load_config()
+MUTATION_TEST_LOG = cast(str, CONFIG["mutation_test_log"])
+
+
+class QueryResultEntry(TypedDict):
+    """Type for a single query result entry."""
+
+    entity: int
+
+
+class HookToolResponse(TypedDict):
+    """Type for hook tool_response element."""
+
+    text: str
+
+
+class HookEvent(TypedDict):
+    """Type for hook event JSON structure."""
+
+    tool_response: list[HookToolResponse]
+    tool_name: str
+    tool_input: dict[str, object]
+
+
+class BrpResponseMetadata(TypedDict, total=False):
+    """Type for BRP response metadata field."""
+
+    original_error: str
+
+
+class BrpResponse(TypedDict, total=False):
+    """Type for BRP response structure."""
+
+    status: str
+    message: str
+    metadata: BrpResponseMetadata
+    result: list[QueryResultEntry]
+
+
 class TestPlan(TypedDict):
     """Type for test plan file structure."""
 
@@ -192,22 +247,24 @@ def validate_query_result(
         Tuple of (final_status, final_error)
     """
     try:
-        result_data: Any = json.loads(query_result_json)  # pyright: ignore[reportExplicitAny]
+        result_data_raw = json.loads(query_result_json)  # pyright: ignore[reportAny]
 
-        if not isinstance(result_data, list):
+        if not isinstance(result_data_raw, list):
             return "FAIL", "Query result is not an array"
+
+        result_data = cast(list[dict[str, object]], result_data_raw)
 
         if len(result_data) == 0:
             return "FAIL", "Query returned 0 entities"
 
-        first_result: Any = result_data[0]  # pyright: ignore[reportExplicitAny]
-        if not isinstance(first_result, dict):
+        first_result = result_data[0]
+        if not isinstance(first_result, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
             return "FAIL", "Query result entry is not an object"
 
         if "entity" not in first_result:
             return "FAIL", "Query result entry missing entity field"
 
-        entity_id: Any = first_result["entity"]  # pyright: ignore[reportExplicitAny]
+        entity_id = first_result["entity"]
         if not isinstance(entity_id, int):
             return "FAIL", f"Query result entity ID is not a number: {entity_id}"
 
@@ -232,14 +289,15 @@ def parse_mcp_response(
     Returns:
         Tuple of (final_status, final_error)
     """
+    mcp_data: Any = None  # pyright: ignore[reportExplicitAny]
     try:
         # Read from stdin if '-'
         if mcp_response_arg == "-":
-            mcp_data: Any = json.load(sys.stdin)  # pyright: ignore[reportExplicitAny]
+            mcp_data = json.load(sys.stdin)  # pyright: ignore[reportExplicitAny]
         else:
             mcp_data = json.loads(mcp_response_arg)  # pyright: ignore[reportExplicitAny]
 
-        # Extract response JSON from tool_response[0].text
+        # Extract response JSON from tool_response[0].text (OLD WORKING LOGIC)
         response_text: Any = mcp_data["tool_response"][0]["text"]  # pyright: ignore[reportExplicitAny]
         response_json: Any = json.loads(response_text)  # pyright: ignore[reportExplicitAny]
 
@@ -249,6 +307,7 @@ def parse_mcp_response(
             error = None
         else:
             status = "FAIL"
+            # Extract error message
             metadata: Any = response_json.get("metadata", {})  # pyright: ignore[reportExplicitAny]
             error = (
                 metadata.get("original_error")
@@ -258,7 +317,7 @@ def parse_mcp_response(
 
         # Special handling for query operations: validate entity availability
         if tool_name == "mcp__brp__world_query" and status == "SUCCESS":
-            result: Any = response_json.get("result", [])  # pyright: ignore[reportExplicitAny]
+            result = response_json.get("result", [])
             query_result_json = json.dumps(result)
             status, error = validate_query_result(query_result_json, operation, status, error)
 
@@ -275,10 +334,28 @@ def action_get_next(port: int) -> None:
 
     operation, _ = find_next_operation(test_plan)
 
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     if operation is None:
         # All operations complete
+        try:
+            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                _ = f.write(f"[{timestamp}] port={port} ** FINISHED **\n")
+        except Exception:
+            # Silently ignore debug log write failures
+            pass
         print(json.dumps({"status": "finished"}, indent=2))
         return
+
+    # Log that we're providing this operation to the subagent
+    operation_id = cast(int, operation.get("operation_id"))
+    try:
+        with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+            _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} provided to subagent\n")
+            f.flush()  # Explicitly flush to ensure write happens
+    except Exception:
+        # Silently ignore debug log write failures
+        pass
 
     # Return operation with execution parameters only
     execution_params = get_execution_params(operation)
@@ -316,7 +393,8 @@ def action_update(
     operation["status"] = status
 
     if status == "SUCCESS":
-        operation["error"] = None
+        # Remove error field on success (don't write null)
+        operation.pop("error", None)
     else:  # FAIL
         operation["error"] = error if error else "Unknown error"
 
@@ -342,20 +420,21 @@ def action_update(
                         if op.get("entity") == "USE_QUERY_RESULT":
                             op["entity"] = captured_entity_id
 
-    # Log status update to debug log
-    debug_log = "/tmp/mutation_hook_debug.log"
-    try:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        short_tool = shorten_tool_name(tool_name)
-        with open(debug_log, "a", encoding="utf-8") as f:
-            _ = f.write(
-                f"[{timestamp}] port={port} op_id={operation_id} status={status} tool={short_tool}\n"
-            )
-            if status == "FAIL" and error:
-                _ = f.write(f"  [{timestamp}] port={port} op_id={operation_id} error={error}\n")
-    except Exception:
-        # Silently ignore debug log write failures
-        pass
+    # Log failures to debug log (successes are already tracked in plan files)
+    if status == "FAIL":
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            short_tool = shorten_tool_name(tool_name)
+            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                _ = f.write(
+                    f"[{timestamp}] port={port} op_id={operation_id} status=FAIL tool={short_tool}\n"
+                )
+                if error:
+                    _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} error={error}\n")
+                f.flush()
+        except Exception:
+            # Silently ignore debug log write failures
+            pass
 
     # Write updated test plan back atomically
     save_test_plan(file_path, test_plan)

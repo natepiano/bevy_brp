@@ -1,6 +1,7 @@
 {
-  "ops_per_subagent": 20,
+  "ops_per_subagent": 25,
   "max_subagents": 10,
   "base_port": 30001,
-  "stop_after_each_batch": true
+  "stop_after_each_batch": true,
+  "mutation_test_log": "/tmp/mutation_test.log"
 }
