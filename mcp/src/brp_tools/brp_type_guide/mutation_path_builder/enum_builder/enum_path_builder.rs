@@ -50,7 +50,6 @@ use super::super::types::Mutability;
 use super::super::types::MutabilityIssue;
 use super::super::types::PathAction;
 use super::super::types::PathExample;
-use super::option_classification::OptionClassification;
 use super::option_classification::apply_option_transformation;
 use super::variant_kind::VariantKind;
 use super::variant_signature::VariantSignature;
@@ -461,10 +460,6 @@ fn process_signature_groups(
 }
 
 /// Create `PathKind` objects for a signature
-///
-/// For nested `Option` types, skips intermediate Option layers since BRP collapses them
-/// in JSON representation. For example, `Option<Option<Option<f32>>>` serializes as either
-/// `null` or the leaf value `5.0`, with no accessible intermediate `Some(None)` states.
 fn create_paths_for_signature(
     signature: &VariantSignature,
     ctx: &RecursionContext,
@@ -475,14 +470,10 @@ fn create_paths_for_signature(
             types
                 .iter()
                 .enumerate()
-                .map(|(index, type_name)| {
-                    // Skip intermediate Option layers - only generate paths for leaf types
-                    let effective_type = OptionClassification::extract_leaf_type(type_name);
-                    PathKind::IndexedElement {
-                        index,
-                        type_name: effective_type,
-                        parent_type: ctx.type_name().clone(),
-                    }
+                .map(|(index, type_name)| PathKind::IndexedElement {
+                    index,
+                    type_name: type_name.clone(),
+                    parent_type: ctx.type_name().clone(),
                 })
                 .collect_vec(),
         ),

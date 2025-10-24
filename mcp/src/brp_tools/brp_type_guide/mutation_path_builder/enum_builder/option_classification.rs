@@ -29,29 +29,6 @@ impl OptionClassification {
         matches!(self, Self::Option { .. })
     }
 
-    /// Recursively unwrap nested Option types to find the leaf type
-    ///
-    /// BRP collapses nested Options in JSON representation:
-    /// - `Option<Option<Option<f32>>>` serializes as either `null` or `5.0` (the leaf value)
-    /// - Intermediate `Some(None)` or `Some(Some(None))` all collapse to `null`
-    ///
-    /// This means intermediate Option layers don't have accessible mutation paths,
-    /// so we skip directly to the innermost non-Option type.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// let nested = BrpTypeName::from("core::option::Option<core::option::Option<f32>>");
-    /// let leaf = OptionClassification::extract_leaf_type(&nested);
-    /// assert_eq!(leaf.as_str(), "f32");
-    /// ```
-    pub fn extract_leaf_type(type_name: &BrpTypeName) -> BrpTypeName {
-        match Self::from_type_name(type_name) {
-            Self::Option { inner_type } => Self::extract_leaf_type(&inner_type),
-            Self::Regular(leaf_type) => leaf_type,
-        }
-    }
-
     fn extract_option_inner(type_name: &BrpTypeName) -> Option<BrpTypeName> {
         const OPTION_PREFIX: &str = "core::option::Option<";
         const OPTION_SUFFIX: char = '>';
