@@ -213,7 +213,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/mutation-tester-hook.sh"
+            "command": ".claude/hooks/mutation-tester-prevent-for-loop.sh"
           }
         ]
       }
