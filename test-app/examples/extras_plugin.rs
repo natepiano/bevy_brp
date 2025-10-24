@@ -273,7 +273,7 @@ enum BottomEnum {
     },
     #[default]
     VariantC,
-    /// Second tuple variant with same signature as VariantA
+    /// Second tuple variant with same signature as `VariantA`
     VariantD(u32),
 }
 
