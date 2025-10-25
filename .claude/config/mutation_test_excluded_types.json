@@ -79,6 +79,14 @@
     {
       "type_name": "bevy_camera::camera::Camera",
       "reason": "Contains PartiallyMutable enum variant with non-deserializable field. The .viewport field is Option<Viewport> where Some(Viewport) contains depth: Range<f32>. Bevy registered Range<f32> for reflection but not ReflectDeserialize, causing deserialization error: 'type core::ops::Range<f32> did not register the ReflectDeserialize type data'. This makes Option<Viewport>::Some a PartiallyMutable variant that cannot be set via mutations, rendering child mutation paths like .viewport.0.physical_position unreachable. Path builder generates these paths but they fail with 'Expected variant index access to access a Tuple variant, found a Unit variant instead' because root_example uses None variant."
+    },
+    {
+      "type_name": "bevy_ui::ui_node::Node",
+      "reason": "Excessively large component with many fields. Not representative of typical component mutation testing needs. The large number of mutation operations creates disproportionate test time without providing proportional value for validating BRP mutation functionality."
+    },
+    {
+      "type_name": "bevy_window::window::Window",
+      "reason": "Excessively large component with many fields. Not representative of typical component mutation testing needs. The large number of mutation operations creates disproportionate test time without providing proportional value for validating BRP mutation functionality. If other mutations work, this will work too."
     }
   ]
 }

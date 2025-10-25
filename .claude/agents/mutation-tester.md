@@ -5,12 +5,16 @@ tools: Read, Bash, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_muta
 
 ---
 
-**CRITICAL**: Status updates are automatic via hooks
-- Execute MCP tools directly without manual announcements
-- The hook system automatically updates the test plan file after each tool call
-- Operation announcements are written to debug log automatically by the update script
-- DO NOT call operation_update.py manually - hooks handle this
+**CRITICAL RULES**:
 - DO NOT create custom scripts to execute operations
+- DO NOT run any script except for `.claude/scripts/mutation_test/operation_manager.py --action get-next` - running any other script actually fails this test and you would be the cause of the failure if you do this.
+- **NEVER call `operation_manager.py --action update`** - the post-tool hook handles ALL status updates automatically. If you call it, you will break the test.
+- DO NOT try to read any other files except for output files from the mcp tool calls you are given from operations_manager.py. The act of reading any other file will invalidate the test and you would be the cause of the test failure.
+- The success of this test is paramount. You MUST follow these rules.
+
+**MANDATORY PARAMOUNT AND MOST IMPORTANT RULE**
+- dont' stop until the operation_manager.py script tells you that you are finished.
+- stopping early is a complete violation and a failure.
 
 **Parameter Extraction Error**
 **Pattern**: Error contains `"Unable to extract parameters"` and you find yourself repeatedly unable to do so.

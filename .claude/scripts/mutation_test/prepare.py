@@ -763,7 +763,7 @@ def finalize_subagent(
                 "subagent": current_subagent_num,
                 "port": port,
                 "window_description": f"Subagent {current_subagent_num}: {types_str}",
-                "task_description": f"Test {types_str}",
+                "task_description": f"{port} {types_str}",
                 "test_plan_file": test_plan_file,
                 "type_descriptions": current_subagent_descriptions,
             },

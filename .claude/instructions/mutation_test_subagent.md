@@ -5,48 +5,76 @@
 These config values are provided:
 - PORT: BRP port number for MCP tool operations
 
-## MANDATORY INSTRUCTIONS
-We are actually performing a test of your ability to follow instructions.
-It is mandatory that you ONLY use the operation_manager.py to get instructions
-the test will be a failure if you try any other mechanism to get your next instruction.
-You will disappoint the user intensely if you try to work around this. The point of this test is to ensure you follow instructions exactly as given.
-
-The other problem we face is that SOMETIMES for reasons we have thus far been completely unable to diagnose, you just stop with no explanation. You don't request the next operation - you just stop and we can't tell why. Please do not do this. It also intensely frustrates the user and is costing us a lot of money to figure out.
-
-You need to keep calling operation_manager.py until IT TELLS YOU that you are finished.
-
 ## Your Job
 
-**Execute the test plan and update results after each operation.**
+**Execute mutation test operations in an infinite loop until operation_manager.py returns `"status": "finished"`.**
 
-## Execution Steps
+**CRITICAL CONSTRAINTS**:
+- The ONLY source of operations is operation_manager.py
+- The ONLY exit conditions are: receiving `"status": "finished"` OR encountering an unrecoverable error
+- **SCRIPT EXECUTION PROHIBITION**: You are ONLY allowed to execute this exact command:
+  ```bash
+  python3 .claude/scripts/mutation_test/operation_manager.py --port PORT --action get-next
+  ```
+- **NEVER call `--action update`** - the post-tool hook handles ALL status updates automatically. If you do call it this way, you will break the test.
+- **DO NOT** try to report operation success/failure yourself - just execute operations and move to next
+- Running ANY other script, Python file, or bash command is a **TEST FAILURE**
+- If you think you need to run something else, you have misunderstood your job - STOP and report error
 
-1. **Get next assignment**:
+<ExecutionSteps>
+**EXECUTE THESE STEPS IN ORDER:**
+
+**STEP 1:** Execute <OperationLoop/>
+**STEP 2:** Execute <ReportCompletion/>
+</ExecutionSteps>
+
+<OperationLoop>
+**THIS IS AN INFINITE LOOP. DO NOT STOP UNTIL YOU RECEIVE `"status": "finished"` OR HIT AN UNRECOVERABLE ERROR.**
+
+REPEAT these steps continuously:
+
+1. **Request next operation**:
    ```bash
    python3 .claude/scripts/mutation_test/operation_manager.py --port PORT --action get-next
    ```
-   Parse the JSON response
 
-2. **Check response status**:
-   - If `"status": "finished"` → All operations complete, EXIT with success message
-   - If `"status": "next_operation"` → Continue to step 3
+2. **Parse JSON response and check status**:
+
+   If `"status": "finished"`:
+   - **EXIT LOOP IMMEDIATELY**
+   - Proceed to <ReportCompletion/>
+
+   If `"status": "next_operation"`:
+   - Extract `operation` object from response
+   - Continue to step 3
+
+   If any other status value:
+   - **EXIT LOOP WITH ERROR**: "Invalid response from operation_manager.py: ${status}"
 
 3. **Execute the operation**:
-   - Apply entity_id_substitution if present in operation (see <EntityIdSubstitution/>)
+   - If operation has `entity_id_substitution` field → Execute <EntityIdSubstitution/>
    - Execute MCP tool from `operation.tool` with parameters from `operation` object
 
-4. **Handle result**:
-   - If SUCCESS → Loop back to step 1 (get next operation)
+4. **Evaluate result**:
 
-   - If FAIL → Execute <MatchErrorPattern/>:
-     - If recoverable → Fix parameters and retry from step 3
-     - If unrecoverable → EXIT with error message (stop execution)
+   If operation SUCCESS:
+   - **RETURN TO STEP 1** (request next operation)
 
-     ** MANDATORY**
-     As stated above it is incredibly important that you return to step 1 to **Get next assignment** now unless you have an unrecoverable error. This is the MOST IMPORTANT instruction in this entire file.
+   If operation FAIL:
+   - Execute <MatchErrorPattern/> to determine if error is recoverable
+   - If recoverable → Apply fix and retry operation (step 3), then **RETURN TO STEP 1**
+   - If unrecoverable → **EXIT LOOP WITH ERROR**: "Unrecoverable error at operation ${operation_id}: ${error}"
 
-5. **On exit**:
-   - Report final state: "All operations completed successfully" or "Stopped on unrecoverable error at operation"
+**END OF LOOP ITERATION - RETURN TO STEP 1**
+</OperationLoop>
+
+<ReportCompletion>
+Report final state based on how loop exited:
+
+- If exited via `"status": "finished"`: "✅ All operations completed successfully"
+- If exited via unrecoverable error: "❌ Stopped on unrecoverable error at operation ${operation_id}: ${error_message}"
+- If exited via invalid status: "❌ Invalid response from operation_manager.py: ${status_value}"
+</ReportCompletion>
 
 ## Entity ID Substitution
 
@@ -107,6 +135,11 @@ When you execute `mcp__brp__world_query`, the post-tool hook will:
 
 <MatchErrorPattern>
 **When an operation fails, check the error message against these patterns IN THIS EXACT ORDER:**
+
+Does error contain `"JSON-RPC error: HTTP request failed"`?
+- ✓ YES → **UNRECOVERABLE** - BRP connection lost or app crashed
+- STOP IMMEDIATELY with error: "BRP connection failed - app may have crashed"
+- ✗ NO → Continue
 
 Does error contain `"invalid type: string"`?
 - ✓ YES → Execute <InvalidTypeStringError/> recovery

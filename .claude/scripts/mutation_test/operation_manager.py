@@ -282,6 +282,8 @@ def parse_mcp_response(
     mcp_response_arg: str,
     tool_name: str,
     operation: dict[str, Any],  # pyright: ignore[reportExplicitAny]
+    port: int,
+    operation_id: int,
 ) -> tuple[str, str | None]:
     """
     Parse MCP response and extract final status/error.
@@ -289,17 +291,19 @@ def parse_mcp_response(
     Returns:
         Tuple of (final_status, final_error)
     """
-    mcp_data: Any = None  # pyright: ignore[reportExplicitAny]
     try:
         # Read from stdin if '-'
         if mcp_response_arg == "-":
-            mcp_data = json.load(sys.stdin)  # pyright: ignore[reportExplicitAny]
+            mcp_data_raw = json.load(sys.stdin)  # pyright: ignore[reportAny]
         else:
-            mcp_data = json.loads(mcp_response_arg)  # pyright: ignore[reportExplicitAny]
+            mcp_data_raw = json.loads(mcp_response_arg)  # pyright: ignore[reportAny]
 
-        # Extract response JSON from tool_response[0].text (OLD WORKING LOGIC)
-        response_text: Any = mcp_data["tool_response"][0]["text"]  # pyright: ignore[reportExplicitAny]
-        response_json: Any = json.loads(response_text)  # pyright: ignore[reportExplicitAny]
+        mcp_data = cast(HookEvent, mcp_data_raw)
+
+        # Extract response JSON from tool_response[0].text
+        response_text = mcp_data["tool_response"][0]["text"]
+        response_json_raw = json.loads(response_text)  # pyright: ignore[reportAny]
+        response_json = cast(BrpResponse, response_json_raw)
 
         # Determine initial status from MCP response
         if response_json.get("status") == "success":
@@ -308,9 +312,9 @@ def parse_mcp_response(
         else:
             status = "FAIL"
             # Extract error message
-            metadata: Any = response_json.get("metadata", {})  # pyright: ignore[reportExplicitAny]
+            metadata = response_json.get("metadata")
             error = (
-                metadata.get("original_error")
+                (metadata.get("original_error") if metadata else None)
                 or response_json.get("message")
                 or "Unknown error"
             )
@@ -324,6 +328,16 @@ def parse_mcp_response(
         return status, error
 
     except Exception as e:
+        # Subagent mistakenly called --action update for previous operation
+        # Hook already handled the update correctly, so this is just informational
+        try:
+            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                prior_op_id = operation_id - 1
+                _ = f.write(f"[{timestamp}] port={port} op_id={prior_op_id} subagent mistakenly called update\n")
+                f.flush()
+        except Exception:
+            pass
         return "FAIL", f"Failed to parse MCP response: {e}"
 
 
@@ -387,7 +401,7 @@ def action_update(
         sys.exit(0)
 
     # Parse MCP response and get final status/error
-    status, error = parse_mcp_response(mcp_response_arg, tool_name, operation)
+    status, error = parse_mcp_response(mcp_response_arg, tool_name, operation, port, operation_id)
 
     # Update operation with final status
     operation["status"] = status
@@ -420,21 +434,20 @@ def action_update(
                         if op.get("entity") == "USE_QUERY_RESULT":
                             op["entity"] = captured_entity_id
 
-    # Log failures to debug log (successes are already tracked in plan files)
-    if status == "FAIL":
-        try:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            short_tool = shorten_tool_name(tool_name)
-            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
-                _ = f.write(
-                    f"[{timestamp}] port={port} op_id={operation_id} status=FAIL tool={short_tool}\n"
-                )
-                if error:
-                    _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} error={error}\n")
-                f.flush()
-        except Exception:
-            # Silently ignore debug log write failures
-            pass
+    # Log operation status to debug log
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        short_tool = shorten_tool_name(tool_name)
+        with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+            _ = f.write(
+                f"[{timestamp}] port={port} op_id={operation_id} status={status} tool={short_tool}\n"
+            )
+            if status == "FAIL" and error:
+                _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} error={error}\n")
+            f.flush()
+    except Exception:
+        # Silently ignore debug log write failures
+        pass
 
     # Write updated test plan back atomically
     save_test_plan(file_path, test_plan)
