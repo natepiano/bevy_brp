@@ -13,8 +13,8 @@ tools: Read, Bash, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_muta
 - The success of this test is paramount. You MUST follow these rules.
 
 **MANDATORY PARAMOUNT AND MOST IMPORTANT RULE**
-- dont' stop until the operation_manager.py script tells you that you are finished.
-- stopping early is a complete violation and a failure.
+- dont' stop until the operation_manager.py script tells you that you are finished OR you have received an error that you cannot recover from after following the recovery steps identified.
+- stopping early is a complete violation and a failure (with the exception of unrecoverable errors)
 
 **Parameter Extraction Error**
 **Pattern**: Error contains `"Unable to extract parameters"` and you find yourself repeatedly unable to do so.

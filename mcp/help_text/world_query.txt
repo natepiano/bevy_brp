@@ -1,5 +1,13 @@
 Queries entities via world.query BRP method. Searches entities by components, applies filters, returns data.
 
+## How to Call
+
+```
+mcp__brp__world_query(data={}, filter={"with": ["bevy_transform::components::transform::Transform"]})
+```
+
+**IMPORTANT**: Pass parameters as objects, NOT strings. Use `filter={"with": [...]}` NOT `filter='{"with": [...]}'`
+
 ### notes on data parameter
 **REQUIRED** - Specifies what components to retrieve from matching entities.
 ```json

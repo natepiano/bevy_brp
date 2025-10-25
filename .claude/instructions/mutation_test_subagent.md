@@ -141,12 +141,21 @@ Does error contain `"JSON-RPC error: HTTP request failed"`?
 - STOP IMMEDIATELY with error: "BRP connection failed - app may have crashed"
 - ✗ NO → Continue
 
+Does error match pattern `"Resource \`.*\` not present in the world"`?
+- ✓ YES → **UNRECOVERABLE** - Resource doesn't exist in the world
+- STOP IMMEDIATELY with error: "Resource not found - cannot test mutations on non-existent resource"
+- ✗ NO → Continue
+
 Does error contain `"invalid type: string"`?
 - ✓ YES → Execute <InvalidTypeStringError/> recovery
 - ✗ NO → Continue
 
 Does error start with `"UUID parsing failed"`?
 - ✓ YES → Execute <UuidParsingError/> recovery
+- ✗ NO → Continue
+
+Does error contain `"Unable to extract parameters"` AND `"invalid type: string"` with serialized JSON?
+- ✓ YES → Execute <FilterDoubleSerializationError/> recovery
 - ✗ NO → Continue
 
 Does error contain `"Unable to extract parameters"`?
@@ -242,3 +251,39 @@ UUID parsing failed: invalid character: expected an optional prefix of `urn:uuid
 1. Reorder parameters in your tool call (change the order you pass them)
 2. Re-execute operation with reordered parameters
 </ParameterExtractionError>
+
+<FilterDoubleSerializationError>
+**Pattern**: Error contains `"Unable to extract parameters"` AND mentions `"invalid type: string"` with serialized JSON content
+
+**Example error** (your error may differ):
+```
+Unable to extract parameters: Invalid parameter format for 'QueryParams': invalid type: string "{\"with\": [\"bevy_light::probe::IrradianceVolume\"]}", expected struct BrpQueryFilter
+```
+
+**Cause**: You're wrapping the parameter in an extra string - double-serializing it
+
+**What's happening**:
+1. First serialization (correct): `{"with": ["Type"]}` → JSON object
+2. Second serialization (YOUR BUG): That JSON gets wrapped as a string: `"{\"with\": [\"Type\"]}"`
+
+**What serde sees**:
+- Expected: An object/struct (the actual `{"with": [...]}` structure)
+- Got: A string literal containing JSON text
+
+**Recovery**:
+1. Check the operation parameters - find where you're passing the filter/data parameter
+2. Make sure you're passing it as an object/dict, NOT as a string
+3. Remove any string wrapping or extra serialization
+4. Re-execute operation with the correct parameter format
+
+**Example**:
+```python
+# WRONG - double-serialized (causes error):
+mcp__brp__world_query(data={}, filter='{"with": ["Type"]}', port=30001)
+
+# CORRECT - pass as object:
+mcp__brp__world_query(data={}, filter={"with": ["Type"]}, port=30001)
+```
+
+**Note**: DO NOT convert the parameter to a string - pass it directly as an object/dict.
+</FilterDoubleSerializationError>

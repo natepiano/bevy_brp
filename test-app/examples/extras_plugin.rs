@@ -44,6 +44,7 @@ use bevy::gizmos::retained::Gizmo;
 use bevy::input::gamepad::Gamepad;
 use bevy::input::gamepad::GamepadSettings;
 use bevy::input::keyboard::KeyboardInput;
+use bevy::input_focus::InputFocus;
 use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::input_focus::tab_navigation::TabIndex;
 use bevy::light::CascadeShadowConfig;
@@ -487,6 +488,7 @@ fn main() {
             total_time:  0.0,
             debug_mode:  false,
         })
+        .insert_resource(InputFocus::default())
         .add_systems(
             Startup,
             (setup_test_entities, setup_ui, minimize_window_on_start),
