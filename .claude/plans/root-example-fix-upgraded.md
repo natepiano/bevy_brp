@@ -1,82 +1,244 @@
-# Implementation Plan: root_example_unavailable_reason
+# Implementation Plan: root_example_unavailable_reason (Collaborative Mode)
 
-## Dependencies
+## EXECUTION PROTOCOL
 
-**✅ COMPLETED:** This plan depended on `mutability-reason-type-safety.md`, which has been completed.
+<Instructions>
+For each step in the implementation sequence:
 
-That plan refactored `MutationPathInternal.mutability_reason` from `Option<Value>` (JSON) to `Option<NotMutableReason>` (typed enum), which makes Phase 2.1 of this plan significantly simpler and type-safe.
+1. **DESCRIBE**: Present the changes with:
+   - Summary of what will change and why
+   - Code examples showing before/after
+   - List of files to be modified
+   - Expected impact on the system
 
-**This plan is now ready for implementation.**
+2. **AWAIT APPROVAL**: Stop and wait for user confirmation ("go ahead" or similar)
+
+3. **IMPLEMENT**: Make the changes and stop
+
+4. **BUILD & VALIDATE**: Execute the build process:
+   ```bash
+   cargo build
+   ```
+   For Python changes:
+   ```bash
+   ~/.local/bin/basedpyright .claude/scripts/mutation_test/prepare.py
+   ```
+
+5. **CONFIRM**: Wait for user to confirm the build succeeded
+
+6. **MARK COMPLETE**: Update this document to mark the step as ✅ COMPLETED
+
+7. **PROCEED**: Move to next step only after confirmation
+</Instructions>
+
+<ExecuteImplementation>
+Find the next ⏳ PENDING step in the INTERACTIVE IMPLEMENTATION SEQUENCE below.
+
+For the current step:
+1. Follow the <Instructions/> above for executing the step
+2. When step is complete, use Edit tool to mark it as ✅ COMPLETED
+3. Continue to next PENDING step
+
+If all steps are COMPLETED:
+    Display: "✅ Implementation complete! All steps have been executed."
+</ExecuteImplementation>
+
+## INTERACTIVE IMPLEMENTATION SEQUENCE
+
+### Step 1: Core Type System + Initialization ⏳ PENDING
+
+**Objective:** Add `root_example_unavailable_reason` field to both `EnumPathData` and `PathInfo` structs, and initialize the field in all `EnumPathData` construction sites.
+
+**Why this is atomic:** Adding the field without initializing it at construction sites will cause compilation errors. Must be done together.
+
+**Files to modify:**
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs` (Phase 1.1, 1.2)
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs` (Phase 6.1 Site 1)
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs` (Phase 6.1 Site 2)
+
+**Changes:**
+1. Add field to `EnumPathData` struct (Phase 1.1)
+2. Add field to `PathInfo` struct with serde attribute (Phase 1.2)
+3. Initialize field in `build_enum_root_path` (Phase 6.1 Site 1)
+4. Initialize field in `build_mutation_path_internal` (Phase 6.1 Site 2)
+
+**Build command:**
+```bash
+cargo build
+```
+
+**Expected result:** Clean compilation, new field added and initialized everywhere
 
 ---
 
-## Problem Statement
+### Step 2: Add Analysis Function ⏳ PENDING
 
-Enum variants that are PartiallyMutable or NotMutable cannot be constructed via BRP, but their mutable fields should still be documented for entities already in that variant. Currently, these paths show `root_example: "None"` (fallback to wrong variant) causing:
+**Objective:** Create `analyze_variant_constructibility` function that determines if a variant can be constructed via BRP.
 
-1. **Misleading documentation** - shows wrong variant structure
-2. **Mutation test failures** - tries to mutate fields on wrong variant
-3. **User confusion** - instructions don't match reality
+**Why this is safe:** New function, doesn't modify existing code or break anything.
 
-### Root Cause
+**Files to modify:**
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs` (Phase 2.1)
 
-Lines 565-570 in `enum_path_builder.rs::build_partial_root_examples`:
-```rust
-let spawn_example = enum_examples
-    .iter()
-    .find(|ex| ex.applicable_variants.contains(variant_name))
-    .and_then(|ex| ex.example.clone())           // Returns None for PartiallyMutable
-    .or_else(|| select_preferred_example(...))    // BUG: Falls back to wrong variant!
-    .unwrap_or(json!(null));
+**Changes:**
+Add new function after `build_variant_example_for_chain` (around line 628) that returns `Result<(), String>`.
+
+**Build command:**
+```bash
+cargo build
 ```
 
-For `TestMixedMutabilityEnum::Multiple` (PartiallyMutable due to Arc fields):
-- Its `example` is `None` (line 332 - no spawn example generated)
-- Falls back to `select_preferred_example()` which picks `None` (Unit variant - Mutable)
-- Result: Paths like `.value` (only exist on Multiple) get `root_example: "None"`
-
-### Example Issue
-
-**Current output:**
-```json
-{
-  "path": ".value",
-  "applicable_variants": ["TestMixedMutabilityEnum::Multiple"],
-  "root_example": "None",  // WRONG - Unit variant, not Multiple!
-  "enum_instructions": "First, set root to 'root_example'..."
-}
-```
-
-**Expected output:**
-```json
-{
-  "path": ".value",
-  "applicable_variants": ["TestMixedMutabilityEnum::Multiple"],
-  "root_example": {
-    "Multiple": {
-      "name": "Hello, World!",
-      "mixed": {"mutable_string": "test", "mutable_float": 1.0},
-      "value": 1.0
-    }
-  },
-  "root_example_unavailable_reason": "Cannot construct Multiple variant via BRP due to non-mutable fields: .mixed.not_mutable_arc (Arc<String>): Type bevy_platform::sync::Arc<alloc::string::String> is a leaf type registered in the schema but has no hardcoded example value available for mutations. This variant's mutable fields can only be mutated if the entity is already set to this variant by game code."
-}
-```
+**Expected result:** Clean compilation, function available but not yet called
 
 ---
 
-## Solution Overview
+### Step 3: PartialRootExample Struct ⏳ PENDING
 
-1. **Remove fallback logic** - Always build variant-specific root_example
-2. **Add new field** - `root_example_unavailable_reason` explaining why variant can't be constructed
-3. **Collect actual reasons** - Extract from NotMutable child fields (not assume "Arc")
-4. **Filter mutation tests** - Skip unconstructible paths in prepare.py
+**Objective:** Add `PartialRootExample` struct definition to group example + unavailability reason.
+
+**Why this is safe:** New struct definition, not yet used anywhere.
+
+**Files to modify:**
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs` (Phase 3.0)
+
+**Changes:**
+Add struct definition near the top of the file after type aliases (around line 76-80).
+
+**Build command:**
+```bash
+cargo build
+```
+
+**Expected result:** Clean compilation, struct available but not yet used
 
 ---
 
-## Phase 1: Core Type System Changes
+### Step 4: Update build_partial_root_examples ⏳ PENDING
 
-### 1.1 Update `EnumPathData` struct
+**Objective:** Change `build_partial_root_examples` to return `HashMap<Vec<VariantName>, PartialRootExample>` instead of `HashMap<Vec<VariantName>, Value>`.
+
+**Why this breaks:** Changes the return type, which breaks `ProcessChildrenResult` contract. Step 5 will fix it.
+
+**Files to modify:**
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs` (Phase 3.1, 3.2)
+
+**Changes:**
+1. Update return type signature (Phase 3.1)
+2. Remove fallback logic (Phase 3.2 DELETE)
+3. Add variant constructibility analysis (Phase 3.2 REPLACE)
+4. Use hierarchical reason selection for nested chains
+
+**Build command:**
+```bash
+cargo build
+```
+
+**Expected result:** ❌ Compilation errors (type mismatch in `ProcessChildrenResult`) - this is expected, Step 5 will fix
+
+---
+
+### Step 5: Propagate Through Call Stack ⏳ PENDING
+
+**Objective:** Update 6 function signatures to use `PartialRootExample`, completing the atomic group started in Step 4.
+
+**Why this fixes Step 4:** Completes the type propagation chain, fixing all compilation errors.
+
+**Files to modify:**
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs` (Phase 4.1-4.5)
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/support.rs` (Phase 4.6)
+
+**Changes:**
+Follow Phase 4.0 call flow diagram to update:
+1. `ProcessChildrenResult` type (4.1)
+2. `process_signature_groups` (4.2)
+3. `process_enum` (4.3)
+4. `create_enum_mutation_paths` (4.4)
+5. `propagate_partial_root_examples_to_children` (4.5)
+6. `support::populate_root_examples_from_partials` (4.6)
+
+**Build command:**
+```bash
+cargo build
+```
+
+**Expected result:** ✅ Clean compilation, type propagation complete
+
+**Verification:** Use Phase 4.0 checklist to confirm all 6 functions updated
+
+---
+
+### Step 6: JSON Serialization Updates ⏳ PENDING
+
+**Objective:** Update serialization functions to expose `root_example_unavailable_reason` through JSON API.
+
+**Why this is safe:** All callers are in the same file, changes are localized.
+
+**Files to modify:**
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_path_internal.rs` (Phase 5.1, 5.2)
+
+**Changes:**
+1. Update `resolve_enum_data_mut` to return 4-tuple with new field (5.1)
+2. Update `into_mutation_path_external` to extract and use new field (5.2)
+
+**Build command:**
+```bash
+cargo build
+```
+
+**Expected result:** Clean compilation, new field exposed in JSON
+
+---
+
+### Step 7: Python Integration ⏳ PENDING
+
+**Objective:** Add Python TypedDict field and filtering logic to exclude unconstructible paths from mutation tests.
+
+**Why this is independent:** Python changes don't affect Rust compilation.
+
+**Files to modify:**
+- `.claude/scripts/mutation_test/prepare.py` (Phase 7.0, 7.1)
+
+**Changes:**
+1. Add `root_example_unavailable_reason` to `PathInfo` TypedDict (7.0)
+2. Add filtering logic after line 1022 (7.1)
+
+**Build command:**
+```bash
+~/.local/bin/basedpyright .claude/scripts/mutation_test/prepare.py
+```
+
+**Expected result:** Zero errors, zero warnings
+
+---
+
+### Step 8: Complete Validation ⏳ PENDING
+
+**Objective:** Run comprehensive testing to verify all changes work correctly.
+
+**Files to test:**
+- Manual verification with type guide generation (8.1)
+- Python type checking (8.2)
+- Mutation test validation (8.3)
+- Regression testing (8.4)
+
+**Validation steps:**
+1. Launch test app: `mcp__brp__brp_launch_bevy_example --target=extras_plugin --profile=debug`
+2. Get type guide: `mcp__brp__brp_type_guide --types='["extras_plugin::TestMixedMutabilityEnum"]'`
+3. Verify `.value` path shows correct `root_example` and `root_example_unavailable_reason`
+4. Run `/create_mutation_test_json` to regenerate test plans
+5. Run `python3 .claude/scripts/mutation_test/prepare.py` and verify filtering output
+6. Run mutation tests: `.claude/commands/mutation_test.sh`
+7. Test regression with other enum types (Option, Result, Handle)
+
+**Expected result:** All tests pass, no regressions
+
+---
+
+## IMPLEMENTATION DETAILS
+
+### Phase 1: Core Type System Changes
+
+#### 1.1 Update `EnumPathData` struct
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs:213-226`
 
 ```rust
@@ -91,7 +253,7 @@ pub struct EnumPathData {
 }
 ```
 
-### 1.2 Update `PathInfo` struct
+#### 1.2 Update `PathInfo` struct
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs:172-197`
 
 Add after `root_example` field (line 196):
@@ -111,9 +273,9 @@ The field is populated in `EnumPathData` during processing (Phase 4), then mappe
 
 ---
 
-## Phase 2: Variant Constructibility Analysis
+### Phase 2: Variant Constructibility Analysis
 
-### 2.1 Create analysis function
+#### 2.1 Create analysis function
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
 
 Add after `build_variant_example_for_chain` (around line 628):
@@ -207,9 +369,9 @@ The function returns `Result<(), String>` instead of `Option<String>` for idioma
 
 ---
 
-## Phase 3: Remove Fallback and Build Reasons
+### Phase 3: Remove Fallback and Build Reasons
 
-### 3.0 Add PartialRootExample struct
+#### 3.0 Add PartialRootExample struct
 
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
 
@@ -232,7 +394,7 @@ struct PartialRootExample {
 
 **Rationale:** Grouping related data (example + its unavailability reason) in a struct is more idiomatic than two parallel HashMaps. This ensures keys cannot diverge, simplifies call sites (single hash lookup instead of two), and makes the code more maintainable.
 
-### 3.1 Update `build_partial_root_examples` signature
+#### 3.1 Update `build_partial_root_examples` signature
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs:549-609`
 
 Change return type (line 549):
@@ -245,7 +407,7 @@ fn build_partial_root_examples(
 ) -> HashMap<Vec<VariantName>, PartialRootExample>
 ```
 
-### 3.2 Remove fallback and always build variant-specific examples
+#### 3.2 Remove fallback and always build variant-specific examples
 **File:** Same file
 
 **Understanding the loop structure** (lines 558-606):
@@ -385,9 +547,9 @@ partial_root_examples
 
 ---
 
-## Phase 4: Propagation Through Call Stack
+### Phase 4: Propagation Through Call Stack
 
-### 4.0 Overview: Call Flow and Verification
+#### 4.0 Overview: Call Flow and Verification
 
 **Purpose:** Thread the new `PartialRootExample` type through the entire call stack, replacing `HashMap<Vec<VariantName>, Value>` with `HashMap<Vec<VariantName>, PartialRootExample>`.
 
@@ -436,7 +598,7 @@ After implementing Phase 4:
 - If field access is wrong in 4.6: Compilation error (cannot access `.example` on `Value`)
 - When all updates complete: Clean compilation with no errors
 
-### 4.1 Update `ProcessChildrenResult` type
+#### 4.1 Update `ProcessChildrenResult` type
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs:76-80`
 
 **Current:**
@@ -459,7 +621,7 @@ type ProcessChildrenResult = (
 
 **IMPORTANT:** This is a breaking change. The HashMap value type changes from `Value` (JSON) to `PartialRootExample` (struct containing both example and unavailability reason). All functions that return or consume `ProcessChildrenResult` must be updated accordingly (covered in phases 4.2-4.6).
 
-### 4.2 Update `process_signature_groups`
+#### 4.2 Update `process_signature_groups`
 **File:** Same file, lines 400-460
 
 Change line 456:
@@ -473,7 +635,7 @@ Change return (line 459):
 Ok((examples, child_mutation_paths, partial_root_examples))
 ```
 
-### 4.3 Update `process_enum`
+#### 4.3 Update `process_enum`
 **File:** Same file, lines 87-128
 
 Change line 101:
@@ -493,7 +655,7 @@ Ok(create_enum_mutation_paths(
 ))
 ```
 
-### 4.4 Update `create_enum_mutation_paths`
+#### 4.4 Update `create_enum_mutation_paths`
 **File:** Same file, lines 724-766
 
 Update parameter (line 724):
@@ -516,7 +678,7 @@ propagate_partial_root_examples_to_children(
 );
 ```
 
-### 4.5 Update `propagate_partial_root_examples_to_children`
+#### 4.5 Update `propagate_partial_root_examples_to_children`
 **File:** Same file, lines 707-721
 
 Update parameter:
@@ -536,7 +698,7 @@ support::populate_root_examples_from_partials(
 );
 ```
 
-### 4.6 Update `support::populate_root_examples_from_partials`
+#### 4.6 Update `support::populate_root_examples_from_partials`
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/support.rs:158-176`
 
 ```rust
@@ -560,9 +722,9 @@ pub fn populate_root_examples_from_partials(
 
 ---
 
-## Phase 5: JSON Serialization
+### Phase 5: JSON Serialization
 
-### 5.1 Update `resolve_enum_data_mut`
+#### 5.1 Update `resolve_enum_data_mut`
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_path_internal.rs:179-205`
 
 Change return type (line 181):
@@ -607,7 +769,7 @@ self.enum_path_data
     })
 ```
 
-### 5.2 Update `into_mutation_path_external`
+#### 5.2 Update `into_mutation_path_external`
 **File:** Same file, lines 76-110
 
 Update extraction (line 94):
@@ -637,13 +799,13 @@ MutationPathExternal {
 
 ---
 
-## Phase 6: Initialization
+### Phase 6: Initialization
 
-### 6.1 Initialize new field in EnumPathData construction
+#### 6.1 Initialize new field in EnumPathData construction
 
 **IMPORTANT:** There are TWO construction sites that must be updated.
 
-#### Site 1: enum_path_builder.rs
+##### Site 1: enum_path_builder.rs
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
 
 Find `build_enum_root_path` (around line 679-687):
@@ -660,7 +822,7 @@ let enum_path_data = if ctx.variant_chain.is_empty() {
 };
 ```
 
-#### Site 2: path_builder.rs
+##### Site 2: path_builder.rs
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
 
 Find `build_mutation_path_internal` (around line 416-424):
@@ -681,9 +843,9 @@ let enum_path_data = if ctx.variant_chain.is_empty() {
 
 ---
 
-## Phase 7: Mutation Test Integration
+### Phase 7: Mutation Test Integration
 
-### 7.0 Update `PathInfo` TypedDict
+#### 7.0 Update `PathInfo` TypedDict
 **File:** `.claude/scripts/mutation_test/prepare.py:51-55`
 
 Add new field to TypedDict:
@@ -704,7 +866,7 @@ class PathInfo(TypedDict, total=False):
 
 **Rationale:** TypedDict must include all fields that will be accessed in the filtering code. Without this, basedpyright will report type errors when accessing the new field. The field is optional (not always present) because only paths with unconstructible variants will have this field populated.
 
-### 7.1 Add path filtering logic
+#### 7.1 Add path filtering logic
 **File:** `.claude/scripts/mutation_test/prepare.py`
 
 Add filtering after excluded types removal (after line 1022):
@@ -758,9 +920,9 @@ for type_name, type_data in list(data["type_guide"].items()):
 
 ---
 
-## Phase 8: Testing and Validation
+### Phase 8: Testing and Validation
 
-### 8.1 Manual verification checklist
+#### 8.1 Manual verification checklist
 
 1. **Build and verify compilation:**
    ```bash
@@ -799,7 +961,7 @@ for type_name, type_data in list(data["type_guide"].items()):
 
 5. **Verify WithMixed variant similarly** - paths like `.0.mutable_float` should have variant-specific root_example
 
-### 8.2 Python type checking
+#### 8.2 Python type checking
 
 Verify TypedDict changes pass type checking:
 ```bash
@@ -808,7 +970,7 @@ Verify TypedDict changes pass type checking:
 
 Expected: Zero errors, zero warnings. If you see `reportAny` errors about `PathInfo` or `root_example_unavailable_reason`, the TypedDict update in Phase 7.0 was not applied correctly.
 
-### 8.3 Mutation test validation
+#### 8.3 Mutation test validation
 
 1. Run `/create_mutation_test_json` to regenerate test plans
 2. Run prepare.py and verify filtering output:
@@ -830,7 +992,7 @@ Expected: Zero errors, zero warnings. If you see `reportAny` errors about `PathI
    ```
 5. Verify no failures related to variant construction
 
-### 8.4 Regression testing
+#### 8.4 Regression testing
 
 Test with other enum types to ensure no regressions:
 - `Option` (Mutable variants)
@@ -840,40 +1002,102 @@ Test with other enum types to ensure no regressions:
 
 ---
 
-## Expected Outcomes
+## SUPPORTING SECTIONS
 
-### Type Guide Output
+### Dependencies
+
+**✅ COMPLETED:** This plan depended on `mutability-reason-type-safety.md`, which has been completed.
+
+That plan refactored `MutationPathInternal.mutability_reason` from `Option<Value>` (JSON) to `Option<NotMutableReason>` (typed enum), which makes Phase 2.1 of this plan significantly simpler and type-safe.
+
+**This plan is now ready for implementation.**
+
+---
+
+### Problem Statement
+
+Enum variants that are PartiallyMutable or NotMutable cannot be constructed via BRP, but their mutable fields should still be documented for entities already in that variant. Currently, these paths show `root_example: "None"` (fallback to wrong variant) causing:
+
+1. **Misleading documentation** - shows wrong variant structure
+2. **Mutation test failures** - tries to mutate fields on wrong variant
+3. **User confusion** - instructions don't match reality
+
+#### Root Cause
+
+Lines 565-570 in `enum_path_builder.rs::build_partial_root_examples`:
+```rust
+let spawn_example = enum_examples
+    .iter()
+    .find(|ex| ex.applicable_variants.contains(variant_name))
+    .and_then(|ex| ex.example.clone())           // Returns None for PartiallyMutable
+    .or_else(|| select_preferred_example(...))    // BUG: Falls back to wrong variant!
+    .unwrap_or(json!(null));
+```
+
+For `TestMixedMutabilityEnum::Multiple` (PartiallyMutable due to Arc fields):
+- Its `example` is `None` (line 332 - no spawn example generated)
+- Falls back to `select_preferred_example()` which picks `None` (Unit variant - Mutable)
+- Result: Paths like `.value` (only exist on Multiple) get `root_example: "None"`
+
+#### Example Issue
+
+**Current output:**
+```json
+{
+  "path": ".value",
+  "applicable_variants": ["TestMixedMutabilityEnum::Multiple"],
+  "root_example": "None",  // WRONG - Unit variant, not Multiple!
+  "enum_instructions": "First, set root to 'root_example'..."
+}
+```
+
+**Expected output:**
+```json
+{
+  "path": ".value",
+  "applicable_variants": ["TestMixedMutabilityEnum::Multiple"],
+  "root_example": {
+    "Multiple": {
+      "name": "Hello, World!",
+      "mixed": {"mutable_string": "test", "mutable_float": 1.0},
+      "value": 1.0
+    }
+  },
+  "root_example_unavailable_reason": "Cannot construct Multiple variant via BRP due to non-mutable fields: .mixed.not_mutable_arc (Arc<String>): Type bevy_platform::sync::Arc<alloc::string::String> is a leaf type registered in the schema but has no hardcoded example value available for mutations. This variant's mutable fields can only be mutated if the entity is already set to this variant by game code."
+}
+```
+
+---
+
+### Solution Overview
+
+1. **Remove fallback logic** - Always build variant-specific root_example
+2. **Add new field** - `root_example_unavailable_reason` explaining why variant can't be constructed
+3. **Collect actual reasons** - Extract from NotMutable child fields (not assume "Arc")
+4. **Filter mutation tests** - Skip unconstructible paths in prepare.py
+
+---
+
+### Expected Outcomes
+
+#### Type Guide Output
 1. **root_example** shows correct variant structure (not fallback to wrong variant)
 2. **root_example_unavailable_reason** explains why with actual field reasons extracted from `mutability_reason`
 3. **Users understand** which fields are problematic and why (e.g., Arc, recursion limit, missing trait)
 
-### Mutation Testing
+#### Mutation Testing
 1. **Unconstructible paths filtered** during prepare.py execution
 2. **No test failures** from trying to construct PartiallyMutable/NotMutable variants
 3. **Clear logs** showing what was excluded and why
 
-### Documentation
+#### Documentation
 1. **Manual users** can see partial structure even if unconstructible
 2. **Clear guidance** on when paths are usable (entity already in variant)
 3. **Accurate information** about field-level mutability issues
 
 ---
 
-## Implementation Order
-
-1. **Phase 1** - Type system changes (EnumPathData, PathInfo)
-2. **Phase 2** - Analysis function (analyze_variant_constructibility)
-3. **Phase 3** - Remove fallback and build reasons (update build_partial_root_examples)
-4. **Phase 4** - Propagation (thread reasons through all functions)
-5. **Phase 5** - Serialization (expose in JSON)
-6. **Phase 6** - Initialization (EnumPathData construction)
-7. **Build and compile** - `cargo build`, verify no errors
-8. **Phase 7** - Mutation test integration (prepare.py)
-9. **Phase 8** - Testing and validation
-
----
-
-## Success Criteria
+### Success Criteria
 
 - [ ] Type guide shows variant-specific root_example for all variants
 - [ ] root_example_unavailable_reason explains unconstructible variants with actual reasons
@@ -884,7 +1108,7 @@ Test with other enum types to ensure no regressions:
 
 ---
 
-## Rollback Plan
+### Rollback Plan
 
 If issues arise:
 1. Revert `enum_path_builder.rs` changes (restore fallback at lines 565-570)
@@ -894,15 +1118,15 @@ If issues arise:
 
 ---
 
-## Files Modified Summary
+### Files Modified Summary
 
-### Rust (7 files):
+#### Rust (4 files):
 1. `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs` - Add fields
 2. `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs` - Major changes (analysis function, remove fallback, propagation)
 3. `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mutation_path_internal.rs` - Update serialization
 4. `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/support.rs` - Update propagation helper
 
-### Python (1 file):
+#### Python (1 file):
 5. `.claude/scripts/mutation_test/prepare.py` - Filter unconstructible paths
 
 ### Total Estimate:
