@@ -120,10 +120,9 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
             knowledge_example.map_or(assembled_example, |knowledge_example| knowledge_example);
 
         // Compute parent's mutation status from children's statuses
-        let (parent_status, reason_enum) = determine_parent_mutability(ctx, &all_paths);
+        let (parent_status, mutability_reason) = determine_parent_mutability(ctx, &all_paths);
 
-        // Convert NotMutableReason to Value if present
-        let mutability_reason = reason_enum.as_ref().and_then(Option::<Value>::from);
+        // Conversion removed - pass typed enum directly
 
         // Build examples appropriately based on mutation status
         let example_to_use = match parent_status {
@@ -153,12 +152,12 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
         // Return error only for NotMutable, success for Mutable and PartiallyMutable
         match parent_status {
             Mutability::NotMutable => {
-                let mutability_reason = reason_enum.ok_or_else(|| {
+                let reason = mutability_reason.ok_or_else(|| {
                     BuilderError::SystemError(Report::new(Error::InvalidState(
                         "NotMutable status must have a reason".to_string(),
                     )))
                 })?;
-                Err(BuilderError::NotMutable(mutability_reason))
+                Err(BuilderError::NotMutable(reason))
             }
             Mutability::Mutable | Mutability::PartiallyMutable => Ok(Self::build_final_result(
                 ctx,
@@ -409,7 +408,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         ctx: &RecursionContext,
         example: PathExample,
         status: Mutability,
-        mutability_reason: Option<Value>,
+        mutability_reason: Option<NotMutableReason>,
         partial_root_examples: Option<HashMap<Vec<VariantName>, Value>>,
     ) -> MutationPathInternal {
         // Build enum data if variant chain exists
@@ -501,7 +500,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         mut paths_to_expose: Vec<MutationPathInternal>,
         example_to_use: Value,
         parent_status: Mutability,
-        mutability_reason: Option<Value>,
+        mutability_reason: Option<NotMutableReason>,
         partial_root_examples: Option<HashMap<Vec<VariantName>, Value>>,
     ) -> Vec<MutationPathInternal> {
         if let Some(ref partials) = partial_root_examples {
@@ -556,7 +555,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             ctx,
             PathExample::Simple(json!(null)), // No example for NotMutable paths
             Mutability::NotMutable,
-            Option::<Value>::from(&reason),
+            Some(reason),
             None, // No partial roots for NotMutable paths
         )
     }

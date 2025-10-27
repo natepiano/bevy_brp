@@ -1,5 +1,17 @@
 # Implementation Plan: root_example_unavailable_reason
 
+## Dependencies
+
+**IMPORTANT:** This plan depends on `mutability-reason-type-safety.md` being completed first.
+
+That plan refactors `MutationPathInternal.mutability_reason` from `Option<Value>` (JSON) to `Option<NotMutableReason>` (typed enum), which makes Phase 2.1 of this plan significantly simpler and type-safe.
+
+**Implementation order:**
+1. Complete `mutability-reason-type-safety.md` first
+2. Then implement this plan
+
+---
+
 ## Problem Statement
 
 Enum variants that are PartiallyMutable or NotMutable cannot be constructed via BRP, but their mutable fields should still be documented for entities already in that variant. Currently, these paths show `root_example: "None"` (fallback to wrong variant) causing:
@@ -91,6 +103,12 @@ Add after `root_example` field (line 196):
 pub root_example_unavailable_reason: Option<String>,  // NEW
 ```
 
+**Architecture Note:** The field exists in both structs following the existing pattern for `root_example`:
+- **EnumPathData** (1.1): Internal representation during type guide generation
+- **PathInfo** (1.2): External API representation serialized to JSON
+
+The field is populated in `EnumPathData` during processing (Phase 4), then mapped to `PathInfo` during serialization (Phase 5). This separation allows internal processing logic to remain strongly typed while the external API provides the JSON schema expected by MCP clients.
+
 ---
 
 ## Phase 2: Variant Constructibility Analysis
@@ -103,8 +121,8 @@ Add after `build_variant_example_for_chain` (around line 628):
 ```rust
 /// Analyze if a variant can be constructed via BRP and build detailed reason if not
 ///
-/// Returns `None` if variant IS constructible (Mutable variants)
-/// Returns `Some(reason)` if variant CANNOT be constructed (NotMutable or PartiallyMutable)
+/// Returns `Ok(())` if variant is constructible (Mutable variants, Unit variants)
+/// Returns `Err(reason)` if variant cannot be constructed, with human-readable explanation
 ///
 /// For PartiallyMutable variants, collects actual reasons from NotMutable child fields.
 /// For NotMutable variants, indicates all fields are problematic.
@@ -114,20 +132,20 @@ fn analyze_variant_constructibility(
     mutability: Mutability,
     child_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
-) -> Option<String> {
+) -> Result<(), String> {
     // Unit variants are always constructible (no fields to serialize)
     if matches!(signature, VariantSignature::Unit) {
-        return None;
+        return Ok(());
     }
 
     // Fully Mutable variants are constructible
     if matches!(mutability, Mutability::Mutable) {
-        return None;
+        return Ok(());
     }
 
     // NotMutable variants - all fields are problematic
     if matches!(mutability, Mutability::NotMutable) {
-        return Some(format!(
+        return Err(format!(
             "Cannot construct {} variant via BRP - all fields are non-mutable. \
             This variant cannot be mutated via BRP.",
             variant_name.short_name()
@@ -135,6 +153,8 @@ fn analyze_variant_constructibility(
     }
 
     // PartiallyMutable variants - collect NotMutable field reasons
+    // NOTE: This assumes mutability-reason-type-safety.md has been completed,
+    // so mutability_reason is Option<NotMutableReason> (typed enum), not Option<Value> (JSON).
     let not_mutable_details: Vec<String> = child_paths
         .iter()
         .filter(|p| p.is_direct_child_at_depth(*ctx.depth))
@@ -144,23 +164,24 @@ fn analyze_variant_constructibility(
             let type_name = p.type_name.short_name();
 
             // Extract the actual reason from mutability_reason if available
+            // With typed enum, we can simply format it directly
             let reason_detail = p.mutability_reason
                 .as_ref()
-                .and_then(|v| v.as_str().map(String::from))
+                .map(|reason| format!("{reason}"))
                 .unwrap_or_else(|| "unknown reason".to_string());
 
-            format!("{} ({}): {}", descriptor, type_name, reason_detail)
+            format!("{descriptor} ({type_name}): {reason_detail}")
         })
         .collect();
 
     if not_mutable_details.is_empty() {
         // Shouldn't happen for PartiallyMutable, but handle gracefully
-        return None;
+        return Ok(());
     }
 
     let field_list = not_mutable_details.join("; ");
 
-    Some(format!(
+    Err(format!(
         "Cannot construct {} variant via BRP due to non-mutable fields: {}. \
         This variant's mutable fields can only be mutated if the entity is \
         already set to this variant by game code.",
@@ -175,10 +196,34 @@ fn analyze_variant_constructibility(
 - Handles all mutability cases: Unit, Mutable, PartiallyMutable, NotMutable
 - Provides detailed, actionable error messages
 - No assumptions about Arc fields - uses actual mutability_reason
+- **Depends on mutability-reason-type-safety.md** - uses typed `NotMutableReason` enum for type-safe extraction
 
 ---
 
 ## Phase 3: Remove Fallback and Build Reasons
+
+### 3.0 Add PartialRootExample struct
+
+**File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
+
+Add this struct definition near the top of the file, after the type aliases (around line 76-80):
+
+```rust
+/// Data for a partial root example including construction feasibility
+///
+/// Stores both the JSON example for a variant chain and an optional explanation
+/// for why that variant cannot be constructed via BRP spawn/insert operations.
+#[derive(Debug, Clone)]
+struct PartialRootExample {
+    /// Complete root example for this variant chain
+    example: Value,
+    /// Explanation for why this variant cannot be constructed via BRP.
+    /// Only populated for PartiallyMutable/NotMutable variants.
+    unavailable_reason: Option<String>,
+}
+```
+
+**Rationale:** Grouping related data (example + its unavailability reason) in a struct is more idiomatic than two parallel HashMaps. This ensures keys cannot diverge, simplifies call sites (single hash lookup instead of two), and makes the code more maintainable.
 
 ### 3.1 Update `build_partial_root_examples` signature
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs:549-609`
@@ -190,16 +235,27 @@ fn build_partial_root_examples(
     enum_examples: &[ExampleGroup],
     child_mutation_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
-) -> (
-    HashMap<Vec<VariantName>, Value>,
-    HashMap<Vec<VariantName>, String>,  // NEW: unavailability reasons
-)
+) -> HashMap<Vec<VariantName>, PartialRootExample>
 ```
 
 ### 3.2 Remove fallback and always build variant-specific examples
 **File:** Same file
 
-**DELETE lines 565-570** (the incorrect fallback):
+**Understanding the loop structure** (lines 558-606):
+```rust
+for (signature, variants) in variant_groups.sorted() {      // Line 558 - OUTER LOOP
+    for variant_name in variants {                          // Line 559 - INNER LOOP
+        let mut this_variant_chain = ctx.variant_chain.clone();
+        this_variant_chain.push(variant_name.clone());
+
+        // Lines 565-570: BUGGY FALLBACK (DELETE THIS)
+        // Lines 575-604: Nested chain logic (REPLACE THIS)
+
+    } // End inner loop
+} // End outer loop
+```
+
+**DELETE lines 565-570** (the incorrect fallback - inside inner loop):
 ```rust
 // REMOVE THIS:
 let spawn_example = enum_examples
@@ -210,7 +266,7 @@ let spawn_example = enum_examples
     .unwrap_or(json!(null));
 ```
 
-**REPLACE lines 575-604** with:
+**REPLACE lines 565-604** (all code after `this_variant_chain` creation) with:
 ```rust
 // Find this variant's mutability status
 let variant_mutability = enum_examples
@@ -226,7 +282,7 @@ let unavailable_reason = analyze_variant_constructibility(
     variant_mutability,
     child_mutation_paths,
     ctx,
-);
+).err();
 
 // Find all deeper nested chains that extend this variant
 let nested_enum_chains =
@@ -234,54 +290,66 @@ let nested_enum_chains =
 
 // Build root examples for each nested enum chain
 for nested_chain in &nested_enum_chains {
-    let root_example = build_variant_example_for_chain(
+    let example = build_variant_example_for_chain(
         signature,
         variant_name,
         child_mutation_paths,
         nested_chain,
         ctx,
     );
-    partial_root_examples.insert(nested_chain.clone(), root_example);
 
     // Propagate reason to nested chains
-    if let Some(ref reason) = unavailable_reason {
-        partial_root_unavailable_reasons.insert(nested_chain.clone(), reason.clone());
-    }
+    // RATIONALE: When a parent variant is unconstructible (e.g., TestMixedMutabilityEnum::Multiple
+    // has Arc fields), ALL nested mutations on that variant's fields are also unconstructible
+    // via BRP spawn operations. Even if a nested enum field itself is mutable, you cannot
+    // reach it through spawn/insert because the parent variant cannot be constructed.
+    // Game code could set the parent variant at runtime, but mutation tests that rely on
+    // spawn/insert operations cannot test these nested paths. This propagation ensures
+    // prepare.py correctly filters these paths from mutation testing.
+    partial_root_examples.insert(
+        nested_chain.clone(),
+        PartialRootExample {
+            example,
+            unavailable_reason: unavailable_reason.clone(),
+        },
+    );
 }
 
 // Build root example for this variant's chain itself
-let root_example = build_variant_example_for_chain(
+let example = build_variant_example_for_chain(
     signature,
     variant_name,
     child_mutation_paths,
     &this_variant_chain,
     ctx,
 );
-partial_root_examples.insert(this_variant_chain.clone(), root_example);
 
-// Store unavailability reason if present
-if let Some(reason) = unavailable_reason {
-    partial_root_unavailable_reasons.insert(this_variant_chain, reason);
-}
+partial_root_examples.insert(
+    this_variant_chain,
+    PartialRootExample {
+        example,
+        unavailable_reason,
+    },
+);
 ```
 
-Initialize new HashMap at start (line 555):
+Initialize HashMap at start (line 555):
 ```rust
 let mut partial_root_examples = HashMap::new();
-let mut partial_root_unavailable_reasons = HashMap::new();  // NEW
 ```
 
-Return both at end (line 607):
+Return at end (line 607):
 ```rust
-(partial_root_examples, partial_root_unavailable_reasons)
+partial_root_examples
 ```
 
 **Rationale:**
 - Removes incorrect fallback causing the bug
 - Always builds variant-specific root_example
 - Analyzes each variant's constructibility
-- Stores both examples and reasons
+- Stores both examples and reasons in single struct (type-safe, cannot diverge)
 - Propagates reasons to nested chains
+- Uses idiomatic Rust pattern (grouped data in struct, not parallel collections)
 
 ---
 
@@ -294,8 +362,7 @@ Return both at end (line 607):
 type ProcessChildrenResult = (
     Vec<ExampleGroup>,
     Vec<MutationPathInternal>,
-    HashMap<Vec<VariantName>, Value>,
-    HashMap<Vec<VariantName>, String>,  // NEW: unavailable reasons
+    HashMap<Vec<VariantName>, PartialRootExample>,  // UPDATED: struct instead of tuple
 );
 ```
 
@@ -304,13 +371,13 @@ type ProcessChildrenResult = (
 
 Change line 456:
 ```rust
-let (partial_root_examples, partial_root_unavailable_reasons) =
+let partial_root_examples =
     build_partial_root_examples(variant_groups, &examples, &child_mutation_paths, ctx);
 ```
 
 Change return (line 459):
 ```rust
-Ok((examples, child_mutation_paths, partial_root_examples, partial_root_unavailable_reasons))
+Ok((examples, child_mutation_paths, partial_root_examples))
 ```
 
 ### 4.3 Update `process_enum`
@@ -318,7 +385,7 @@ Ok((examples, child_mutation_paths, partial_root_examples, partial_root_unavaila
 
 Change line 101:
 ```rust
-let (enum_examples, child_mutation_paths, partial_root_examples, partial_root_unavailable_reasons) =
+let (enum_examples, child_mutation_paths, partial_root_examples) =
     process_signature_groups(&variants_grouped_by_signature, ctx)?;
 ```
 
@@ -330,22 +397,20 @@ Ok(create_enum_mutation_paths(
     default_example,
     child_mutation_paths,
     partial_root_examples,
-    partial_root_unavailable_reasons,  // NEW
 ))
 ```
 
 ### 4.4 Update `create_enum_mutation_paths`
 **File:** Same file, lines 724-766
 
-Add parameter (line 724):
+Update parameter (line 724):
 ```rust
 fn create_enum_mutation_paths(
     ctx: &RecursionContext,
     enum_examples: Vec<ExampleGroup>,
     default_example: Value,
     mut child_mutation_paths: Vec<MutationPathInternal>,
-    partial_root_examples: HashMap<Vec<VariantName>, Value>,
-    partial_root_unavailable_reasons: HashMap<Vec<VariantName>, String>,  // NEW
+    partial_root_examples: HashMap<Vec<VariantName>, PartialRootExample>,  // UPDATED
 ) -> Vec<MutationPathInternal>
 ```
 
@@ -354,7 +419,6 @@ Update call (line 756):
 propagate_partial_root_examples_to_children(
     &mut child_mutation_paths,
     &partial_root_examples,
-    &partial_root_unavailable_reasons,  // NEW
     ctx,
 );
 ```
@@ -362,12 +426,11 @@ propagate_partial_root_examples_to_children(
 ### 4.5 Update `propagate_partial_root_examples_to_children`
 **File:** Same file, lines 707-721
 
-Add parameter:
+Update parameter:
 ```rust
 fn propagate_partial_root_examples_to_children(
     child_paths: &mut [MutationPathInternal],
-    partial_root_examples: &HashMap<Vec<VariantName>, Value>,
-    partial_root_unavailable_reasons: &HashMap<Vec<VariantName>, String>,  // NEW
+    partial_root_examples: &HashMap<Vec<VariantName>, PartialRootExample>,  // UPDATED
     ctx: &RecursionContext,
 )
 ```
@@ -377,7 +440,6 @@ Update call (line 719):
 support::populate_root_examples_from_partials(
     child_paths,
     partial_root_examples,
-    partial_root_unavailable_reasons,  // NEW
 );
 ```
 
@@ -387,21 +449,16 @@ support::populate_root_examples_from_partials(
 ```rust
 pub fn populate_root_examples_from_partials(
     paths: &mut [MutationPathInternal],
-    partials: &HashMap<Vec<VariantName>, Value>,
-    partial_reasons: &HashMap<Vec<VariantName>, String>,  // NEW
+    partials: &HashMap<Vec<VariantName>, PartialRootExample>,  // UPDATED
 ) {
     for path in paths {
         if let Some(enum_data) = &mut path.enum_path_data
             && !enum_data.variant_chain.is_empty()
         {
-            // Populate root_example
-            if let Some(root_example) = partials.get(&enum_data.variant_chain) {
-                enum_data.root_example = Some(root_example.clone());
-            }
-
-            // Populate root_example_unavailable_reason (NEW)
-            if let Some(reason) = partial_reasons.get(&enum_data.variant_chain) {
-                enum_data.root_example_unavailable_reason = Some(reason.clone());
+            // Populate both fields from the struct (single lookup!)
+            if let Some(data) = partials.get(&enum_data.variant_chain) {
+                enum_data.root_example = Some(data.example.clone());
+                enum_data.root_example_unavailable_reason = data.unavailable_reason.clone();
             }
         }
     }
@@ -490,6 +547,10 @@ MutationPathExternal {
 ## Phase 6: Initialization
 
 ### 6.1 Initialize new field in EnumPathData construction
+
+**IMPORTANT:** There are TWO construction sites that must be updated.
+
+#### Site 1: enum_path_builder.rs
 **File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
 
 Find `build_enum_root_path` (around line 679-687):
@@ -506,11 +567,45 @@ let enum_path_data = if ctx.variant_chain.is_empty() {
 };
 ```
 
+#### Site 2: path_builder.rs
+**File:** `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
+
+Find `build_mutation_path_internal` (around line 416-424):
+```rust
+let enum_path_data = if ctx.variant_chain.is_empty() {
+    None
+} else {
+    Some(EnumPathData {
+        variant_chain:       ctx.variant_chain.clone(),
+        applicable_variants: Vec::new(),
+        root_example:        None,
+        root_example_unavailable_reason: None,  // NEW
+    })
+};
+```
+
+**Rationale:** Both functions construct `EnumPathData` for nested enum scenarios. Site 1 handles enum-within-enum cases, Site 2 handles all other types nested within enums (structs, tuples, etc.). Both must initialize the new field or compilation will fail after Phase 1.1.
+
 ---
 
 ## Phase 7: Mutation Test Integration
 
-### 7.1 Update `prepare.py`
+### 7.0 Update `PathInfo` TypedDict
+**File:** `.claude/scripts/mutation_test/prepare.py:51-55`
+
+Add new field to TypedDict:
+```python
+class PathInfo(TypedDict, total=False):
+    """Path metadata including mutability and root examples."""
+
+    mutability: str
+    root_example: object
+    root_example_unavailable_reason: str  # NEW
+```
+
+**Rationale:** TypedDict must include all fields that will be accessed in the filtering code. Without this, basedpyright will report type errors when accessing the new field at line 609/611.
+
+### 7.1 Add path filtering logic
 **File:** `.claude/scripts/mutation_test/prepare.py`
 
 Add filtering after excluded types removal (after line 1022):
@@ -520,14 +615,18 @@ Add filtering after excluded types removal (after line 1022):
 print("Filtering paths with unavailable root examples...", file=sys.stderr)
 
 for type_name, type_data in list(data["type_guide"].items()):
-    mutation_paths = type_data.get("mutation_paths", {})
-    available_paths = {}
-    excluded_count = 0
+    mutation_paths: dict[str, MutationPathData] = type_data.get("mutation_paths", {})
+    available_paths: dict[str, MutationPathData] = {}
+    excluded_count: int = 0
 
     for path, path_data in mutation_paths.items():
-        path_info = path_data.get("path_info", {})
+        path_info: PathInfo = path_data.get("path_info", {})
 
         # Check if root_example is unavailable
+        # This filters ANY path with unconstructibility marker, including nested variant
+        # chains that inherit unconstructibility from their parent. This is conservative
+        # but correct: we exclude nested mutations even if they would work once game code
+        # sets the parent variant, because mutation tests rely on spawn/insert operations.
         if "root_example_unavailable_reason" in path_info:
             excluded_count += 1
             reason_preview = path_info["root_example_unavailable_reason"][:80]
@@ -598,10 +697,30 @@ for type_name, type_data in list(data["type_guide"].items()):
 
 5. **Verify WithMixed variant similarly** - paths like `.0.mutable_float` should have variant-specific root_example
 
-### 8.2 Mutation test validation
+### 8.2 Python type checking
+
+Verify TypedDict changes pass type checking:
+```bash
+~/.local/bin/basedpyright .claude/scripts/mutation_test/prepare.py
+```
+
+Expected: Zero errors, zero warnings. If you see `reportAny` errors about `PathInfo` or `root_example_unavailable_reason`, the TypedDict update in Phase 7.0 was not applied correctly.
+
+### 8.3 Mutation test validation
 
 1. Run `/create_mutation_test_json` to regenerate test plans
-2. Verify `prepare.py` logs show paths being excluded with reasons
+2. Run prepare.py and verify filtering output:
+   ```bash
+   python3 .claude/scripts/mutation_test/prepare.py
+   ```
+
+   Expected output should include:
+   ```
+   Filtering paths with unavailable root examples...
+     Excluding extras_plugin::TestMixedMutabilityEnum.value: Cannot construct Multiple variant via BRP...
+     Kept 3 paths, excluded 2 for extras_plugin::TestMixedMutabilityEnum
+   ```
+
 3. Verify TestMixedMutabilityEnum paths for Multiple/WithMixed are filtered
 4. Run batch 15 mutation tests:
    ```bash
@@ -609,7 +728,7 @@ for type_name, type_data in list(data["type_guide"].items()):
    ```
 5. Verify no failures related to variant construction
 
-### 8.3 Regression testing
+### 8.4 Regression testing
 
 Test with other enum types to ensure no regressions:
 - `Option` (Mutable variants)

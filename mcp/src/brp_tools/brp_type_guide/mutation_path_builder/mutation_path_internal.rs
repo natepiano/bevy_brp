@@ -15,6 +15,7 @@ use super::super::constants::REFLECT_TRAIT_DEFAULT;
 use super::super::type_kind::TypeKind;
 use super::new_types::MutationPath;
 use super::new_types::VariantName;
+use super::not_mutable_reason::NotMutableReason;
 use super::path_kind::PathKind;
 use super::types::EnumPathData;
 use super::types::Mutability;
@@ -40,7 +41,7 @@ pub struct MutationPathInternal {
     /// Whether this path can be mutated
     pub mutability:            Mutability,
     /// Reason if mutation is not possible
-    pub mutability_reason:     Option<Value>,
+    pub mutability_reason:     Option<NotMutableReason>,
     /// Consolidated enum-specific data (new approach)
     pub enum_path_data:        Option<EnumPathData>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
@@ -65,7 +66,10 @@ impl MutationPathInternal {
             target:    MutabilityIssueTarget::Path(self.mutation_path.clone()),
             type_name: self.type_name.clone(),
             status:    self.mutability,
-            reason:    self.mutability_reason.clone(),
+            reason:    self
+                .mutability_reason
+                .as_ref()
+                .and_then(Option::<Value>::from),
         }
     }
 
@@ -100,7 +104,10 @@ impl MutationPathInternal {
                 type_name: self.type_name,
                 type_kind,
                 mutability: self.mutability,
-                mutability_reason: self.mutability_reason,
+                mutability_reason: self
+                    .mutability_reason
+                    .as_ref()
+                    .and_then(Option::<Value>::from),
                 enum_instructions,
                 applicable_variants,
                 root_example,

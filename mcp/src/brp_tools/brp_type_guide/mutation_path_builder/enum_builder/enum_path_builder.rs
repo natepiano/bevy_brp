@@ -631,7 +631,7 @@ fn build_enum_mutability_reason(
     enum_mutability: Mutability,
     enum_examples: &[ExampleGroup],
     type_name: BrpTypeName,
-) -> Option<Value> {
+) -> Option<NotMutableReason> {
     match enum_mutability {
         Mutability::PartiallyMutable => {
             // Create `MutabilityIssue` for each variant using `from_variant_name`
@@ -651,17 +651,17 @@ fn build_enum_mutability_reason(
             // Use unified `NotMutableReason` with TypeKind-based message
             let message = "Some variants are mutable while others are not".to_string();
 
-            Option::<Value>::from(&NotMutableReason::from_partial_mutability(
+            Some(NotMutableReason::from_partial_mutability(
                 type_name,
                 mutability_issues,
                 message,
             ))
         }
         Mutability::NotMutable => {
-            // All variants are not mutable
-            Some(json!({
-                "message": "No variants in this enum can be mutated"
-            }))
+            // Use NoMutableChildren variant instead of raw JSON
+            Some(NotMutableReason::NoMutableChildren {
+                parent_type: type_name,
+            })
         }
         Mutability::Mutable => None,
     }
@@ -673,7 +673,7 @@ fn build_enum_root_path(
     enum_examples: Vec<ExampleGroup>,
     default_example: Value,
     enum_mutability: Mutability,
-    mutability_reason: Option<Value>,
+    mutability_reason: Option<NotMutableReason>,
 ) -> MutationPathInternal {
     // Generate `EnumPathData` only if we have a variant chain (nested in another enum)
     let enum_path_data = if ctx.variant_chain.is_empty() {
