@@ -136,16 +136,6 @@ When you execute `mcp__brp__world_query`, the post-tool hook will:
 <MatchErrorPattern>
 **When an operation fails, check the error message against these patterns IN THIS EXACT ORDER:**
 
-Does error contain `"JSON-RPC error: HTTP request failed"`?
-- ✓ YES → **UNRECOVERABLE** - BRP connection lost or app crashed
-- STOP IMMEDIATELY with error: "BRP connection failed - app may have crashed"
-- ✗ NO → Continue
-
-Does error match pattern `"Resource \`.*\` not present in the world"`?
-- ✓ YES → **UNRECOVERABLE** - Resource doesn't exist in the world
-- STOP IMMEDIATELY with error: "Resource not found - cannot test mutations on non-existent resource"
-- ✗ NO → Continue
-
 Does error contain `"invalid type: string"`?
 - ✓ YES → Execute <InvalidTypeStringError/> recovery
 - ✗ NO → Continue

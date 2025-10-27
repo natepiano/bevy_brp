@@ -683,6 +683,24 @@ fn spawn_sprite_and_ui_components(commands: &mut Commands) {
         })]),
         Name::new("BorderGradientTestEntity"),
     ));
+
+    // Entity with BackgroundGradient for testing mutations
+    commands.spawn((
+        Node {
+            width: Val::Px(200.0),
+            height: Val::Px(200.0),
+            ..default()
+        },
+        bevy::ui::BackgroundGradient(vec![bevy::ui::Gradient::Linear(bevy::ui::LinearGradient {
+            color_space: bevy::ui::InterpolationColorSpace::Srgba,
+            angle:       std::f32::consts::FRAC_PI_2,
+            stops:       vec![
+                bevy::ui::gradients::ColorStop::percent(Color::srgb(0.0, 1.0, 0.0), 0.0),
+                bevy::ui::gradients::ColorStop::percent(Color::srgb(1.0, 0.0, 1.0), 100.0),
+            ],
+        })]),
+        Name::new("BackgroundGradientTestEntity"),
+    ));
 }
 
 fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
@@ -1479,9 +1497,10 @@ fn spawn_button_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
         Button,
         Outline::new(Val::Px(2.0), Val::Px(0.0), Color::srgb(1.0, 1.0, 0.0)), /* Yellow outline
                                                                                * for testing */
-        FocusPolicy::Block, // For testing mutations
-        Interaction::None,  // For testing mutations
-        ZIndex(0),          // For testing mutations
+        FocusPolicy::Block,                          // For testing mutations
+        Interaction::None,                           // For testing mutations
+        ZIndex(0),                                   // For testing mutations
+        bevy::ui::RelativeCursorPosition::default(), // For testing mutations
         Name::new("ButtonTestEntity"),
     ));
 }

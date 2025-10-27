@@ -87,6 +87,10 @@
     {
       "type_name": "bevy_window::window::Window",
       "reason": "Excessively large component with many fields. Not representative of typical component mutation testing needs. The large number of mutation operations creates disproportionate test time without providing proportional value for validating BRP mutation functionality. If other mutations work, this will work too."
+    },
+    {
+      "type_name": "bevy_render::sync_world::RenderEntity",
+      "reason": "Main-world-to-render-world entity mapping. TupleStruct containing entity ID that references render world entity. Mutating existing entities crashes render systems (bevy_ui_render::extract_ui_camera_view, bevy_anti_alias::taa::extract_taa_settings) with 'Camera entity wasn't synced: EntityDoesNotExistError' when the referenced entity doesn't exist in render world. Can only safely spawn new entities with arbitrary values (no immediate crash), but mutations on existing entities with active render dependencies cause app crash on next render frame. Not suitable for mutation testing since we can't mutate existing entities, only newly spawned ones - this doesn't test general mutation behavior."
     }
   ]
 }

@@ -23,14 +23,6 @@ if [ ! -f "$FILEPATH" ]; then
     exit 1
 fi
 
-# Read excluded types list from JSON file
-EXCLUSION_FILE=".claude/config/mutation_test_excluded_types.json"
-EXCLUDED_TYPES=""
-if [ -f "$EXCLUSION_FILE" ]; then
-    # Extract type_name values from JSON and create pipe-separated regex
-    EXCLUDED_TYPES=$(jq -r '.excluded_types[].type_name' "$EXCLUSION_FILE" 2>/dev/null | tr '\n' '|' | sed 's/|$//')
-fi
-
 # If preserving and target file exists, read previous test results
 PREVIOUS_RESULTS="{}"
 if [[ "$MODE" != "init" && "$MODE" != "initialize" && -f "$TARGET_FILE" ]]; then
@@ -47,17 +39,13 @@ fi
 
 # Create the augmented JSON using jq
 # This preserves ALL fields from the original BRP response and adds test metadata
-jq --arg excluded "$EXCLUDED_TYPES" --argjson previous "$PREVIOUS_RESULTS" '
+jq --argjson previous "$PREVIOUS_RESULTS" '
 # Process the response, preserving everything and adding test metadata
 # type_guide is an object with type names as keys
 .type_guide |= with_entries(
     . as $entry |
-    # Skip excluded types entirely
-    if ($excluded != "" and $entry.key != null and ($entry.key | test($excluded))) then
-        empty
-    else
-        # Check if we have previous test results for this type
-        if $previous[$entry.key] then
+    # Check if we have previous test results for this type
+    if $previous[$entry.key] then
             # Preserve previous test results
             {
                 key: $entry.key,
@@ -85,7 +73,6 @@ jq --arg excluded "$EXCLUDED_TYPES" --argjson previous "$PREVIOUS_RESULTS" '
                 })
             }
         end
-    end
 )
 ' "$FILEPATH" > "$TARGET_FILE"
 

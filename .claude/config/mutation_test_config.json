@@ -1,5 +1,5 @@
 {
-  "ops_per_subagent": 15,
+  "ops_per_subagent": 5,
   "max_subagents": 10,
   "base_port": 30001,
   "stop_after_each_batch": true,

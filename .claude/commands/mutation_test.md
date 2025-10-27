@@ -1,6 +1,7 @@
 # Type Guide Comprehensive Validation Test
 
 <ExecutionFlow>
+**STEP 0:** read .claude/config/mutation_test_config.json and output a link to the mutation_test_log
 **STEP 1:** Execute <BatchProcessingLoop/> (DO NOT output results yet)
 **STEP 2:** Execute <FinalCleanup/> (ALWAYS - shutdown apps)
 **STEP 3:** Execute <TestResultOutput/> followed by <FinalDiagnosticOutput/> (ALWAYS - show summary and diagnostic table)

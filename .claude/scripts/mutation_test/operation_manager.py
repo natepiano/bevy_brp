@@ -44,6 +44,8 @@ def load_config() -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
 # Load configuration at module level
 CONFIG = load_config()
 MUTATION_TEST_LOG = cast(str, CONFIG["mutation_test_log"])
+MAX_SUBAGENTS = cast(int, CONFIG["max_subagents"])
+BASE_PORT = cast(int, CONFIG["base_port"])
 
 
 class QueryResultEntry(TypedDict):
@@ -210,13 +212,12 @@ def get_execution_params(operation: dict[str, Any]) -> dict[str, Any]:  # pyrigh
     """
     Extract execution parameters from operation, excluding tracking fields.
 
-    Keeps operation_id for hook identification.
+    Keeps operation_id and call_count for agent circuit breaker logic.
     """
     exclude_fields = {
         "operation_announced",
         "status",
         "error",
-        "call_count",
     }
 
     return {k: v for k, v in operation.items() if k not in exclude_fields}  # pyright: ignore[reportAny]
@@ -278,18 +279,18 @@ def validate_query_result(
         return "FAIL", f"Unexpected error validating query result: {e}"
 
 
-def parse_mcp_response(
+def parse_mcp_response_with_input(
     mcp_response_arg: str,
     tool_name: str,
     operation: dict[str, Any],  # pyright: ignore[reportExplicitAny]
     port: int,
     operation_id: int,
-) -> tuple[str, str | None]:
+) -> tuple[str, str | None, dict[str, object]]:
     """
-    Parse MCP response and extract final status/error.
+    Parse MCP response and extract final status/error and tool_input.
 
     Returns:
-        Tuple of (final_status, final_error)
+        Tuple of (final_status, final_error, tool_input)
     """
     try:
         # Read from stdin if '-'
@@ -299,6 +300,7 @@ def parse_mcp_response(
             mcp_data_raw = json.loads(mcp_response_arg)  # pyright: ignore[reportAny]
 
         mcp_data = cast(HookEvent, mcp_data_raw)
+        tool_input = mcp_data.get("tool_input", {})
 
         # Extract response JSON from tool_response[0].text
         response_text = mcp_data["tool_response"][0]["text"]
@@ -325,7 +327,7 @@ def parse_mcp_response(
             query_result_json = json.dumps(result)
             status, error = validate_query_result(query_result_json, operation, status, error)
 
-        return status, error
+        return (status, error, tool_input)
 
     except Exception as e:
         # Subagent mistakenly called --action update for previous operation
@@ -338,7 +340,8 @@ def parse_mcp_response(
                 f.flush()
         except Exception:
             pass
-        return "FAIL", f"Failed to parse MCP response: {e}"
+        empty_dict: dict[str, object] = {}
+        return ("FAIL", f"Failed to parse MCP response: {e}", empty_dict)
 
 
 def action_get_next(port: int) -> None:
@@ -351,18 +354,176 @@ def action_get_next(port: int) -> None:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     if operation is None:
-        # All operations complete
+        # All operations complete for this subagent
         try:
             with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
                 _ = f.write(f"[{timestamp}] port={port} ** FINISHED **\n")
+                f.flush()  # Flush so we can read this line immediately
+
+                # Check if all other subagents are also complete
+                # Parse log to find which ports actually participated and are still active
+                all_complete = True
+                active_ports: set[int] = set()
+
+                try:
+                    with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
+                        for line in log_f:
+                            # Find ports that provided operations (participated in the test)
+                            if " provided to subagent" in line:
+                                try:
+                                    for part in line.split():
+                                        if part.startswith("port="):
+                                            found_port = int(part.split("=")[1])
+                                            active_ports.add(found_port)
+                                            break
+                                except Exception:
+                                    pass
+
+                            # Remove ports that finished or terminated
+                            if " ** FINISHED **" in line or " ** TERMINATED **" in line:
+                                try:
+                                    for part in line.split():
+                                        if part.startswith("port="):
+                                            finished_port = int(part.split("=")[1])
+                                            active_ports.discard(finished_port)
+                                            break
+                                except Exception:
+                                    pass
+                except Exception:
+                    # If we can't read the log, assume not complete
+                    all_complete = False
+
+                # Check remaining active ports for pending operations
+                if all_complete and active_ports:
+                    for check_port in active_ports:
+                        try:
+                            check_file_path = get_plan_file_path(check_port)
+                            check_test_plan = load_test_plan(check_file_path)
+                            check_operation, _ = find_next_operation(check_test_plan)
+
+                            if check_operation is not None:
+                                # Found a subagent with remaining work
+                                all_complete = False
+                                break
+                        except Exception:
+                            # If we can't read the plan, assume still working
+                            all_complete = False
+                            break
+
+                if all_complete:
+                    # Calculate statistics and duration from log file
+                    duration_str = ""
+                    port_stats: dict[int, dict[str, int]] = {}
+
+                    try:
+                        with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
+                            for line in log_f:
+                                if line.startswith("# Started:"):
+                                    start_time_str = line.split("Started:", 1)[1].strip()
+                                    start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
+                                    end_time = datetime.now()
+                                    duration = end_time - start_time
+                                    total_seconds = int(duration.total_seconds())
+                                    hours = total_seconds // 3600
+                                    minutes = (total_seconds % 3600) // 60
+                                    seconds = total_seconds % 60
+                                    duration_str = f" (Duration: {hours}h {minutes}m {seconds}s)"
+
+                                # Parse status lines: [timestamp] port=30001 op_id=X status=SUCCESS tool=...
+                                if " status=" in line and " port=" in line:
+                                    try:
+                                        parts = line.split()
+                                        port_part = None
+                                        status_part = None
+
+                                        for part in parts:
+                                            if part.startswith("port="):
+                                                port_part = int(part.split("=")[1])
+                                            elif part.startswith("status="):
+                                                status_part = part.split("=")[1]
+
+                                        if port_part and status_part:
+                                            if port_part not in port_stats:
+                                                port_stats[port_part] = {"SUCCESS": 0, "FAIL": 0}
+
+                                            if status_part == "SUCCESS":
+                                                port_stats[port_part]["SUCCESS"] += 1
+                                            elif status_part == "FAIL":
+                                                port_stats[port_part]["FAIL"] += 1
+                                    except Exception:
+                                        # Skip malformed lines
+                                        pass
+                    except Exception:
+                        # If we can't read the log, just omit statistics
+                        pass
+
+                    # Write summary statistics for each subagent
+                    total_success = 0
+                    total_fail = 0
+                    if port_stats:
+                        _ = f.write(f"[{timestamp}] Subagent Summary:\n")
+                        for subagent_port in sorted(port_stats.keys()):
+                            success_count = port_stats[subagent_port]["SUCCESS"]
+                            fail_count = port_stats[subagent_port]["FAIL"]
+                            _ = f.write(f"[{timestamp}]   port={subagent_port}: SUCCESS={success_count}, FAIL={fail_count}\n")
+                            total_success += success_count
+                            total_fail += fail_count
+
+                    _ = f.write(f"[{timestamp}] ** MUTATION TEST COMPLETE **{duration_str}\n")
+
+                    # Output overall test results
+                    if total_fail == 0 and total_success > 0:
+                        _ = f.write(f"[{timestamp}] ALL TESTS PASSED\n")
+                    elif total_success > 0 or total_fail > 0:
+                        _ = f.write(f"[{timestamp}] Tests Passed: {total_success}, Tests Failed: {total_fail}\n")
         except Exception:
             # Silently ignore debug log write failures
             pass
         print(json.dumps({"status": "finished"}, indent=2))
         return
 
-    # Log that we're providing this operation to the subagent
+    # Check termination conditions before providing operation to subagent
     operation_id = cast(int, operation.get("operation_id"))
+    call_count = cast(int, operation.get("call_count", 0))
+    error = cast(str, operation.get("error", ""))
+
+    # Termination check 1: Retry limit exceeded
+    if call_count >= 4:
+        try:
+            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                _ = f.write(
+                    f"[{timestamp}] port={port} ** TERMINATED ** Retry limit exceeded at op_id={operation_id}\n"
+                )
+        except Exception:
+            pass
+        print(json.dumps({"status": "finished"}, indent=2))
+        return
+
+    # Termination check 2: BRP connection failed
+    if "JSON-RPC error: HTTP request failed" in error:
+        try:
+            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                _ = f.write(
+                    f"[{timestamp}] port={port} ** TERMINATED ** BRP connection failed at op_id={operation_id}\n"
+                )
+        except Exception:
+            pass
+        print(json.dumps({"status": "finished"}, indent=2))
+        return
+
+    # Termination check 3: Resource/component not found
+    if "not present in the world" in error:
+        try:
+            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                _ = f.write(
+                    f"[{timestamp}] port={port} ** TERMINATED ** Resource/component not found at op_id={operation_id}\n"
+                )
+        except Exception:
+            pass
+        print(json.dumps({"status": "finished"}, indent=2))
+        return
+
+    # Operation is viable - log and provide to subagent
     try:
         with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
             _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} provided to subagent\n")
@@ -400,8 +561,10 @@ def action_update(
         # Don't update status, exit silently
         sys.exit(0)
 
-    # Parse MCP response and get final status/error
-    status, error = parse_mcp_response(mcp_response_arg, tool_name, operation, port, operation_id)
+    # Parse MCP response once and extract both status/error and tool_input
+    status, error, tool_input = parse_mcp_response_with_input(
+        mcp_response_arg, tool_name, operation, port, operation_id
+    )
 
     # Update operation with final status
     operation["status"] = status
@@ -444,6 +607,9 @@ def action_update(
             )
             if status == "FAIL" and error:
                 _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} error={error}\n")
+                # Log the actual parameters that were passed to the failing operation
+                params_json = json.dumps(tool_input, separators=(",", ":"))
+                _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} params={params_json}\n")
             f.flush()
     except Exception:
         # Silently ignore debug log write failures

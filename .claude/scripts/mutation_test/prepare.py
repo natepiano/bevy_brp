@@ -29,7 +29,7 @@ from typing import Any, TypedDict, cast
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
 
-from config import (  # pyright: ignore[reportImplicitRelativeImport]  # noqa: E402
+from config import (  # noqa: E402
     AllTypesData,
     MutationTestConfig,
     TypeData,
@@ -70,6 +70,19 @@ class SubagentAssignment(TypedDict):
     task_description: str  # Pre-formatted task description
     test_plan_file: str  # Path to generated test plan file
     type_descriptions: list[str]  # List of type descriptions for debug log
+
+
+class ExcludedTypeEntry(TypedDict):
+    """Entry in the excluded types configuration file."""
+
+    type_name: str
+    reason: str
+
+
+class ExcludedTypesConfig(TypedDict):
+    """Configuration file for excluded types."""
+
+    excluded_types: list[ExcludedTypeEntry]
 
 
 class AllAssignmentsOutput(TypedDict):
@@ -994,7 +1007,35 @@ if "type_guide" not in data:
     print("Error: Expected dict with 'type_guide' at root", file=sys.stderr)
     sys.exit(1)
 
-# STEP 1: Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
+# Remove excluded types before renumbering
+excluded_types_file = Path(".claude/config/mutation_test_excluded_types.json")
+if excluded_types_file.exists():
+    try:
+        with open(excluded_types_file, "r") as f:
+            excluded_config_raw = json.load(f)  # pyright: ignore[reportAny]
+            excluded_config = cast(ExcludedTypesConfig, excluded_config_raw)
+            excluded_type_names = {
+                entry["type_name"] for entry in excluded_config["excluded_types"]
+            }
+
+            # Filter out excluded types from type_guide
+            original_count = len(data["type_guide"])
+            data["type_guide"] = {
+                type_name: type_data
+                for type_name, type_data in data["type_guide"].items()
+                if type_name not in excluded_type_names
+            }
+            excluded_count = original_count - len(data["type_guide"])
+
+            if excluded_count > 0:
+                print(
+                    f"Excluded {excluded_count} types from mutation testing",
+                    file=sys.stderr,
+                )
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Warning: Failed to load excluded types: {e}", file=sys.stderr)
+
+# Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
 data = renumber_batches(data, batch_capacity, max_subagents, ops_per_subagent)
 
 # Write updated data back to file
@@ -1017,7 +1058,7 @@ batch_num = batch_result
 
 type_guide: dict[str, TypeDataComplete] = data["type_guide"]
 
-# STEP 2: Get types for the specified batch
+# Get types for the specified batch
 batch_types: list[TypeDataComplete] = []
 for type_name, type_info in type_guide.items():
     if type_info.get("batch_number") == batch_num:
@@ -1032,7 +1073,7 @@ if not batch_types:
     sys.exit(1)
 
 
-# STEP 3: Build complete type data with operations for distribution
+# Build complete type data with operations for distribution
 # New approach: Track subagent boundaries for splitting
 class TypeWithOps(TypedDict):
     type_data: TypeDataComplete
@@ -1067,7 +1108,7 @@ for type_item in batch_types:
         )
     )
 
-# STEP 4: Distribute types across subagents with boundary-only splitting
+# Distribute types across subagents with boundary-only splitting
 # Track which subagent we're on and how many operations are filled
 assignments: list[SubagentAssignment] = []
 current_subagent_num = 1
@@ -1305,7 +1346,7 @@ untested_count = len(
 )
 remaining_types = untested_count - unique_types_count
 
-# STEP 5: Backup and initialize debug log
+# Backup and initialize debug log
 DEBUG_LOG = get_mutation_test_log(mutation_config)
 
 # Backup existing log if it exists
@@ -1524,17 +1565,7 @@ print(f"  Batch: {batch_num}", file=sys.stderr)
 print(f"  Ports: {ports_str}", file=sys.stderr)
 print(f"  Types count: {len(assignments)}", file=sys.stderr)
 
-# STEP 6: Open debug log in Zed
-zed_cli = "/Applications/Zed.app/Contents/MacOS/cli"
-if os.path.exists(zed_cli):
-    try:
-        _ = subprocess.Popen(
-            [zed_cli, DEBUG_LOG], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-    except OSError:
-        pass  # Ignore if Zed fails to open
-
-# STEP 7: Return all assignments with test plan files generated
+# Return all assignments with test plan files generated
 # Calculate unique types that actually made it into assignments
 output_assigned_type_names: set[str] = set()
 for assignment in assignments:
