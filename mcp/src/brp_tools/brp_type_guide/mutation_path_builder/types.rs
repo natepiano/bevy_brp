@@ -173,27 +173,30 @@ impl MutabilityIssue {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
-    pub path_kind:           PathKind,
+    pub path_kind:                       PathKind,
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
-    pub type_name:           BrpTypeName,
+    pub type_name:                       BrpTypeName,
     /// The kind of type this field contains (Struct, Enum, Array, etc.)
-    pub type_kind:           TypeKind,
+    pub type_kind:                       TypeKind,
     /// Status of whether this path can be mutated
-    pub mutability:          Mutability,
+    pub mutability:                      Mutability,
     /// Reason if mutation is not possible
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutability_reason:   Option<Value>,
+    pub mutability_reason:               Option<Value>,
     /// Instructions for setting variants required for this mutation path (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_instructions:   Option<String>,
+    pub enum_instructions:               Option<String>,
     /// Example: `["BottomEnum::VariantB"]`
     /// `VariantName` serializes as a string in JSON output
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub applicable_variants: Option<Vec<VariantName>>,
+    pub applicable_variants:             Option<Vec<VariantName>>,
     /// Only present for paths nested in enums - built using assembly during ascent
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub root_example:        Option<Value>,
+    pub root_example:                    Option<Value>,
+    /// Explanation for why root_example cannot be used to construct the required variant
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub root_example_unavailable_reason: Option<String>,
 }
 
 /// Example group for enum variants
@@ -223,6 +226,10 @@ pub struct EnumPathData {
 
     /// Complete root example for this specific variant chain
     pub root_example: Option<Value>,
+
+    /// Explanation for why root_example cannot be used to construct this variant via BRP.
+    /// Only populated for PartiallyMutable/NotMutable variants.
+    pub root_example_unavailable_reason: Option<String>,
 }
 
 /// Information about a mutation path that we serialize to our response

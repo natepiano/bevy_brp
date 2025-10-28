@@ -95,7 +95,8 @@ impl MutationPathInternal {
         let path_example = self.resolve_path_example_mut(has_default_for_root);
 
         // Extract enum-specific metadata only for mutable/partially mutable paths
-        let (enum_instructions, applicable_variants, root_example) = self.resolve_enum_data_mut();
+        let (enum_instructions, applicable_variants, root_example, root_example_unavailable_reason) =
+            self.resolve_enum_data_mut();
 
         MutationPathExternal {
             description,
@@ -111,6 +112,7 @@ impl MutationPathInternal {
                 enum_instructions,
                 applicable_variants,
                 root_example,
+                root_example_unavailable_reason,
             },
             path_example,
         }
@@ -180,22 +182,28 @@ impl MutationPathInternal {
 
     /// Extract enum-specific metadata for paths nested within enums
     ///
-    /// Returns `(instructions, applicable_variants, root_example)` only for mutable/partially
-    /// mutable paths. Returns `(None, None, None)` for `NotMutable` paths to avoid showing
-    /// contradictory mutation instructions for paths that cannot be mutated.
+    /// Returns `(instructions, applicable_variants, root_example, root_example_unavailable_reason)`
+    /// only for mutable/partially mutable paths. Returns `(None, None, None, None)` for
+    /// `NotMutable` paths to avoid showing contradictory mutation instructions for paths that
+    /// cannot be mutated.
     fn resolve_enum_data_mut(
         &mut self,
-    ) -> (Option<String>, Option<Vec<VariantName>>, Option<Value>) {
+    ) -> (
+        Option<String>,
+        Option<Vec<VariantName>>,
+        Option<Value>,
+        Option<String>,
+    ) {
         if !matches!(
             self.mutability,
             Mutability::Mutable | Mutability::PartiallyMutable
         ) {
-            return (None, None, None);
+            return (None, None, None, None);
         }
 
         self.enum_path_data
             .take()
-            .map_or((None, None, None), |enum_data| {
+            .map_or((None, None, None, None), |enum_data| {
                 let instructions = Some(format!(
                     "First, set the root mutation path to 'root_example', then you can mutate the '{}' path. See 'applicable_variants' for which variants support this field.",
                     &self.mutation_path
@@ -207,7 +215,12 @@ impl MutationPathInternal {
                     Some(enum_data.applicable_variants)
                 };
 
-                (instructions, variants, enum_data.root_example)
+                (
+                    instructions,
+                    variants,
+                    enum_data.root_example,
+                    enum_data.root_example_unavailable_reason,
+                )
             })
     }
 }

@@ -54,6 +54,7 @@ class PathInfo(TypedDict, total=False):
 
     mutability: str
     root_example: object
+    root_example_unavailable_reason: str
 
 
 class MutationPathData(TypedDict, total=False):
@@ -1034,6 +1035,61 @@ if excluded_types_file.exists():
                 )
     except (json.JSONDecodeError, IOError) as e:
         print(f"Warning: Failed to load excluded types: {e}", file=sys.stderr)
+
+# Filter out paths with unavailable root examples from mutation testing
+print("Filtering paths with unavailable root examples...", file=sys.stderr)
+
+for type_name, type_data in list(data["type_guide"].items()):
+    mutation_paths_raw = type_data.get("mutation_paths")
+    if mutation_paths_raw is None:
+        continue
+
+    mutation_paths = cast(dict[str, MutationPathData], mutation_paths_raw)
+    paths_to_keep: list[str] = []
+    excluded_count_val: int = 0
+
+    for path, path_data in mutation_paths.items():
+        path_info_raw = path_data.get("path_info")
+        if path_info_raw is None:
+            paths_to_keep.append(path)
+            continue
+
+        # Check if root_example is unavailable
+        # NOTE: Use 'in' operator to check for key existence because path_info is a TypedDict
+        # with total=False (all fields optional). The field is only present for unconstructible
+        # variants. Using path_info.get() or direct access would fail for missing keys.
+        # This filters ANY path with unconstructibility marker, including nested variant
+        # chains that inherit unconstructibility from their parent. This is conservative
+        # but correct: we exclude nested mutations even if they would work once game code
+        # sets the parent variant, because mutation tests rely on spawn/insert operations.
+        if "root_example_unavailable_reason" in path_info_raw:
+            excluded_count_val += 1
+            reason_str = path_info_raw["root_example_unavailable_reason"]
+            reason_preview = str(reason_str)[:80]
+            print(
+                f"  Excluding {type_name}{path}: {reason_preview}...",
+                file=sys.stderr
+            )
+        else:
+            paths_to_keep.append(path)
+
+    # Update type's mutation paths
+    if paths_to_keep:
+        # Reconstruct dict with only kept paths
+        available_dict: dict[str, object] = {k: cast(object, mutation_paths[k]) for k in paths_to_keep}
+        type_data["mutation_paths"] = available_dict
+        if excluded_count_val > 0:
+            print(
+                f"  Kept {len(paths_to_keep)} paths, excluded {excluded_count_val} for {type_name}",
+                file=sys.stderr
+            )
+    else:
+        # No testable paths remain - remove entire type
+        print(
+            f"  Removing {type_name} - no constructible paths remain",
+            file=sys.stderr
+        )
+        del data["type_guide"][type_name]
 
 # Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
 data = renumber_batches(data, batch_capacity, max_subagents, ops_per_subagent)

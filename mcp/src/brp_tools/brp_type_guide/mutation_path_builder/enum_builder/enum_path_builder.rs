@@ -76,8 +76,21 @@ impl SortedVariantGroups for HashMap<VariantSignature, Vec<VariantName>> {
 type ProcessChildrenResult = (
     Vec<ExampleGroup>,
     Vec<MutationPathInternal>,
-    HashMap<Vec<VariantName>, Value>,
+    HashMap<Vec<VariantName>, PartialRootExample>,
 );
+
+/// Data for a partial root example including construction feasibility
+///
+/// Stores both the JSON example for a variant chain and an optional explanation
+/// for why that variant cannot be constructed via BRP spawn/insert operations.
+#[derive(Debug, Clone)]
+pub struct PartialRootExample {
+    /// Complete root example for this variant chain
+    pub example:            Value,
+    /// Explanation for why this variant cannot be constructed via BRP.
+    /// Only populated for PartiallyMutable/NotMutable variants.
+    pub unavailable_reason: Option<String>,
+}
 
 /// Process enum type directly, bypassing `PathBuilder` trait
 ///
@@ -551,7 +564,7 @@ fn build_partial_root_examples(
     enum_examples: &[ExampleGroup],
     child_mutation_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
-) -> HashMap<Vec<VariantName>, Value> {
+) -> HashMap<Vec<VariantName>, PartialRootExample> {
     let mut partial_root_examples = HashMap::new();
 
     // For each variant at THIS level in deterministic order
@@ -561,7 +574,6 @@ fn build_partial_root_examples(
             let mut this_variant_chain = ctx.variant_chain.clone();
             this_variant_chain.push(variant_name.clone());
 
-            // Get base example for this variant - use mutable variant if this one is null
             let spawn_example = enum_examples
                 .iter()
                 .find(|ex| ex.applicable_variants.contains(variant_name))
@@ -569,26 +581,83 @@ fn build_partial_root_examples(
                 .or_else(|| select_preferred_example(enum_examples))
                 .unwrap_or(json!(null));
 
+            // Find this variant's mutability status
+            // DEFENSIVE: This lookup should always succeed because enum_examples is built by
+            // iterating over variant_groups (see process_signature_groups line 408-449), so
+            // every variant in variant_groups is guaranteed to exist in enum_examples.
+            // The unwrap_or fallback handles theoretical future refactoring errors by treating
+            // unknown variants as NotMutable (safest choice - prevents construction attempts).
+            let variant_mutability = enum_examples
+                .iter()
+                .find(|ex| ex.applicable_variants.contains(variant_name))
+                .map(|ex| ex.mutability)
+                .unwrap_or(Mutability::NotMutable);
+
+            // Determine if this variant can be constructed via BRP
+            let unavailable_reason = analyze_variant_constructibility(
+                variant_name,
+                signature,
+                variant_mutability,
+                child_mutation_paths,
+                ctx,
+            )
+            .err();
+
             // Find all deeper nested chains that extend this variant
-            // Example: if this_variant_chain = ["Handle::Weak"], we might find:
-            //   ["Handle::Weak", "AssetId::Uuid"], ["Handle::Weak", "AssetId::Index"]
             let nested_enum_chains =
                 collect_child_chains_to_wrap(child_mutation_paths, &this_variant_chain, ctx);
 
-            // Build root examples for each nested enum chain (there may be none)
+            // Build root examples for each nested enum chain
             for nested_chain in &nested_enum_chains {
-                let root_example = build_variant_example_for_chain(
+                let example = build_variant_example_for_chain(
                     signature,
                     variant_name,
                     child_mutation_paths,
                     nested_chain,
                     ctx,
                 );
-                partial_root_examples.insert(nested_chain.clone(), root_example);
+
+                // Determine unavailability reason using hierarchical selection
+                // RATIONALE: We need to capture the ACTUAL blocking issue:
+                // 1. If parent is unconstructible → parent's reason is the blocker (child is
+                //    unreachable)
+                // 2. If parent IS constructible → check if nested chain has its OWN unavailability
+                //    reason
+                //
+                // Example: Parent "Multiple" variant has Arc fields (unconstructible), nested
+                // chains inherit this reason because you can't reach them via
+                // spawn/insert.
+                //
+                // Counter-example: Parent "Good" variant is Mutable (constructible), but contains a
+                // child enum with an unconstructible variant (e.g., Arc fields). The nested chain
+                // needs the CHILD's unavailability reason, not None from the constructible parent.
+                let nested_chain_reason = if unavailable_reason.is_some() {
+                    // Parent is unconstructible → child is unreachable, use parent's reason
+                    unavailable_reason.clone()
+                } else {
+                    // Parent is constructible → check if THIS nested chain is unconstructible
+                    // The child enum was already processed recursively and its enum_path_data
+                    // was populated with root_example_unavailable_reason. Look it up.
+                    child_mutation_paths.iter().find_map(|child| {
+                        child
+                            .enum_path_data
+                            .as_ref()
+                            .filter(|data| data.variant_chain == *nested_chain)
+                            .and_then(|data| data.root_example_unavailable_reason.clone())
+                    })
+                };
+
+                partial_root_examples.insert(
+                    nested_chain.clone(),
+                    PartialRootExample {
+                        example,
+                        unavailable_reason: nested_chain_reason,
+                    },
+                );
             }
 
-            // Create entry for this variant's chain itself
-            let root_example = if nested_enum_chains.is_empty() {
+            // Build root example for this variant's chain itself
+            let example = if nested_enum_chains.is_empty() {
                 // Leaf variant (no nested enums) - use spawn example directly
                 spawn_example
             } else {
@@ -601,7 +670,14 @@ fn build_partial_root_examples(
                     ctx,
                 )
             };
-            partial_root_examples.insert(this_variant_chain, root_example);
+
+            partial_root_examples.insert(
+                this_variant_chain,
+                PartialRootExample {
+                    example,
+                    unavailable_reason,
+                },
+            );
         }
     }
 
@@ -624,6 +700,112 @@ fn build_variant_example_for_chain(
     let children = support::collect_children_for_chain(&child_refs, ctx, Some(variant_chain));
 
     build_variant_example(signature, variant_name, &children, ctx.type_name())
+}
+
+/// Analyze if a variant can be constructed via BRP and build detailed reason if not
+///
+/// Returns `Ok(())` if variant is constructible (Mutable variants, Unit variants)
+/// Returns `Err(reason)` if variant cannot be constructed, with human-readable explanation
+///
+/// For PartiallyMutable variants, collects actual reasons from NotMutable child fields.
+/// For NotMutable variants, indicates all fields are problematic.
+fn analyze_variant_constructibility(
+    variant_name: &VariantName,
+    signature: &VariantSignature,
+    mutability: Mutability,
+    child_paths: &[MutationPathInternal],
+    ctx: &RecursionContext,
+) -> std::result::Result<(), String> {
+    // Unit variants are always constructible (no fields to serialize)
+    if matches!(signature, VariantSignature::Unit) {
+        return Ok(());
+    }
+
+    // Fully Mutable variants are constructible
+    if matches!(mutability, Mutability::Mutable) {
+        return Ok(());
+    }
+
+    // NotMutable variants - all fields are problematic
+    if matches!(mutability, Mutability::NotMutable) {
+        let message = format!(
+            "Cannot construct {} variant via BRP - all fields are non-mutable. \
+            This variant cannot be mutated via BRP.",
+            variant_name.short_name()
+        );
+        return Err(message);
+    }
+
+    // PartiallyMutable variants - collect problematic field reasons
+    // A variant is unconstructible if it has:
+    // 1. NotMutable fields (cannot provide values)
+    // 2. PartiallyMutable fields (contain NotMutable descendants, cannot provide complete values)
+    let problematic_fields: Vec<String> = child_paths
+        .iter()
+        .filter(|p| p.is_direct_child_at_depth(*ctx.depth))
+        // Filter to only paths belonging to the current variant
+        .filter(|p| {
+            p.enum_path_data.as_ref().map_or(false, |data| {
+                !data.variant_chain.is_empty() && &data.variant_chain[0] == variant_name
+            })
+        })
+        .filter(|p| {
+            matches!(
+                p.mutability,
+                Mutability::NotMutable | Mutability::PartiallyMutable
+            )
+        })
+        .map(|p| {
+            let type_name = p.type_name.short_name();
+
+            // Generate descriptive label based on PathKind and variant signature
+            let field_label = match &p.path_kind {
+                PathKind::StructField { field_name, .. } => field_name.to_string(),
+                PathKind::IndexedElement { index, .. } => {
+                    // For tuple variants, specify "tuple element"
+                    if matches!(signature, VariantSignature::Tuple(_)) {
+                        format!("tuple element {index}")
+                    } else {
+                        format!("element {index}")
+                    }
+                }
+                PathKind::ArrayElement { index, .. } => format!("array element {index}"),
+                PathKind::RootValue { .. } => "root".to_string(),
+            };
+
+            // For PartiallyMutable, explain that it contains non-mutable descendants
+            // For NotMutable, show the actual reason
+            let reason_detail = if matches!(p.mutability, Mutability::PartiallyMutable) {
+                format!(
+                    "contains non-mutable descendants (see '{}' mutation_paths for details)",
+                    type_name
+                )
+            } else {
+                p.mutability_reason
+                    .as_ref()
+                    .map(|reason| format!("{reason}"))
+                    .unwrap_or_else(|| "unknown reason".to_string())
+            };
+
+            format!("{} ({}): {}", field_label, type_name, reason_detail)
+        })
+        .collect();
+
+    if problematic_fields.is_empty() {
+        // Shouldn't happen for PartiallyMutable, but handle gracefully
+        return Ok(());
+    }
+
+    let field_list = problematic_fields.join("; ");
+    let message = format!(
+        "Cannot construct {} variant via BRP due to incomplete field data: {}. \
+        This variant's mutable fields can only be mutated if the entity is \
+        already set to this variant by your code.",
+        variant_name.short_name(),
+        field_list
+    );
+
+    Err(message)
 }
 
 /// Build mutation status reason for enums based on variant mutability
@@ -680,9 +862,10 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathData {
-            variant_chain:       ctx.variant_chain.clone(),
-            applicable_variants: Vec::new(),
-            root_example:        None,
+            variant_chain:                   ctx.variant_chain.clone(),
+            applicable_variants:             Vec::new(),
+            root_example:                    None,
+            root_example_unavailable_reason: None,
         })
     };
 
@@ -706,13 +889,19 @@ fn build_enum_root_path(
 /// Propagate partial root examples to child paths at the root level
 fn propagate_partial_root_examples_to_children(
     child_paths: &mut [MutationPathInternal],
-    partial_root_examples: &HashMap<Vec<VariantName>, Value>,
+    partial_root_examples: &HashMap<Vec<VariantName>, PartialRootExample>,
     ctx: &RecursionContext,
 ) {
     if ctx.variant_chain.is_empty() {
+        // Convert from HashMap<..., PartialRootExample> to HashMap<..., Value> for storage
+        let partial_root_values: HashMap<Vec<VariantName>, Value> = partial_root_examples
+            .iter()
+            .map(|(k, v)| (k.clone(), v.example.clone()))
+            .collect();
+
         // Propagate to children (overwriting struct-level propagations)
         for child in child_paths.iter_mut() {
-            child.partial_root_examples = Some(partial_root_examples.clone());
+            child.partial_root_examples = Some(partial_root_values.clone());
         }
 
         // Use shared helper function to populate root examples
@@ -726,7 +915,7 @@ fn create_enum_mutation_paths(
     enum_examples: Vec<ExampleGroup>,
     default_example: Value,
     mut child_mutation_paths: Vec<MutationPathInternal>,
-    partial_root_examples: HashMap<Vec<VariantName>, Value>,
+    partial_root_examples: HashMap<Vec<VariantName>, PartialRootExample>,
 ) -> Vec<MutationPathInternal> {
     // Determine enum mutation status by aggregating the mutability of all examples
     // and then using the shared (with path_builder) aggregate_mutability to determine
@@ -750,7 +939,12 @@ fn create_enum_mutation_paths(
     );
 
     // Store partial_root_examples built during ascent in process_children
-    root_mutation_path.partial_root_examples = Some(partial_root_examples.clone());
+    // Convert from HashMap<..., PartialRootExample> to HashMap<..., Value>
+    let partial_root_values: HashMap<Vec<VariantName>, Value> = partial_root_examples
+        .iter()
+        .map(|(k, v)| (k.clone(), v.example.clone()))
+        .collect();
+    root_mutation_path.partial_root_examples = Some(partial_root_values.clone());
 
     // Propagate partial root examples to children and populate root examples
     propagate_partial_root_examples_to_children(
