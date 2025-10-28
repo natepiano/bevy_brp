@@ -195,7 +195,9 @@
       "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)",
       "SlashCommand(/get_path_baseline extras_plugin::TestVariantChainEnum)",
       "WebFetch(domain:zed.dev)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test/operation_manager.py --action get-next)"
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test/operation_manager.py --action get-next)",
+      "SlashCommand(/create_mutation_test_json)",
+      "SlashCommand(/get_guide_baseline:*)"
     ],
     "deny": [
       "Bash(sed:*)",
