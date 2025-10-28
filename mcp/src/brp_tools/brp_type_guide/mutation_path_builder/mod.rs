@@ -4,6 +4,7 @@ mod mutation_path_internal;
 mod new_types;
 mod not_mutable_reason;
 mod path_builder;
+mod path_example;
 mod path_kind;
 mod recursion_context;
 mod support;

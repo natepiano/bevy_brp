@@ -40,6 +40,7 @@ use super::super::NotMutableReason;
 use super::super::mutation_path_internal::MutationPathInternal;
 use super::super::new_types::VariantName;
 use super::super::path_builder;
+use super::super::path_example::PathExample;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
@@ -49,7 +50,6 @@ use super::super::types::ExampleGroup;
 use super::super::types::Mutability;
 use super::super::types::MutabilityIssue;
 use super::super::types::PathAction;
-use super::super::types::PathExample;
 use super::option_classification::apply_option_transformation;
 use super::variant_kind::VariantKind;
 use super::variant_signature::VariantSignature;
@@ -86,7 +86,7 @@ type ProcessChildrenResult = (
 #[derive(Debug, Clone)]
 pub struct PartialRootExample {
     /// Complete root example for this variant chain
-    pub example:            Value,
+    pub example: Value,
     /// Explanation for why this variant cannot be constructed via BRP.
     /// Only populated for PartiallyMutable/NotMutable variants.
     pub unavailable_reason: Option<String>,
@@ -494,8 +494,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -862,9 +862,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathData {
-            variant_chain:                   ctx.variant_chain.clone(),
-            applicable_variants:             Vec::new(),
-            root_example:                    None,
+            variant_chain: ctx.variant_chain.clone(),
+            applicable_variants: Vec::new(),
+            root_example: None,
             root_example_unavailable_reason: None,
         })
     };
@@ -873,7 +873,7 @@ fn build_enum_root_path(
     MutationPathInternal {
         mutation_path: ctx.mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups:     enum_examples,
+            groups: enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),

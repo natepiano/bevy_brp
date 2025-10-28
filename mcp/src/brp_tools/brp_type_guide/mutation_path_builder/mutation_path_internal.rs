@@ -16,13 +16,13 @@ use super::super::type_kind::TypeKind;
 use super::new_types::MutationPath;
 use super::new_types::VariantName;
 use super::not_mutable_reason::NotMutableReason;
+use super::path_example::PathExample;
 use super::path_kind::PathKind;
 use super::types::EnumPathData;
 use super::types::Mutability;
 use super::types::MutabilityIssue;
 use super::types::MutabilityIssueTarget;
 use super::types::MutationPathExternal;
-use super::types::PathExample;
 use super::types::PathInfo;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -31,22 +31,22 @@ use crate::json_schema::SchemaField;
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path - now type-safe!
-    pub example:               PathExample,
+    pub example: PathExample,
     /// Path for mutation, e.g., ".translation.x"
-    pub mutation_path:         MutationPath,
+    pub mutation_path: MutationPath,
     /// Type information for this path
-    pub type_name:             BrpTypeName,
+    pub type_name: BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind:             PathKind,
+    pub path_kind: PathKind,
     /// Whether this path can be mutated
-    pub mutability:            Mutability,
+    pub mutability: Mutability,
     /// Reason if mutation is not possible
-    pub mutability_reason:     Option<NotMutableReason>,
+    pub mutability_reason: Option<NotMutableReason>,
     /// Consolidated enum-specific data (new approach)
-    pub enum_path_data:        Option<EnumPathData>,
+    pub enum_path_data: Option<EnumPathData>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
-    pub depth:                 usize,
+    pub depth: usize,
     /// Maps variant chains to complete root examples for reaching nested enum paths.
     /// Populated during enum processing for paths where `matches!(example, PathExample::EnumRoot {
     /// .. })`. Built by `build_partial_root_examples()` in `enum_path_builder.rs` during
@@ -63,10 +63,10 @@ impl MutationPathInternal {
     /// Create a `MutabilityIssue` from this mutation path (for non-enum types)
     pub fn to_mutability_issue(&self) -> MutabilityIssue {
         MutabilityIssue {
-            target:    MutabilityIssueTarget::Path(self.mutation_path.clone()),
+            target: MutabilityIssueTarget::Path(self.mutation_path.clone()),
             type_name: self.type_name.clone(),
-            status:    self.mutability,
-            reason:    self
+            status: self.mutability,
+            reason: self
                 .mutability_reason
                 .as_ref()
                 .and_then(Option::<Value>::from),

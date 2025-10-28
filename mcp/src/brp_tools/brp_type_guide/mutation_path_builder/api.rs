@@ -13,10 +13,10 @@ use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
 use super::enum_builder::select_preferred_example;
 use super::path_builder::recurse_mutation_paths;
+use super::path_example::PathExample;
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
 use super::types::MutationPathExternal;
-use super::types::PathExample;
 use crate::error::Error;
 use crate::error::Result;
 

@@ -33,6 +33,7 @@ use super::enum_builder;
 use super::mutation_path_internal::MutationPathInternal;
 use super::new_types::VariantName;
 use super::not_mutable_reason::NotMutableReason;
+use super::path_example::PathExample;
 use super::path_kind::MutationPathDescriptor;
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
@@ -49,18 +50,17 @@ use super::types::EnumPathData;
 use super::types::Mutability;
 use super::types::MutabilityIssue;
 use super::types::PathAction;
-use super::types::PathExample;
 use crate::error::Error;
 use crate::error::Result;
 
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: TypeKindBuilder> {
@@ -417,9 +417,9 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathData {
-                variant_chain:                   ctx.variant_chain.clone(),
-                applicable_variants:             Vec::new(),
-                root_example:                    None,
+                variant_chain: ctx.variant_chain.clone(),
+                applicable_variants: Vec::new(),
+                root_example: None,
                 root_example_unavailable_reason: None,
             })
         };
@@ -519,7 +519,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                     (
                         k.clone(),
                         PartialRootExample {
-                            example:            v.clone(),
+                            example: v.clone(),
                             unavailable_reason: None,
                         },
                     )
