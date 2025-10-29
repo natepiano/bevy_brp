@@ -78,19 +78,8 @@ impl SortedVariantGroups for HashMap<VariantSignature, Vec<VariantName>> {
 type ProcessChildrenResult = (
     Vec<ExampleGroup>,
     Vec<MutationPathInternal>,
-    HashMap<Vec<VariantName>, PartialRootExample>,
     HashMap<Vec<VariantName>, RootExample>,
 );
-
-/// Data for a partial root example including construction feasibility
-///
-/// Stores both the JSON example for a variant chain and an optional explanation
-/// for why that variant cannot be constructed via BRP spawn/insert operations.
-#[derive(Debug, Clone)]
-pub struct PartialRootExample {
-    /// Complete root example for this variant chain
-    pub example: Value,
-}
 
 /// Process enum type directly, bypassing `PathBuilder` trait
 ///
@@ -111,7 +100,7 @@ pub fn process_enum(
     let variants_grouped_by_signature = group_variants_by_signature(ctx)?;
 
     // Process enum variants, grouped by signature
-    let (enum_examples, child_mutation_paths, partial_root_examples, new_root_examples) =
+    let (enum_examples, child_mutation_paths, new_root_examples) =
         process_signature_groups(&variants_grouped_by_signature, ctx)?;
 
     // Select default example - check knowledge first, then fall back to enum examples
@@ -136,7 +125,6 @@ pub fn process_enum(
         enum_examples,
         default_example,
         child_mutation_paths,
-        partial_root_examples,
         new_root_examples,
     ))
 }
@@ -467,15 +455,10 @@ fn process_signature_groups(
     }
 
     // Build partial roots using assembly during ascent
-    let (partial_root_examples, new_root_examples) =
+    let new_root_examples =
         build_partial_root_examples(variant_groups, &examples, &child_mutation_paths, ctx);
 
-    Ok((
-        examples,
-        child_mutation_paths,
-        partial_root_examples,
-        new_root_examples,
-    ))
+    Ok((examples, child_mutation_paths, new_root_examples))
 }
 
 /// Create `PathKind` objects for a signature
@@ -500,8 +483,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    type_name:   type_name.clone(),
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -544,11 +527,7 @@ fn build_partial_root_examples(
     enum_examples: &[ExampleGroup],
     child_mutation_paths: &[MutationPathInternal],
     ctx: &RecursionContext,
-) -> (
-    HashMap<Vec<VariantName>, PartialRootExample>,
-    HashMap<Vec<VariantName>, RootExample>,
-) {
-    let mut partial_root_examples = HashMap::new();
+) -> HashMap<Vec<VariantName>, RootExample> {
     let mut new_partial_root_examples = HashMap::new();
 
     // For each variant at THIS level in deterministic order
@@ -640,13 +619,6 @@ fn build_partial_root_examples(
                     })
                 };
 
-                partial_root_examples.insert(
-                    nested_chain.clone(),
-                    PartialRootExample {
-                        example: example.clone(),
-                    },
-                );
-
                 let new_root_example = match nested_chain_reason {
                     Some(reason) => RootExample::Unavailable {
                         root_example_unavailable_reason: reason,
@@ -673,13 +645,6 @@ fn build_partial_root_examples(
                 )
             };
 
-            partial_root_examples.insert(
-                this_variant_chain.clone(),
-                PartialRootExample {
-                    example: example.clone(),
-                },
-            );
-
             let new_root_example = match unavailable_reason {
                 Some(reason) => RootExample::Unavailable {
                     root_example_unavailable_reason: reason,
@@ -692,7 +657,7 @@ fn build_partial_root_examples(
         }
     }
 
-    (partial_root_examples, new_partial_root_examples)
+    new_partial_root_examples
 }
 
 /// Eliminate duplication in `build_partial_root_examples` by centralizing child collection and
@@ -873,9 +838,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathInfo {
-            variant_chain:       ctx.variant_chain.clone(),
+            variant_chain: ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example:        None,
+            root_example: None,
         })
     };
 
@@ -883,7 +848,7 @@ fn build_enum_root_path(
     MutationPathInternal {
         mutation_path: ctx.mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups:     enum_examples,
+            groups: enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),
@@ -892,7 +857,6 @@ fn build_enum_root_path(
         mutability_reason,
         enum_path_info: enum_path_data,
         depth: *ctx.depth,
-        partial_root_examples: None,
         new_partial_root_examples: None,
     }
 }
@@ -900,22 +864,10 @@ fn build_enum_root_path(
 /// Propagate partial root examples to child paths at the root level
 fn propagate_partial_root_examples_to_children(
     child_paths: &mut [MutationPathInternal],
-    partial_root_examples: &HashMap<Vec<VariantName>, PartialRootExample>,
     new_root_examples: &HashMap<Vec<VariantName>, RootExample>,
     ctx: &RecursionContext,
 ) {
     if ctx.variant_chain.is_empty() {
-        // Convert from HashMap<..., PartialRootExample> to HashMap<..., Value> for storage
-        let partial_root_values: HashMap<Vec<VariantName>, Value> = partial_root_examples
-            .iter()
-            .map(|(k, v)| (k.clone(), v.example.clone()))
-            .collect();
-
-        // Propagate to children (overwriting struct-level propagations)
-        for child in child_paths.iter_mut() {
-            child.partial_root_examples = Some(partial_root_values.clone());
-        }
-
         // Propagate NEW HashMap to children
         for child in child_paths.iter_mut() {
             child.new_partial_root_examples = Some(new_root_examples.clone());
@@ -932,7 +884,6 @@ fn create_enum_mutation_paths(
     enum_examples: Vec<ExampleGroup>,
     default_example: Value,
     mut child_mutation_paths: Vec<MutationPathInternal>,
-    partial_root_examples: HashMap<Vec<VariantName>, PartialRootExample>,
     new_root_examples: HashMap<Vec<VariantName>, RootExample>,
 ) -> Vec<MutationPathInternal> {
     // Determine enum mutation status by aggregating the mutability of all examples
@@ -957,21 +908,10 @@ fn create_enum_mutation_paths(
     );
 
     // Store partial_root_examples built during ascent in process_children
-    // Convert from HashMap<..., PartialRootExample> to HashMap<..., Value>
-    let partial_root_values: HashMap<Vec<VariantName>, Value> = partial_root_examples
-        .iter()
-        .map(|(k, v)| (k.clone(), v.example.clone()))
-        .collect();
-    root_mutation_path.partial_root_examples = Some(partial_root_values.clone());
     root_mutation_path.new_partial_root_examples = Some(new_root_examples.clone());
 
     // Propagate partial root examples to children and populate root examples
-    propagate_partial_root_examples_to_children(
-        &mut child_mutation_paths,
-        &partial_root_examples,
-        &new_root_examples,
-        ctx,
-    );
+    propagate_partial_root_examples_to_children(&mut child_mutation_paths, &new_root_examples, ctx);
 
     // Return root path plus all child paths (like `MutationPathBuilder` does)
     let mut result = vec![root_mutation_path];
