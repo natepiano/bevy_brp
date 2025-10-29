@@ -7,7 +7,7 @@ use super::support::LaunchConfig;
 /// Handler for launching Bevy apps
 pub type LaunchBevyApp = GenericLaunchHandler<LaunchConfig<App>, LaunchBevyBinaryParams>;
 
-/// Create a new `LaunchBevyApp` handler instance
+/// Create a `LaunchBevyApp` handler instance
 pub const fn create_launch_bevy_app_handler() -> LaunchBevyApp {
     GenericLaunchHandler::new(DEFAULT_PROFILE)
 }

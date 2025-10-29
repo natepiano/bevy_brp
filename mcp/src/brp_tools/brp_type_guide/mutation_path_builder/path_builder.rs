@@ -436,7 +436,12 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
     }
 
-    /// Assemble `partial_root_examples` from children using bottom-up approach
+    /// Build `partial_root_examples` from children on ascending from recursion
+    ///
+    /// This method propagates partial root examples needed for enum variants to
+    /// ensure the root example is set so that this particular variant chain can be mutated
+    /// `path_builder` propagates these for all the non-enum path builders generically
+    /// a similar thing is done within `enum_path_builder` with necessarily more complex logic
     ///
     /// For each variant chain present in any child:
     /// 1. Collect each child's value for that chain
@@ -485,7 +490,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             // Assemble from filtered children
             let root_example = builder.assemble_from_children(ctx, examples_for_chain)?;
 
-            // NEW system: Check if any child has Unavailable for this chain
+            // Check if any child has Unavailable for this chain
             let mut unavailable_reason = None;
             for child in child_paths {
                 if let Some(child_partial_root_examples) = &child.partial_root_examples {

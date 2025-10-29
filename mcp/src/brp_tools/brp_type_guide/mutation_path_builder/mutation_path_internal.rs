@@ -50,7 +50,7 @@ pub struct MutationPathInternal {
     pub mutability: Mutability,
     /// Reason if mutation is not possible
     pub mutability_reason: Option<NotMutableReason>,
-    /// Consolidated enum-specific data (new approach)
+    /// Consolidated enum-specific data
     pub enum_path_info: Option<EnumPathInfo>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly

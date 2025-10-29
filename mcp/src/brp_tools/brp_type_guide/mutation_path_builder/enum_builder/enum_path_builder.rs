@@ -868,7 +868,7 @@ fn propagate_partial_root_examples_to_children(
     ctx: &RecursionContext,
 ) {
     if ctx.variant_chain.is_empty() {
-        // Propagate NEW HashMap to children
+        // Propagate HashMap to children
         for child in child_paths.iter_mut() {
             child.partial_root_examples = Some(partial_root_examples.clone());
         }
