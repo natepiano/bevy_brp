@@ -56,11 +56,11 @@ use crate::error::Result;
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: TypeKindBuilder> {
@@ -419,9 +419,9 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathInfo {
-                variant_chain:       ctx.variant_chain.clone(),
+                variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example:        None,
+                root_example: None,
             })
         };
 
@@ -536,26 +536,21 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         partial_root_examples: Option<HashMap<Vec<VariantName>, Value>>,
         new_partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
     ) -> Vec<MutationPathInternal> {
-        if let Some(ref partials) = partial_root_examples {
-            // Propagate assembled partial_root_examples to all children
-            for child in &mut paths_to_expose {
-                child.partial_root_examples = Some(partials.clone());
-            }
-
-            // NEW: Propagate assembled new_partial_root_examples to all children
-            if let Some(ref new_partials) = new_partial_root_examples {
+        if let Some(ref new_partials) = new_partial_root_examples {
+            // Propagate assembled partial_root_examples to all children (OLD system for compatibility)
+            if let Some(ref partials) = partial_root_examples {
                 for child in &mut paths_to_expose {
-                    child.new_partial_root_examples = Some(new_partials.clone());
+                    child.partial_root_examples = Some(partials.clone());
                 }
             }
 
-            // Populate root_example from partial_root_examples for children with enum_path_data
-            support::populate_root_examples_from_partials(
-                &mut paths_to_expose,
-                new_partial_root_examples
-                    .as_ref()
-                    .unwrap_or(&HashMap::new()),
-            );
+            // Propagate assembled new_partial_root_examples to all children
+            for child in &mut paths_to_expose {
+                child.new_partial_root_examples = Some(new_partials.clone());
+            }
+
+            // Populate root_example from new_partial_root_examples for children with enum_path_data
+            support::populate_root_examples_from_partials(&mut paths_to_expose, new_partials);
         }
 
         let mutation_path_internal = Self::build_mutation_path_internal(
