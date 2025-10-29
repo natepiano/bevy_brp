@@ -46,7 +46,7 @@ use super::type_kind_builders::StructMutationBuilder;
 use super::type_kind_builders::TupleMutationBuilder;
 use super::type_kind_builders::TypeKindBuilder;
 use super::type_kind_builders::ValueMutationBuilder;
-use super::types::EnumPathData;
+use super::types::EnumPathInfo;
 use super::types::Mutability;
 use super::types::MutabilityIssue;
 use super::types::PathAction;
@@ -419,7 +419,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         let enum_path_data = if ctx.variant_chain.is_empty() {
             None
         } else {
-            Some(EnumPathData {
+            Some(EnumPathInfo {
                 variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
                 old_root_example: None,

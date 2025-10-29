@@ -131,7 +131,7 @@ pub struct ExampleGroup {
 /// Added to a `MutationPathInternal` whenever that path is nested in an enum
 /// i.e. `!ctx.variant_chain.is_empty()` - whenever we have a variant chain
 #[derive(Debug, Clone)]
-pub struct EnumPathData {
+pub struct EnumPathInfo {
     /// Chain of enum variants from root to this path
     pub variant_chain: Vec<VariantName>,
 

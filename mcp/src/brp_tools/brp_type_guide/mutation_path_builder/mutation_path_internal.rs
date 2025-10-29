@@ -18,7 +18,7 @@ use super::new_types::VariantName;
 use super::not_mutable_reason::NotMutableReason;
 use super::path_example::PathExample;
 use super::path_kind::PathKind;
-use super::types::EnumPathData;
+use super::types::EnumPathInfo;
 use super::types::Mutability;
 use super::types::MutabilityIssue;
 use super::types::MutabilityIssueTarget;
@@ -44,7 +44,7 @@ pub struct MutationPathInternal {
     /// Reason if mutation is not possible
     pub mutability_reason: Option<NotMutableReason>,
     /// Consolidated enum-specific data (new approach)
-    pub enum_path_data: Option<EnumPathData>,
+    pub enum_path_data: Option<EnumPathInfo>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
     pub depth: usize,

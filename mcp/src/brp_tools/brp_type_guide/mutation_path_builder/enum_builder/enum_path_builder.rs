@@ -45,7 +45,7 @@ use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::support;
-use super::super::types::EnumPathData;
+use super::super::types::EnumPathInfo;
 use super::super::types::ExampleGroup;
 use super::super::types::Mutability;
 use super::super::types::MutabilityIssue;
@@ -898,7 +898,7 @@ fn build_enum_root_path(
     let enum_path_data = if ctx.variant_chain.is_empty() {
         None
     } else {
-        Some(EnumPathData {
+        Some(EnumPathInfo {
             variant_chain: ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
             old_root_example: None,
