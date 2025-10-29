@@ -197,7 +197,8 @@
       "WebFetch(domain:zed.dev)",
       "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test/operation_manager.py --action get-next)",
       "SlashCommand(/create_mutation_test_json)",
-      "SlashCommand(/get_guide_baseline:*)"
+      "SlashCommand(/get_guide_baseline:*)",
+      "Bash(instance\" (removed \"new\"), \"Propagate HashMap to children\" (removed \"NEW\"),\n  \"Consolidated enum-specific data\" (removed \"new approach\")\n- Improve comment clarity in path_builder.rs by expanding brief documentation to\n  explain the intent and scope of partial root examples assembly\n- Minor formatting adjustments in struct_builder.rs for consistency\n\nThese changes improve code maintainability by removing outdated terminology that\nno longer reflects the system design and making comments more direct and accurate.\nEOF\n)\")"
     ],
     "deny": [
       "Bash(sed:*)",
