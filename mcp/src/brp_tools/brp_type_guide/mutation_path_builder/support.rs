@@ -172,11 +172,6 @@ pub fn populate_root_examples_from_partials(
         if let Some(enum_data) = &mut path.enum_path_data
             && !enum_data.variant_chain.is_empty()
         {
-            // Populate both fields from the struct (single lookup!)
-            if let Some(data) = partials.get(&enum_data.variant_chain) {
-                enum_data.old_root_example = Some(data.example.clone());
-            }
-
             // NEW system: Populate new field
             if let Some(root_example) = new_partials.get(&enum_data.variant_chain) {
                 enum_data.root_example = Some(root_example.clone());

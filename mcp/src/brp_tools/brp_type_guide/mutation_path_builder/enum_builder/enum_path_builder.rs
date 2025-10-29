@@ -896,7 +896,6 @@ fn build_enum_root_path(
         Some(EnumPathInfo {
             variant_chain: ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            old_root_example: None,
             root_example: None,
         })
     };
