@@ -263,7 +263,7 @@ fn process_signature_path(
     // Track which variants make these child paths valid
     // Only populate for DIRECT children (not grandchildren nested deeper)
     for child_path in &mut child_paths {
-        if let Some(enum_data) = &mut child_path.enum_path_data {
+        if let Some(enum_data) = &mut child_path.enum_path_info {
             // Check if this path is a direct child of the current enum level
             // Direct children have variant_chain.len() == ctx.variant_chain.len() + 1
             if enum_data.variant_chain.len() == ctx.variant_chain.len() + 1 {
@@ -649,7 +649,7 @@ fn build_partial_root_examples(
                     // was populated with root_example_unavailable_reason. Look it up.
                     child_mutation_paths.iter().find_map(|child| {
                         child
-                            .enum_path_data
+                            .enum_path_info
                             .as_ref()
                             .filter(|data| data.variant_chain == *nested_chain)
                             .and_then(|data| match &data.root_example {
@@ -777,7 +777,7 @@ fn analyze_variant_constructibility(
         .filter(|p| p.is_direct_child_at_depth(*ctx.depth))
         // Filter to only paths belonging to the current variant
         .filter(|p| {
-            p.enum_path_data.as_ref().map_or(false, |data| {
+            p.enum_path_info.as_ref().map_or(false, |data| {
                 !data.variant_chain.is_empty() && &data.variant_chain[0] == variant_name
             })
         })
@@ -911,7 +911,7 @@ fn build_enum_root_path(
         path_kind: ctx.path_kind.clone(),
         mutability: enum_mutability,
         mutability_reason,
-        enum_path_data,
+        enum_path_info: enum_path_data,
         depth: *ctx.depth,
         partial_root_examples: None,
         new_partial_root_examples: None,

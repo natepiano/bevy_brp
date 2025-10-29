@@ -28,6 +28,12 @@ use super::types::RootExample;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
+type ResolvedEnumPathInfo = (
+    Option<String>,
+    Option<Vec<VariantName>>,
+    Option<RootExample>,
+);
+
 /// Mutation path information (internal representation)
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
@@ -44,7 +50,7 @@ pub struct MutationPathInternal {
     /// Reason if mutation is not possible
     pub mutability_reason:         Option<NotMutableReason>,
     /// Consolidated enum-specific data (new approach)
-    pub enum_path_data:            Option<EnumPathInfo>,
+    pub enum_path_info:            Option<EnumPathInfo>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
     pub depth:                     usize,
@@ -94,10 +100,10 @@ impl MutationPathInternal {
         let description = self.resolve_description(&type_kind, has_default_for_root);
 
         // Resolve the appropriate path example based on mutability status
-        let path_example = self.resolve_path_example_mut(has_default_for_root);
+        let path_example = self.resolve_path_example(has_default_for_root);
 
         // Extract enum-specific metadata only for mutable/partially mutable paths
-        let (enum_instructions, applicable_variants, root_example) = self.resolve_enum_data_mut();
+        let (enum_instructions, applicable_variants, root_example) = self.resolve_enum_path_info();
 
         MutationPathExternal {
             description,
@@ -160,7 +166,7 @@ impl MutationPathInternal {
     /// - `NotMutable`: Returns null (no example provided)
     /// - `PartiallyMutable`: Returns enum examples or empty object if Default trait exists
     /// - Mutable: Returns the original example (moved out of self)
-    fn resolve_path_example_mut(&mut self, has_default_for_root: bool) -> PathExample {
+    fn resolve_path_example(&mut self, has_default_for_root: bool) -> PathExample {
         match self.mutability {
             Mutability::NotMutable => PathExample::Simple(Value::Null),
             Mutability::PartiallyMutable => match &self.example {
@@ -186,13 +192,7 @@ impl MutationPathInternal {
     /// only for mutable/partially mutable paths. Returns `(None, None, None, None)` for
     /// `NotMutable` paths to avoid showing contradictory mutation instructions for paths that
     /// cannot be mutated.
-    fn resolve_enum_data_mut(
-        &mut self,
-    ) -> (
-        Option<String>,
-        Option<Vec<VariantName>>,
-        Option<RootExample>,
-    ) {
+    fn resolve_enum_path_info(&mut self) -> ResolvedEnumPathInfo {
         if !matches!(
             self.mutability,
             Mutability::Mutable | Mutability::PartiallyMutable
@@ -200,7 +200,7 @@ impl MutationPathInternal {
             return (None, None, None);
         }
 
-        self.enum_path_data
+        self.enum_path_info
             .take()
             .map_or((None, None,   None), |enum_data| {
                 let instructions = match &enum_data.root_example {

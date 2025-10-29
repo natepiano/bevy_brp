@@ -46,7 +46,7 @@ pub fn aggregate_mutability(statuses: &[Mutability]) -> Mutability {
 ///
 /// Use to filter children when building variant-specific examples.
 fn is_variant_chain_compatible(child: &MutationPathInternal, child_chain: &[VariantName]) -> bool {
-    if let Some(child_enum_data) = &child.enum_path_data {
+    if let Some(child_enum_data) = &child.enum_path_info {
         // Child's variant_chain cannot be longer than target chain
         if child_enum_data.variant_chain.len() > child_chain.len() {
             return false;
@@ -169,7 +169,7 @@ pub fn populate_root_examples_from_partials(
     new_partials: &HashMap<Vec<VariantName>, RootExample>,
 ) {
     for path in paths {
-        if let Some(enum_data) = &mut path.enum_path_data
+        if let Some(enum_data) = &mut path.enum_path_info
             && !enum_data.variant_chain.is_empty()
         {
             // NEW system: Populate new field

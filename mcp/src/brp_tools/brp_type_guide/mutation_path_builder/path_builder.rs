@@ -432,7 +432,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             path_kind: ctx.path_kind.clone(),
             mutability: status,
             mutability_reason,
-            enum_path_data,
+            enum_path_info: enum_path_data,
             depth: *ctx.depth,
             partial_root_examples,
             new_partial_root_examples,
