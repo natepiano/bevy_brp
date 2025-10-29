@@ -58,6 +58,7 @@ class PathInfo(TypedDict, total=False):
 
 
 class MutationPathData(TypedDict, total=False):
+    path: str
     description: str
     example: object
     examples: list[object]
@@ -531,7 +532,10 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
         )
 
     # Step 3: Mutations
-    for path, path_info in mutation_paths.items():
+    for _key, path_info in mutation_paths.items():
+        # Extract path from the path_info value (transitioning away from dict key)
+        path = cast(str, cast(dict[str, object], path_info)["path"])
+
         # Skip non-mutable paths
         # Note: path_info dict contains a "path_info" key that holds PathInfo
         path_metadata = cast(dict[str, object], path_info).get("path_info")
@@ -1048,7 +1052,10 @@ for type_name, type_data in list(data["type_guide"].items()):
     paths_to_keep: list[str] = []
     excluded_count_val: int = 0
 
-    for path, path_data in mutation_paths.items():
+    for _key, path_data in mutation_paths.items():
+        # Extract path from the path_data value (transitioning away from dict key)
+        path = cast(str, cast(dict[str, object], cast(object, path_data))["path"])
+
         path_info_raw = path_data.get("path_info")
         if path_info_raw is None:
             paths_to_keep.append(path)

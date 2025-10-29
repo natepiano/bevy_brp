@@ -106,6 +106,7 @@ impl MutationPathInternal {
         let (enum_instructions, applicable_variants, root_example) = self.resolve_enum_path_info();
 
         MutationPathExternal {
+            path: self.mutation_path.clone(),
             description,
             path_info: PathInfo {
                 path_kind: self.path_kind,

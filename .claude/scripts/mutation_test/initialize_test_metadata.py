@@ -64,8 +64,12 @@ def should_auto_pass(type_guide: TypeGuide) -> bool:
         return True
 
     # Only root path → check if testable
-    if len(mutation_paths) == 1 and "" in mutation_paths:
-        root_path: dict[str, Any] = mutation_paths[""]  # pyright: ignore[reportExplicitAny]
+    if len(mutation_paths) == 1:
+        # Get the single path entry (should be root with path="")
+        root_path: dict[str, Any] = next(iter(mutation_paths.values()))  # pyright: ignore[reportExplicitAny]
+        # Verify it's actually the root path
+        if root_path.get("path") != "":
+            return False  # Not a single root path, needs testing
 
         # Check mutability
         path_info: dict[str, Any] = root_path.get("path_info", {})  # pyright: ignore[reportExplicitAny]

@@ -146,6 +146,8 @@ pub struct EnumPathInfo {
 /// Information about a mutation path that we serialize to our response
 #[derive(Debug, Clone, Serialize)]
 pub struct MutationPathExternal {
+    /// The mutation path (e.g., ".translation.x" or "" for root)
+    pub path:         MutationPath,
     /// Human-readable description of what this path mutates
     pub description:  String,
     /// Combined path navigation and type metadata
