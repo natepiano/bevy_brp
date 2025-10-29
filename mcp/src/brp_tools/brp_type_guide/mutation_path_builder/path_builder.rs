@@ -423,7 +423,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
                 old_root_example: None,
-                root_example_unavailable_reason: None,
+                old_root_example_unavailable_reason: None,
                 root_example: None,
             })
         };

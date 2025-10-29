@@ -655,7 +655,12 @@ fn build_partial_root_examples(
                             .enum_path_data
                             .as_ref()
                             .filter(|data| data.variant_chain == *nested_chain)
-                            .and_then(|data| data.root_example_unavailable_reason.clone())
+                            .and_then(|data| match &data.root_example {
+                                Some(RootExample::Unavailable {
+                                    root_example_unavailable_reason,
+                                }) => Some(root_example_unavailable_reason.clone()),
+                                _ => None,
+                            })
                     })
                 };
 
@@ -897,7 +902,7 @@ fn build_enum_root_path(
             variant_chain: ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
             old_root_example: None,
-            root_example_unavailable_reason: None,
+            old_root_example_unavailable_reason: None,
             root_example: None,
         })
     };

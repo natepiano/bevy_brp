@@ -231,7 +231,7 @@ impl MutationPathInternal {
                     instructions,
                     variants,
                     enum_data.old_root_example,
-                    enum_data.root_example_unavailable_reason,
+                    enum_data.old_root_example_unavailable_reason,
                     enum_data.root_example,
                 )
             })

@@ -143,7 +143,7 @@ pub struct EnumPathData {
 
     /// Explanation for why root_example cannot be used to construct this variant via BRP.
     /// Only populated for PartiallyMutable/NotMutable variants.
-    pub root_example_unavailable_reason: Option<String>,
+    pub old_root_example_unavailable_reason: Option<String>,
 
     /// new root example
     /// will replace current root_example and root-root_example_unavailable_reason with an enum
