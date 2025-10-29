@@ -208,7 +208,7 @@ impl MutationPathInternal {
                         "First, set the root mutation path to 'root_example', then you can mutate the '{}' path. See 'applicable_variants' for which variants support this field.",
                         &self.mutation_path
                     )),
-                    _ => None,  // Unavailable or NotPresent - no instructions
+                    _ => None,  // Unavailable - no instructions
                 };
 
                 let variants = if enum_data.applicable_variants.is_empty() {

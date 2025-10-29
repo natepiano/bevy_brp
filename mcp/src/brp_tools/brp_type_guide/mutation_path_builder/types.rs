@@ -79,7 +79,10 @@ impl MutabilityIssue {
     }
 }
 
-/// Path information combining navigation and type metadata
+/// User facing path information
+///
+/// This is serialized into the output json, and as such, it intentionally does not
+/// match up with the types used to construct it
 #[derive(Debug, Clone, Serialize)]
 pub struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
