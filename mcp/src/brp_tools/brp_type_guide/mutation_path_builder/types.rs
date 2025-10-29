@@ -57,10 +57,10 @@ impl std::fmt::Display for MutabilityIssueTarget {
 /// Summary of a mutation issue for diagnostic reporting
 #[derive(Debug, Clone)]
 pub struct MutabilityIssue {
-    pub target:    MutabilityIssueTarget,
+    pub target: MutabilityIssueTarget,
     pub type_name: BrpTypeName,
-    pub status:    Mutability,
-    pub reason:    Option<Value>,
+    pub status: Mutability,
+    pub reason: Option<Value>,
 }
 
 impl MutabilityIssue {
@@ -86,28 +86,28 @@ impl MutabilityIssue {
 #[derive(Debug, Clone, Serialize)]
 pub struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
-    pub path_kind:           PathKind,
+    pub path_kind: PathKind,
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
-    pub type_name:           BrpTypeName,
+    pub type_name: BrpTypeName,
     /// The kind of type this field contains (Struct, Enum, Array, etc.)
-    pub type_kind:           TypeKind,
+    pub type_kind: TypeKind,
     /// Status of whether this path can be mutated
-    pub mutability:          Mutability,
+    pub mutability: Mutability,
     /// Reason if mutation is not possible
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutability_reason:   Option<Value>,
-    /// Instructions for setting variants required for this mutation path (optional)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_instructions:   Option<String>,
+    pub mutability_reason: Option<Value>,
     /// Example: `["BottomEnum::VariantB"]`
     /// `VariantName` serializes as a string in JSON output
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applicable_variants: Option<Vec<VariantName>>,
+    /// Instructions for setting variants required for this mutation path (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enum_instructions: Option<String>,
     /// either the `root_example` or the `root_example_unavailable_reason`
     /// depending on which is available on this path
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub root_example:        Option<RootExample>,
+    pub root_example: Option<RootExample>,
 }
 
 /// Example group for enum variants
@@ -117,11 +117,11 @@ pub struct ExampleGroup {
     pub applicable_variants: Vec<VariantName>,
     /// Example value for this group (omitted for `NotMutable` variants)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example:             Option<Value>,
+    pub example: Option<Value>,
     /// The variant signature (Unit, Tuple, or Struct)
-    pub signature:           VariantSignature,
+    pub signature: VariantSignature,
     /// Mutation status for this signature/variant group
-    pub mutability:          Mutability,
+    pub mutability: Mutability,
 }
 
 /// Consolidated enum-specific data for mutation paths
@@ -147,9 +147,9 @@ pub struct EnumPathInfo {
 #[derive(Debug, Clone, Serialize)]
 pub struct MutationPathExternal {
     /// Human-readable description of what this path mutates
-    pub description:  String,
+    pub description: String,
     /// Combined path navigation and type metadata
-    pub path_info:    PathInfo,
+    pub path_info: PathInfo,
     /// Example data (either single value or enum variant groups)
     #[serde(flatten)]
     pub path_example: PathExample,
