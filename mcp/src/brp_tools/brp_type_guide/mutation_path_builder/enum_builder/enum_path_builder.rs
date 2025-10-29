@@ -943,11 +943,7 @@ fn propagate_partial_root_examples_to_children(
         }
 
         // Use shared helper function to populate root examples
-        support::populate_root_examples_from_partials(
-            child_paths,
-            partial_root_examples,
-            new_root_examples,
-        );
+        support::populate_root_examples_from_partials(child_paths, new_root_examples);
     }
 }
 

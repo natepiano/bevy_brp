@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use serde_json::Value;
 
-use super::enum_builder::PartialRootExample;
 use super::mutation_path_internal::MutationPathInternal;
 use super::new_types::VariantName;
 use super::path_kind::MutationPathDescriptor;
@@ -165,7 +164,6 @@ pub fn assemble_struct_from_children(
 /// This is shared between `builder.rs` and `enum_path_builder.rs` to avoid code duplication.
 pub fn populate_root_examples_from_partials(
     paths: &mut [MutationPathInternal],
-    partials: &HashMap<Vec<VariantName>, PartialRootExample>,
     new_partials: &HashMap<Vec<VariantName>, RootExample>,
 ) {
     for path in paths {

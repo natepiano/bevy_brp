@@ -25,7 +25,6 @@ use error_stack::Report;
 use serde_json::Value;
 use serde_json::json;
 
-use super::super::mutation_path_builder::enum_builder::PartialRootExample;
 use super::super::type_kind::TypeKind;
 use super::super::type_knowledge::TypeKnowledge;
 use super::BuilderError;
@@ -557,17 +556,9 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 }
             }
 
-            // Convert Value partials to PartialRootExample for populate function
-            // Non-enum types don't have unavailability reasons (always None)
-            let partials_with_reasons: HashMap<Vec<VariantName>, PartialRootExample> = partials
-                .iter()
-                .map(|(k, v)| (k.clone(), PartialRootExample { example: v.clone() }))
-                .collect();
-
             // Populate root_example from partial_root_examples for children with enum_path_data
             support::populate_root_examples_from_partials(
                 &mut paths_to_expose,
-                &partials_with_reasons,
                 new_partial_root_examples
                     .as_ref()
                     .unwrap_or(&HashMap::new()),
