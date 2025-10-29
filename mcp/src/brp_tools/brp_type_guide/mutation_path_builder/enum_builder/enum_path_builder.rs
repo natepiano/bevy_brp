@@ -38,6 +38,7 @@ use super::super::super::type_kind::TypeKind;
 use super::super::BuilderError;
 use super::super::NotMutableReason;
 use super::super::mutation_path_internal::MutationPathInternal;
+use super::super::mutation_path_internal::MutationPathSliceExt;
 use super::super::new_types::VariantName;
 use super::super::path_builder;
 use super::super::path_example::PathExample;
@@ -508,32 +509,6 @@ fn create_paths_for_signature(
     }
 }
 
-/// Collect all unique child chains that extend a given variant chain
-fn collect_child_chains_to_wrap(
-    child_paths: &[MutationPathInternal],
-    our_chain: &[VariantName],
-    ctx: &RecursionContext,
-) -> HashSet<Vec<VariantName>> {
-    child_paths
-        .iter()
-        // Only process direct children
-        .filter(|child| child.is_direct_child_at_depth(*ctx.depth))
-        // Flatten all matching child chains
-        .flat_map(|child| {
-            child
-                .partial_root_examples
-                .as_ref()
-                .into_iter()
-                .flat_map(|partials| {
-                    partials
-                        .keys()
-                        .filter(|&child_chain| child_chain.starts_with(our_chain))
-                        .cloned()
-                })
-        })
-        .collect()
-}
-
 /// Build `partial_root_examples` by assembling variant-specific root examples during recursion
 /// ascent
 ///
@@ -613,8 +588,12 @@ fn build_partial_root_examples(
             .err();
 
             // Find all deeper nested chains that extend this variant
-            let nested_enum_chains =
-                collect_child_chains_to_wrap(child_mutation_paths, &this_variant_chain, ctx);
+            let child_refs: Vec<_> = child_mutation_paths.iter().collect();
+            let nested_enum_chains: HashSet<_> = child_refs
+                .child_variant_chains(*ctx.depth)
+                .into_iter()
+                .filter(|chain| chain.starts_with(&this_variant_chain))
+                .collect();
 
             // Build root examples for each nested enum chain
             for nested_chain in &nested_enum_chains {

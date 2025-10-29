@@ -19,7 +19,6 @@
 //! - `enum_path_builder::process_enum` for enum types
 //! - `MutationPathBuilder` with appropriate builder for all other types
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 use error_stack::Report;
 use serde_json::Value;
@@ -30,6 +29,7 @@ use super::super::type_knowledge::TypeKnowledge;
 use super::BuilderError;
 use super::enum_builder;
 use super::mutation_path_internal::MutationPathInternal;
+use super::mutation_path_internal::MutationPathSliceExt;
 use super::new_types::VariantName;
 use super::not_mutable_reason::NotMutableReason;
 use super::path_example::PathExample;
@@ -474,14 +474,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
 
         // Collect all unique variant chains from all children
-        let mut all_chains = HashSet::new();
-        for child in child_paths {
-            if let Some(partial_root_example) = &child.partial_root_examples {
-                for chain in partial_root_example.keys() {
-                    all_chains.insert(chain.clone());
-                }
-            }
-        }
+        let all_chains = child_paths.child_variant_chains(*ctx.depth);
 
         if all_chains.is_empty() {
             return Ok((None, None));
