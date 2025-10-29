@@ -68,25 +68,23 @@ MODE = ${ARGUMENTS:-preserve}
 
 **MANDATORY**: Create TodoWrite to track command progress through all steps and decision points.
 
-Create a todo list with the following 6 items:
-1. "Execute app launch and verify BRP connectivity" (pending → in_progress when starting STEP 1)
+Create a todo list with the following 5 items:
+1. "Execute app launch" (pending → in_progress when starting STEP 1)
 2. "Discover all registered types using brp_all_type_guides" (pending → in_progress when starting STEP 2)
-3. "Transform BRP response and create mutation test file" (pending → in_progress when starting STEP 3)
+3. "Transform BRP response and compare with baseline" (pending → in_progress when starting STEP 3)
 4. "Clean shutdown of test application" (pending → in_progress when starting STEP 4)
-5. "Compare with baseline and categorize changes" (pending → in_progress when starting STEP 5)
-6. "Present results and get user decision on baseline promotion" (pending → in_progress when starting STEP 6)
+5. "Present results and get user decision on baseline promotion" (pending → in_progress when starting STEP 5)
 
 Mark each todo as "in_progress" when beginning that step, and "completed" when the step finishes successfully.
 
 <ExecutionSteps>
     **EXECUTE THESE STEPS IN ORDER:**
 
-    **STEP 1:** Execute the <AppLaunch/> → **STOP** and verify success before proceeding
-    **STEP 2:** Execute the <TypeDiscovery/> → **STOP** and verify success before proceeding
-    **STEP 3:** Execute the <FileTransformation/> → **STOP** and verify success before proceeding
-    **STEP 4:** Execute the <AppCleanup/> → **STOP** and verify success before proceeding
-    **STEP 5:** Execute the <ComparisonValidation/> → **STOP** and verify success before proceeding
-    **STEP 6:** Execute the <UserValidation/> → **STOP** and present final summary
+    **STEP 1:** Execute the <AppLaunch/>
+    **STEP 2:** Execute the <TypeDiscovery/>
+    **STEP 3:** Execute the <FileTransformation/> (includes automatic comparison)
+    **STEP 4:** Execute the <AppCleanup/>
+    **STEP 5:** Execute the <UserValidation/> → **STOP** and present final summary
 </ExecutionSteps>
 
 ## STEP 1: APP LAUNCH
@@ -101,18 +99,6 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
         port=${APP_PORT}
     )
     ```
-
-    2. **Verify BRP connectivity**:
-    ```bash
-    mcp__brp__brp_status(
-        app_name="${APP_NAME}",
-        port=${APP_PORT}
-    )
-    ```
-
-    **VALIDATION**: Confirm both launch and BRP status are successful before proceeding to Step 2.
-
-    **STOP** - Do not proceed until both confirmations are received.
 </AppLaunch>
 
 ## STEP 2: TYPE DISCOVERY
@@ -131,7 +117,6 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
     **CRITICAL**: Note the returned filepath for use in Step 3.
 
-    **STOP** - Do not proceed until filepath is confirmed.
 </TypeDiscovery>
 
 ## STEP 3: FILE TRANSFORMATION
@@ -154,17 +139,13 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
     **File Structure**: The file is the COMPLETE BRP response with added test fields
 
-    Expected characteristics:
-    - Complete type guides with spawn_format including examples
-    - Complete mutation_paths as objects with path keys and example values
-    - All test metadata fields added (test_status, batch_number, fail_reason)
-    - Full preservation of schema_info, supported_operations, reflection traits
+    **Automatic Comparison**: The script automatically compares the result with the baseline file (if it exists) and displays a one-line summary:
+    - `✅ No changes detected compared to baseline` - Files are identical
+    - `⚠️  Changes detected: X total changes across Y types (added: A, removed: R)` - Differences found
+    - `ℹ️  No baseline file found for comparison` - First run or baseline missing
 
-    **VALIDATION**: Confirm the script completed successfully and target file was created.
+    **VALIDATION**: Confirm the script completed successfully, target file was created, and comparison summary was displayed.
 
-    **CRITICAL**: This maintains complete fidelity with BRP responses, storing actual examples for reproducible testing
-
-    **STOP** - Do not proceed until file creation is confirmed.
 </FileTransformation>
 
 ## STEP 4: APP CLEANUP
@@ -181,62 +162,25 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
     **VALIDATION**: Confirm the app has been cleanly shutdown before proceeding.
 
-    **STOP** - Do not proceed until shutdown is confirmed.
 </AppCleanup>
 
-## STEP 5: COMPARISON AND VALIDATION
-
-<ComparisonValidation>
-    **Automatic Comparison with Baseline**
-
-    After successful file creation, automatically compare with baseline:
-
-    **CRITICAL FILE MANAGEMENT**:
-    - DO NOT create backup copies or intermediate files
-    - DO NOT use `cp` to create `all_types_previous.json` or any other files
-    - ONLY read existing files for comparison
-    - The comparison is ALWAYS between:
-      - BASELINE: `.claude/transient/all_types_baseline.json` (the known good baseline)
-      - CURRENT: `.claude/transient/all_types.json` (the newly created file from Step 3)
-
-    **Run comprehensive comparison directly**:
-    ```bash
-    python3 .claude/scripts/create_mutation_test_json/compare.py .claude/transient/all_types_baseline.json .claude/transient/all_types.json
-    ```
-
-    This comprehensive comparison provides:
-    - Binary identity check with early exit if identical
-    - Structured metadata analysis (type counts, spawn support, mutations)
-    - Type-level change detection (modified, new, removed types)
-    - **Deep structural analysis** when changes are detected:
-      - Categorizes changes into known patterns (enum representation, vec format, etc.)
-      - Identifies unknown patterns that need investigation
-      - Shows specific paths and examples of what changed
-    - Clear recommendations based on the type of changes found
-
-    **VALIDATION**: Confirm the comparison script completed and generated output.
-
-    **STOP** - Do not proceed until comparison output is available.
-</ComparisonValidation>
-
-## STEP 6: USER VALIDATION
+## STEP 5: USER VALIDATION
 
 <UserValidation>
     Present the final summary using the exact template below:
 
 ## Mutation Test File Generation Complete
 - **File created**: ${TARGET_FILE}
-- **Types registered in Bevy**: [extract from comparison output]
-- **Spawn-supported types**: [extract from comparison output]
-- **Types with mutations**: [extract from comparison output]
-- **Total mutation paths**: [extract from comparison output]
-- **Excluded types**: [extract from comparison output]
+- **Types registered in Bevy**: [extract from augmentation script stats output]
+- **Spawn-supported types**: [extract from augmentation script stats output]
+- **Types with mutations**: [extract from augmentation script stats output]
+- **Total mutation paths**: [extract from augmentation script stats output]
+- **Excluded types**: [always 0]
 
 ### Comparison with Baseline:
-[Present the comparison results from the compare.py script including:
- - If files are identical: Simple confirmation
- - If metadata only differs: Count differences
- - If structural changes exist: Report the total changes, types modified, types added, types removed]
+[Present the comparison summary that was automatically displayed by the augmentation script:
+ - If "No changes detected": Simple confirmation
+ - If "Changes detected": Report the total changes, types modified, types added, types removed]
 
     **PRESENT DECISION PROMPT**
 
@@ -399,4 +343,3 @@ Patterns: `.field.0` (variant), `.field[0]` (array), `.field.0.nested` (nested i
 
 Retrieving first example - [TYPE_NAME] at path [PATH]:
 </PatternOverviewFormat>
-

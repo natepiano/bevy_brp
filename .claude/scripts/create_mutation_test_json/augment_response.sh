@@ -140,6 +140,31 @@ if [ $? -eq 0 ]; then
     echo "  - supported_operations"
     echo "  - reflection_traits"
     echo "  - PLUS test metadata (batch_number, test_status, fail_reason)"
+
+    # Automatically run comparison if baseline exists
+    BASELINE_FILE=".claude/transient/all_types_baseline.json"
+    if [ -f "$BASELINE_FILE" ]; then
+        echo ""
+
+        # Run comparison and capture output
+        COMPARISON_OUTPUT=$(python3 .claude/scripts/create_mutation_test_json/compare.py "$BASELINE_FILE" "$TARGET_FILE" 2>&1)
+
+        # Extract key metrics using grep and sed
+        TOTAL_CHANGES=$(echo "$COMPARISON_OUTPUT" | grep "Total changes:" | sed 's/^[[:space:]]*Total changes: //')
+        TYPES_MODIFIED=$(echo "$COMPARISON_OUTPUT" | grep "Types modified:" | sed 's/^[[:space:]]*Types modified: //')
+        TYPES_ADDED=$(echo "$COMPARISON_OUTPUT" | grep "Types added:" | sed 's/^[[:space:]]*Types added: //')
+        TYPES_REMOVED=$(echo "$COMPARISON_OUTPUT" | grep "Types removed:" | sed 's/^[[:space:]]*Types removed: //')
+
+        # Display clean one-line summary
+        if [ "$TOTAL_CHANGES" = "0" ]; then
+            echo "✅ No changes detected compared to baseline"
+        else
+            echo "⚠️  Changes detected: $TOTAL_CHANGES total changes across $TYPES_MODIFIED types (added: $TYPES_ADDED, removed: $TYPES_REMOVED)"
+        fi
+    else
+        echo ""
+        echo "ℹ️  No baseline file found for comparison"
+    fi
 else
     echo "Error: Failed to augment BRP response"
     exit 1
