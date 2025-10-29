@@ -84,16 +84,6 @@ impl Example {
         }
     }
 
-    /// Borrow as Value reference (for zero-copy operations)
-    pub fn as_value(&self) -> &Value {
-        // Cache a static null value to return references
-        static NULL: Value = Value::Null;
-        match self {
-            Self::Json(v) => v,
-            Self::OptionNone | Self::NotApplicable => &NULL,
-        }
-    }
-
     /// Check if this represents a null-equivalent value
     pub const fn is_null_equivalent(&self) -> bool {
         matches!(self, Self::OptionNone | Self::NotApplicable)
@@ -123,10 +113,18 @@ impl From<Example> for Value {
 
 **Changes**:
 
-```rust
-use super::types::Example;  // Add import (Example is now in types.rs)
-use super::types::ExampleGroup;
+**Step 1: Add imports at the top of the file**
 
+Add these imports to the file's import section at the top (after any `mod` declarations, grouped with existing `use` statements):
+
+```rust
+use super::types::Example;
+use super::types::ExampleGroup;
+```
+
+**Step 2: Update PathExample enum definition**
+
+```rust
 #[derive(Debug, Clone)]
 pub enum PathExample {
     /// Simple example value (changed from Value to Example)
@@ -139,18 +137,27 @@ pub enum PathExample {
         for_parent: Example,
     },
 }
+```
 
+**Step 3: Update for_parent() method signature**
+
+```rust
 impl PathExample {
     /// Get the example to use for parent assembly
-    pub fn for_parent(&self) -> &Example {  // Changed return type
+    pub const fn for_parent(&self) -> &Example {  // Changed return type from &Value, keep const
         match self {
             Self::Simple(ex) => ex,
             Self::EnumRoot { for_parent, .. } => for_parent,
         }
     }
 }
+```
 
-// Update Serialize implementation
+**Note**: The `const` qualifier is preserved because the implementation remains const-compatible (simple pattern matching returning references).
+
+**Step 4: Update Serialize implementation**
+
+```rust
 impl Serialize for PathExample {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -160,12 +167,12 @@ impl Serialize for PathExample {
 
         match self {
             Self::Simple(example) => {
-                let value = example.as_value();  // Convert to Value
+                let value = example.to_value();  // Convert to Value
                 if value.is_null() {
                     serializer.serialize_map(Some(0))?.end()
                 } else {
                     let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry("example", value)?;
+                    map.serialize_entry("example", &value)?;
                     map.end()
                 }
             }
@@ -534,6 +541,47 @@ fn build_variant_example_for_chain(
 ) -> Example {
 ```
 
+#### 6.1a: Update process_signature_path HashMap Parameter
+
+**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
+
+**Change signature (line ~231)**:
+```rust
+// Before:
+fn process_signature_path(
+    path: PathKind,
+    applicable_variants: &[VariantName],
+    signature: &VariantSignature,
+    ctx: &RecursionContext,
+    child_examples: &mut HashMap<MutationPathDescriptor, Value>,
+) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
+
+// After:
+fn process_signature_path(
+    path: PathKind,
+    applicable_variants: &[VariantName],
+    signature: &VariantSignature,
+    ctx: &RecursionContext,
+    child_examples: &mut HashMap<MutationPathDescriptor, Example>,  // Changed from Value
+) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
+```
+
+**Update implementation (line ~276-278)**:
+```rust
+// No change needed at line ~276 - for_parent() now returns &Example after Phase 2:
+let child_example = child_paths
+    .first()
+    .ok_or_else(|| { ... })
+    .map(|p| p.example.for_parent().clone())?;  // Returns Example
+
+// No change needed at line ~278 - type now matches HashMap<..., Example>:
+child_examples.insert(child_descriptor, child_example);
+```
+
+**Reasoning**: This function bridges the recursion results (which produce `PathExample` containing `Example` after Phase 2) with the HashMap used for variant example assembly. The HashMap parameter type must match the return type of `for_parent()`.
+
+---
+
 #### 6.2: Update build_variant_example Implementation
 
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
@@ -655,86 +703,69 @@ let example = if matches!(
 
 **Reasoning**: The function already returns `Option<Example>` after signature change. The implementation mostly stays the same since it wraps the result in `Option`.
 
-#### 6.4: Update Caller Sites - assemble_enum_examples
+#### 6.4: Update process_signature_groups HashMap Creation and Usage
 
-**Change at lines 424-446** - Build HashMap with Example values:
+**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
+
+**No signature changes needed** - this function's signature doesn't involve Example/Value types.
+
+**Update HashMap initialization (line ~412)**:
 ```rust
-// Before:
-let mut children = HashMap::new();
-for child in &applicable_children {
-    let descriptor = MutationPathDescriptor::from(child.mutation_path.leaf().to_string());
-    if let PathExample::Simple(value) = &child.example {
-        children.insert(descriptor, value.clone());
-    }
-}
+// Before (type inferred from process_signature_path parameter):
+let mut child_examples = HashMap::new();
 
-// After:
-let mut children = HashMap::new();
-for child in &applicable_children {
-    let descriptor = MutationPathDescriptor::from(child.mutation_path.leaf().to_string());
-    if let PathExample::Simple(example) = &child.example {
-        children.insert(descriptor, example.clone());  // Now Example type
-    }
-}
+// After (no code change, but type inference changes due to process_signature_path update):
+let mut child_examples = HashMap::new();  // Now infers HashMap<MutationPathDescriptor, Example>
 ```
 
-**Change at line 441** - build_variant_example now returns Example:
+**Update HashMap passing (line ~428)** - No changes needed:
 ```rust
-// Before:
-let assembled_example = match build_variant_example(&variant_signature, children.clone()) {
-    Ok(val) => val,
-    Err(e) => { error!("..."); continue; }
-};
-
-// After:
-let assembled_example = match build_variant_example(&variant_signature, children.clone()) {
-    Ok(example) => example,  // Now Example type
-    Err(e) => { error!("..."); continue; }
-};
+// This call already correct after process_signature_path signature change:
+let child_paths = process_signature_path(
+    path_kind,
+    &applicable_variants,
+    variant_signature,
+    ctx,
+    &mut child_examples,  // Type now HashMap<MutationPathDescriptor, Example>
+)?;
 ```
 
-**Change at line 446** - Convert Example to Value when creating ExampleGroup:
+**Update build_variant_group_example call (line ~441)** - No changes needed:
 ```rust
-// Before:
-examples.push(ExampleGroup {
-    applicable_variants,
-    signature: variant_signature.clone(),
-    example: Some(assembled_example),  // Value type
-    mutability: group_status,
-});
-
-// After:
-examples.push(ExampleGroup {
-    applicable_variants,
-    signature: variant_signature.clone(),
-    example: Some(assembled_example.to_value()),  // Convert Example -> Value
-    mutability: group_status,
-});
+// This call already correct after build_variant_group_example signature change:
+let example = build_variant_group_example(
+    variant_signature,
+    variant_names,
+    &child_examples,  // Type now HashMap<MutationPathDescriptor, Example>
+    mutability,
+    ctx,
+)?;
 ```
 
-**Reasoning**: The boundary between Example (internal processing) and Value (external API in `ExampleGroup.example`) is enforced at the ExampleGroup creation point.
+**Reasoning**: This orchestration function creates the HashMap that flows through the variant example building process. After Phase 6.1a updates `process_signature_path` parameter type, Rust's type inference automatically updates the HashMap type at line ~412. No explicit code changes needed, but the type flow must be understood.
 
-#### 6.5: Update Root Path Assembly - build_enum_root_path
+#### 6.5: Update PathExample::EnumRoot Construction
 
-**Change at lines 793-843** - select_preferred_example now returns Example:
+**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
+
+**Location**: build_enum_root_path function, line ~812-815
+
+**No changes needed** - already addressed by Phase 6.8:
+
+After Phase 2 updates `PathExample::EnumRoot.for_parent` to `Example` type, and Phase 6.8 updates `default_example` parameter to `Example` type, the construction at line ~812-815 requires no changes:
+
 ```rust
-// Before:
-let for_parent_example = select_preferred_example(&enum_examples);
 PathExample::EnumRoot {
     groups: enum_examples,
-    for_parent: for_parent_example,  // Option<Value>
-}
-
-// After:
-let for_parent_example = select_preferred_example(&enum_examples)
-    .map(Example::Json);  // Wrap Value in Example::Json
-PathExample::EnumRoot {
-    groups: enum_examples,
-    for_parent: for_parent_example,  // Option<Example>
+    for_parent: default_example,  // Already Example type after Phase 6.8
 }
 ```
 
-**Reasoning**: The `PathExample::EnumRoot.for_parent` field changes from `Option<Value>` to `Option<Example>` (see Phase 1), so we wrap the result.
+**Reasoning**: This is not a separate update - it's the natural consequence of earlier phases. Including it here for completeness to show the data flow:
+1. Phase 2: PathExample::EnumRoot.for_parent changes to Example
+2. Phase 6.7: select_preferred_example returns Option<Example>
+3. Phase 6.8: default_example parameter changes to Example
+4. Result: Line ~814 assignment already type-correct, no code changes needed
 
 #### 6.6: Summary of Example Flow in enum_path_builder.rs
 
@@ -813,14 +844,125 @@ PathExample::EnumRoot { groups, .. } => select_preferred_example(groups),
 
 // After:
 PathExample::EnumRoot { groups, .. } => {
-    select_preferred_example(groups).and_then(|ex| ex.to_value())
+    select_preferred_example(groups).map(|ex| ex.to_value())
 }
 ```
 
-**Related signature cascades**:
-- `create_enum_mutation_paths` parameter: `default_example: Value` → `default_example: Example` (line ~780)
-- `build_enum_root_path` parameter: `default_example: Value` → `default_example: Example` (line ~810)
-- `wrap_example_with_availability` parameter: `example: Value` → `example: Example` (covered in Gap 10)
+**Note**: Use `.map()` not `.and_then()` because `to_value()` returns `Value`, not `Option<Value>`.
+
+**Related signature cascades**: See Phase 6.8 below for documentation of `create_enum_mutation_paths` and `build_enum_root_path` parameter updates.
+
+---
+
+#### 6.7a: Update build_partial_root_examples spawn_example Construction
+
+**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
+
+**Critical type consistency fix (lines ~540-545)**:
+
+After Phase 6.7 changes `select_preferred_example` return type to `Option<Example>`, the spawn_example construction has a type mismatch that will cause a **compile error**:
+
+```rust
+// Before:
+let spawn_example = enum_examples
+    .iter()
+    .find(|ex| ex.applicable_variants.contains(variant_name))
+    .and_then(|ex| ex.example.clone())  // Returns Option<Value>
+    .or_else(|| select_preferred_example(enum_examples))  // Returns Option<Value> before Phase 6.7
+    .unwrap_or(json!(null));
+
+// After:
+let spawn_example = enum_examples
+    .iter()
+    .find(|ex| ex.applicable_variants.contains(variant_name))
+    .and_then(|ex| ex.example.clone().map(Example::Json))  // Wrap Value in Example::Json
+    .or_else(|| select_preferred_example(enum_examples))  // Now returns Option<Example>
+    .unwrap_or(Example::NotApplicable);  // Use Example::NotApplicable
+```
+
+**Reasoning**:
+1. Line 543's `ex.example.clone()` returns `Option<Value>` (ExampleGroup.example is Value type)
+2. After Phase 6.7, line 544's `select_preferred_example` returns `Option<Example>`
+3. These types can't be chained with `.or_else()` - **this causes a compile error**
+4. Solution: Wrap line 543's Value result in `Example::Json` for type consistency
+5. Line 545: Use `Example::NotApplicable` instead of `json!(null)` for self-documentation
+6. The spawn_example variable is used at lines ~590, ~602, ~615 where it's passed to `wrap_example_with_availability` (expects Example after Phase 7.4) or assigned to `example: Example` variable
+
+**Usage sites that benefit from this fix**:
+- Line ~590: `wrap_example_with_availability(example, ...)` - example is from build_variant_example_for_chain (returns Example)
+- Line ~602: `let example = spawn_example` - now properly typed as Example
+- Line ~615: `wrap_example_with_availability(example, ...)` - example now properly typed as Example
+
+---
+
+#### 6.8: Update Signature Cascades for default_example Parameter
+
+**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
+
+Two functions receive the `default_example` value from `select_preferred_example` and need signature updates:
+
+**1. Update create_enum_mutation_paths (line ~844)**:
+```rust
+// Before:
+fn create_enum_mutation_paths(
+    ctx: &RecursionContext,
+    enum_examples: Vec<ExampleGroup>,
+    default_example: Value,  // Line ~847
+    mut child_mutation_paths: Vec<MutationPathInternal>,
+    partial_root_examples: HashMap<Vec<VariantName>, RootExample>,
+) -> Vec<MutationPathInternal> {
+
+// After:
+fn create_enum_mutation_paths(
+    ctx: &RecursionContext,
+    enum_examples: Vec<ExampleGroup>,
+    default_example: Example,  // Changed from Value
+    mut child_mutation_paths: Vec<MutationPathInternal>,
+    partial_root_examples: HashMap<Vec<VariantName>, RootExample>,
+) -> Vec<MutationPathInternal> {
+```
+
+**2. Update build_enum_root_path (line ~791)**:
+```rust
+// Before:
+fn build_enum_root_path(
+    ctx: &RecursionContext,
+    enum_examples: Vec<ExampleGroup>,
+    default_example: Value,  // Line ~794
+    enum_mutability: Mutability,
+    mutability_reason: Option<NotMutableReason>,
+) -> MutationPathInternal {
+
+// After:
+fn build_enum_root_path(
+    ctx: &RecursionContext,
+    enum_examples: Vec<ExampleGroup>,
+    default_example: Example,  // Changed from Value
+    enum_mutability: Mutability,
+    mutability_reason: Option<NotMutableReason>,
+) -> MutationPathInternal {
+```
+
+**Update usage in build_enum_root_path (line ~814)**:
+```rust
+// Before:
+PathExample::EnumRoot {
+    groups: enum_examples,
+    for_parent: default_example,  // Value type
+}
+
+// After:
+PathExample::EnumRoot {
+    groups: enum_examples,
+    for_parent: default_example,  // Example type
+}
+```
+
+**Reasoning**: After Phase 6.7 changes `select_preferred_example` to return `Option<Example>`, the `default_example` value passed through these functions is Example type. The signatures must be updated to match. The usage at line ~814 already matches the PathExample::EnumRoot.for_parent field type change from Phase 2.
+
+**Callsite verification**:
+- Line ~123: `create_enum_mutation_paths` called with `default_example: Example` ✓
+- Line ~864: `build_enum_root_path` called with `default_example: Example` ✓
 
 ---
 
@@ -848,6 +990,17 @@ match variant_name.short_name() {
 ```
 
 **Reasoning**: This is the ONLY location where we're explicitly handling the `None` variant of an `Option<T>` enum. Using `Example::OptionNone` makes the semantic intent crystal clear: "this value represents Option::None".
+
+**Why distinguish OptionNone from NotApplicable if both serialize to null?**
+
+The semantic distinction provides value during development and code maintenance:
+
+1. **Self-documenting code**: When reading code or logs, `Example::OptionNone` clearly communicates "this is legitimately Option::None" vs `Example::NotApplicable` meaning "no example because path is not mutable"
+2. **Type safety**: Pattern matching on `Example` forces explicit handling of all three cases, preventing bugs where different null semantics are conflated
+3. **Debugging clarity**: When debugging intermediate values, you can see whether null came from Option::None or from a filtered-out NotMutable path
+4. **Semantic correctness**: The code models the actual domain - Option::None IS different from "no data available", even if both serialize to null for BRP
+
+At serialization time (Phase 1, line 83), both collapse to `Value::Null`, which is correct for the external API. But during internal processing, the distinction helps developers understand data flow and intent.
 
 **Note**: This requires changing `apply_option_transformation` signature from `-> Value` to `-> Example`, and updating the one callsite at enum_path_builder.rs:395.
 
@@ -953,34 +1106,63 @@ pub fn collect_children_for_chain(
 
 #### 7.2: Update extract_child_value_for_chain (Private Helper)
 
-**Change signature and implementation (line ~133)**:
+**Change signature (line ~71)**:
 ```rust
 // Before:
 fn extract_child_value_for_chain(
     child: &MutationPathInternal,
     child_chain: Option<&[VariantName]>,
 ) -> Value {
-    let fallback = || child.example.for_parent().clone();  // Returns Value
-
-    // ... implementation that returns Value from partial_root_examples or fallback
-}
 
 // After:
 fn extract_child_value_for_chain(
     child: &MutationPathInternal,
     child_chain: Option<&[VariantName]>,
 ) -> Example {
-    let fallback = || Example::Json(child.example.for_parent().clone());  // Wrap in Example::Json
-
-    // ... implementation updated to:
-    // 1. Extract Value from RootExample::Available { root_example }
-    // 2. Wrap the Value in Example::Json before returning
-    // 3. Use fallback which now returns Example
-}
 ```
 
-**Implementation details**:
-The function accesses `child.partial_root_examples` HashMap and extracts values from `RootExample::Available { root_example }`. Each extracted `root_example: Value` must be wrapped in `Example::Json` before returning.
+**Update fallback closure (line ~75)**:
+```rust
+// Before:
+let fallback = || child.example.for_parent().clone();  // Returns Value
+
+// After:
+let fallback = || child.example.for_parent().clone();  // Now returns Example after Phase 2
+```
+
+**Note**: After Phase 2, `for_parent()` returns `&Example` instead of `&Value`, so the fallback closure already returns the correct type. No code change needed at line 75.
+
+**Update helper closure to wrap extracted values (lines ~83-88)**:
+```rust
+// Before:
+let get_value = |root_ex: &RootExample| match root_ex {
+    RootExample::Available { root_example } if !root_example.is_null() => {
+        Some(root_example.clone())  // Returns Option<Value>
+    }
+    _ => None,
+};
+
+// After:
+let get_value = |root_ex: &RootExample| match root_ex {
+    RootExample::Available { root_example } if !root_example.is_null() => {
+        Some(Example::Json(root_example.clone()))  // Wrap in Example::Json, returns Option<Example>
+    }
+    _ => None,
+};
+```
+
+**Reasoning**:
+- The `get_value` helper extracts `root_example: Value` from `RootExample::Available`
+- This `Value` must be wrapped in `Example::Json` before returning
+- The rest of the function logic (lines 77-103) remains unchanged - it already handles the `.and_then()` chains correctly
+- The fallback at line 102 works unchanged because it calls the `fallback` closure which now returns `Example`
+
+**Complete context**: This function has complex logic that:
+1. Uses the fallback if no variant chain specified
+2. Otherwise searches `child.partial_root_examples` for matching variant chains
+3. Tries exact match first, then compatible prefix matches for nested enums
+4. Falls back to `for_parent()` if nothing found
+5. The only change needed is wrapping extracted `root_example` values in `Example::Json`
 
 #### 7.3: Update assemble_struct_from_children Signature
 
@@ -1135,7 +1317,7 @@ The compiler enforces that all variants are handled, preventing bugs where null 
 Every `.to_value()` call marks a boundary where semantic meaning collapses to JSON. This makes the architecture easier to understand.
 
 ### 4. **Minimal Runtime Cost**
-`Example` is a zero-cost wrapper in most cases. Explicit `as_value()` and `to_value()` methods provide efficient conversion at boundaries.
+`Example` is a zero-cost wrapper in most cases. The `to_value()` method provides efficient conversion at boundaries, and creating `Value::Null` is a cheap enum variant construction.
 
 ---
 
