@@ -76,25 +76,27 @@ fn extract_child_value_for_chain(
 
     child_chain.map_or_else(fallback, |chain| {
         child
-            .partial_root_examples
+            .new_partial_root_examples // Changed from partial_root_examples
             .as_ref()
             .and_then(|partials| {
-                // Try exact match first (for non-enum children)
-                partials.get(chain).cloned().or_else(|| {
-                    // For enum children: find a mutable variant to include
-                    // Child enum has chains like ["Parent::Variant", "Child::Variant"]
-                    // We're looking for chains that extend the parent chain by one level
+                // Helper to extract Value from RootExample
+                let get_value = |root_ex: &RootExample| match root_ex {
+                    RootExample::Available { root_example } if !root_example.is_null() => {
+                        Some(root_example.clone())
+                    } // Skip null to prefer data-filled variants
+                    _ => None,
+                };
+
+                // Try exact match first
+                partials.get(chain).and_then(get_value).or_else(|| {
+                    // For enum children: find a mutable (Available) variant
                     partials
                         .iter()
                         .filter(|(child_chain, _)| {
                             child_chain.len() == chain.len() + 1 && child_chain.starts_with(chain)
                         })
-                        // Sort by variant chain for deterministic results
                         .sorted_by_key(|(child_chain, _)| *child_chain)
-                        // Find first non-null value (mutable variant)
-                        // null = NotMutable variant (no example generated)
-                        .find(|(_, value)| !value.is_null())
-                        .map(|(_, value)| value.clone())
+                        .find_map(|(_, root_ex)| get_value(root_ex))
                 })
             })
             .unwrap_or_else(fallback)

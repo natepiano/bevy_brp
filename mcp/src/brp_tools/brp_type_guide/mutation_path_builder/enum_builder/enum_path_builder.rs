@@ -499,8 +499,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -894,9 +894,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathInfo {
-            variant_chain: ctx.variant_chain.clone(),
+            variant_chain:       ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example: None,
+            root_example:        None,
         })
     };
 
@@ -904,7 +904,7 @@ fn build_enum_root_path(
     MutationPathInternal {
         mutation_path: ctx.mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups: enum_examples,
+            groups:     enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),
