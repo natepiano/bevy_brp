@@ -56,11 +56,11 @@ use crate::error::Result;
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 pub struct MutationPathBuilder<B: TypeKindBuilder> {
@@ -417,9 +417,9 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         } else {
             Some(EnumPathInfo {
-                variant_chain: ctx.variant_chain.clone(),
+                variant_chain:       ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example: None,
+                root_example:        None,
             })
         };
 
@@ -488,28 +488,15 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 support::collect_children_for_chain(child_paths, ctx, Some(&chain));
 
             // Assemble from filtered children
-            let root_example = builder.assemble_from_children(ctx, examples_for_chain)?;
+            let assembled_example = builder.assemble_from_children(ctx, examples_for_chain)?;
 
-            // Check if any child has Unavailable for this chain
-            let mut unavailable_reason = None;
-            for child in child_paths {
-                if let Some(child_partial_root_examples) = &child.partial_root_examples {
-                    if let Some(RootExample::Unavailable {
-                        root_example_unavailable_reason: reason,
-                    }) = child_partial_root_examples.get(&chain)
-                    {
-                        unavailable_reason = Some(reason.clone());
-                        break;
-                    }
-                }
-            }
-
-            let root_example = match unavailable_reason {
-                Some(reason) => RootExample::Unavailable {
-                    root_example_unavailable_reason: reason,
-                },
-                None => RootExample::Available { root_example },
-            };
+            // Use shared helper to wrap with availability status
+            let root_example = support::wrap_example_with_availability(
+                assembled_example,
+                child_paths,
+                &chain,
+                None,
+            );
 
             partial_root_examples.insert(chain, root_example);
         }

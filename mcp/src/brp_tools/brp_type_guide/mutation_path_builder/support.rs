@@ -179,3 +179,44 @@ pub fn populate_root_examples_from_partials(
         }
     }
 }
+
+/// Wrap an example with availability status by checking children for unavailability reasons
+///
+/// Implements hierarchical unavailability propagation:
+/// 1. If parent has unavailability reason, use it (child is unreachable)
+/// 2. Otherwise, check if any child has unavailability reason for this chain in their
+///    `partial_root_examples`
+///
+/// This is shared between `path_builder.rs` (non-enum types) and `enum_path_builder.rs`
+/// (enum types) to avoid code duplication.
+pub fn wrap_example_with_availability(
+    example: Value,
+    children: &[&MutationPathInternal],
+    chain: &[VariantName],
+    parent_unavailable_reason: Option<String>,
+) -> RootExample {
+    let unavailable_reason = parent_unavailable_reason.or_else(|| {
+        // Check children's `partial_root_examples` for unavailability of this chain
+        children.iter().find_map(|child| {
+            child
+                .partial_root_examples
+                .as_ref()
+                .and_then(|examples| examples.get(chain))
+                .and_then(|root_example| match root_example {
+                    RootExample::Unavailable {
+                        root_example_unavailable_reason,
+                    } => Some(root_example_unavailable_reason.clone()),
+                    _ => None,
+                })
+        })
+    });
+
+    match unavailable_reason {
+        Some(reason) => RootExample::Unavailable {
+            root_example_unavailable_reason: reason,
+        },
+        None => RootExample::Available {
+            root_example: example,
+        },
+    }
+}

@@ -483,8 +483,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -584,49 +584,16 @@ fn build_partial_root_examples(
                     ctx,
                 );
 
-                // Determine unavailability reason using hierarchical selection
-                // RATIONALE: We need to capture the ACTUAL blocking issue:
-                // 1. If parent is unconstructible → parent's reason is the blocker (child is
-                //    unreachable)
-                // 2. If parent IS constructible → check if nested chain has its OWN unavailability
-                //    reason
-                //
-                // Example: Parent "Multiple" variant has Arc fields (unconstructible), nested
-                // chains inherit this reason because you can't reach them via
-                // spawn/insert.
-                //
-                // Counter-example: Parent "Good" variant is Mutable (constructible), but contains a
-                // child enum with an unconstructible variant (e.g., Arc fields). The nested chain
-                // needs the CHILD's unavailability reason, not None from the constructible parent.
-                let unavailable_reason = if variant_unavailable_reason.is_some() {
-                    // Parent is unconstructible → child is unreachable, use parent's reason
-                    variant_unavailable_reason.clone()
-                } else {
-                    // Parent is constructible → check if THIS nested chain is unconstructible
-                    // The child enum was already processed recursively and its enum_path_data
-                    // was populated with root_example_unavailable_reason. Look it up.
-                    child_mutation_paths.iter().find_map(|child| {
-                        child
-                            .enum_path_info
-                            .as_ref()
-                            .filter(|data| data.variant_chain == *nested_chain)
-                            .and_then(|data| match &data.root_example {
-                                Some(RootExample::Unavailable {
-                                    root_example_unavailable_reason,
-                                }) => Some(root_example_unavailable_reason.clone()),
-                                _ => None,
-                            })
-                    })
-                };
+                // Use shared helper to wrap with availability status
+                // Hierarchical selection: parent reason takes precedence (child is unreachable),
+                // otherwise check if nested chain has its own unavailability reason
+                let root_example = support::wrap_example_with_availability(
+                    example,
+                    &child_refs,
+                    nested_chain,
+                    variant_unavailable_reason.clone(),
+                );
 
-                let root_example = match unavailable_reason {
-                    Some(reason) => RootExample::Unavailable {
-                        root_example_unavailable_reason: reason,
-                    },
-                    None => RootExample::Available {
-                        root_example: example,
-                    },
-                };
                 partial_root_examples.insert(nested_chain.clone(), root_example);
             }
 
@@ -645,14 +612,14 @@ fn build_partial_root_examples(
                 )
             };
 
-            let root_example = match variant_unavailable_reason {
-                Some(reason) => RootExample::Unavailable {
-                    root_example_unavailable_reason: reason,
-                },
-                None => RootExample::Available {
-                    root_example: example,
-                },
-            };
+            // Use shared helper to wrap with availability status
+            let root_example = support::wrap_example_with_availability(
+                example,
+                &child_refs,
+                &this_variant_chain,
+                variant_unavailable_reason,
+            );
+
             partial_root_examples.insert(this_variant_chain, root_example);
         }
     }
@@ -838,9 +805,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathInfo {
-            variant_chain: ctx.variant_chain.clone(),
+            variant_chain:       ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example: None,
+            root_example:        None,
         })
     };
 
@@ -848,7 +815,7 @@ fn build_enum_root_path(
     MutationPathInternal {
         mutation_path: ctx.mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups: enum_examples,
+            groups:     enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),
