@@ -184,6 +184,7 @@ def renumber_batches(
     batch_capacity: int,
     max_subagents: int,
     ops_per_subagent: int,
+    excluded_type_names: set[str],
 ) -> AllTypesData:
     """
     Renumber batches: reset failed tests to untested and assign batch numbers.
@@ -196,11 +197,15 @@ def renumber_batches(
         batch_capacity: Total operation capacity for a batch (max_subagents * ops_per_subagent)
         max_subagents: Maximum number of subagents per batch
         ops_per_subagent: Operation capacity per subagent
+        excluded_type_names: Set of type names to exclude from testing
     """
     type_guide = data["type_guide"]
 
     # Step 1: Reset failed tests to untested and clear their batch numbers
     for type_name, type_data in type_guide.items():
+        # Skip excluded types
+        if type_name in excluded_type_names:
+            continue
         if type_data.get("test_status") == "failed":
             type_data["test_status"] = "untested"
             type_data["fail_reason"] = ""
@@ -223,7 +228,7 @@ def renumber_batches(
     untested_types: list[tuple[str, TypeData]] = [
         (type_name, type_data)
         for type_name, type_data in type_guide.items()
-        if type_data.get("test_status") == "untested"
+        if type_data.get("test_status") == "untested" and type_name not in excluded_type_names
     ]
 
     current_batch = max_batch + 1
@@ -467,7 +472,7 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
     type_name = type_data["type_name"]
     mutation_type = type_data.get("mutation_type")
     spawn_format = type_data.get("spawn_format")
-    mutation_paths = type_data.get("mutation_paths") or {}
+    mutation_paths = type_data.get("mutation_paths") or []
 
     # Step 1: Spawn or Insert (if spawn_format exists)
     if spawn_format is not None:
@@ -532,16 +537,20 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
         )
 
     # Step 3: Mutations
-    for _key, path_info in mutation_paths.items():
-        # Extract path from the path_info value (transitioning away from dict key)
-        path = cast(str, cast(dict[str, object], path_info)["path"])
+    for path_info in mutation_paths:
+        # Extract path from the path_info value
+        path = cast(str, cast(dict[str, object], cast(object, path_info))["path"])
 
         # Skip non-mutable paths
         # Note: path_info dict contains a "path_info" key that holds PathInfo
-        path_metadata = cast(dict[str, object], path_info).get("path_info")
+        path_metadata = cast(dict[str, object], cast(object, path_info)).get("path_info")
         if path_metadata:
             path_metadata_dict = cast(dict[str, object], path_metadata)
             if path_metadata_dict.get("mutability") == "not_mutable":
+                continue
+
+            # Skip paths with unavailable root examples (unconstructible enum variants)
+            if "root_example_unavailable_reason" in path_metadata_dict:
                 continue
 
             # Check for root example requirement (variant-dependent paths)
@@ -584,7 +593,7 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
                 operations.append(root_op)
 
         # Get test value for this mutation path
-        path_info_dict = cast(dict[str, object], path_info)
+        path_info_dict = cast(dict[str, object], cast(object, path_info))
         example = path_info_dict.get("example")
         examples = path_info_dict.get("examples")
 
@@ -1012,7 +1021,39 @@ if "type_guide" not in data:
     print("Error: Expected dict with 'type_guide' at root", file=sys.stderr)
     sys.exit(1)
 
-# Remove excluded types before renumbering
+# Check if test metadata exists, initialize if missing
+type_guide = data["type_guide"]
+needs_initialization = False
+
+# Check if any type is missing test metadata
+for type_name, type_data in list(type_guide.items())[:5]:  # Check first 5 types
+    if "test_status" not in type_data or "batch_number" not in type_data:
+        needs_initialization = True
+        break
+
+if needs_initialization:
+    print("Test metadata not found - initializing...", file=sys.stderr)
+    import subprocess
+    result = subprocess.run(
+        ["python3", ".claude/scripts/mutation_test/initialize_test_metadata.py", "--file", json_file],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        print(f"Error initializing test metadata: {result.stderr}", file=sys.stderr)
+        sys.exit(1)
+    print("Test metadata initialized successfully", file=sys.stderr)
+
+    # Reload the file with metadata
+    try:
+        with open(json_file, "r") as f:
+            data = cast(AllTypesData, json.load(f))
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON after initialization: {e}", file=sys.stderr)
+        sys.exit(1)
+
+# Load excluded types list (but don't delete them from data)
+excluded_type_names: set[str] = set()
 excluded_types_file = Path(".claude/config/mutation_test_excluded_types.json")
 if excluded_types_file.exists():
     try:
@@ -1023,83 +1064,16 @@ if excluded_types_file.exists():
                 entry["type_name"] for entry in excluded_config["excluded_types"]
             }
 
-            # Filter out excluded types from type_guide
-            original_count = len(data["type_guide"])
-            data["type_guide"] = {
-                type_name: type_data
-                for type_name, type_data in data["type_guide"].items()
-                if type_name not in excluded_type_names
-            }
-            excluded_count = original_count - len(data["type_guide"])
-
-            if excluded_count > 0:
+            if excluded_type_names:
                 print(
-                    f"Excluded {excluded_count} types from mutation testing",
+                    f"Loaded {len(excluded_type_names)} excluded types (will skip during testing)",
                     file=sys.stderr,
                 )
     except (json.JSONDecodeError, IOError) as e:
         print(f"Warning: Failed to load excluded types: {e}", file=sys.stderr)
 
-# Filter out paths with unavailable root examples from mutation testing
-print("Filtering paths with unavailable root examples...", file=sys.stderr)
-
-for type_name, type_data in list(data["type_guide"].items()):
-    mutation_paths_raw = type_data.get("mutation_paths")
-    if mutation_paths_raw is None:
-        continue
-
-    mutation_paths = cast(dict[str, MutationPathData], mutation_paths_raw)
-    paths_to_keep: list[str] = []
-    excluded_count_val: int = 0
-
-    for _key, path_data in mutation_paths.items():
-        # Extract path from the path_data value (transitioning away from dict key)
-        path = cast(str, cast(dict[str, object], cast(object, path_data))["path"])
-
-        path_info_raw = path_data.get("path_info")
-        if path_info_raw is None:
-            paths_to_keep.append(path)
-            continue
-
-        # Check if root_example is unavailable
-        # NOTE: Use 'in' operator to check for key existence because path_info is a TypedDict
-        # with total=False (all fields optional). The field is only present for unconstructible
-        # variants. Using path_info.get() or direct access would fail for missing keys.
-        # This filters ANY path with unconstructibility marker, including nested variant
-        # chains that inherit unconstructibility from their parent. This is conservative
-        # but correct: we exclude nested mutations even if they would work once game code
-        # sets the parent variant, because mutation tests rely on spawn/insert operations.
-        if "root_example_unavailable_reason" in path_info_raw:
-            excluded_count_val += 1
-            reason_str = path_info_raw["root_example_unavailable_reason"]
-            reason_preview = str(reason_str)[:80]
-            print(
-                f"  Excluding {type_name}{path}: {reason_preview}...",
-                file=sys.stderr
-            )
-        else:
-            paths_to_keep.append(path)
-
-    # Update type's mutation paths
-    if paths_to_keep:
-        # Reconstruct dict with only kept paths
-        available_dict: dict[str, object] = {k: cast(object, mutation_paths[k]) for k in paths_to_keep}
-        type_data["mutation_paths"] = available_dict
-        if excluded_count_val > 0:
-            print(
-                f"  Kept {len(paths_to_keep)} paths, excluded {excluded_count_val} for {type_name}",
-                file=sys.stderr
-            )
-    else:
-        # No testable paths remain - remove entire type
-        print(
-            f"  Removing {type_name} - no constructible paths remain",
-            file=sys.stderr
-        )
-        del data["type_guide"][type_name]
-
 # Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
-data = renumber_batches(data, batch_capacity, max_subagents, ops_per_subagent)
+data = renumber_batches(data, batch_capacity, max_subagents, ops_per_subagent, excluded_type_names)
 
 # Write updated data back to file
 try:
@@ -1124,6 +1098,10 @@ type_guide: dict[str, TypeDataComplete] = data["type_guide"]
 # Get types for the specified batch
 batch_types: list[TypeDataComplete] = []
 for type_name, type_info in type_guide.items():
+    # Skip excluded types
+    if type_name in excluded_type_names:
+        continue
+
     if type_info.get("batch_number") == batch_num:
         # Add type_name to the dict for consistency
         type_item: TypeDataComplete = cast(

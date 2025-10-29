@@ -71,7 +71,7 @@ MODE = ${ARGUMENTS:-preserve}
 Create a todo list with the following 5 items:
 1. "Execute app launch" (pending → in_progress when starting STEP 1)
 2. "Discover all registered types using brp_all_type_guides" (pending → in_progress when starting STEP 2)
-3. "Transform BRP response and compare with baseline" (pending → in_progress when starting STEP 3)
+3. "Save BRP response and run comparison with baseline" (pending → in_progress when starting STEP 3)
 4. "Clean shutdown of test application" (pending → in_progress when starting STEP 4)
 5. "Present results and get user decision on baseline promotion" (pending → in_progress when starting STEP 5)
 
@@ -82,7 +82,7 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
     **STEP 1:** Execute the <AppLaunch/>
     **STEP 2:** Execute the <TypeDiscovery/>
-    **STEP 3:** Execute the <FileTransformation/> (includes automatic comparison)
+    **STEP 3:** Execute the <FileSaveAndComparison/> (save raw BRP response and run comparison)
     **STEP 4:** Execute the <AppCleanup/>
     **STEP 5:** Execute the <UserValidation/> → **STOP** and present final summary
 </ExecutionSteps>
@@ -119,34 +119,40 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
 </TypeDiscovery>
 
-## STEP 3: FILE TRANSFORMATION
+## STEP 3: FILE SAVE AND COMPARISON
 
-<FileTransformation>
-    Augment the BRP response with test metadata while preserving FULL TYPE GUIDES:
+<FileSaveAndComparison>
+    Save the raw BRP response and compare with baseline:
 
-    Execute the augmentation script:
+    1. **Copy the BRP response to target file**:
     ```bash
-    .claude/scripts/create_mutation_test_json/augment_response.sh [FILEPATH] ${TARGET_FILE} ${MODE}
+    cp [FILEPATH] ${TARGET_FILE}
     ```
 
-    Replace `[FILEPATH]` with the actual path from Step 2, `${TARGET_FILE}` with the target location, and `${MODE}` with the mode from <CreateContext/>.
+    Replace `[FILEPATH]` with the actual path from Step 2 and `${TARGET_FILE}` with the target location.
 
-    The script augments the full BRP response with test metadata for each type:
-    - Preserves ALL original type guide data (mutation_paths with examples, spawn_format, etc.)
-    - **If MODE is "preserve" (default)**: Preserves test results (batch_number, test_status, fail_reason) from existing types
-    - **If MODE is "init" or "initialize"**: Resets all test metadata to defaults
-    - **For new types**: Adds batch_number: null, test_status: "untested" (or "passed" for auto-pass types), fail_reason: ""
+    2. **Run comparison to generate statistics and check for changes**:
+    ```bash
+    python3 .claude/scripts/create_mutation_test_json/compare.py .claude/transient/all_types_baseline.json ${TARGET_FILE}
+    ```
 
-    **File Structure**: The file is the COMPLETE BRP response with added test fields
+    The file saved is the COMPLETE raw BRP response with:
+    - spawn_format with examples
+    - mutation_paths with examples for each path
+    - supported_operations
+    - reflection_traits
+    - schema_info
 
-    **Automatic Comparison**: The script automatically compares the result with the baseline file (if it exists) and displays a one-line summary:
-    - `✅ No changes detected compared to baseline` - Files are identical
-    - `⚠️  Changes detected: X total changes across Y types (added: A, removed: R)` - Differences found
-    - `ℹ️  No baseline file found for comparison` - First run or baseline missing
+    **Note**: Test metadata (batch_number, test_status, fail_reason) is NOT added here. It will be initialized by `prepare.py` when needed.
 
-    **VALIDATION**: Confirm the script completed successfully, target file was created, and comparison summary was displayed.
+    **Comparison Output**: The compare.py script displays:
+    - Current file statistics (total types, spawn-supported types, types with mutations, total mutation paths)
+    - Comparison results (total changes, types modified/added/removed)
+    - `✅ No changes detected!` or `⚠️ CHANGES DETECTED: X changes`
 
-</FileTransformation>
+    **VALIDATION**: Confirm the file was saved and comparison completed successfully.
+
+</FileSaveAndComparison>
 
 ## STEP 4: APP CLEANUP
 
@@ -171,14 +177,13 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
 ## Mutation Test File Generation Complete
 - **File created**: ${TARGET_FILE}
-- **Types registered in Bevy**: [extract from augmentation script stats output]
-- **Spawn-supported types**: [extract from augmentation script stats output]
-- **Types with mutations**: [extract from augmentation script stats output]
-- **Total mutation paths**: [extract from augmentation script stats output]
-- **Excluded types**: [always 0]
+- **Types registered in Bevy**: [extract from compare.py "Total types" output]
+- **Spawn-supported types**: [extract from compare.py "Spawn-supported types" output]
+- **Types with mutations**: [extract from compare.py "Types with mutations" output]
+- **Total mutation paths**: [extract from compare.py "Total mutation paths" output]
 
 ### Comparison with Baseline:
-[Present the comparison summary that was automatically displayed by the augmentation script:
+[Present the comparison summary from compare.py output:
  - If "No changes detected": Simple confirmation
  - If "Changes detected": Report the total changes, types modified, types added, types removed]
 

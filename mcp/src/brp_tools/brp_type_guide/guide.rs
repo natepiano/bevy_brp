@@ -43,8 +43,8 @@ pub struct TypeGuide {
     /// Whether the type is registered in the Bevy registry
     pub in_registry:    bool,
     /// Mutation paths available for this type - using same format as V1
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub mutation_paths: HashMap<String, MutationPathExternal>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub mutation_paths: Vec<MutationPathExternal>,
     /// Example format for spawn/insert operations when supported
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spawn_format:   Option<Value>,
@@ -102,7 +102,7 @@ impl TypeGuide {
         Self {
             type_name,
             in_registry: false,
-            mutation_paths: HashMap::new(),
+            mutation_paths: Vec::new(),
             spawn_format: None,
             schema_info: None,
             agent_guidance: AGENT_GUIDANCE.to_string(),
@@ -118,7 +118,7 @@ impl TypeGuide {
         Self {
             type_name,
             in_registry: true, // Type WAS found in registry
-            mutation_paths: HashMap::new(),
+            mutation_paths: Vec::new(),
             spawn_format: None,
             schema_info: None,
             agent_guidance: ERROR_GUIDANCE.to_string(),
@@ -130,12 +130,10 @@ impl TypeGuide {
     ///
     /// Checks all mutation paths for Entity types and adds a warning about using
     /// valid Entity IDs from the running app.
-    fn generate_agent_guidance(
-        mutation_paths: &HashMap<String, MutationPathExternal>,
-    ) -> Result<String> {
+    fn generate_agent_guidance(mutation_paths: &[MutationPathExternal]) -> Result<String> {
         // Check if any mutation path contains Entity type
         let has_entity = mutation_paths
-            .values()
+            .iter()
             .any(|path| path.path_info.type_name.as_str().contains(TYPE_BEVY_ENTITY));
 
         if has_entity {
@@ -155,7 +153,7 @@ impl TypeGuide {
     /// and extracting it from the mutation paths.
     fn extract_spawn_format_if_spawnable(
         registry_schema: &Value,
-        mutation_paths: &HashMap<String, MutationPathExternal>,
+        mutation_paths: &[MutationPathExternal],
     ) -> Option<Value> {
         // Check if type is spawnable (has Component or Resource trait)
         let reflect_types = registry_schema

@@ -41,13 +41,20 @@ The `.claude/transient/all_types.json` file stores complete BRP type guides with
     "bevy_camera::camera::Camera": {
       "type_name": "bevy_camera::camera::Camera",
       "spawn_format": {...},
-      "mutation_paths": {
-        ".field_name": {
-          "description": "...",
-          "examples": [...],
-          "path_info": {...}
+      "mutation_paths": [
+        {
+          "path": ".is_active",
+          "description": "Mutate the is_active field of Camera",
+          "path_info": {...},
+          "example": true
+        },
+        {
+          "path": ".hdr",
+          "description": "Mutate the hdr field of Camera",
+          "path_info": {...},
+          "example": false
         }
-      },
+      ],
       "schema_info": {...},
       "batch_number": 1,
       "test_status": "passed",
@@ -58,8 +65,17 @@ The `.claude/transient/all_types.json` file stores complete BRP type guides with
 ```
 
 **Accessing types**: `all_types['type_guide'][type_name]`
-**Accessing mutation paths**: `all_types['type_guide'][type_name]['mutation_paths'][path]`
-**Test metadata fields**: `batch_number`, `test_status`, `fail_reason` (added by augmentation script)
+**Accessing mutation paths**: Iterate the array:
+```python
+for path_obj in all_types['type_guide'][type_name]['mutation_paths']:
+    path = path_obj['path']
+    description = path_obj['description']
+```
+**Finding specific path**: Search by path field:
+```python
+next((p for p in paths if p['path'] == '.is_active'), None)
+```
+**Test metadata fields**: `batch_number`, `test_status`, `fail_reason` (auto-initialized by prepare.py when needed)
 
 <context_window_management>
 Your context window will be automatically compacted as it approaches its limit, allowing you to continue working indefinitely from where you left off. Therefore, do not stop tasks early due to token budget concerns. As you approach your token budget limit, save your current progress and state to memory before the context window refreshes. Always be as persistent and autonomous as possible and complete tasks fully, even if the end of your budget is approaching. Never artificially stop any task early regardless of the context remaining.

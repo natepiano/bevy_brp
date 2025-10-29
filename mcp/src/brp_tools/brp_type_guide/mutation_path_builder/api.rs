@@ -28,7 +28,7 @@ use crate::error::Result;
 pub fn build_mutation_paths(
     type_name: &BrpTypeName,
     registry: Arc<HashMap<BrpTypeName, Value>>,
-) -> Result<HashMap<String, MutationPathExternal>> {
+) -> Result<Vec<MutationPathExternal>> {
     // Look up schema to determine TypeKind
     let schema = registry
         .get(type_name)
@@ -47,13 +47,9 @@ pub fn build_mutation_paths(
     let external_paths = internal_paths
         .iter()
         .map(|mutation_path_internal| {
-            // Keep empty path as empty for root mutations
-            // BRP expects empty string for root replacements, not "."
-            let key = (*mutation_path_internal.mutation_path).clone();
-            let mutation_path = mutation_path_internal
+            mutation_path_internal
                 .clone()
-                .into_mutation_path_external(&registry);
-            (key, mutation_path)
+                .into_mutation_path_external(&registry)
         })
         .collect();
 
@@ -64,11 +60,10 @@ pub fn build_mutation_paths(
 ///
 /// This is a helper function for extracting the example value from the root path ("")
 /// which is used as the spawn format for types that support spawn/insert operations.
-pub fn extract_spawn_format(
-    mutation_paths: &HashMap<String, MutationPathExternal>,
-) -> Option<Value> {
+pub fn extract_spawn_format(mutation_paths: &[MutationPathExternal]) -> Option<Value> {
     mutation_paths
-        .get("")
+        .iter()
+        .find(|p| *p.path == "")
         .and_then(|root_path| match &root_path.path_example {
             PathExample::Simple(val) => Some(val.clone()),
             PathExample::EnumRoot { groups, .. } => select_preferred_example(groups),

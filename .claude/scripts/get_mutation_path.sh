@@ -118,7 +118,8 @@ try:
         print()
 
         # Show first 20 paths as examples
-        for i, path in enumerate(list(mutation_paths.keys())[:20]):
+        for i, path_obj in enumerate(mutation_paths[:20]):
+            path = path_obj.get('path', '')
             if path == "":
                 print('  ""  (root path)')
             else:
@@ -131,18 +132,22 @@ try:
         print("Run again with a specific path to see its details.")
     else:
         # Get specific mutation path
-        if mutation_path not in mutation_paths:
+        path_data = None
+        for path_obj in mutation_paths:
+            if path_obj.get('path') == mutation_path:
+                path_data = path_obj
+                break
+
+        if not path_data:
             print(f"❌ Mutation path not found: {mutation_path}")
             print()
             print("Available paths that contain '{}':".format(mutation_path))
-            matching = [p for p in mutation_paths.keys() if mutation_path in p]
+            matching = [p.get('path', '') for p in mutation_paths if mutation_path in p.get('path', '')]
             for p in matching[:10]:
                 print(f'  "{p}"')
             if len(matching) > 10:
                 print(f"  ... and {len(matching) - 10} more")
             sys.exit(1)
-
-        path_data = mutation_paths[mutation_path]
 
         # Create a comprehensive JSON output
         output = {

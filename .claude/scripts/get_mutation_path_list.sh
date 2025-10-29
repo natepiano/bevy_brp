@@ -81,7 +81,8 @@ try:
     mutation_paths = type_data['mutation_paths']
 
     # Output just the paths, one per line
-    for path in mutation_paths.keys():
+    for path_obj in mutation_paths:
+        path = path_obj.get('path', '')
         if path == "":
             print('""')  # Show empty string clearly
         else:

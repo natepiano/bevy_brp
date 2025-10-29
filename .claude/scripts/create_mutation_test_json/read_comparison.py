@@ -356,6 +356,15 @@ def get_mutation_path_data(
         return None
 
     mutation_paths = type_data["mutation_paths"]
+
+    # Handle array format: search for element with matching path field
+    if isinstance(mutation_paths, list):
+        for path_obj in mutation_paths:
+            if isinstance(path_obj, dict) and path_obj.get("path") == mutation_path:
+                return path_obj
+        return None
+
+    # Legacy dict format (for backward compatibility)
     if mutation_path not in mutation_paths:
         return None
 

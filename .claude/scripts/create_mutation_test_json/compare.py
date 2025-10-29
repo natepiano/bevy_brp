@@ -99,11 +99,34 @@ def load_files(
 
 
 def extract_mutation_path(path: str) -> str | None:
-    """Extract the mutation path key from a JSON path if it's within mutation_paths."""
-    if not path.startswith("mutation_paths."):
+    """Extract the mutation path key from a JSON path if it's within mutation_paths.
+
+    With array format, paths look like: mutation_paths[INDEX].field
+    We extract the actual mutation path by looking at the .path field in the comparison data.
+    """
+    if not path.startswith("mutation_paths"):
         return None
 
-    # Handle double-dot case: could be root metadata or mutation path data
+    # Handle array format: mutation_paths[INDEX] or mutation_paths[INDEX].field
+    if path.startswith("mutation_paths["):
+        # Extract the index and what comes after
+        # Format: mutation_paths[INDEX] or mutation_paths[INDEX].rest
+        rest = path[len("mutation_paths") :]
+
+        # Check if there's a field after the array index
+        if "]" in rest:
+            after_bracket = rest.split("]", 1)[1]
+            if after_bracket.startswith("."):
+                # We have mutation_paths[INDEX].field_name
+                # The actual mutation path is stored in the .path field of the array element
+                # We can't extract it from the JSON path alone in array format
+                # Return a placeholder that the caller can resolve
+                return "__ARRAY_ELEMENT__"
+
+        # Just mutation_paths[INDEX] with no field - this is the whole element
+        return "__ARRAY_ELEMENT__"
+
+    # Handle legacy double-dot case for backward compatibility (shouldn't occur with array format)
     if path.startswith("mutation_paths.."):
         # Get what comes after the double dots
         rest_after_dots = path[len("mutation_paths..") :]
@@ -418,13 +441,18 @@ def calculate_file_statistics(data: dict[str, JsonValue]) -> FileStatsDict:
     types_with_mutations = sum(
         1 for t in data.values() if isinstance(t, dict) and t.get("mutation_paths")
     )
-    total_paths = sum(
-        len(cast(dict[str, JsonValue], t.get("mutation_paths", {})))
-        if isinstance(t.get("mutation_paths"), dict)
-        else 0
-        for t in data.values()
-        if isinstance(t, dict)
-    )
+
+    # Count mutation paths - handle both dict (old) and list (new) formats
+    total_paths = 0
+    for t in data.values():
+        if isinstance(t, dict):
+            mutation_paths = t.get("mutation_paths")
+            if isinstance(mutation_paths, dict):
+                # Old dict format
+                total_paths += len(mutation_paths)
+            elif isinstance(mutation_paths, list):
+                # New array format
+                total_paths += len(mutation_paths)
 
     return FileStatsDict(
         total_types=total_types,

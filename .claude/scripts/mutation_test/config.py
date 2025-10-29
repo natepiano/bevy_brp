@@ -31,7 +31,7 @@ class TypeDataOptional(TypedDict, total=False):
     """Optional fields for TypeData."""
 
     spawn_format: object | None
-    mutation_paths: dict[str, object] | None
+    mutation_paths: list[object] | None
     supported_operations: list[str] | None
     in_registry: bool | None
     schema_info: dict[str, object] | None

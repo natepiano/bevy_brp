@@ -36,7 +36,7 @@ class TypeGuide(TypedDict, total=False):
     """Type guide structure with test metadata."""
 
     type: str
-    mutation_paths: dict[str, Any]  # pyright: ignore[reportExplicitAny]
+    mutation_paths: list[Any]  # pyright: ignore[reportExplicitAny]
     batch_number: int | None
     test_status: str
     fail_reason: str
@@ -66,7 +66,7 @@ def should_auto_pass(type_guide: TypeGuide) -> bool:
     # Only root path → check if testable
     if len(mutation_paths) == 1:
         # Get the single path entry (should be root with path="")
-        root_path: dict[str, Any] = next(iter(mutation_paths.values()))  # pyright: ignore[reportExplicitAny]
+        root_path: dict[str, Any] = mutation_paths[0]  # pyright: ignore[reportExplicitAny]
         # Verify it's actually the root path
         if root_path.get("path") != "":
             return False  # Not a single root path, needs testing

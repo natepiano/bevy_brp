@@ -35,7 +35,7 @@ types_by_kind = {}
 for type_name, guide in type_guides.items():
     if 'mutation_paths' in guide and guide['mutation_paths']:
         type_kinds_found = set()
-        for path, path_data in guide['mutation_paths'].items():
+        for path_data in guide['mutation_paths']:
             if 'path_info' in path_data and 'type_kind' in path_data['path_info']:
                 kind = path_data['path_info']['type_kind']
                 type_kinds_found.add(kind)
@@ -71,7 +71,7 @@ matching_types = set()
 
 for type_name, guide in type_guides.items():
     if 'mutation_paths' in guide and guide['mutation_paths']:
-        for path, path_data in guide['mutation_paths'].items():
+        for path_data in guide['mutation_paths']:
             if 'path_info' in path_data and path_data['path_info'].get('type_kind') == target_kind:
                 matching_types.add(type_name)
                 break  # Found at least one, no need to check other paths
