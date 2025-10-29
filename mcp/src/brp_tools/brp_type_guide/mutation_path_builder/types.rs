@@ -101,12 +101,6 @@ pub struct PathInfo {
     /// `VariantName` serializes as a string in JSON output
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applicable_variants: Option<Vec<VariantName>>,
-    /// Only present for paths nested in enums - built using assembly during ascent
-    #[serde(skip_serializing_if = "Option::is_none", skip_serializing)]
-    pub old_root_example: Option<Value>,
-    /// Explanation for why root_example cannot be used to construct the required variant
-    #[serde(skip_serializing_if = "Option::is_none", skip_serializing)]
-    pub old_root_example_unavailable_reason: Option<String>,
     /// either the root_example or the root_example_unavailable_reason
     /// depending on which is available on this path
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
@@ -138,16 +132,7 @@ pub struct EnumPathInfo {
     /// All variants that share the same signature and support this path
     pub applicable_variants: Vec<VariantName>,
 
-    /// Complete root example for this specific variant chain
-    pub old_root_example: Option<Value>,
-
-    /// Explanation for why root_example cannot be used to construct this variant via BRP.
-    /// Only populated for PartiallyMutable/NotMutable variants.
-    pub old_root_example_unavailable_reason: Option<String>,
-
-    /// new root example
-    /// will replace current root_example and root-root_example_unavailable_reason with an enum
-    /// as they are mutually exclusive
+    /// root example enum - handles mutual exclusivity
     ///
     /// Available: Complete root example for this specific variant chain
     /// Unavailable: Explanation for why root_example cannot be used to construct this variant via BRP.

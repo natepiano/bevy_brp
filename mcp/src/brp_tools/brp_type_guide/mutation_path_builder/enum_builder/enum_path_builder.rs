@@ -89,9 +89,6 @@ type ProcessChildrenResult = (
 pub struct PartialRootExample {
     /// Complete root example for this variant chain
     pub example: Value,
-    /// Explanation for why this variant cannot be constructed via BRP.
-    /// Only populated for PartiallyMutable/NotMutable variants.
-    pub unavailable_reason: Option<String>,
 }
 
 /// Process enum type directly, bypassing `PathBuilder` trait
@@ -668,7 +665,6 @@ fn build_partial_root_examples(
                     nested_chain.clone(),
                     PartialRootExample {
                         example: example.clone(),
-                        unavailable_reason: nested_chain_reason.clone(),
                     },
                 );
 
@@ -702,7 +698,6 @@ fn build_partial_root_examples(
                 this_variant_chain.clone(),
                 PartialRootExample {
                     example: example.clone(),
-                    unavailable_reason: unavailable_reason.clone(),
                 },
             );
 
@@ -902,7 +897,6 @@ fn build_enum_root_path(
             variant_chain: ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
             old_root_example: None,
-            old_root_example_unavailable_reason: None,
             root_example: None,
         })
     };

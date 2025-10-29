@@ -423,7 +423,6 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
                 old_root_example: None,
-                old_root_example_unavailable_reason: None,
                 root_example: None,
             })
         };
@@ -563,15 +562,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             // Non-enum types don't have unavailability reasons (always None)
             let partials_with_reasons: HashMap<Vec<VariantName>, PartialRootExample> = partials
                 .iter()
-                .map(|(k, v)| {
-                    (
-                        k.clone(),
-                        PartialRootExample {
-                            example: v.clone(),
-                            unavailable_reason: None,
-                        },
-                    )
-                })
+                .map(|(k, v)| (k.clone(), PartialRootExample { example: v.clone() }))
                 .collect();
 
             // Populate root_example from partial_root_examples for children with enum_path_data

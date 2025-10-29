@@ -175,7 +175,6 @@ pub fn populate_root_examples_from_partials(
             // Populate both fields from the struct (single lookup!)
             if let Some(data) = partials.get(&enum_data.variant_chain) {
                 enum_data.old_root_example = Some(data.example.clone());
-                enum_data.old_root_example_unavailable_reason = data.unavailable_reason.clone();
             }
 
             // NEW system: Populate new field

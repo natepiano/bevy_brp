@@ -97,13 +97,7 @@ impl MutationPathInternal {
         let path_example = self.resolve_path_example_mut(has_default_for_root);
 
         // Extract enum-specific metadata only for mutable/partially mutable paths
-        let (
-            enum_instructions,
-            applicable_variants,
-            root_example,
-            root_example_unavailable_reason,
-            new_root_example,
-        ) = self.resolve_enum_data_mut();
+        let (enum_instructions, applicable_variants, root_example) = self.resolve_enum_data_mut();
 
         MutationPathExternal {
             description,
@@ -118,9 +112,7 @@ impl MutationPathInternal {
                     .and_then(Option::<Value>::from),
                 enum_instructions,
                 applicable_variants,
-                old_root_example: root_example,
-                old_root_example_unavailable_reason: root_example_unavailable_reason,
-                root_example: new_root_example,
+                root_example,
             },
             path_example,
         }
@@ -199,20 +191,18 @@ impl MutationPathInternal {
     ) -> (
         Option<String>,
         Option<Vec<VariantName>>,
-        Option<Value>,
-        Option<String>,
         Option<RootExample>,
     ) {
         if !matches!(
             self.mutability,
             Mutability::Mutable | Mutability::PartiallyMutable
         ) {
-            return (None, None, None, None, None);
+            return (None, None, None);
         }
 
         self.enum_path_data
             .take()
-            .map_or((None, None, None, None, None), |enum_data| {
+            .map_or((None, None,   None), |enum_data| {
                 let instructions = match &enum_data.root_example {
                     Some(RootExample::Available { .. }) => Some(format!(
                         "First, set the root mutation path to 'root_example', then you can mutate the '{}' path. See 'applicable_variants' for which variants support this field.",
@@ -230,8 +220,6 @@ impl MutationPathInternal {
                 (
                     instructions,
                     variants,
-                    enum_data.old_root_example,
-                    enum_data.old_root_example_unavailable_reason,
                     enum_data.root_example,
                 )
             })
