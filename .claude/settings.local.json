@@ -199,7 +199,8 @@
       "SlashCommand(/create_mutation_test_json)",
       "SlashCommand(/get_guide_baseline:*)",
       "Bash(git -C /Users/natemccoy/rust/bevy_brp diff)",
-      "Bash(git -C /Users/natemccoy/rust/bevy_brp diff --cached)"
+      "Bash(git -C /Users/natemccoy/rust/bevy_brp diff --cached)",
+      "Bash(git -C /Users/natemccoy/rust/bevy_brp status --short)"
     ],
     "deny": [
       "Bash(sed:*)",
