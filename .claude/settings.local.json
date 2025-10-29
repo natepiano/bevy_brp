@@ -197,7 +197,9 @@
       "WebFetch(domain:zed.dev)",
       "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test/operation_manager.py --action get-next)",
       "SlashCommand(/create_mutation_test_json)",
-      "SlashCommand(/get_guide_baseline:*)"
+      "SlashCommand(/get_guide_baseline:*)",
+      "Bash(git -C /Users/natemccoy/rust/bevy_brp diff)",
+      "Bash(git -C /Users/natemccoy/rust/bevy_brp diff --cached)"
     ],
     "deny": [
       "Bash(sed:*)",
