@@ -59,7 +59,7 @@ pub struct MutationPathInternal {
     /// Populated during enum processing for paths where `matches!(example, PathExample::EnumRoot {
     /// .. })`. Built by `build_partial_root_examples()` in `enum_path_builder.rs` during
     /// ascent phase. None for non-enum paths and enum leaf paths.
-    pub new_partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
+    pub partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
 }
 
 impl MutationPathInternal {
@@ -230,7 +230,7 @@ impl MutationPathInternal {
 pub trait MutationPathSliceExt {
     /// Collect all unique variant chains from direct children at the given depth
     ///
-    /// Extracts variant chains from `new_partial_root_examples` for all direct children,
+    /// Extracts variant chains from `partial_root_examples` for all direct children,
     /// enabling variant-specific root example assembly during enum processing.
     fn child_variant_chains(&self, depth: usize) -> HashSet<Vec<VariantName>>;
 }
@@ -241,7 +241,7 @@ impl MutationPathSliceExt for [&MutationPathInternal] {
             .filter(|child| child.is_direct_child_at_depth(depth))
             .flat_map(|child| {
                 child
-                    .new_partial_root_examples
+                    .partial_root_examples
                     .as_ref()
                     .into_iter()
                     .flat_map(|partials| partials.keys().cloned())

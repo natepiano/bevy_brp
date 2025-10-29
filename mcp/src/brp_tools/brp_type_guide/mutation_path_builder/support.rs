@@ -76,7 +76,7 @@ fn extract_child_value_for_chain(
 
     child_chain.map_or_else(fallback, |chain| {
         child
-            .new_partial_root_examples // Changed from partial_root_examples
+            .partial_root_examples // Changed from partial_root_examples
             .as_ref()
             .and_then(|partials| {
                 // Helper to extract Value from RootExample

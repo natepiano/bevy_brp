@@ -113,8 +113,8 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
             .iter()
             .filter(|p| child_examples.contains_key(&p.path_kind.to_mutation_path_descriptor()))
             .collect();
-        let new_partial_root_examples =
-            Self::assemble_partial_root_examples(&self.inner, ctx, direct_children.as_slice())?;
+        let partial_root_examples =
+            Self::build_partial_root_examples(&self.inner, ctx, direct_children.as_slice())?;
 
         // Use knowledge example if available (for Teach types), otherwise use assembled example
         let final_example =
@@ -166,7 +166,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                 example_to_use,
                 parent_status,
                 mutability_reason,
-                new_partial_root_examples,
+                partial_root_examples,
             )),
         }
     }
@@ -410,7 +410,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         example: PathExample,
         status: Mutability,
         mutability_reason: Option<NotMutableReason>,
-        new_partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
+        partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
     ) -> MutationPathInternal {
         // Build enum data if variant chain exists
         let enum_path_data = if ctx.variant_chain.is_empty() {
@@ -432,7 +432,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             mutability_reason,
             enum_path_info: enum_path_data,
             depth: *ctx.depth,
-            new_partial_root_examples,
+            partial_root_examples,
         }
     }
 
@@ -442,7 +442,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     /// 1. Collect each child's value for that chain
     /// 2. Assemble them using the builder's assembly logic (struct/tuple/etc)
     /// 3. Store the assembled value for that chain
-    fn assemble_partial_root_examples(
+    fn build_partial_root_examples(
         builder: &B,
         ctx: &RecursionContext,
         child_paths: &[&MutationPathInternal],
@@ -474,8 +474,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             return Ok(None);
         }
 
-        let mut assembled_partial_root_examples = HashMap::new();
-        let mut new_assembled_partial_root_examples = HashMap::new();
+        let mut partial_root_examples = HashMap::new();
 
         // For each variant chain, assemble wrapped example from compatible children
         for chain in all_chains {
@@ -484,17 +483,15 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 support::collect_children_for_chain(child_paths, ctx, Some(&chain));
 
             // Assemble from filtered children
-            let assembled = builder.assemble_from_children(ctx, examples_for_chain)?;
-
-            assembled_partial_root_examples.insert(chain.clone(), assembled.clone());
+            let root_example = builder.assemble_from_children(ctx, examples_for_chain)?;
 
             // NEW system: Check if any child has Unavailable for this chain
             let mut unavailable_reason = None;
             for child in child_paths {
-                if let Some(child_new_partials) = &child.new_partial_root_examples {
+                if let Some(child_partial_root_examples) = &child.partial_root_examples {
                     if let Some(RootExample::Unavailable {
                         root_example_unavailable_reason: reason,
-                    }) = child_new_partials.get(&chain)
+                    }) = child_partial_root_examples.get(&chain)
                     {
                         unavailable_reason = Some(reason.clone());
                         break;
@@ -502,19 +499,17 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 }
             }
 
-            let new_root_example = match unavailable_reason {
+            let root_example = match unavailable_reason {
                 Some(reason) => RootExample::Unavailable {
                     root_example_unavailable_reason: reason,
                 },
-                None => RootExample::Available {
-                    root_example: assembled,
-                },
+                None => RootExample::Available { root_example },
             };
 
-            new_assembled_partial_root_examples.insert(chain, new_root_example);
+            partial_root_examples.insert(chain, root_example);
         }
 
-        Ok(Some(new_assembled_partial_root_examples))
+        Ok(Some(partial_root_examples))
     }
 
     /// Build final result based on `PathAction`
@@ -524,16 +519,19 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         example_to_use: Value,
         parent_status: Mutability,
         mutability_reason: Option<NotMutableReason>,
-        new_partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
+        partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
     ) -> Vec<MutationPathInternal> {
-        if let Some(ref new_partials) = new_partial_root_examples {
-            // Propagate assembled new_partial_root_examples to all children
+        if let Some(ref partial_root_examples) = partial_root_examples {
+            // Propagate assembled partial_root_examples to all children
             for child in &mut paths_to_expose {
-                child.new_partial_root_examples = Some(new_partials.clone());
+                child.partial_root_examples = Some(partial_root_examples.clone());
             }
 
-            // Populate root_example from new_partial_root_examples for children with enum_path_data
-            support::populate_root_examples_from_partials(&mut paths_to_expose, new_partials);
+            // Populate root_example from partial_root_examples for children with enum_path_data
+            support::populate_root_examples_from_partials(
+                &mut paths_to_expose,
+                partial_root_examples,
+            );
         }
 
         let mutation_path_internal = Self::build_mutation_path_internal(
@@ -541,7 +539,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             PathExample::Simple(example_to_use),
             parent_status,
             mutability_reason,
-            new_partial_root_examples,
+            partial_root_examples,
         );
 
         match ctx.path_action {
