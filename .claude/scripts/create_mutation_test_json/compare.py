@@ -277,11 +277,12 @@ def deep_compare_values(
         test_metadata_fields = {"batch_number", "test_status", "fail_reason"}
 
         for key in sorted(all_keys):
-            # Skip test metadata fields at root level (when path is empty)
+            new_path = f"{path}.{key}" if path else str(key)
+
+            # Skip test metadata fields at type level (when path is empty string)
+            # These fields are managed by the mutation test system, not part of BRP data
             if not path and key in test_metadata_fields:
                 continue
-
-            new_path = f"{path}.{key}" if path else str(key)
 
             # Check if key exists in each dict to distinguish None value from missing key
             base_has_key = key in baseline_val
