@@ -50,6 +50,7 @@ use super::types::EnumPathData;
 use super::types::Mutability;
 use super::types::MutabilityIssue;
 use super::types::PathAction;
+use super::types::RootExample;
 use crate::error::Error;
 use crate::error::Result;
 
@@ -113,7 +114,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
             .iter()
             .filter(|p| child_examples.contains_key(&p.path_kind.to_mutation_path_descriptor()))
             .collect();
-        let partial_root_examples =
+        let (partial_root_examples, new_partial_root_examples) =
             Self::assemble_partial_root_examples(&self.inner, ctx, direct_children.as_slice())?;
 
         // Use knowledge example if available (for Teach types), otherwise use assembled example
@@ -167,6 +168,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                 parent_status,
                 mutability_reason,
                 partial_root_examples,
+                new_partial_root_examples,
             )),
         }
     }
@@ -411,6 +413,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         status: Mutability,
         mutability_reason: Option<NotMutableReason>,
         partial_root_examples: Option<HashMap<Vec<VariantName>, Value>>,
+        new_partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
     ) -> MutationPathInternal {
         // Build enum data if variant chain exists
         let enum_path_data = if ctx.variant_chain.is_empty() {
@@ -419,8 +422,9 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             Some(EnumPathData {
                 variant_chain: ctx.variant_chain.clone(),
                 applicable_variants: Vec::new(),
-                root_example: None,
+                old_root_example: None,
                 root_example_unavailable_reason: None,
+                root_example: None,
             })
         };
 
@@ -434,6 +438,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             enum_path_data,
             depth: *ctx.depth,
             partial_root_examples,
+            new_partial_root_examples,
         }
     }
 
@@ -447,7 +452,13 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         builder: &B,
         ctx: &RecursionContext,
         child_paths: &[&MutationPathInternal],
-    ) -> std::result::Result<Option<HashMap<Vec<VariantName>, Value>>, BuilderError> {
+    ) -> std::result::Result<
+        (
+            Option<HashMap<Vec<VariantName>, Value>>,       // OLD
+            Option<HashMap<Vec<VariantName>, RootExample>>, // NEW
+        ),
+        BuilderError,
+    > {
         // Special case: Skip partial root examples for Maps/Sets with NotMutable children
         // These collections require ALL children to be present for assembly, but our
         // filter excludes NotMutable children, causing assembly validation errors
@@ -461,7 +472,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
             if has_not_mutable {
                 // Map/Set with NotMutable children can't have valid partial root examples
-                return Ok(None);
+                return Ok((None, None));
             }
         }
 
@@ -476,10 +487,11 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
 
         if all_chains.is_empty() {
-            return Ok(None);
+            return Ok((None, None));
         }
 
         let mut assembled_partial_root_examples = HashMap::new();
+        let mut new_assembled_partial_root_examples = HashMap::new();
 
         // For each variant chain, assemble wrapped example from compatible children
         for chain in all_chains {
@@ -490,10 +502,38 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             // Assemble from filtered children
             let assembled = builder.assemble_from_children(ctx, examples_for_chain)?;
 
-            assembled_partial_root_examples.insert(chain, assembled);
+            assembled_partial_root_examples.insert(chain.clone(), assembled.clone());
+
+            // NEW system: Check if any child has Unavailable for this chain
+            let mut unavailable_reason = None;
+            for child in child_paths {
+                if let Some(child_new_partials) = &child.new_partial_root_examples {
+                    if let Some(RootExample::Unavailable {
+                        root_example_unavailable_reason: reason,
+                    }) = child_new_partials.get(&chain)
+                    {
+                        unavailable_reason = Some(reason.clone());
+                        break;
+                    }
+                }
+            }
+
+            let new_root_example = match unavailable_reason {
+                Some(reason) => RootExample::Unavailable {
+                    root_example_unavailable_reason: reason,
+                },
+                None => RootExample::Available {
+                    root_example: assembled,
+                },
+            };
+
+            new_assembled_partial_root_examples.insert(chain, new_root_example);
         }
 
-        Ok(Some(assembled_partial_root_examples))
+        Ok((
+            Some(assembled_partial_root_examples),
+            Some(new_assembled_partial_root_examples),
+        ))
     }
 
     /// Build final result based on `PathAction`
@@ -504,11 +544,19 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         parent_status: Mutability,
         mutability_reason: Option<NotMutableReason>,
         partial_root_examples: Option<HashMap<Vec<VariantName>, Value>>,
+        new_partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
     ) -> Vec<MutationPathInternal> {
         if let Some(ref partials) = partial_root_examples {
             // Propagate assembled partial_root_examples to all children
             for child in &mut paths_to_expose {
                 child.partial_root_examples = Some(partials.clone());
+            }
+
+            // NEW: Propagate assembled new_partial_root_examples to all children
+            if let Some(ref new_partials) = new_partial_root_examples {
+                for child in &mut paths_to_expose {
+                    child.new_partial_root_examples = Some(new_partials.clone());
+                }
             }
 
             // Convert Value partials to PartialRootExample for populate function
@@ -530,35 +578,32 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             support::populate_root_examples_from_partials(
                 &mut paths_to_expose,
                 &partials_with_reasons,
+                new_partial_root_examples
+                    .as_ref()
+                    .unwrap_or(&HashMap::new()),
             );
         }
+
+        let mutation_path_internal = Self::build_mutation_path_internal(
+            ctx,
+            PathExample::Simple(example_to_use),
+            parent_status,
+            mutability_reason,
+            partial_root_examples,
+            new_partial_root_examples,
+        );
 
         match ctx.path_action {
             PathAction::Create => {
                 // Normal mode: Add root path and return only paths marked for exposure
-                paths_to_expose.insert(
-                    0,
-                    Self::build_mutation_path_internal(
-                        ctx,
-                        PathExample::Simple(example_to_use),
-                        parent_status,
-                        mutability_reason,
-                        partial_root_examples,
-                    ),
-                );
+                paths_to_expose.insert(0, mutation_path_internal);
                 paths_to_expose
             }
             PathAction::Skip => {
                 // Skip mode: Return ONLY a root path with the example
                 // This ensures the example is available for parent assembly
                 // but child paths aren't exposed in the final result
-                vec![Self::build_mutation_path_internal(
-                    ctx,
-                    PathExample::Simple(example_to_use),
-                    parent_status,
-                    mutability_reason,
-                    partial_root_examples,
-                )]
+                vec![mutation_path_internal]
             }
         }
     }
@@ -577,6 +622,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             Mutability::NotMutable,
             Some(reason),
             None, // No partial roots for NotMutable paths
+            None, // No new partial roots for NotMutable paths
         )
     }
 
@@ -618,6 +664,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                             Mutability::Mutable,
                             None,
                             None, // No partial roots for knowledge-based paths
+                            None, // No new partial roots for TreatAsRootValue paths
                         )])),
                         None,
                     );

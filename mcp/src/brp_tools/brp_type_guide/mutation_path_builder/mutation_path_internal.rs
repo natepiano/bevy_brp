@@ -24,6 +24,7 @@ use super::types::MutabilityIssue;
 use super::types::MutabilityIssueTarget;
 use super::types::MutationPathExternal;
 use super::types::PathInfo;
+use super::types::RootExample;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
@@ -52,6 +53,7 @@ pub struct MutationPathInternal {
     /// .. })`. Built by `build_partial_root_examples()` in `enum_path_builder.rs` during
     /// ascent phase. None for non-enum paths and enum leaf paths.
     pub partial_root_examples: Option<HashMap<Vec<VariantName>, Value>>,
+    pub new_partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
 }
 
 impl MutationPathInternal {
@@ -95,8 +97,13 @@ impl MutationPathInternal {
         let path_example = self.resolve_path_example_mut(has_default_for_root);
 
         // Extract enum-specific metadata only for mutable/partially mutable paths
-        let (enum_instructions, applicable_variants, root_example, root_example_unavailable_reason) =
-            self.resolve_enum_data_mut();
+        let (
+            enum_instructions,
+            applicable_variants,
+            root_example,
+            root_example_unavailable_reason,
+            new_root_example,
+        ) = self.resolve_enum_data_mut();
 
         MutationPathExternal {
             description,
@@ -111,8 +118,9 @@ impl MutationPathInternal {
                     .and_then(Option::<Value>::from),
                 enum_instructions,
                 applicable_variants,
-                root_example,
-                root_example_unavailable_reason,
+                old_root_example: root_example,
+                old_root_example_unavailable_reason: root_example_unavailable_reason,
+                root_example: new_root_example,
             },
             path_example,
         }
@@ -193,21 +201,25 @@ impl MutationPathInternal {
         Option<Vec<VariantName>>,
         Option<Value>,
         Option<String>,
+        Option<RootExample>,
     ) {
         if !matches!(
             self.mutability,
             Mutability::Mutable | Mutability::PartiallyMutable
         ) {
-            return (None, None, None, None);
+            return (None, None, None, None, None);
         }
 
         self.enum_path_data
             .take()
-            .map_or((None, None, None, None), |enum_data| {
-                let instructions = Some(format!(
-                    "First, set the root mutation path to 'root_example', then you can mutate the '{}' path. See 'applicable_variants' for which variants support this field.",
-                    &self.mutation_path
-                ));
+            .map_or((None, None, None, None, None), |enum_data| {
+                let instructions = match &enum_data.root_example {
+                    Some(RootExample::Available { .. }) => Some(format!(
+                        "First, set the root mutation path to 'root_example', then you can mutate the '{}' path. See 'applicable_variants' for which variants support this field.",
+                        &self.mutation_path
+                    )),
+                    _ => None,  // Unavailable or NotPresent - no instructions
+                };
 
                 let variants = if enum_data.applicable_variants.is_empty() {
                     None
@@ -218,8 +230,9 @@ impl MutationPathInternal {
                 (
                     instructions,
                     variants,
-                    enum_data.root_example,
+                    enum_data.old_root_example,
                     enum_data.root_example_unavailable_reason,
+                    enum_data.root_example,
                 )
             })
     }

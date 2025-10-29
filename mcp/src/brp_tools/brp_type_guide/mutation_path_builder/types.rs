@@ -80,7 +80,7 @@ impl MutabilityIssue {
 }
 
 /// Path information combining navigation and type metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
     pub path_kind: PathKind,
@@ -102,11 +102,15 @@ pub struct PathInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applicable_variants: Option<Vec<VariantName>>,
     /// Only present for paths nested in enums - built using assembly during ascent
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub root_example: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none", skip_serializing)]
+    pub old_root_example: Option<Value>,
     /// Explanation for why root_example cannot be used to construct the required variant
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub root_example_unavailable_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", skip_serializing)]
+    pub old_root_example_unavailable_reason: Option<String>,
+    /// either the root_example or the root_example_unavailable_reason
+    /// depending on which is available on this path
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub root_example: Option<RootExample>,
 }
 
 /// Example group for enum variants
@@ -135,15 +139,23 @@ pub struct EnumPathData {
     pub applicable_variants: Vec<VariantName>,
 
     /// Complete root example for this specific variant chain
-    pub root_example: Option<Value>,
+    pub old_root_example: Option<Value>,
 
     /// Explanation for why root_example cannot be used to construct this variant via BRP.
     /// Only populated for PartiallyMutable/NotMutable variants.
     pub root_example_unavailable_reason: Option<String>,
+
+    /// new root example
+    /// will replace current root_example and root-root_example_unavailable_reason with an enum
+    /// as they are mutually exclusive
+    ///
+    /// Available: Complete root example for this specific variant chain
+    /// Unavailable: Explanation for why root_example cannot be used to construct this variant via BRP.
+    pub root_example: Option<RootExample>,
 }
 
 /// Information about a mutation path that we serialize to our response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MutationPathExternal {
     /// Human-readable description of what this path mutates
     pub description: String,
@@ -152,4 +164,20 @@ pub struct MutationPathExternal {
     /// Example data (either single value or enum variant groups)
     #[serde(flatten)]
     pub path_example: PathExample,
+}
+
+/// Root example for an enum variant, either available for construction or unavailable with reason
+///
+/// Serializes to JSON as either:
+/// - `{"root_example": <value>}` for Available variant
+/// - `{"root_example_unavailable_reason": "<reason>"}` for Unavailable variant
+#[derive(Debug, Clone, Serialize)]
+#[serde(untagged)]
+pub enum RootExample {
+    /// Variant can be constructed via BRP spawn/insert operations
+    Available { root_example: Value },
+    /// Variant cannot be constructed via BRP, with explanation
+    Unavailable {
+        root_example_unavailable_reason: String,
+    },
 }

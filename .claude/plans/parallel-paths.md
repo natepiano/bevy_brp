@@ -4,6 +4,99 @@
 
 Create a parallel array structure that outputs individual enum variants at each mutation path instead of grouped variants with examples arrays. This allows the `mutation_paths_array` field to contain one entry per variant, while the `mutation_paths` HashMap maintains backward compatibility with grouped variants.
 
+## Motivation: The Ambiguous Path Problem
+
+### The Core Issue
+
+When multiple enum variants contain fields at the same position or with the same name, they **collide** at the same mutation path string. This creates fundamental ambiguity in the HashMap format where a single path must represent multiple different types with different construction requirements.
+
+### Example 1: `bevy_window::cursor::CursorIcon`
+
+The mutation path `.0.0` is ambiguous:
+
+**When `CursorIcon::Custom(CustomCursor::Url(...))`:**
+- `.0.0` → `CustomCursorUrl` struct
+- All fields are fully mutable
+- Can provide valid root_example: `{"Custom": {"Url": {"hotspot": [5000, 5000], "url": "..."}}}`
+
+**When `CursorIcon::Custom(CustomCursor::Image(...))`:**
+- `.0.0` → `CustomCursorImage` struct
+- Contains non-mutable descendants (`Handle<Image>::Strong`)
+- Cannot provide complete root_example
+
+**Current HashMap limitation:**
+```json
+{
+  ".0.0": {
+    "description": "Mutate element 0 of CustomCursor struct",
+    "example": {"hotspot": [5000, 5000], "url": "..."},
+    "path_info": {
+      "applicable_variants": ["CustomCursor::Url"],
+      "root_example": {"Custom": {"Url": {...}}},
+      "root_example_unavailable_reason": "Cannot construct Custom variant..."
+    }
+  }
+}
+```
+
+This HashMap entry has **contradictory information** - it both provides a `root_example` AND explains why one can't be provided! The current fix is to remove the `root_example` entirely, but that's overly conservative and loses helpful information for the fully-mutable `Url` variant.
+
+### Example 2: `bevy_color::color::Color`
+
+All four variants have an `alpha` field at the same path:
+
+```rust
+enum Color {
+    Srgba { red: f32, green: f32, blue: f32, alpha: f32 },
+    LinearRgba { red: f32, green: f32, blue: f32, alpha: f32 },
+    Hsla { hue: f32, saturation: f32, lightness: f32, alpha: f32 },
+    Hsva { hue: f32, saturation: f32, value: f32, alpha: f32 },
+}
+```
+
+**Problem:** Path `.alpha` must represent:
+- `Color::Srgba` → needs root_example: `{"Srgba": {"red": 1.0, "green": 0.5, "blue": 0.0, "alpha": 1.0}}`
+- `Color::LinearRgba` → needs different root_example with LinearRgba variant
+- `Color::Hsla` → needs different root_example with Hsla variant
+- `Color::Hsva` → needs different root_example with Hsva variant
+
+**Current HashMap limitation:** Can only provide ONE root_example for `.alpha`, or none at all. Must choose which variant to favor or be overly conservative.
+
+### The Solution: Parallel Paths Array
+
+Instead of forcing variants together in a HashMap, provide separate array entries:
+
+```json
+[
+  {
+    "path": ".0.0",
+    "description": "Mutate CustomCursorUrl struct",
+    "example": {"hotspot": [5000, 5000], "url": "..."},
+    "path_info": {
+      "applicable_variants": ["CursorIcon::Custom(CustomCursor::Url)"],
+      "root_example": {"Custom": {"Url": {...}}},
+      "mutability": "mutable"
+    }
+  },
+  {
+    "path": ".0.0",
+    "description": "Mutate CustomCursorImage struct",
+    "example": {...},
+    "path_info": {
+      "applicable_variants": ["CursorIcon::Custom(CustomCursor::Image)"],
+      "root_example_unavailable_reason": "Cannot construct...",
+      "mutability": "partially_mutable"
+    }
+  }
+]
+```
+
+**Benefits:**
+- Each variant gets its own entry with accurate metadata
+- No contradictions - mutable variants show root_example, non-constructible variants show reason
+- Agents can choose the appropriate variant for their use case
+- Complete information instead of conservative compromise
+
 ## Key Insight
 
 Instead of creating special variant-specific `MutationPathInternal` entries separately, we modify the existing grouping pipeline to create BOTH:

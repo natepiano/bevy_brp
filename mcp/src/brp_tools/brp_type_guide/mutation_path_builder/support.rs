@@ -15,6 +15,7 @@ use super::new_types::VariantName;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
 use super::types::Mutability;
+use super::types::RootExample;
 
 /// Aggregate multiple mutation statuses into a single status
 ///
@@ -165,6 +166,7 @@ pub fn assemble_struct_from_children(
 pub fn populate_root_examples_from_partials(
     paths: &mut [MutationPathInternal],
     partials: &HashMap<Vec<VariantName>, PartialRootExample>,
+    new_partials: &HashMap<Vec<VariantName>, RootExample>,
 ) {
     for path in paths {
         if let Some(enum_data) = &mut path.enum_path_data
@@ -172,8 +174,13 @@ pub fn populate_root_examples_from_partials(
         {
             // Populate both fields from the struct (single lookup!)
             if let Some(data) = partials.get(&enum_data.variant_chain) {
-                enum_data.root_example = Some(data.example.clone());
+                enum_data.old_root_example = Some(data.example.clone());
                 enum_data.root_example_unavailable_reason = data.unavailable_reason.clone();
+            }
+
+            // NEW system: Populate new field
+            if let Some(root_example) = new_partials.get(&enum_data.variant_chain) {
+                enum_data.root_example = Some(root_example.clone());
             }
         }
     }
