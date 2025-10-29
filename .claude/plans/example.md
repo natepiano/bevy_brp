@@ -181,6 +181,46 @@ impl Serialize for PathExample {
 
 **Reasoning**: `PathExample` is the primary storage structure for examples, so it should use the self-documenting `Example` type. Serialization converts to `Value` at the boundary.
 
+**Migration Impact**: The change to `for_parent()` return type from `&Value` to `&Example` affects several callsites. Each must be updated to handle the new type:
+
+**Affected callsites and migration patterns:**
+
+1. **path_builder.rs line 393** (in `process_child` function):
+   ```rust
+   // Before:
+   let child_example = child_paths
+       .first()
+       .map_or(json!(null), |p| p.example.for_parent().clone());
+
+   // After:
+   let child_example = child_paths
+       .first()
+       .map_or(Example::NotApplicable, |p| p.example.for_parent().clone());
+   ```
+   *Pattern: Change default from `json!(null)` to `Example::NotApplicable`*
+
+2. **enum_path_builder.rs line 276** (variant group assembly):
+   ```rust
+   // Before:
+   .map(|p| p.example.for_parent().clone())
+
+   // After:
+   .map(|p| p.example.for_parent().clone())  // No change - already returns Example
+   ```
+   *Pattern: No change needed at callsite - Example works directly*
+
+3. **support.rs line 71-104** (`extract_child_value_for_chain` function):
+   ```rust
+   // Before:
+   let fallback = || child.example.for_parent().clone();
+
+   // After:
+   let fallback = || child.example.for_parent().to_value();
+   ```
+   *Pattern: Add `.to_value()` to convert Example to Value for return type*
+
+**Note**: Most callers that store the result in `HashMap<..., Example>` require no changes. Only callers that expect `Value` need explicit `.to_value()` conversion.
+
 ---
 
 ### Phase 3: Update path_builder.rs
@@ -280,6 +320,35 @@ fn process_child(
 
     Ok((child_paths, child_example))
 }
+```
+
+**HashMap Insertion/Extraction Strategy**: With `child_examples` now typed as `HashMap<MutationPathDescriptor, Example>`, the insertion and extraction logic becomes straightforward:
+
+**Insertion (line 334)**:
+```rust
+// Before:
+let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx)?;
+child_examples.insert(child_key, child_example);  // child_example was Value
+
+// After:
+let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx)?;
+child_examples.insert(child_key, child_example);  // child_example is now Example
+// No changes needed at insertion site - process_child now returns Example
+```
+
+**Extraction for assembly (lines 217-221, already shown above in point 2)**:
+```rust
+// Convert HashMap<..., Example> to HashMap<..., Value> when calling builders:
+let child_values: HashMap<_, _> = child_examples
+    .iter()
+    .map(|(k, ex)| (k.clone(), ex.to_value()))
+    .collect();
+```
+
+**Key filtering (lines 113-115)**: No changes needed - `contains_key()` only uses keys, not values:
+```rust
+// This code works unchanged:
+if child_examples.contains_key(&descriptor) { ... }
 ```
 
 7. **Update build_not_mutable_path (line 556-567)**:
