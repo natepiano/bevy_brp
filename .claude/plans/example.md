@@ -98,11 +98,6 @@ impl Example {
     pub const fn is_null_equivalent(&self) -> bool {
         matches!(self, Self::OptionNone | Self::NotApplicable)
     }
-
-    /// Create from Value (convenience wrapper)
-    pub const fn from_value(value: Value) -> Self {
-        Self::Json(value)
-    }
 }
 
 impl From<Value> for Example {
@@ -114,15 +109,6 @@ impl From<Value> for Example {
 impl From<Example> for Value {
     fn from(example: Example) -> Self {
         example.to_value()
-    }
-}
-
-// Allow dereferencing Example to Value for convenience
-impl std::ops::Deref for Example {
-    type Target = Value;
-
-    fn deref(&self) -> &Self::Target {
-        self.as_value()
     }
 }
 ```
@@ -371,12 +357,8 @@ fn resolve_path_example(&mut self, has_default_for_root: bool) -> PathExample {
             }
         },
         Mutability::Mutable => {
-            // Move the example out for Mutable case
-            // Use NotApplicable as placeholder (more self-documenting than Simple(null))
-            std::mem::replace(
-                &mut self.example,
-                PathExample::Simple(Example::NotApplicable)
-            )
+            // Clone the example for Mutable case
+            self.example.clone()
         }
     }
 }
@@ -526,7 +508,7 @@ The compiler enforces that all variants are handled, preventing bugs where null 
 Every `.to_value()` call marks a boundary where semantic meaning collapses to JSON. This makes the architecture easier to understand.
 
 ### 4. **Minimal Runtime Cost**
-`Example` is a zero-cost wrapper in most cases. The `Deref` implementation allows transparent usage where `&Value` is needed.
+`Example` is a zero-cost wrapper in most cases. Explicit `as_value()` and `to_value()` methods provide efficient conversion at boundaries.
 
 ---
 
