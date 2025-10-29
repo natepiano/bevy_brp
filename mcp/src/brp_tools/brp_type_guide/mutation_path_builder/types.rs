@@ -101,7 +101,7 @@ pub struct PathInfo {
     /// `VariantName` serializes as a string in JSON output
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applicable_variants: Option<Vec<VariantName>>,
-    /// either the root_example or the root_example_unavailable_reason
+    /// either the `root_example` or the `root_example_unavailable_reason`
     /// depending on which is available on this path
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub root_example:        Option<RootExample>,
@@ -135,8 +135,8 @@ pub struct EnumPathInfo {
     /// root example enum - handles mutual exclusivity
     ///
     /// Available: Complete root example for this specific variant chain
-    /// Unavailable: Explanation for why root_example cannot be used to construct this variant via
-    /// BRP.
+    /// Unavailable: Explanation for why `root_example` cannot be used to construct this variant
+    /// via BRP.
     pub root_example: Option<RootExample>,
 }
 

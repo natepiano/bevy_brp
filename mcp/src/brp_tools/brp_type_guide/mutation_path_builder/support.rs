@@ -206,17 +206,17 @@ pub fn wrap_example_with_availability(
                     RootExample::Unavailable {
                         root_example_unavailable_reason,
                     } => Some(root_example_unavailable_reason.clone()),
-                    _ => None,
+                    RootExample::Available { .. } => None,
                 })
         })
     });
 
-    match unavailable_reason {
-        Some(reason) => RootExample::Unavailable {
-            root_example_unavailable_reason: reason,
-        },
-        None => RootExample::Available {
+    unavailable_reason.map_or(
+        RootExample::Available {
             root_example: example,
         },
-    }
+        |reason| RootExample::Unavailable {
+            root_example_unavailable_reason: reason,
+        },
+    )
 }

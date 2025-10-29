@@ -553,8 +553,7 @@ fn build_partial_root_examples(
             let variant_mutability = enum_examples
                 .iter()
                 .find(|ex| ex.applicable_variants.contains(variant_name))
-                .map(|ex| ex.mutability)
-                .unwrap_or(Mutability::NotMutable);
+                .map_or(Mutability::NotMutable, |ex| ex.mutability);
 
             // Determine if this variant can be constructed via BRP
             let variant_unavailable_reason = analyze_variant_constructibility(
@@ -650,8 +649,8 @@ fn build_variant_example_for_chain(
 /// Returns `Ok(())` if variant is constructible (Mutable variants, Unit variants)
 /// Returns `Err(reason)` if variant cannot be constructed, with human-readable explanation
 ///
-/// For PartiallyMutable variants, collects actual reasons from NotMutable child fields.
-/// For NotMutable variants, indicates all fields are problematic.
+/// For `PartiallyMutable` variants, collects actual reasons from `NotMutable` child fields.
+/// For `NotMutable` variants, indicates all fields are problematic.
 fn analyze_variant_constructibility(
     variant_name: &VariantName,
     signature: &VariantSignature,
@@ -688,7 +687,7 @@ fn analyze_variant_constructibility(
         .filter(|p| p.is_direct_child_at_depth(*ctx.depth))
         // Filter to only paths belonging to the current variant
         .filter(|p| {
-            p.enum_path_info.as_ref().map_or(false, |data| {
+            p.enum_path_info.as_ref().is_some_and(|data| {
                 !data.variant_chain.is_empty() && &data.variant_chain[0] == variant_name
             })
         })
@@ -719,18 +718,14 @@ fn analyze_variant_constructibility(
             // For PartiallyMutable, explain that it contains non-mutable descendants
             // For NotMutable, show the actual reason
             let reason_detail = if matches!(p.mutability, Mutability::PartiallyMutable) {
-                format!(
-                    "contains non-mutable descendants (see '{}' mutation_paths for details)",
-                    type_name
-                )
+                format!("contains non-mutable descendants (see '{type_name}' mutation_paths for details)")
             } else {
                 p.mutability_reason
                     .as_ref()
-                    .map(|reason| format!("{reason}"))
-                    .unwrap_or_else(|| "unknown reason".to_string())
+                    .map_or_else(|| "unknown reason".to_string(), |reason| format!("{reason}"))
             };
 
-            format!("{} ({}): {}", field_label, type_name, reason_detail)
+            format!("{field_label} ({type_name}): {reason_detail}")
         })
         .collect();
 
