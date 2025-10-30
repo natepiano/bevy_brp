@@ -187,10 +187,15 @@ def renumber_batches(
     excluded_type_names: set[str],
 ) -> AllTypesData:
     """
-    Renumber batches: reset failed tests to untested and assign batch numbers.
-    This happens before every batch to ensure retry failures are picked up.
+    Pack ALL untested types into batches in a single pass.
 
-    Uses operation-based greedy packing to assign batch numbers.
+    Algorithm:
+    1. Reset failed tests to untested
+    2. Find next batch number to use
+    3. Pack everything that fits into current batch
+    4. Increment batch number
+    5. Loop through ALL remaining types (including skipped ones)
+    6. Continue until all types are packed
 
     Args:
         data: AllTypesData containing type_guide
@@ -203,7 +208,6 @@ def renumber_batches(
 
     # Step 1: Reset failed tests to untested and clear their batch numbers
     for type_name, type_data in type_guide.items():
-        # Skip excluded types
         if type_name in excluded_type_names:
             continue
         if type_data.get("test_status") == "failed":
@@ -219,12 +223,12 @@ def renumber_batches(
             if batch_num is not None and batch_num > max_batch:
                 max_batch = batch_num
 
-    # Step 3: Clear batch numbers only for untested types (retries + never tested)
+    # Step 3: Clear batch numbers for ALL untested types
     for type_data in type_guide.values():
         if type_data.get("test_status") == "untested":
             type_data["batch_number"] = None
 
-    # Step 4: Assign batch numbers using greedy operation-based packing
+    # Step 4: Pack ALL untested types into batches (single pass)
     untested_types: list[tuple[str, TypeData]] = [
         (type_name, type_data)
         for type_name, type_data in type_guide.items()
@@ -232,104 +236,128 @@ def renumber_batches(
     ]
 
     current_batch = max_batch + 1
-
-    # Track current position within batch (in operations, not slots)
     current_subagent_idx = 0  # 0-indexed within batch
     current_ops_in_subagent = 0  # Operations used in current subagent
 
-    type_idx = 0
-    while type_idx < len(untested_types):
-        type_name, type_data_raw = untested_types[type_idx]
+    # Pack all types into batches - loop until nothing left to pack
+    while True:
+        packed_any_in_batch = False
+        type_idx = 0
 
-        # Extract mutation_type to match preparation phase
-        schema_info = type_data_raw.get("schema_info")
-        mutation_type = extract_mutation_type(schema_info)
+        while type_idx < len(untested_types):
+            type_name, type_data_raw = untested_types[type_idx]
 
-        # Build complete type_data with mutation_type (same as preparation phase)
-        type_data = build_type_data_complete(type_name, type_data_raw, mutation_type)
+            # Skip if already assigned to a batch
+            if type_guide[type_name].get("batch_number") is not None:
+                type_idx += 1
+                continue
 
-        # Calculate operations needed for this type
-        ops_needed = calculate_type_operations(type_data)
+            # Extract mutation_type to match preparation phase
+            schema_info = type_data_raw.get("schema_info")
+            mutation_type = extract_mutation_type(schema_info)
 
-        # Check if type can fit in empty batch (sanity check - warn if not in current batch)
-        if ops_needed > batch_capacity:
-            print(
-                f"Warning: Type '{type_name}' requires {ops_needed} operations "
-                + f"but batch capacity is only {batch_capacity} operations. "
-                + "This type will be skipped. Increase max_subagents or ops_per_subagent in config."
-            )
-            type_idx += 1
-            continue
+            # Build complete type_data with mutation_type (same as preparation phase)
+            type_data = build_type_data_complete(type_name, type_data_raw, mutation_type)
 
-        # Calculate remaining capacity in current batch
-        ops_remaining_in_current_subagent = ops_per_subagent - current_ops_in_subagent
-        remaining_subagents = (
-            max_subagents - current_subagent_idx - 1
-        )  # Not including current
-        total_remaining_ops = (
-            ops_remaining_in_current_subagent + remaining_subagents * ops_per_subagent
-        )
+            # Calculate operations needed for this type
+            ops_needed = calculate_type_operations(type_data)
 
-        # Can this type fit in remaining batch capacity?
-        if ops_needed <= total_remaining_ops:
-            # Yes, assign to current batch
-            type_guide[type_name]["batch_number"] = current_batch
-
-            # Advance position (may span multiple subagents)
-            ops_to_place = ops_needed
-            while ops_to_place > 0:
-                ops_in_this_subagent = min(
-                    ops_to_place, ops_per_subagent - current_ops_in_subagent
+            # Check if type can fit in empty batch (sanity check - warn if not in current batch)
+            if ops_needed > batch_capacity:
+                print(
+                    f"Warning: Type '{type_name}' requires {ops_needed} operations "
+                    + f"but batch capacity is only {batch_capacity} operations. "
+                    + "This type will be skipped. Increase max_subagents or ops_per_subagent in config."
                 )
-                current_ops_in_subagent += ops_in_this_subagent
-                ops_to_place -= ops_in_this_subagent
+                type_guide[type_name]["batch_number"] = -1  # Mark as skipped
+                type_idx += 1
+                continue
 
-                # If current subagent is full, move to next
-                if current_ops_in_subagent >= ops_per_subagent:
-                    current_subagent_idx += 1
-                    current_ops_in_subagent = 0
+            # Can this type fit in remaining batch capacity?
+            # Calculate actual operations including query overhead for splits
+            can_fit = False
 
-            # Move to next type
+            # Calculate how many subagents remain (including current partial one)
+            remaining_subagents = max_subagents - current_subagent_idx
+
+            # Simulate packing to see if it fits
+            test_ops_remaining = ops_needed
+            test_subagent_idx = 0
+            test_ops_in_subagent = current_ops_in_subagent  # How many ops USED in current subagent
+            parts_needed = 0
+
+            while test_ops_remaining > 0 and test_subagent_idx < remaining_subagents:
+                # How much can we fit in this subagent?
+                available_in_subagent = ops_per_subagent - test_ops_in_subagent
+                if available_in_subagent <= 0:
+                    # Move to next subagent
+                    test_subagent_idx += 1
+                    test_ops_in_subagent = 0
+                    continue
+
+                # For components, part 2+ needs a query operation (part 1 already has it)
+                extra_ops = 0
+                if parts_needed > 0 and mutation_type == "Component":
+                    extra_ops = 1  # Query operation for this part
+
+                ops_in_this_part = min(test_ops_remaining, available_in_subagent - extra_ops)
+                if ops_in_this_part <= 0:
+                    # Can't fit even the query, need next subagent
+                    test_subagent_idx += 1
+                    test_ops_in_subagent = 0
+                    continue
+
+                test_ops_remaining -= ops_in_this_part
+                test_ops_in_subagent += ops_in_this_part + extra_ops
+                parts_needed += 1
+
+                if test_ops_in_subagent >= ops_per_subagent:
+                    test_subagent_idx += 1
+                    test_ops_in_subagent = 0
+
+            # Did we fit all operations?
+            if test_ops_remaining == 0:
+                can_fit = True
+
+            if can_fit:
+                # Yes, assign to current batch
+                type_guide[type_name]["batch_number"] = current_batch
+                packed_any_in_batch = True
+
+                # Advance position accounting for query overhead in splits
+                # This must match exactly how the simulation worked
+                ops_to_place = ops_needed
+                part_num = 0
+                while ops_to_place > 0:
+                    available = ops_per_subagent - current_ops_in_subagent
+
+                    # For components, part 2+ needs a query operation
+                    extra_ops = 0
+                    if part_num > 0 and mutation_type == "Component":
+                        extra_ops = 1
+
+                    ops_in_this_part = min(ops_to_place, available - extra_ops)
+                    current_ops_in_subagent += ops_in_this_part + extra_ops
+                    ops_to_place -= ops_in_this_part
+                    part_num += 1
+
+                    # If current subagent is full, move to next
+                    if current_ops_in_subagent >= ops_per_subagent:
+                        current_subagent_idx += 1
+                        current_ops_in_subagent = 0
+
+            # Move to next type (whether it fit or not)
             type_idx += 1
-        else:
-            # No, skip this type and try to pack smaller types
-            # First check if we've exhausted the batch
-            if current_subagent_idx >= max_subagents:
-                # Start new batch
-                current_batch += 1
-                current_subagent_idx = 0
-                current_ops_in_subagent = 0
-                # Don't increment type_idx - retry this type in new batch
-            else:
-                # Try to find smaller types that fit in remaining capacity
-                found_smaller = False
-                for check_idx in range(type_idx + 1, len(untested_types)):
-                    check_name, check_data_raw = untested_types[check_idx]
 
-                    # Build type_data for operation calculation
-                    check_schema_info = check_data_raw.get("schema_info")
-                    check_mutation_type = extract_mutation_type(check_schema_info)
-                    check_type_data = build_type_data_complete(
-                        check_name, check_data_raw, check_mutation_type
-                    )
+        # Done iterating through all types for this batch
+        # If we didn't pack anything, we're done entirely
+        if not packed_any_in_batch:
+            break
 
-                    check_ops_needed = calculate_type_operations(check_type_data)
-
-                    if check_ops_needed <= total_remaining_ops:
-                        # Found a smaller type that fits - swap and process it
-                        untested_types[type_idx], untested_types[check_idx] = (
-                            untested_types[check_idx],
-                            untested_types[type_idx],
-                        )
-                        found_smaller = True
-                        break
-
-                if not found_smaller:
-                    # No smaller types found, start new batch
-                    current_batch += 1
-                    current_subagent_idx = 0
-                    current_ops_in_subagent = 0
-                    # Don't increment type_idx - retry this type in new batch
+        # Start next batch
+        current_batch += 1
+        current_subagent_idx = 0
+        current_ops_in_subagent = 0
 
     # Report statistics
     total = len(type_guide)
@@ -424,7 +452,21 @@ def format_type_description(
     Returns:
         Formatted description string like "TypeName (C: 10 ops)" or "TypeName (R: 5 ops, 2 of 3)"
     """
-    short_name = type_name.split("::")[-1]
+    # Find the last :: that appears before any < to handle generic types correctly
+    # For "bevy_time::time::Time<bevy_time::time::Real>", we want "Time<bevy_time::time::Real>"
+    if "<" in type_name:
+        # Find position of first <
+        generic_start = type_name.index("<")
+        # Find last :: before the <
+        prefix = type_name[:generic_start]
+        last_separator = prefix.rfind("::")
+        if last_separator != -1:
+            short_name = type_name[last_separator + 2:]
+        else:
+            short_name = type_name
+    else:
+        short_name = type_name.split("::")[-1]
+
     category = (
         "C"
         if mutation_type == "Component"
@@ -538,12 +580,12 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
 
     # Step 3: Mutations
     for path_info in mutation_paths:
-        # Extract path from the path_info value
-        path = cast(str, cast(dict[str, object], cast(object, path_info))["path"])
+        # Extract path from the path_info value (path_info is already object type)
+        path = cast(str, cast(dict[str, object], path_info)["path"])
 
         # Skip non-mutable paths
         # Note: path_info dict contains a "path_info" key that holds PathInfo
-        path_metadata = cast(dict[str, object], cast(object, path_info)).get("path_info")
+        path_metadata = cast(dict[str, object], path_info).get("path_info")
         if path_metadata:
             path_metadata_dict = cast(dict[str, object], path_metadata)
             if path_metadata_dict.get("mutability") == "not_mutable":
@@ -592,8 +634,8 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
 
                 operations.append(root_op)
 
-        # Get test value for this mutation path
-        path_info_dict = cast(dict[str, object], cast(object, path_info))
+        # Get test value for this mutation path (path_info is already object type)
+        path_info_dict = cast(dict[str, object], path_info)
         example = path_info_dict.get("example")
         examples = path_info_dict.get("examples")
 
@@ -1263,6 +1305,61 @@ for type_with_ops in types_with_ops:
         else:
             total_parts = (ops_needed + ops_per_subagent - 1) // ops_per_subagent
 
+        # Check if we have enough subagents to complete all parts
+        subagents_needed = current_subagent_num + total_parts - 1
+        if subagents_needed > max_subagents:
+            # Not enough subagents to complete this multi-part type
+            # Try to find a smaller type that fits instead
+            remaining_subagents = max_subagents - current_subagent_num + 1
+            remaining_capacity = (
+                ops_remaining_in_subagent + (remaining_subagents - 1) * ops_per_subagent
+            )
+
+            # Search for a smaller type in the remaining types
+            found_smaller = False
+            current_idx = types_with_ops.index(type_with_ops)
+            for check_idx in range(current_idx + 1, len(types_with_ops)):
+                check_type_with_ops = types_with_ops[check_idx]
+                check_ops_needed = check_type_with_ops["ops_needed"]
+
+                if check_ops_needed <= remaining_capacity:
+                    # Calculate parts needed for this smaller type
+                    if ops_remaining_in_subagent > 0:
+                        check_after_first = check_ops_needed - ops_remaining_in_subagent
+                        if check_after_first > 0:
+                            check_parts = 1 + (
+                                (check_after_first + ops_per_subagent - 1)
+                                // ops_per_subagent
+                            )
+                        else:
+                            check_parts = 1
+                    else:
+                        check_parts = (
+                            check_ops_needed + ops_per_subagent - 1
+                        ) // ops_per_subagent
+
+                    # Verify this smaller type can complete within remaining subagents
+                    check_subagents_needed = current_subagent_num + check_parts - 1
+                    if check_subagents_needed <= max_subagents:
+                        # Found a smaller type that fits - swap and process it
+                        types_with_ops[current_idx], types_with_ops[check_idx] = (
+                            types_with_ops[check_idx],
+                            types_with_ops[current_idx],
+                        )
+                        found_smaller = True
+                        break
+
+            if not found_smaller:
+                # No smaller types found that can complete - done with this batch
+                print(
+                    f"Note: Skipping type '{type_name}' - requires {total_parts} parts but only {remaining_subagents} subagent(s) remaining",
+                    file=sys.stderr,
+                )
+                break
+
+            # Skip to next iteration to process the swapped smaller type
+            continue
+
         while remaining_ops > 0:
             # Calculate how many slots are available in this subagent
             # For part 1: use remaining space in current subagent
@@ -1522,6 +1619,30 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
             return f"{prefix}: {aligned_count} ops{after_ops}"
         return rest
 
+    def format_type_description_line(
+        type_desc: str, max_type_name_length: int, op_count_width: int
+    ) -> str:
+        """Format a type description line with proper alignment.
+
+        Handles type names with special characters like < and > (e.g., Time<Fixed>).
+        Uses .ljust() instead of f-string formatting to avoid issues with < characters.
+
+        Args:
+            type_desc: Type description string like "Time<Fixed> (R: 7 ops, 1 of 2)"
+            max_type_name_length: Width to pad type name to
+            op_count_width: Width for operation count alignment
+
+        Returns:
+            Formatted string with padded type name and aligned operation count
+        """
+        if " (" in type_desc:
+            type_name, rest = type_desc.split(" (", 1)
+            # Right-align operation count in the rest part
+            formatted_rest = format_ops_count(rest, op_count_width)
+            # Use .ljust() instead of f-string formatting to avoid issues with < in type names
+            return f"{type_name.ljust(max_type_name_length)} ({formatted_rest}"
+        return type_desc
+
     # Calculate max line width for test plan path alignment
     max_line_width = 0
     for idx, assignment in enumerate(assignments):
@@ -1545,19 +1666,22 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
     type_header = "Type (C=Component, R=Resource: ops, Partition)"
     # Type column should be at least the header length, but can expand if content is longer
     min_type_width = len(type_header)
-    actual_content_width = max_line_width - len("# Subagent    ")
+    # Use actual prefix length (dynamic based on subagent/ops widths), not fixed "# Subagent    "
+    actual_content_width = max_line_width - prefix_length
     type_column_width = max(min_type_width, actual_content_width)
-    header_line = f"# Subagent    {type_header:<{type_column_width}} Test Plan"
+    # Subagent column width matches the "N (XX ops)" format: N + " (" (2) + XX + " ops)" (5)
+    subagent_column_width = max_subagent_width + 2 + max_ops_width + 5
+    header_line = f"# {'Subagent':<{subagent_column_width}} {type_header:<{type_column_width}} Test Plan"
     _ = f.write(f"{header_line}\n")
 
     # Write separator line to visually partition columns
-    subagent_separator = "=" * 11  # "Subagent   " = 11 chars (after "#")
+    subagent_separator = "=" * subagent_column_width
     # Type separator fills the entire type column width
     type_separator = "=" * type_column_width
     # Test plan separator should match the width of the test plan file path
     test_plan_path_width = len(assignments[0]["test_plan_file"]) if assignments else 29
     test_plan_separator = "=" * test_plan_path_width
-    # Single space between Type and Test Plan separators
+    # Single space between separators (matching header layout)
     separator_line = f"# {subagent_separator} {type_separator} {test_plan_separator}"
     _ = f.write(f"{separator_line}\n")
 
@@ -1571,31 +1695,21 @@ with open(DEBUG_LOG, "w", encoding="utf-8") as f:
         if type_list:
             # First type on same line as subagent info
             first_desc = type_list[0]
-            if " (" in first_desc:
-                type_name, rest = first_desc.split(" (", 1)
-                # Right-align operation count in the rest part
-                formatted_rest = format_ops_count(rest, op_count_width)
-                padded_first = f"{type_name:<{max_type_name_length}} ({formatted_rest}"
-            else:
-                padded_first = first_desc
+            padded_first = format_type_description_line(
+                first_desc, max_type_name_length, op_count_width
+            )
             # Build line and pad to type column width before adding test plan path
             line = f"# {subagent_num:>{max_subagent_width}} ({total_ops:>{max_ops_width}} ops) {padded_first}"
-            # Pad to match the Type column width in the header
-            total_width = len("# Subagent    ") + type_column_width
-            padded_line = f"{line:<{total_width}}"
+            # Pad to match header: "# " (2) + subagent_column + " " (1) + type_column
+            total_width = 2 + subagent_column_width + 1 + type_column_width
+            padded_line = line.ljust(total_width)
             _ = f.write(f"{padded_line} {test_plan_file}\n")
 
             # Subsequent types indented on their own lines with columnar alignment
             for type_desc in type_list[1:]:
-                if " (" in type_desc:
-                    type_name, rest = type_desc.split(" (", 1)
-                    # Right-align operation count in the rest part
-                    formatted_rest = format_ops_count(rest, op_count_width)
-                    padded_desc = (
-                        f"{type_name:<{max_type_name_length}} ({formatted_rest}"
-                    )
-                else:
-                    padded_desc = type_desc
+                padded_desc = format_type_description_line(
+                    type_desc, max_type_name_length, op_count_width
+                )
                 _ = f.write(f"#{' ' * continuation_indent}{padded_desc}\n")
 
     # Write separator line between table and logs

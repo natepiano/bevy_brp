@@ -105,6 +105,7 @@ def find_current_batch(all_types_data: AllTypesData) -> int | str:
         for t in all_types_data["type_guide"].values()
         if t.get("test_status") == "untested"
         and (batch_num := t.get("batch_number")) is not None
+        and batch_num > 0  # Exclude skipped types (batch_number = -1)
     ]
 
     if untested_batches:

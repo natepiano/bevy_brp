@@ -9,6 +9,93 @@ These config values are provided:
 
 **Execute mutation test operations in an infinite loop until operation_manager.py returns `"status": "finished"`.**
 
+**CRITICAL: MCP TOOL PARAMETER FORMATTING**
+
+⚠️ **DO NOT JSON-SERIALIZE PARAMETERS** ⚠️
+
+When calling MCP tools, pass parameters as Python objects, NOT as JSON strings.
+
+**The WRONG patterns** (ALL cause "invalid type: string" errors):
+```python
+# Read operation from operation_manager.py
+response = # ... bash output from operation_manager.py
+# Parse the bash output to get the operation dict
+filter_param = operation["filter"]  # This is already a dict: {"with": ["Type"]}
+
+# ❌ WRONG - Do NOT serialize to string:
+filter_str = json.dumps(filter_param)
+mcp__brp__world_query(data={}, filter=filter_str, port=30001)
+
+# ❌ WRONG - Do NOT pretty-print:
+filter_str = json.dumps(filter_param, indent=2)  # This adds \n newlines!
+mcp__brp__world_query(data={}, filter=filter_str, port=30001)
+
+# ❌ WRONG - Do NOT wrap in quotes:
+mcp__brp__world_query(data={}, filter='{"with": ["Type"]}', port=30001)
+mcp__brp__world_query(data={}, filter="{\"with\": [\"Type\"]}", port=30001)
+
+# ❌ WRONG - Do NOT convert to string:
+filter_str = str(filter_param)
+mcp__brp__world_query(data={}, filter=filter_str, port=30001)
+```
+
+**The CORRECT pattern**:
+```python
+# Read operation from operation_manager.py
+operation = json.loads(response)
+filter_obj = operation["filter"]  # This is {"with": ["Type"]}
+
+# ✓ CORRECT - Pass the object directly:
+mcp__brp__world_query(data={}, filter=filter_obj, port=30001)  # CORRECT!
+
+# Or inline:
+mcp__brp__world_query(data={}, filter={"with": ["Type"]}, port=30001)  # CORRECT!
+```
+
+**Key rule**: The operation JSON is already properly formatted. Extract values and pass them AS-IS to MCP tools. Never call `json.dumps()`, never wrap in quotes, never convert objects to strings.
+
+**EXACT workflow for executing operations**:
+1. Call: `python3 .claude/scripts/mutation_test/operation_manager.py --port PORT --action get-next`
+2. The bash output contains JSON - this JSON is ALREADY CORRECTLY FORMATTED
+3. Extract parameters from the JSON response and pass DIRECTLY to MCP tool
+4. **DO NOT** call `json.dumps()`, `json.loads()`, `str()`, or any conversion function on the parameters
+5. **DO NOT** "pretty print", "format", or "clean up" the parameters in any way
+6. **DO NOT** create intermediate variables to "prepare" the parameters
+7. Just call the MCP tool with the parameters EXACTLY as they appear in the JSON
+
+**CRITICAL**: If you find yourself typing `json.dumps()`, `indent=`, or wrapping parameters in quotes, STOP. You're breaking the test.
+
+**Complete workflow example** (this is EXACTLY how to do it):
+```
+Step 1: Run bash command
+  → python3 .claude/scripts/mutation_test/operation_manager.py --port 30001 --action get-next
+
+Step 2: You see this bash output:
+  {
+    "status": "next_operation",
+    "operation": {
+      "tool": "mcp__brp__world_query",
+      "data": {},
+      "filter": {"with": ["bevy_camera::projection::Projection"]},
+      "port": 30001
+    }
+  }
+
+Step 3: Extract the parameters from the JSON output (the bash tool did this automatically)
+  tool = "mcp__brp__world_query"
+  data = {}
+  filter = {"with": ["bevy_camera::projection::Projection"]}  ← This is ALREADY a dict!
+  port = 30001
+
+Step 4: Call the MCP tool with those EXACT values:
+  mcp__brp__world_query(data={}, filter={"with": ["bevy_camera::projection::Projection"]}, port=30001)
+
+  OR use the extracted variables directly:
+  mcp__brp__world_query(data=data, filter=filter, port=port)
+
+NO OTHER STEPS. NO json.dumps(). NO formatting. Just extract and pass.
+```
+
 **CRITICAL CONSTRAINTS**:
 - The ONLY source of operations is operation_manager.py
 - The ONLY exit conditions are: receiving `"status": "finished"` OR encountering an unrecoverable error
@@ -24,9 +111,46 @@ These config values are provided:
 <ExecutionSteps>
 **EXECUTE THESE STEPS IN ORDER:**
 
-**STEP 1:** Execute <OperationLoop/>
-**STEP 2:** Execute <ReportCompletion/>
+**STEP 1:** Execute <PreExecutionCheck/>
+**STEP 2:** Execute <OperationLoop/>
+**STEP 3:** Execute <ReportCompletion/>
 </ExecutionSteps>
+
+<PreExecutionCheck>
+**BEFORE YOU START THE OPERATION LOOP, COMMIT THIS TO MEMORY:**
+
+✅ **THE ONLY CORRECT WAY TO CALL MCP TOOLS:**
+```python
+# operation_manager.py gives you this JSON:
+response = {"status": "next_operation", "operation": {"tool": "mcp__brp__world_query", "filter": {"with": ["Type"]}, "data": {}, "port": 30001}}
+
+# Extract the filter object
+filter_obj = response["operation"]["filter"]  # This is {"with": ["Type"]}
+
+# Call the MCP tool with the object DIRECTLY
+mcp__brp__world_query(data={}, filter=filter_obj, port=30001)  # ✅ CORRECT!
+```
+
+❌ **NEVER DO THESE (ALL CAUSE TEST FAILURES):**
+```python
+# ❌ NEVER use json.dumps():
+filter_str = json.dumps(filter_obj)
+mcp__brp__world_query(data={}, filter=filter_str, port=30001)
+
+# ❌ NEVER use indent= (adds \n newlines):
+filter_str = json.dumps(filter_obj, indent=2)
+mcp__brp__world_query(data={}, filter=filter_str, port=30001)
+
+# ❌ NEVER wrap in quotes:
+mcp__brp__world_query(data={}, filter='{"with": ["Type"]}', port=30001)
+
+# ❌ NEVER convert to string:
+filter_str = str(filter_obj)
+mcp__brp__world_query(data={}, filter=filter_str, port=30001)
+```
+
+**If you see `\n` newlines in your filter parameter → YOU BROKE THE TEST. STOP IMMEDIATELY.**
+</PreExecutionCheck>
 
 <OperationLoop>
 **THIS IS AN INFINITE LOOP. DO NOT STOP UNTIL YOU RECEIVE `"status": "finished"` OR HIT AN UNRECOVERABLE ERROR.**
@@ -51,11 +175,18 @@ REPEAT these steps continuously:
    If any other status value:
    - **EXIT LOOP WITH ERROR**: "Invalid response from operation_manager.py: ${status}"
 
-3. **Execute the operation**:
+3. **Prepare operation parameters**:
+   - Extract parameters from `operation` object
+   - **VERIFICATION CHECKPOINT**: Look at each parameter value:
+     - Is it an object like `{"with": ["Type"]}`? ✅ Good - use it AS-IS
+     - Is it a string containing JSON with `\n` newlines? ❌ STOP - you serialized it wrong
+     - Does it have escaped quotes like `\"with\"`? ❌ STOP - you serialized it wrong
    - If operation has `entity_id_substitution` field → Execute <EntityIdSubstitution/>
-   - Execute MCP tool from `operation.tool` with parameters from `operation` object
 
-4. **Evaluate result**:
+4. **Execute the operation**:
+   - Call MCP tool from `operation.tool` with parameters DIRECTLY (no conversion)
+
+5. **Evaluate result**:
 
    If operation SUCCESS:
    - **RETURN TO STEP 1** (request next operation)
@@ -136,16 +267,16 @@ When you execute `mcp__brp__world_query`, the post-tool hook will:
 <MatchErrorPattern>
 **When an operation fails, check the error message against these patterns IN THIS EXACT ORDER:**
 
+Does error contain `"Unable to extract parameters"` AND `"invalid type: string"` with serialized JSON?
+- ✓ YES → Execute <FilterDoubleSerializationError/> recovery
+- ✗ NO → Continue
+
 Does error contain `"invalid type: string"`?
 - ✓ YES → Execute <InvalidTypeStringError/> recovery
 - ✗ NO → Continue
 
 Does error start with `"UUID parsing failed"`?
 - ✓ YES → Execute <UuidParsingError/> recovery
-- ✗ NO → Continue
-
-Does error contain `"Unable to extract parameters"` AND `"invalid type: string"` with serialized JSON?
-- ✓ YES → Execute <FilterDoubleSerializationError/> recovery
 - ✗ NO → Continue
 
 Does error contain `"Unable to extract parameters"`?
@@ -245,35 +376,53 @@ UUID parsing failed: invalid character: expected an optional prefix of `urn:uuid
 <FilterDoubleSerializationError>
 **Pattern**: Error contains `"Unable to extract parameters"` AND mentions `"invalid type: string"` with serialized JSON content
 
+**Key indicator**: If you see `\n` (newline characters) in the error message, you used `json.dumps(filter, indent=2)` which is FORBIDDEN.
+
 **Example error** (your error may differ):
 ```
-Unable to extract parameters: Invalid parameter format for 'QueryParams': invalid type: string "{\"with\": [\"bevy_light::probe::IrradianceVolume\"]}", expected struct BrpQueryFilter
+Unable to extract parameters: Invalid parameter format for 'QueryParams': invalid type: string "{\n  \"with\": [\n    \"bevy_input::gamepad::GamepadSettings\"\n  ]\n}", expected struct BrpQueryFilter
 ```
+Notice the `\n` characters? That proves you called `json.dumps(filter, indent=2)`.
 
-**Cause**: You're wrapping the parameter in an extra string - double-serializing it
+**Cause**: You're converting the parameter to a string using `json.dumps()`, `str()`, or pretty-printing with `indent=`
 
 **What's happening**:
-1. First serialization (correct): `{"with": ["Type"]}` → JSON object
-2. Second serialization (YOUR BUG): That JSON gets wrapped as a string: `"{\"with\": [\"Type\"]}"`
+1. operation_manager.py gives you a dict: `{"with": ["Type"]}` ✓
+2. YOU are converting it to a string (YOUR BUG):
+   - `json.dumps(filter_obj)` → `"{\"with\": [\"Type\"]}"` ❌
+   - `json.dumps(filter_obj, indent=2)` → `"{\n  \"with\": [...]\n}"` ❌ (notice the \n newlines!)
+   - `str(filter_obj)` → `"{'with': ['Type']}"` ❌
+3. You pass the STRING to the MCP tool instead of the DICT ❌
 
 **What serde sees**:
 - Expected: An object/struct (the actual `{"with": [...]}` structure)
 - Got: A string literal containing JSON text
 
-**Recovery**:
-1. Check the operation parameters - find where you're passing the filter/data parameter
-2. Make sure you're passing it as an object/dict, NOT as a string
-3. Remove any string wrapping or extra serialization
-4. Re-execute operation with the correct parameter format
+**Recovery** - FOLLOW THESE EXACT STEPS:
 
-**Example**:
+Step 1: Re-read the operation from the most recent `operation_manager.py` output
+Step 2: Parse the JSON response to get the operation object
+Step 3: Look at the `filter` field in the operation - it should already be an object like `{"with": ["Type"]}`
+Step 4: Call the MCP tool with that object DIRECTLY - do not convert it to a string first
+
+**Concrete example of correct recovery**:
 ```python
-# WRONG - double-serialized (causes error):
-mcp__brp__world_query(data={}, filter='{"with": ["Type"]}', port=30001)
+# The operation_manager.py gave you this JSON:
+# {"status": "next_operation", "operation": {"tool": "mcp__brp__world_query", "filter": {"with": ["SomeType"]}, "data": {}, "port": 30001}}
 
-# CORRECT - pass as object:
-mcp__brp__world_query(data={}, filter={"with": ["Type"]}, port=30001)
+# Step 1-3: Parse it
+response_json = # ... the JSON from operation_manager.py
+response = json.loads(response_json)  # Parse JSON to dict
+operation = response["operation"]     # Extract operation dict
+filter_param = operation["filter"]    # This is {"with": ["SomeType"]} - an object, NOT a string
+
+# Step 4: Pass the object directly
+mcp__brp__world_query(data={}, filter=filter_param, port=30001)  # CORRECT!
+
+# DO NOT DO THIS:
+filter_string = json.dumps(filter_param)  # ❌ NO! Don't convert to string!
+mcp__brp__world_query(data={}, filter=filter_string, port=30001)  # ❌ WRONG!
 ```
 
-**Note**: DO NOT convert the parameter to a string - pass it directly as an object/dict.
+**Critical**: If you converted `filter` to a string using `json.dumps()` or quotes, that's the bug. Remove that conversion step entirely.
 </FilterDoubleSerializationError>

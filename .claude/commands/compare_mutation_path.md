@@ -103,11 +103,13 @@ mcp__brp__brp_type_guide(
 ## STEP 5: GET BASELINE TYPE GUIDE
 
 <GetBaselineTypeGuide>
-Get baseline type guide:
+Get baseline type guide using the filepath returned from STEP 4:
 
 ```bash
-.claude/scripts/get_type_guide.sh TYPE_NAME
+.claude/scripts/get_type_guide.sh TYPE_NAME --file <filepath_from_step_4_result>
 ```
+
+Replace `<filepath_from_step_4_result>` with the actual filepath returned in the `result.filepath` field from STEP 4.
 </GetBaselineTypeGuide>
 
 ## STEP 6: COMPARE AND PRESENT RESULTS

@@ -200,7 +200,8 @@
       "SlashCommand(/get_guide_baseline:*)",
       "Bash(git -C /Users/natemccoy/rust/bevy_brp diff)",
       "Bash(git -C /Users/natemccoy/rust/bevy_brp diff --cached)",
-      "Bash(git -C /Users/natemccoy/rust/bevy_brp status --short)"
+      "Bash(git -C /Users/natemccoy/rust/bevy_brp status --short)",
+      "Bash(.claude/scripts/get_mutation_path_list.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",

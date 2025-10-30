@@ -71,6 +71,7 @@ use bevy::pbr::ScreenSpaceAmbientOcclusion;
 use bevy::pbr::ScreenSpaceReflections;
 use bevy::pbr::decal::ForwardDecalMaterialExt;
 use bevy::pbr::wireframe::WireframeConfig;
+use bevy::picking::mesh_picking::MeshPickingPlugin;
 use bevy::post_process::auto_exposure::AutoExposure;
 use bevy::post_process::bloom::Bloom;
 use bevy::post_process::dof::DepthOfField;
@@ -87,6 +88,7 @@ use bevy::render::view::Msaa;
 use bevy::render::view::window::screenshot::Screenshot;
 use bevy::scene::Scene;
 use bevy::scene::SceneRoot;
+use bevy::sprite_render::Wireframe2dColor;
 use bevy::ui::CalculatedClip;
 use bevy::ui::FocusPolicy;
 use bevy::ui::Interaction;
@@ -472,6 +474,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(brp_plugin)
+        .add_plugins(MeshPickingPlugin)
         .init_resource::<KeyboardInputHistory>()
         .insert_resource(CurrentPort(port))
         .insert_resource(WireframeConfig {
@@ -654,6 +657,14 @@ fn spawn_sprite_and_ui_components(commands: &mut Commands) {
         Transform::from_xyz(100.0, 100.0, 0.0),
         Name::new("TestSprite"),
         RenderLayers::layer(1),
+    ));
+
+    // Entity with Wireframe2dColor for testing mutations
+    commands.spawn((
+        Wireframe2dColor {
+            color: Color::hsla(180.0, 0.5, 0.5, 1.0),
+        },
+        Name::new("Wireframe2dColorTestEntity"),
     ));
 
     // Entity with SMAA for testing mutations (separate from cameras to avoid conflicts)

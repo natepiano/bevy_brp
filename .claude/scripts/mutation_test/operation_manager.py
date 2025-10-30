@@ -346,120 +346,173 @@ def parse_mcp_response_with_input(
 
 def action_get_next(port: int) -> None:
     """Get next operation that needs execution."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Defensive check: Has this port already been terminated or finished?
+    port_already_done = False
+    try:
+        with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
+            for line in log_f:
+                if f"port={port} ** FINISHED **" in line or f"port={port} ** TERMINATED" in line:
+                    port_already_done = True
+                    break
+    except Exception:
+        pass
+
+    if port_already_done:
+        # Port is requesting work after being terminated/finished
+        try:
+            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                _ = f.write(f"[{timestamp}] port={port} ** REQUEST AFTER TERMINATION ** - Returning finished status\n")
+        except Exception:
+            pass
+        print(json.dumps({"status": "finished"}, indent=2))
+        return
+
     file_path = get_plan_file_path(port)
     test_plan = load_test_plan(file_path)
 
     operation, _ = find_next_operation(test_plan)
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     if operation is None:
         # All operations complete for this subagent
         try:
+            # Write FINISHED marker and close file before reading
             with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
                 _ = f.write(f"[{timestamp}] port={port} ** FINISHED **\n")
-                f.flush()  # Flush so we can read this line immediately
 
-                # Check if all other subagents are also complete
-                # Parse log to find which ports actually participated and are still active
-                all_complete = True
-                active_ports: set[int] = set()
+            # Check if all other subagents are also complete (purely log-based)
+            # Parse log to find which ports participated and which finished
+            participated_ports: set[int] = set()
+            finished_ports: set[int] = set()
+            summary_exists = False
+            # Track last provided time per port (for timeout detection)
+            last_provided: dict[int, datetime] = {}
+
+            try:
+                with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
+                    for line in log_f:
+                        # Check if summary already written
+                        if "** MUTATION TEST COMPLETE **" in line:
+                            summary_exists = True
+
+                        # Find ports that provided operations (participated in the test)
+                        if " provided to subagent" in line:
+                            try:
+                                timestamp_match = None
+                                port_match = None
+                                parts = line.split()
+                                for i, part in enumerate(parts):
+                                    if i == 0 and part.startswith("["):
+                                        # Extract timestamp [YYYY-MM-DD HH:MM:SS]
+                                        timestamp_str = " ".join(parts[0:2]).strip("[]")
+                                        try:
+                                            timestamp_match = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                                        except Exception:
+                                            pass
+                                    if part.startswith("port="):
+                                        port_match = int(part.split("=")[1])
+
+                                if port_match:
+                                    participated_ports.add(port_match)
+                                    if timestamp_match:
+                                        last_provided[port_match] = timestamp_match
+                            except Exception:
+                                pass
+
+                        # Find ports that finished or terminated
+                        if " ** FINISHED **" in line or " ** TERMINATED **" in line:
+                            try:
+                                for part in line.split():
+                                    if part.startswith("port="):
+                                        finished_port = int(part.split("=")[1])
+                                        finished_ports.add(finished_port)
+                                        break
+                            except Exception:
+                                pass
+            except Exception:
+                # If we can't read the log, don't write summary
+                summary_exists = True
+
+            # Check for timeouts on active ports (participated but not finished)
+            active_ports = participated_ports - finished_ports
+            timed_out_ports: set[int] = set()
+            now = datetime.now()
+
+            for check_port in active_ports:
+                if check_port in last_provided:
+                    time_since_provided = (now - last_provided[check_port]).total_seconds()
+                    if time_since_provided > 60:  # 60 second timeout
+                        timed_out_ports.add(check_port)
+                        # Log timeout
+                        with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                            _ = f.write(f"[{timestamp}] port={check_port} ** TERMINATED (TIMEOUT) ** - No response for {time_since_provided:.0f} seconds\n")
+
+            # All complete if: summary not written AND all participated ports finished or timed out
+            all_ports_done = finished_ports | timed_out_ports
+            all_complete = not summary_exists and participated_ports and participated_ports == all_ports_done
+
+            if all_complete:
+                # Calculate statistics and duration from log file
+                duration_str = ""
+                # Track final status per (port, op_id) operation
+                operation_status: dict[tuple[int, int], str] = {}
 
                 try:
                     with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
                         for line in log_f:
-                            # Find ports that provided operations (participated in the test)
-                            if " provided to subagent" in line:
-                                try:
-                                    for part in line.split():
-                                        if part.startswith("port="):
-                                            found_port = int(part.split("=")[1])
-                                            active_ports.add(found_port)
-                                            break
-                                except Exception:
-                                    pass
+                            if line.startswith("# Started:"):
+                                start_time_str = line.split("Started:", 1)[1].strip()
+                                start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
+                                end_time = datetime.now()
+                                duration = end_time - start_time
+                                total_seconds = int(duration.total_seconds())
+                                hours = total_seconds // 3600
+                                minutes = (total_seconds % 3600) // 60
+                                seconds = total_seconds % 60
+                                duration_str = f" (Duration: {hours}h {minutes}m {seconds}s)"
 
-                            # Remove ports that finished or terminated
-                            if " ** FINISHED **" in line or " ** TERMINATED **" in line:
+                            # Parse status lines: [timestamp] port=30001 op_id=X status=SUCCESS tool=...
+                            if " status=" in line and " port=" in line and " op_id=" in line:
                                 try:
-                                    for part in line.split():
+                                    parts = line.split()
+                                    port_part = None
+                                    op_id_part = None
+                                    status_part = None
+
+                                    for part in parts:
                                         if part.startswith("port="):
-                                            finished_port = int(part.split("=")[1])
-                                            active_ports.discard(finished_port)
-                                            break
+                                            port_part = int(part.split("=")[1])
+                                        elif part.startswith("op_id="):
+                                            op_id_part = int(part.split("=")[1])
+                                        elif part.startswith("status="):
+                                            status_part = part.split("=")[1]
+
+                                    if port_part is not None and op_id_part is not None and status_part:
+                                        # Update with latest status (handles retries)
+                                        operation_status[(port_part, op_id_part)] = status_part
                                 except Exception:
+                                    # Skip malformed lines
                                     pass
                 except Exception:
-                    # If we can't read the log, assume not complete
-                    all_complete = False
+                    # If we can't read the log, just omit statistics
+                    pass
 
-                # Check remaining active ports for pending operations
-                if all_complete and active_ports:
-                    for check_port in active_ports:
-                        try:
-                            check_file_path = get_plan_file_path(check_port)
-                            check_test_plan = load_test_plan(check_file_path)
-                            check_operation, _ = find_next_operation(check_test_plan)
+                # Count final status per port
+                port_stats: dict[int, dict[str, int]] = {}
+                for (port_num, _op_id), final_status in operation_status.items():
+                    if port_num not in port_stats:
+                        port_stats[port_num] = {"SUCCESS": 0, "FAIL": 0}
 
-                            if check_operation is not None:
-                                # Found a subagent with remaining work
-                                all_complete = False
-                                break
-                        except Exception:
-                            # If we can't read the plan, assume still working
-                            all_complete = False
-                            break
+                    if final_status == "SUCCESS":
+                        port_stats[port_num]["SUCCESS"] += 1
+                    elif final_status == "FAIL":
+                        port_stats[port_num]["FAIL"] += 1
 
-                if all_complete:
-                    # Calculate statistics and duration from log file
-                    duration_str = ""
-                    port_stats: dict[int, dict[str, int]] = {}
-
-                    try:
-                        with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
-                            for line in log_f:
-                                if line.startswith("# Started:"):
-                                    start_time_str = line.split("Started:", 1)[1].strip()
-                                    start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
-                                    end_time = datetime.now()
-                                    duration = end_time - start_time
-                                    total_seconds = int(duration.total_seconds())
-                                    hours = total_seconds // 3600
-                                    minutes = (total_seconds % 3600) // 60
-                                    seconds = total_seconds % 60
-                                    duration_str = f" (Duration: {hours}h {minutes}m {seconds}s)"
-
-                                # Parse status lines: [timestamp] port=30001 op_id=X status=SUCCESS tool=...
-                                if " status=" in line and " port=" in line:
-                                    try:
-                                        parts = line.split()
-                                        port_part = None
-                                        status_part = None
-
-                                        for part in parts:
-                                            if part.startswith("port="):
-                                                port_part = int(part.split("=")[1])
-                                            elif part.startswith("status="):
-                                                status_part = part.split("=")[1]
-
-                                        if port_part and status_part:
-                                            if port_part not in port_stats:
-                                                port_stats[port_part] = {"SUCCESS": 0, "FAIL": 0}
-
-                                            if status_part == "SUCCESS":
-                                                port_stats[port_part]["SUCCESS"] += 1
-                                            elif status_part == "FAIL":
-                                                port_stats[port_part]["FAIL"] += 1
-                                    except Exception:
-                                        # Skip malformed lines
-                                        pass
-                    except Exception:
-                        # If we can't read the log, just omit statistics
-                        pass
-
-                    # Write summary statistics for each subagent
-                    total_success = 0
-                    total_fail = 0
+                # Write summary statistics for each subagent
+                total_success = 0
+                total_fail = 0
+                with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
                     if port_stats:
                         _ = f.write(f"[{timestamp}] Subagent Summary:\n")
                         for subagent_port in sorted(port_stats.keys()):

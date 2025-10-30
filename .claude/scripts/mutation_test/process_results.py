@@ -22,7 +22,7 @@ from typing import Any, TypedDict, cast
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
 
-from config import (  # noqa: E402  # pyright: ignore[reportImplicitRelativeImport]
+from config import (  # noqa: E402
     AllTypesData,
     find_current_batch,
     get_mutation_test_log,
@@ -129,6 +129,7 @@ class DiagnosticEntry(TypedDict):
     failed_operation_id: int | None
     status: str  # "PASS", "RETRY", or "FAIL"
     hook_debug_log: str
+    port: int
 
 
 class ProcessResultsOutput(TypedDict):
@@ -209,13 +210,15 @@ batch_num: int = batch_result
 
 
 def build_diagnostic_entry(
-    test: TypeTest, _test_plan_file: str, log_path: str
+    test: TypeTest, _test_plan_file: str, log_path: str, port: int
 ) -> DiagnosticEntry:
     """Build a diagnostic entry from a test.
 
     Args:
         test: The test data
         test_plan_file: Path to the test plan file (not used in output, kept for compatibility)
+        log_path: Path to the mutation test log
+        port: Port number for this test
 
     Returns:
         Diagnostic entry with status and failure info
@@ -254,6 +257,7 @@ def build_diagnostic_entry(
                 "failed_operation_id": failed_op_id,
                 "status": diag_status,
                 "hook_debug_log": log_path,
+                "port": port,
             },
         ),
     )
@@ -572,7 +576,7 @@ for subagent_idx in range(subagent_count):
         for test in tests:
             # Build diagnostic entry for all tests
             diagnostic_entries.append(
-                build_diagnostic_entry(test, normalized_test_plan_file, log_path)
+                build_diagnostic_entry(test, normalized_test_plan_file, log_path, port)
             )
 
             # Build result for executed tests

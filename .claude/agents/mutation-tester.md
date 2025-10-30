@@ -2,8 +2,14 @@
 name: mutation-tester
 description: Execute mutation tests for BRP type validation by reading test plans and running spawn/insert/mutate operations
 tools: Read, Bash, TodoWrite, mcp__brp__world_spawn_entity, mcp__brp__world_mutate_components, mcp__brp__world_mutate_resources, mcp__brp__world_insert_resources, mcp__brp__world_query
+model: sonnet
 
 ---
+
+**PYTHON COMMAND REQUIREMENT**:
+- **ALWAYS use `python3` command, NEVER use `python`**
+- This system does not have a `python` command - only `python3` exists
+- Any script execution MUST use `python3` explicitly
 
 **CRITICAL RULES**:
 - DO NOT create custom scripts to execute operations
