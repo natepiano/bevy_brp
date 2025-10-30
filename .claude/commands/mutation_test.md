@@ -1,7 +1,7 @@
 # Type Guide Comprehensive Validation Test
 
 <ExecutionFlow>
-**STEP 0:** read .claude/config/mutation_test_config.json and output a link to the mutation_test_log
+**STEP 0:** read .claude/config/mutation_test_config.json
 **STEP 1:** Execute <BatchProcessingLoop/> (DO NOT output results yet)
 **STEP 2:** Execute <FinalCleanup/> (ALWAYS - shutdown apps)
 **STEP 3:** Execute <TestResultOutput/> followed by <FinalDiagnosticOutput/> (ALWAYS - show summary and diagnostic table)
@@ -16,9 +16,10 @@ For each batch (auto-discovered from all_types.json):
 1. Execute <ReportProgress/>
 2. Execute <GetBatchAssignments/>
 3. Execute <PrepareApplications/>
-4. Execute <LaunchMutationTestSubagents/>
-5. Execute <ProcessBatchResults/>
-6. Execute <CheckForFailures/>
+4. Execute <DisplayBatchConfiguration/>
+5. Execute <LaunchMutationTestSubagents/>
+6. Execute <ProcessBatchResults/>
+7. Execute <CheckForFailures/>
 
 Continue until all batches processed or failures occur.
 </BatchProcessingLoop>
@@ -69,8 +70,28 @@ prompt: |
   Follow all steps in the instruction file. Report any errors immediately.
 ```
 
-Wait for subagent to complete before proceeding to <LaunchMutationTestSubagents/>.
+Wait for subagent to complete before proceeding to <DisplayBatchConfiguration/>.
 </PrepareApplications>
+
+<DisplayBatchConfiguration>
+Read and display the batch configuration from the mutation test log:
+
+```bash
+Read tool: /tmp/mutation_test.log
+```
+
+Present the complete contents to the user with the file name prefix:
+
+```
+/tmp/mutation_test.log
+
+[Full log file contents - at this point contains only the header with batch configuration table]
+```
+
+This shows the user which types are being tested in this batch and how they're distributed across subagents.
+
+Proceed to <LaunchMutationTestSubagents/>.
+</DisplayBatchConfiguration>
 
 <LaunchMutationTestSubagents>
 For each assignment in assignments array, create Task:
@@ -169,7 +190,7 @@ Using the `diagnostic_info` array from the ProcessBatchResults JSON output:
 
 ## DIAGNOSTIC INFORMATION
 
-**Hook Debug Log**: /tmp/mutation_test.log
+**Debug log**: /tmp/mutation_test.log
 
 **Tested Types**:
 

@@ -16,6 +16,7 @@ Output:
   Returns AllAssignmentsOutput with assignments and test plan files.
 """
 
+import glob
 import json
 import os
 import subprocess
@@ -1500,45 +1501,40 @@ remaining_types = untested_count - unique_types_count
 # Backup and initialize debug log
 DEBUG_LOG = get_mutation_test_log(mutation_config)
 
-# Backup existing log if it exists
+# Backup existing test files if log exists
 if os.path.exists(DEBUG_LOG):
-    # Extract batch number and timestamp from existing log metadata
-    batch_num_str = "unknown"
-    log_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    try:
-        with open(DEBUG_LOG, encoding="utf-8") as f:
-            found_batch = False
-            found_started = False
-            for line in f:
-                if line.startswith("# Batch Number:"):
-                    parts = line.split()
-                    if len(parts) >= 4:
-                        batch_num_str = parts[3]
-                        found_batch = True
-                elif line.startswith("# Started:"):
-                    # Extract timestamp from "# Started: 2025-10-22 22:16:12"
-                    parts = line.split()
-                    if len(parts) >= 4:
-                        date_part = parts[2].replace("-", "")
-                        time_part = parts[3].replace(":", "")
-                        log_timestamp = f"{date_part}_{time_part}"
-                        found_started = True
-
-                # Break after finding both
-                if found_batch and found_started:
-                    break
-    except Exception:
-        pass  # Use defaults if parsing fails
-
+    # Create timestamped backup folder
+    log_timestamp = datetime.now().strftime("%Y%m%d_%H%M")
     log_dir = os.path.dirname(DEBUG_LOG)
-    log_name = os.path.splitext(os.path.basename(DEBUG_LOG))[0]
-    backup_file = f"{log_dir}/{log_name}_batch{batch_num_str}_{log_timestamp}.log"
+    backup_folder = f"{log_dir}/mutation_test_{log_timestamp}"
+
     try:
-        os.rename(DEBUG_LOG, backup_file)
-        print(f"Backed up previous log to: {backup_file}", file=sys.stderr)
-    except OSError:
-        pass  # Ignore if backup fails
+        os.makedirs(backup_folder, exist_ok=True)
+
+        # Move mutation_test.log
+        backup_log_file = f"{backup_folder}/mutation_test.log"
+        os.rename(DEBUG_LOG, backup_log_file)
+
+        # Move all mutation_test_{port}.json files
+        test_plan_pattern = f"{log_dir}/mutation_test_*.json"
+        test_plan_files = glob.glob(test_plan_pattern)
+        files_moved = 1  # Count the log file
+
+        for test_plan_file in test_plan_files:
+            filename = os.path.basename(test_plan_file)
+            backup_test_file = f"{backup_folder}/{filename}"
+            try:
+                os.rename(test_plan_file, backup_test_file)
+                files_moved += 1
+            except OSError:
+                pass  # Continue if individual file move fails
+
+        print(
+            f"Backed up {files_moved} test file(s) to: {backup_folder}",
+            file=sys.stderr,
+        )
+    except OSError as e:
+        print(f"Warning: Backup failed: {e}", file=sys.stderr)
 
 # Create new debug log with metadata for current batch
 ports = [a["port"] for a in assignments]

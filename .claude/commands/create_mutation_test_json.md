@@ -9,7 +9,7 @@
 
 ## Command Arguments
 
-This command supports an optional argument to control test result preservation:
+This command supports an optional argument to control test result handling:
 
 **Default (no arguments)**: `/create_mutation_test_json`
 - **Preserves test results** (batch_number, test_status, fail_reason) from existing all_types.json
@@ -17,7 +17,8 @@ This command supports an optional argument to control test result preservation:
 - Removed types are automatically cleaned up
 
 **Initialize mode**: `/create_mutation_test_json init` or `/create_mutation_test_json initialize`
-- Starts fresh, all types reset to "untested" or "passed" (auto-pass for types with no mutations)
+- Resets all test metadata to initial state (calls `/reset_mutation_test`)
+- All types marked as "untested" or "auto-passed" based on mutation availability
 - Use this when you want to clear all test history and start over
 
 <ExecutionSteps/>
@@ -71,7 +72,7 @@ MODE = ${ARGUMENTS:-preserve}
 Create a todo list with the following 5 items:
 1. "Execute app launch" (pending → in_progress when starting STEP 1)
 2. "Discover all registered types using brp_all_type_guides" (pending → in_progress when starting STEP 2)
-3. "Save BRP response and run comparison with baseline" (pending → in_progress when starting STEP 3)
+3. "Save BRP response, merge test metadata, and run comparison" (pending → in_progress when starting STEP 3)
 4. "Clean shutdown of test application" (pending → in_progress when starting STEP 4)
 5. "Present results and get user decision on baseline promotion" (pending → in_progress when starting STEP 5)
 
@@ -119,38 +120,53 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
 </TypeDiscovery>
 
-## STEP 3: FILE SAVE AND COMPARISON
+## STEP 3: FILE SAVE AND METADATA MERGE
 
 <FileSaveAndComparison>
-    Save the raw BRP response and compare with baseline:
+    Process the BRP response based on MODE:
 
-    1. **Copy the BRP response to target file**:
+    **If MODE is "preserve" (default)**:
+    Merge new BRP data with existing test metadata:
+    ```bash
+    .claude/scripts/create_mutation_test_json/preserve_test_metadata.sh [FILEPATH] ${TARGET_FILE}
+    ```
+
+    This preserves test results (batch_number, test_status, fail_reason) from existing types, initializes new types with "untested" or auto-pass status, and automatically removes types no longer in BRP.
+
+    **If MODE is "init" or "initialize"**:
+    Save raw BRP response and reset all test metadata:
     ```bash
     cp [FILEPATH] ${TARGET_FILE}
     ```
 
+    Then call the reset command:
+    ```
+    /reset_mutation_test
+    ```
+
+    This clears all test history and applies auto-pass logic to determine which types should be automatically passed.
+
     Replace `[FILEPATH]` with the actual path from Step 2 and `${TARGET_FILE}` with the target location.
 
-    2. **Run comparison to generate statistics and check for changes**:
+    **After processing, run comparison**:
     ```bash
     python3 .claude/scripts/create_mutation_test_json/compare.py .claude/transient/all_types_baseline.json ${TARGET_FILE}
     ```
 
-    The file saved is the COMPLETE raw BRP response with:
+    The file contains the COMPLETE BRP response with test metadata:
     - spawn_format with examples
     - mutation_paths with examples for each path
     - supported_operations
     - reflection_traits
     - schema_info
-
-    **Note**: Test metadata (batch_number, test_status, fail_reason) is NOT added here. It will be initialized by `prepare.py` when needed.
+    - **PLUS test metadata** (batch_number, test_status, fail_reason)
 
     **Comparison Output**: The compare.py script displays:
     - Current file statistics (total types, spawn-supported types, types with mutations, total mutation paths)
     - Comparison results (total changes, types modified/added/removed)
     - `✅ No changes detected!` or `⚠️ CHANGES DETECTED: X changes`
 
-    **VALIDATION**: Confirm the file was saved and comparison completed successfully.
+    **VALIDATION**: Confirm the file was saved, metadata was added/preserved, and comparison completed successfully.
 
 </FileSaveAndComparison>
 

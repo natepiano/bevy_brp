@@ -231,7 +231,7 @@ def get_execution_params(operation: dict[str, Any]) -> dict[str, Any]:  # pyrigh
     """
     Extract execution parameters from operation, excluding tracking fields.
 
-    Keeps operation_id and call_count for agent circuit breaker logic.
+    Keeps operation_id, call_count, and times_provided for circuit breaker logic.
     """
     exclude_fields = {
         "operation_announced",
@@ -683,7 +683,10 @@ def action_get_next(port: int) -> None:
                     _ = f.write(f"[{timestamp}] ** MUTATION TEST COMPLETE **{duration_str}\n")
 
                     # Output overall test results
-                    if total_fail == 0 and total_success > 0:
+                    if timed_out_ports:
+                        timeout_port_list = ", ".join(str(p) for p in sorted(timed_out_ports))
+                        _ = f.write(f"[{timestamp}] INCOMPLETE - {len(timed_out_ports)} subagent(s) timed out (ports: {timeout_port_list})\n")
+                    elif total_fail == 0 and total_success > 0:
                         _ = f.write(f"[{timestamp}] ALL TESTS PASSED\n")
                     elif total_success > 0 or total_fail > 0:
                         _ = f.write(f"[{timestamp}] Tests Passed: {total_success}, Tests Failed: {total_fail}\n")
@@ -701,24 +704,32 @@ def action_get_next(port: int) -> None:
 
     operation_id = cast(int, operation.get("operation_id"))
     call_count = cast(int, operation.get("call_count", 0))
+    times_provided = cast(int, operation.get("times_provided", 0))
     error = cast(str, operation.get("error", ""))
 
-    # Termination check 1: Retry limit exceeded
+    # Termination check 1: Execution retry limit exceeded
     if call_count >= 4:
         handle_test_failure(
-            port, file_path, test_plan, current_test, operation_id, "Retry limit exceeded"
+            port, file_path, test_plan, current_test, operation_id, "Execution retry limit exceeded"
         )
         return
 
-    # Termination check 2: Hard safety limit (should never reach this if check 1 works)
-    if call_count > 10:
+    # Termination check 2: Provision retry limit exceeded (subagent not executing)
+    if times_provided >= 4:
+        handle_test_failure(
+            port, file_path, test_plan, current_test, operation_id, "Provision limit exceeded (subagent not executing)"
+        )
+        return
+
+    # Termination check 3: Hard safety limit (should never reach this if checks 1-2 work)
+    if call_count > 10 or times_provided > 10:
         handle_test_failure(
             port,
             file_path,
             test_plan,
             current_test,
             operation_id,
-            f"Excessive retries (call_count={call_count})",
+            f"Excessive retries (call_count={call_count}, times_provided={times_provided})",
         )
         return
 
@@ -741,10 +752,15 @@ def action_get_next(port: int) -> None:
         )
         return
 
-    # Operation is viable - log and provide to subagent
+    # Operation is viable - increment times_provided and provide to subagent
+    operation["times_provided"] = times_provided + 1
+
+    # Save updated test plan with incremented times_provided
+    save_test_plan(file_path, test_plan)
+
     try:
         with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
-            _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} provided to subagent\n")
+            _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} provided to subagent (attempt {operation['times_provided']})\n")
             f.flush()  # Explicitly flush to ensure write happens
     except Exception:
         # Silently ignore debug log write failures

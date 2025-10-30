@@ -23,7 +23,7 @@ def get_plan_file_path(port: int) -> str:
     Returns:
         Absolute path to the test plan file
     """
-    return f"/tmp/mutation_test_{port}.json"
+    return f"/tmp/mutation_test_port_{port}.json"
 
 
 def main() -> None:
