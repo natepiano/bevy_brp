@@ -17,8 +17,8 @@ This command supports an optional argument to control test result handling:
 - Removed types are automatically cleaned up
 
 **Initialize mode**: `/create_mutation_test_json init` or `/create_mutation_test_json initialize`
-- Resets all test metadata to initial state (calls `/reset_mutation_test`)
-- All types marked as "untested" or "auto-passed" based on mutation availability
+- Replaces all_types.json with fresh BRP data (no test metadata)
+- Test metadata will be auto-initialized by prepare.py when needed
 - Use this when you want to clear all test history and start over
 
 <ExecutionSteps/>
@@ -134,17 +134,12 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
     This preserves test results (batch_number, test_status, fail_reason) from existing types, initializes new types with "untested" or auto-pass status, and automatically removes types no longer in BRP.
 
     **If MODE is "init" or "initialize"**:
-    Save raw BRP response and reset all test metadata:
+    Save raw BRP response (without test metadata):
     ```bash
     cp [FILEPATH] ${TARGET_FILE}
     ```
 
-    Then call the reset command:
-    ```
-    /reset_mutation_test
-    ```
-
-    This clears all test history and applies auto-pass logic to determine which types should be automatically passed.
+    The file will contain only the raw BRP data. Test metadata fields (batch_number, test_status, fail_reason) will be automatically initialized when prepare.py is run.
 
     Replace `[FILEPATH]` with the actual path from Step 2 and `${TARGET_FILE}` with the target location.
 
