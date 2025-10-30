@@ -1,5 +1,7 @@
 # Type Guide Comprehensive Validation Test
 
+**Command Type**: Execute-only. Runs automatically from STEP 0-3, then offers optional interactive failure review if failures detected.
+
 <ExecutionFlow>
 **STEP 0:** read .claude/config/mutation_test_config.json
 **STEP 1:** Execute <BatchProcessingLoop/> (DO NOT output results yet)
@@ -13,13 +15,14 @@
 
 <BatchProcessingLoop>
 For each batch (auto-discovered from all_types.json):
-1. Execute <ReportProgress/>
-2. Execute <GetBatchAssignments/>
-3. Execute <PrepareApplications/>
-4. Execute <DisplayBatchConfiguration/>
-5. Execute <LaunchMutationTestSubagents/>
-6. Execute <ProcessBatchResults/>
-7. Execute <CheckForFailures/>
+1. Output progress: "Starting batch processing..."
+2. Execute <ReportProgress/>
+3. Execute <GetBatchAssignments/>
+4. Execute <PrepareApplications/>
+5. Execute <DisplayBatchConfiguration/>
+6. Execute <LaunchMutationTestSubagents/>
+7. Execute <ProcessBatchResults/>
+8. Execute <CheckForFailures/>
 
 Continue until all batches processed or failures occur.
 </BatchProcessingLoop>
@@ -233,6 +236,8 @@ Using the `diagnostic_info` array from the ProcessBatchResults JSON output:
 - Test plan files showing operation status
 - Failed operation IDs for pinpointing issues
 - Hook debug log for comprehensive execution trace
+
+Output completion: "✅ Mutation test batch complete."
 </FinalDiagnosticOutput>
 
 
