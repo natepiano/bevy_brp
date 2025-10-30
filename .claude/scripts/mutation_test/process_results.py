@@ -545,8 +545,6 @@ warnings: list[str] = []
 null_status_types: dict[str, list[tuple[int, int]]] = {}
 # Diagnostic entries for all tested types (built during first loop)
 diagnostic_entries: list[DiagnosticEntry] = []
-# Use /tmp consistently with prepare.py and get_plan_file_path.py
-tmpdir = "/tmp"
 
 # Determine how many subagents were actually used
 # With operation-based packing, we use up to max_subagents
@@ -555,9 +553,9 @@ subagent_count = max_subagents
 
 for subagent_idx in range(subagent_count):
     port = base_port + subagent_idx
-    test_plan_file = os.path.join(tmpdir, f"mutation_test_{port}.json")
-    # Normalize path for display (use /tmp/ instead of full macOS path)
-    normalized_test_plan_file = test_plan_file.replace(tmpdir, "/tmp")
+    test_plan_file = mutation_config["test_plan_file_pattern"].format(port=port)
+    # Normalize path for display
+    normalized_test_plan_file = test_plan_file
 
     # Check if file exists
     if not os.path.exists(test_plan_file):

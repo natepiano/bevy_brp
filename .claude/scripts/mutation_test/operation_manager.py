@@ -20,32 +20,22 @@ Usage:
 
 import argparse
 import json
-import subprocess
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Any, TypedDict, cast
 
+# Add script directory to path for imports
+script_dir = Path(__file__).parent
+sys.path.insert(0, str(script_dir))
 
-def load_config() -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
-    """Load mutation test configuration."""
-    config_path = ".claude/config/mutation_test_config.json"
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            config_data = json.load(f)  # pyright: ignore[reportAny]
-            return cast(dict[str, Any], config_data)  # pyright: ignore[reportExplicitAny]
-    except FileNotFoundError:
-        print(f"Error: Config file not found: {config_path}", file=sys.stderr)
-        sys.exit(1)
-    except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON in config file: {e}", file=sys.stderr)
-        sys.exit(1)
-
+from config import MutationTestConfig, load_config as load_mutation_config
 
 # Load configuration at module level
-CONFIG = load_config()
-MUTATION_TEST_LOG = cast(str, CONFIG["mutation_test_log"])
-MAX_SUBAGENTS = cast(int, CONFIG["max_subagents"])
-BASE_PORT = cast(int, CONFIG["base_port"])
+CONFIG = load_mutation_config()
+MUTATION_TEST_LOG = CONFIG["mutation_test_log"]
+MAX_SUBAGENTS = CONFIG["max_subagents"]
+BASE_PORT = CONFIG["base_port"]
 
 
 class QueryResultEntry(TypedDict):
@@ -138,25 +128,9 @@ def validate_args(args: argparse.Namespace) -> None:
             sys.exit(1)
 
 
-def get_plan_file_path(port: int) -> str:
+def get_plan_file_path(port: int, config: MutationTestConfig) -> str:
     """Get test plan file path for given port."""
-    try:
-        result = subprocess.run(
-            [
-                "python3",
-                ".claude/scripts/mutation_test/get_plan_file_path.py",
-                "--port",
-                str(port),
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        stderr_msg = cast(str, e.stderr)
-        print(f"Error: Failed to get test plan path: {stderr_msg}", file=sys.stderr)
-        sys.exit(1)
+    return config["test_plan_file_pattern"].format(port=port)
 
 
 def load_test_plan(file_path: str) -> TestPlan:
@@ -468,7 +442,7 @@ def action_get_next(port: int) -> None:
         except Exception:
             pass
 
-    file_path = get_plan_file_path(port)
+    file_path = get_plan_file_path(port, CONFIG)
     test_plan = load_test_plan(file_path)
 
     operation, current_test = find_next_operation(test_plan)
@@ -776,7 +750,7 @@ def action_update(
     port: int, tool_name: str, mcp_response_arg: str
 ) -> None:
     """Update operation status based on MCP response."""
-    file_path = get_plan_file_path(port)
+    file_path = get_plan_file_path(port, CONFIG)
     test_plan = load_test_plan(file_path)
 
     # Find next operation to update

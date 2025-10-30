@@ -7,28 +7,11 @@
 .claude/scripts/create_mutation_test_json/validate_directory.sh
 ```
 
-## Command Arguments
-
-This command supports an optional argument to control test result handling:
-
-**Default (no arguments)**: `/create_mutation_test_json`
-- **Preserves test results** (batch_number, test_status, fail_reason) from existing all_types.json
-- New types get initialized with default test metadata ("untested" or "passed")
-- Removed types are automatically cleaned up
-
-**Initialize mode**: `/create_mutation_test_json init` or `/create_mutation_test_json initialize`
-- Replaces all_types.json with fresh BRP data (no test metadata)
-- Test metadata will be auto-initialized by prepare.py when needed
-- Use this when you want to clear all test history and start over
-
-<ExecutionSteps/>
-
 <CreateContext>
 TARGET_FILE = .claude/transient/all_types.json
-PURPOSE = Creates the mutation test tracking file by discovering all registered component types via BRP and systematically determining spawn support and mutation paths for ALL types.
+PURPOSE = Creates a FRESH mutation test tracking file by discovering all registered component types via BRP. This ALWAYS creates a new file - test metadata will be initialized by prepare.py when needed.
 APP_PORT = 22222
 APP_NAME = extras_plugin
-MODE = ${ARGUMENTS:-preserve}
 </CreateContext>
 
 <CreateKeywords>
@@ -72,7 +55,7 @@ MODE = ${ARGUMENTS:-preserve}
 Create a todo list with the following 5 items:
 1. "Execute app launch" (pending → in_progress when starting STEP 1)
 2. "Discover all registered types using brp_all_type_guides" (pending → in_progress when starting STEP 2)
-3. "Save BRP response, merge test metadata, and run comparison" (pending → in_progress when starting STEP 3)
+3. "Save fresh BRP response and run comparison" (pending → in_progress when starting STEP 3)
 4. "Clean shutdown of test application" (pending → in_progress when starting STEP 4)
 5. "Present results and get user decision on baseline promotion" (pending → in_progress when starting STEP 5)
 
@@ -96,7 +79,7 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
     1. **Launch Example**:
     ```bash
     mcp__brp__brp_launch_bevy_example(
-        example_name="${APP_NAME}",
+        target_name="${APP_NAME}",
         port=${APP_PORT}
     )
     ```
@@ -120,48 +103,37 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
 </TypeDiscovery>
 
-## STEP 3: FILE SAVE AND METADATA MERGE
+## STEP 3: FILE SAVE AND COMPARISON
 
 <FileSaveAndComparison>
-    Process the BRP response based on MODE:
+    Save the raw BRP response (ALWAYS creates fresh file):
 
-    **If MODE is "preserve" (default)**:
-    Merge new BRP data with existing test metadata:
-    ```bash
-    .claude/scripts/create_mutation_test_json/preserve_test_metadata.sh [FILEPATH] ${TARGET_FILE}
-    ```
-
-    This preserves test results (batch_number, test_status, fail_reason) from existing types, initializes new types with "untested" or auto-pass status, and automatically removes types no longer in BRP.
-
-    **If MODE is "init" or "initialize"**:
-    Save raw BRP response (without test metadata):
     ```bash
     cp [FILEPATH] ${TARGET_FILE}
     ```
 
-    The file will contain only the raw BRP data. Test metadata fields (batch_number, test_status, fail_reason) will be automatically initialized when prepare.py is run.
+    Replace `[FILEPATH]` with the actual path from Step 2.
 
-    Replace `[FILEPATH]` with the actual path from Step 2 and `${TARGET_FILE}` with the target location.
+    **IMPORTANT**: This creates a FRESH file with ONLY BRP data (no test metadata). Test metadata will be automatically initialized by prepare.py when the mutation test runs.
 
-    **After processing, run comparison**:
+    **After saving, run comparison**:
     ```bash
     python3 .claude/scripts/create_mutation_test_json/compare.py .claude/transient/all_types_baseline.json ${TARGET_FILE}
     ```
 
-    The file contains the COMPLETE BRP response with test metadata:
+    The file contains the COMPLETE BRP response:
     - spawn_format with examples
     - mutation_paths with examples for each path
     - supported_operations
     - reflection_traits
     - schema_info
-    - **PLUS test metadata** (batch_number, test_status, fail_reason)
 
     **Comparison Output**: The compare.py script displays:
     - Current file statistics (total types, spawn-supported types, types with mutations, total mutation paths)
     - Comparison results (total changes, types modified/added/removed)
     - `✅ No changes detected!` or `⚠️ CHANGES DETECTED: X changes`
 
-    **VALIDATION**: Confirm the file was saved, metadata was added/preserved, and comparison completed successfully.
+    **VALIDATION**: Confirm the file was saved and comparison completed successfully.
 
 </FileSaveAndComparison>
 
@@ -348,7 +320,7 @@ Patterns: `.field.0` (variant), `.field[0]` (array), `.field.0.nested` (nested i
        - Using type/path combinations from previous runs instead of current session
 
     6. After all combinations reviewed OR user stops:
-       - Return to main decision prompt from Step 6C
+       - Return to main decision prompt from Step 5
 </ComparisonReviewWorkflow>
 
 <PatternOverviewFormat>

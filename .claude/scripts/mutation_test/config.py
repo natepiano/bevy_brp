@@ -19,6 +19,7 @@ class MutationTestConfig(TypedDict):
     base_port: int
     stop_after_each_batch: bool
     mutation_test_log: str
+    test_plan_file_pattern: str
 
 
 class TypeData(TypedDict):
@@ -87,6 +88,7 @@ def load_config() -> MutationTestConfig:
         base_port=int(config_data["base_port"]),
         stop_after_each_batch=bool(config_data["stop_after_each_batch"]),
         mutation_test_log=str(config_data["mutation_test_log"]),
+        test_plan_file_pattern=str(config_data["test_plan_file_pattern"]),
     )
 
 

@@ -25,23 +25,48 @@ Continue until all batches processed or failures occur.
 </BatchProcessingLoop>
 
 <GetBatchAssignments>
-Execute script and capture JSON output:
+Execute script and check for errors:
 ```bash
 python3 ./.claude/scripts/mutation_test/prepare.py
 ```
-Parse JSON output (on stdout):
-- `batch_number` - current batch number (auto-discovered)
-- `total_types` - unique types being tested in this batch
-- `max_subagents` - number of subagents being used
-- `types_per_subagent` - configured types per subagent
-- `progress_message` - pre-formatted progress message for display
-- `assignments` - array of subagent assignments with fields:
-  - `window_description` - window title
-  - `task_description` - task description
-  - `test_plan_file` - test plan path
-  - `port` - port number
 
-Store the complete JSON response for use in <ReportProgress/>, <PrepareApplications/>, <LaunchMutationTestSubagents/>, and <FinalCleanup/>.
+**CRITICAL**: Check exit code and handle errors:
+
+**If exit code is 0** (success):
+- Parse JSON output from stdout
+- Fields include:
+  - `batch_number` - current batch number (auto-discovered)
+  - `total_types` - unique types being tested in this batch
+  - `max_subagents` - number of subagents being used
+  - `types_per_subagent` - configured types per subagent
+  - `progress_message` - pre-formatted progress message for display
+  - `assignments` - array of subagent assignments with fields:
+    - `window_description` - window title
+    - `task_description` - task description
+    - `test_plan_file` - test plan path
+    - `port` - port number
+- Store the complete JSON response for use in <ReportProgress/>, <PrepareApplications/>, <LaunchMutationTestSubagents/>, and <FinalCleanup/>
+- Continue to <ReportProgress/>
+
+**If exit code is non-zero** (error):
+- Display error messages from stderr to user
+- Present error summary:
+  ```
+  ❌ MUTATION TEST PREPARATION FAILED
+
+  prepare.py encountered an error during batch preparation.
+
+  Error details:
+  [stderr output from prepare.py]
+
+  Common causes:
+  - Deduplication validation failure (duplicate representatives or missing representatives)
+  - Invalid all_types.json structure
+  - Configuration file errors
+
+  The mutation test cannot proceed. Please fix the error and try again.
+  ```
+- EXIT immediately (do not proceed to any other steps)
 </GetBatchAssignments>
 
 <ReportProgress>

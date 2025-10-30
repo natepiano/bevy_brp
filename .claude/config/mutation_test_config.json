@@ -3,5 +3,6 @@
   "max_subagents": 10,
   "base_port": 30001,
   "stop_after_each_batch": true,
-  "mutation_test_log": "/tmp/mutation_test.log"
+  "mutation_test_log": "/tmp/mutation_test.log",
+  "test_plan_file_pattern": "/tmp/mutation_test_port_{port}.json"
 }

@@ -584,11 +584,16 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
     # Step 3: Mutations
     for path_info in mutation_paths:
         # Extract path from the path_info value (path_info is already object type)
-        path = cast(str, cast(dict[str, object], path_info)["path"])
+        path_info_dict = cast(dict[str, object], path_info)
+        path = cast(str, path_info_dict["path"])
+
+        # Skip duplicate paths (marked during deduplication)
+        if "duplicate_of" in path_info_dict:
+            continue
 
         # Skip non-mutable paths
         # Note: path_info dict contains a "path_info" key that holds PathInfo
-        path_metadata = cast(dict[str, object], path_info).get("path_info")
+        path_metadata = path_info_dict.get("path_info")
         if path_metadata:
             path_metadata_dict = cast(dict[str, object], path_metadata)
             if path_metadata_dict.get("mutability") == "not_mutable":
@@ -801,18 +806,7 @@ def finalize_subagent(
         return  # Nothing to finalize
 
     port = calculate_port(current_subagent_num, mutation_config)
-    result = subprocess.run(
-        [
-            "python3",
-            ".claude/scripts/mutation_test/get_plan_file_path.py",
-            "--port",
-            str(port),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    test_plan_file = result.stdout.strip()
+    test_plan_file = mutation_config["test_plan_file_pattern"].format(port=port)
 
     test_plan: TestPlan = {
         "batch_number": batch_num,
@@ -1069,42 +1063,34 @@ if "type_guide" not in data:
     print("Error: Expected dict with 'type_guide' at root", file=sys.stderr)
     sys.exit(1)
 
-# Check if test metadata exists, initialize if missing
+# Always call initialize (it exits early if already initialized)
+result = subprocess.run(
+    [
+        "python3",
+        ".claude/scripts/mutation_test/initialize_test_metadata.py",
+        "--file",
+        json_file,
+    ],
+    capture_output=True,
+    text=True,
+)
+if result.returncode != 0:
+    print(f"Error initializing test metadata: {result.stderr}", file=sys.stderr)
+    sys.exit(1)
+
+# Print initialization output (will be "Already initialized" or initialization details)
+if result.stderr:
+    print(result.stderr, file=sys.stderr, end="")
+
+# Reload the file (may have been modified by initialization)
+try:
+    with open(json_file, "r") as f:
+        data = cast(AllTypesData, json.load(f))
+except json.JSONDecodeError as e:
+    print(f"Error parsing JSON after initialization: {e}", file=sys.stderr)
+    sys.exit(1)
+
 type_guide = data["type_guide"]
-needs_initialization = False
-
-# Check if any type is missing test metadata
-for type_name, type_data in list(type_guide.items())[:5]:  # Check first 5 types
-    if "test_status" not in type_data or "batch_number" not in type_data:
-        needs_initialization = True
-        break
-
-if needs_initialization:
-    print("Test metadata not found - initializing...", file=sys.stderr)
-    import subprocess
-
-    result = subprocess.run(
-        [
-            "python3",
-            ".claude/scripts/mutation_test/initialize_test_metadata.py",
-            "--file",
-            json_file,
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        print(f"Error initializing test metadata: {result.stderr}", file=sys.stderr)
-        sys.exit(1)
-    print("Test metadata initialized successfully", file=sys.stderr)
-
-    # Reload the file with metadata
-    try:
-        with open(json_file, "r") as f:
-            data = cast(AllTypesData, json.load(f))
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON after initialization: {e}", file=sys.stderr)
-        sys.exit(1)
 
 # Load excluded types list (but don't delete them from data)
 excluded_type_names: set[str] = set()
@@ -1125,6 +1111,8 @@ if excluded_types_file.exists():
                 )
     except (json.JSONDecodeError, IOError) as e:
         print(f"Warning: Failed to load excluded types: {e}", file=sys.stderr)
+
+# Deduplication and validation now handled by initialize_test_metadata.py
 
 # Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
 data = renumber_batches(
@@ -1204,6 +1192,42 @@ for type_item in batch_types:
             ops_needed=ops_needed,
         )
     )
+
+# BACKUP OLD TEST FILES BEFORE CREATING NEW ONES
+DEBUG_LOG = get_mutation_test_log(mutation_config)
+if os.path.exists(DEBUG_LOG):
+    # Create timestamped backup folder
+    log_timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    log_dir = os.path.dirname(DEBUG_LOG)
+    backup_folder = f"{log_dir}/mutation_test_{log_timestamp}"
+
+    try:
+        os.makedirs(backup_folder, exist_ok=True)
+
+        # Move mutation_test.log
+        backup_log_file = f"{backup_folder}/mutation_test.log"
+        os.rename(DEBUG_LOG, backup_log_file)
+
+        # Move all mutation_test_*.json files
+        test_plan_pattern = f"{log_dir}/mutation_test_*.json"
+        test_plan_files = glob.glob(test_plan_pattern)
+        files_moved = 1  # Count the log file
+
+        for test_plan_file in test_plan_files:
+            filename = os.path.basename(test_plan_file)
+            backup_test_file = f"{backup_folder}/{filename}"
+            try:
+                os.rename(test_plan_file, backup_test_file)
+                files_moved += 1
+            except OSError:
+                pass  # Continue if individual file move fails
+
+        print(
+            f"Backed up {files_moved} test file(s) to: {backup_folder}",
+            file=sys.stderr,
+        )
+    except OSError as e:
+        print(f"Warning: Backup failed: {e}", file=sys.stderr)
 
 # Distribute types across subagents with boundary-only splitting
 # Track which subagent we're on and how many operations are filled
@@ -1497,44 +1521,6 @@ untested_count = len(
     [t for t in type_guide.values() if t.get("test_status") == "untested"]
 )
 remaining_types = untested_count - unique_types_count
-
-# Backup and initialize debug log
-DEBUG_LOG = get_mutation_test_log(mutation_config)
-
-# Backup existing test files if log exists
-if os.path.exists(DEBUG_LOG):
-    # Create timestamped backup folder
-    log_timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    log_dir = os.path.dirname(DEBUG_LOG)
-    backup_folder = f"{log_dir}/mutation_test_{log_timestamp}"
-
-    try:
-        os.makedirs(backup_folder, exist_ok=True)
-
-        # Move mutation_test.log
-        backup_log_file = f"{backup_folder}/mutation_test.log"
-        os.rename(DEBUG_LOG, backup_log_file)
-
-        # Move all mutation_test_{port}.json files
-        test_plan_pattern = f"{log_dir}/mutation_test_*.json"
-        test_plan_files = glob.glob(test_plan_pattern)
-        files_moved = 1  # Count the log file
-
-        for test_plan_file in test_plan_files:
-            filename = os.path.basename(test_plan_file)
-            backup_test_file = f"{backup_folder}/{filename}"
-            try:
-                os.rename(test_plan_file, backup_test_file)
-                files_moved += 1
-            except OSError:
-                pass  # Continue if individual file move fails
-
-        print(
-            f"Backed up {files_moved} test file(s) to: {backup_folder}",
-            file=sys.stderr,
-        )
-    except OSError as e:
-        print(f"Warning: Backup failed: {e}", file=sys.stderr)
 
 # Create new debug log with metadata for current batch
 ports = [a["port"] for a in assignments]
