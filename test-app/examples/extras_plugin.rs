@@ -76,11 +76,13 @@ use bevy::post_process::auto_exposure::AutoExposure;
 use bevy::post_process::bloom::Bloom;
 use bevy::post_process::dof::DepthOfField;
 use bevy::post_process::effect_stack::ChromaticAberration;
+use bevy::post_process::motion_blur::MotionBlur;
 use bevy::prelude::ChildOf;
 use bevy::prelude::*;
 use bevy::render::camera::MipBias;
 use bevy::render::camera::TemporalJitter;
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
+use bevy::render::globals::GlobalsUniform;
 use bevy::render::render_resource::TextureViewDescriptor;
 use bevy::render::render_resource::TextureViewDimension;
 use bevy::render::view::ColorGrading;
@@ -88,6 +90,7 @@ use bevy::render::view::Msaa;
 use bevy::render::view::window::screenshot::Screenshot;
 use bevy::scene::Scene;
 use bevy::scene::SceneRoot;
+use bevy::sprite::Text2dShadow;
 use bevy::sprite_render::Wireframe2dColor;
 use bevy::ui::CalculatedClip;
 use bevy::ui::FocusPolicy;
@@ -476,6 +479,7 @@ fn main() {
         .add_plugins(brp_plugin)
         .add_plugins(MeshPickingPlugin)
         .init_resource::<KeyboardInputHistory>()
+        .init_resource::<GlobalsUniform>()
         .insert_resource(CurrentPort(port))
         .insert_resource(WireframeConfig {
             global:        true,
@@ -1282,6 +1286,7 @@ fn spawn_render_entities(commands: &mut Commands) {
     // Entity with Text2d for testing mutations
     commands.spawn((
         Text2d("Hello Text2d".to_string()),
+        Text2dShadow::default(), // For testing mutations
         Transform::from_xyz(50.0, 50.0, 0.0),
         Name::new("Text2dTestEntity"),
     ));
@@ -1385,33 +1390,35 @@ fn spawn_cameras(commands: &mut Commands) {
     ));
 
     // 3D Camera for 3D test entities (disabled to avoid rendering conflicts)
-    commands.spawn((
-        Camera3d::default(),
-        Camera {
-            order: 1,         // Different order to avoid ambiguity
-            is_active: false, // Disable to avoid rendering conflicts with deferred pipeline
-            ..default()
-        },
-        Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-        AutoExposure::default(), // For testing mutations
-        ColorGrading::default(), // For testing mutations
-        ContrastAdaptiveSharpening {
-            enabled: true,
-            denoise: true, // Enable denoise to trigger DenoiseCas auto-extraction
-            ..default()
-        },
-        DepthOfField::default(),                // For testing mutations
-        Fxaa::default(),                        // For testing mutations
-        MipBias(0.0),                           // For testing mutations
-        TemporalJitter::default(),              // For testing mutations
-        ChromaticAberration::default(),         // For testing mutations
-        ScreenSpaceAmbientOcclusion::default(), // For testing mutations
-        ScreenSpaceReflections::default(),      // For testing mutations
-        VolumetricFog::default(),               // For testing mutations
-        MotionVectorPrepass,                    /* For testing mutations
-                                                 * Msaa causes crashes with the deferred
-                                                 * rendering setup - test separately */
-    ));
+    commands
+        .spawn((
+            Camera3d::default(),
+            Camera {
+                order: 1,         // Different order to avoid ambiguity
+                is_active: false, // Disable to avoid rendering conflicts with deferred pipeline
+                ..default()
+            },
+            Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+            AutoExposure::default(), // For testing mutations
+            ColorGrading::default(), // For testing mutations
+            ContrastAdaptiveSharpening {
+                enabled: true,
+                denoise: true, // Enable denoise to trigger DenoiseCas auto-extraction
+                ..default()
+            },
+            DepthOfField::default(),                // For testing mutations
+            Fxaa::default(),                        // For testing mutations
+            MipBias(0.0),                           // For testing mutations
+            TemporalJitter::default(),              // For testing mutations
+            ChromaticAberration::default(),         // For testing mutations
+            ScreenSpaceAmbientOcclusion::default(), // For testing mutations
+            ScreenSpaceReflections::default(),      // For testing mutations
+            VolumetricFog::default(),               // For testing mutations
+            MotionVectorPrepass,                    /* For testing mutations
+                                                     * Msaa causes crashes with the deferred
+                                                     * rendering setup - test separately */
+        ))
+        .insert(MotionBlur::default()); // For testing mutations (added separately due to bundle size limit)
 }
 
 fn spawn_ui_elements(commands: &mut Commands, port: &Res<CurrentPort>) {

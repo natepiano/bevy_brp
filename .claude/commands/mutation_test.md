@@ -280,12 +280,137 @@ This gives full failure details including operations_completed, failure_details,
 Please select one of the keywords above.
 ```
 
-5. Execute <InvestigateFailure/> immediately after presenting each failure
+5. Execute <CheckCommonPatterns/> immediately after presenting each failure
+   - Runs quick diagnosis for each pattern using /tmp/mutation_test.log
+   - If pattern signature matches: Execute pattern section
+   - If no patterns match: Execute <InvestigateFailure/>
 6. Wait for user response
 7. Handle keyword: investigate (already done), skip (next failure), stop (exit)
 
 **Note**: Only review failures (real BRP errors) are reviewed. Retry failures (subagent crashes) are automatically retried in the next batch.
 </InteractiveFailureReview>
+
+<CheckCommonPatterns>
+**Pattern Detection Dispatcher**
+
+For each pattern, run quick diagnosis. If diagnosis matches, execute pattern section.
+
+**Pattern 1: Missing Component**
+
+Quick diagnosis - Check /tmp/mutation_test.log for this type:
+```bash
+grep "{failed_type_name}" /tmp/mutation_test.log | grep -E "spawn_entity.*SUCCESS|query.*FAIL"
+```
+
+Signature:
+- One port shows: `spawn_entity` → `SUCCESS`
+- Different, subsequent port shows for the same type: `query` → `FAIL` (Query returned 0 entities)
+
+**If signature matches**: Execute <MissingComponent/>
+
+---
+
+**Pattern 2: BRP Connection Lost**
+
+Quick diagnosis - Check /tmp/mutation_test.log:
+```bash
+grep "port={port}" /tmp/mutation_test.log | tail -20
+```
+
+Signature:
+- Multiple `SUCCESS` operations
+- Sudden "HTTP request failed" or "Connection failed"
+
+**If signature matches**: Execute <BRPConnectionLost/>
+
+---
+
+**No patterns matched**: Execute <InvestigateFailure/>
+</CheckCommonPatterns>
+
+<MissingComponent>
+**Pattern: Missing Component in Test App**
+
+Run diagnostic:
+```bash
+grep -c "{failed_type_name}" test-app/examples/extras_plugin.rs
+```
+
+**If count = 0** (component not spawned at startup):
+
+Parse /tmp/mutation_test.log to extract:
+- Port where spawn succeeded
+- Port where query failed
+- Operation IDs
+
+Present findings:
+```
+✅ PATTERN: Missing Component in Test App
+
+Type `{type_name}` is not spawned in extras_plugin.rs at app startup.
+
+Log Evidence:
+- Port {spawn_port}: op_id={spawn_op_id} spawn_entity → SUCCESS ✅
+- Port {query_port}: op_id={query_op_id} query → FAIL (0 entities) ❌
+
+Root Cause:
+Multi-part tests on different ports run separate app instances. Part 2 expected
+to find entities from startup, but extras_plugin.rs doesn't spawn this type.
+
+**Fix**: Add `{type_name}` entity to test-app/examples/extras_plugin.rs
+Search for similar components to find appropriate spawn function.
+```
+
+**If count > 0** (component exists):
+Present: "Component exists in extras_plugin.rs - different issue."
+Execute <InvestigateFailure/> for full analysis.
+</MissingComponent>
+
+<BRPConnectionLost>
+**Pattern: BRP Connection Lost**
+
+1. Parse /tmp/mutation_test.log for port {port}:
+   - Last successful operation timestamp
+   - Failed operation details
+   - Time gap
+
+2. Read /tmp/mutation_test_{port}.json to find last successful operation:
+   - Extract operation details (component, path, value)
+   - This mutation likely caused the app to crash
+
+Present findings:
+```
+✅ PATTERN: BRP Connection Lost
+
+BRP server connection failed after {N} successful operations.
+
+Log Evidence:
+- Port {port}: op_id={last_success_id} → SUCCESS at {timestamp1}
+- Port {port}: op_id={fail_id} → FAIL at {timestamp2}
+- Gap: {seconds}s
+
+Likely Culprit - Last Successful Mutation:
+- Component: `{component}`
+- Path: `{path}`
+- Value: {value}
+- Type: `{type_name}`
+
+Root Cause:
+The mutation succeeded from BRP's perspective, but caused the app to crash
+or become unresponsive shortly after, breaking the connection for subsequent operations.
+
+**Investigation Focus**:
+This specific mutation is likely incompatible with the component's implementation:
+1. The value may violate invariants not checked by BRP
+2. The component may have unsafe code that panics on this value
+3. The mutation may trigger a cascade failure in dependent systems
+
+**Recommended Fix**:
+1. Test this exact mutation in isolation to reproduce the crash
+2. Check {component} implementation for panics or unsafe code
+3. Add validation or mark this mutation path as invalid if appropriate
+```
+</BRPConnectionLost>
 
 <InvestigateFailure>
 1. Run: `.claude/scripts/get_type_guide.sh <failed_type_name> --file .claude/transient/all_types.json`

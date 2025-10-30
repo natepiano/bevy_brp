@@ -77,6 +77,14 @@
       "reason": "Contains PartiallyMutable enum variant with non-deserializable field. The .viewport field is Option<Viewport> where Some(Viewport) contains depth: Range<f32>. Bevy registered Range<f32> for reflection but not ReflectDeserialize, causing deserialization error: 'type core::ops::Range<f32> did not register the ReflectDeserialize type data'. This makes Option<Viewport>::Some a PartiallyMutable variant that cannot be set via mutations, rendering child mutation paths like .viewport.0.physical_position unreachable. Path builder generates these paths but they fail with 'Expected variant index access to access a Tuple variant, found a Unit variant instead' because root_example uses None variant."
     },
     {
+      "type_name": "bevy_camera::components::Camera3d",
+      "reason": "Spawning Camera3d causes rendering system conflicts and panics in extras_plugin test app. Creates camera order ambiguities with existing cameras and triggers wgpu validation error: 'Texture binding 3 expects dimension = D3, but given a view with dimension = D2' in mesh_view_bind_group. Camera components require complete camera setup (Camera, Transform, render targets) that cannot be properly initialized via dynamic spawn."
+    },
+    {
+      "type_name": "bevy_window::window::Window",
+      "reason": "Excessively large component with many fields. Not representative of typical component mutation testing needs. The large number of mutation operations creates disproportionate test time without providing proportional value for validating BRP mutation functionality. If other mutations work, this will work too."
+    },
+    {
       "type_name": "bevy_render::sync_world::RenderEntity",
       "reason": "Main-world-to-render-world entity mapping. TupleStruct containing entity ID that references render world entity. Mutating existing entities crashes render systems (bevy_ui_render::extract_ui_camera_view, bevy_anti_alias::taa::extract_taa_settings) with 'Camera entity wasn't synced: EntityDoesNotExistError' when the referenced entity doesn't exist in render world. Can only safely spawn new entities with arbitrary values (no immediate crash), but mutations on existing entities with active render dependencies cause app crash on next render frame. Not suitable for mutation testing since we can't mutate existing entities, only newly spawned ones - this doesn't test general mutation behavior."
     }

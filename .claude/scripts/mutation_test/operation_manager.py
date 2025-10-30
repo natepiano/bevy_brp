@@ -183,6 +183,20 @@ def save_test_plan(file_path: str, test_plan: TestPlan) -> None:
         sys.exit(1)
 
 
+def skip_remaining_operations_in_test(
+    test: dict[str, Any],  # pyright: ignore[reportExplicitAny]
+    reason: str,
+) -> None:
+    """Mark all non-completed operations in test as FAIL with skip reason."""
+    operations = cast(list[dict[str, Any]], test.get("operations", []))  # pyright: ignore[reportExplicitAny]
+    for op in operations:
+        if op.get("status") != "SUCCESS":
+            op["status"] = "FAIL"
+            op["error"] = f"Skipped: {reason}"
+            # Set high call_count so find_next_operation won't retry
+            op["call_count"] = 999
+
+
 def find_next_operation(
     test_plan: TestPlan,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:  # pyright: ignore[reportExplicitAny]
@@ -200,7 +214,12 @@ def find_next_operation(
         operations = cast(list[dict[str, Any]], test.get("operations", []))  # pyright: ignore[reportExplicitAny]
         for op in operations:
             status = op.get("status")
+            call_count = cast(int, op.get("call_count", 0))
+            # Skip operations that have been marked as skipped (call_count=999)
+            if status == "FAIL" and call_count == 999:
+                continue
             # Return operations that need execution (no status or FAIL)
+            # Operations with call_count >= 4 are returned so termination check can handle them
             if status is None or status == "FAIL":
                 return op, test
 
@@ -344,23 +363,95 @@ def parse_mcp_response_with_input(
         return ("FAIL", f"Failed to parse MCP response: {e}", empty_dict)
 
 
+def handle_test_failure(
+    port: int,
+    file_path: str,
+    test_plan: TestPlan,
+    current_test: dict[str, Any],  # pyright: ignore[reportExplicitAny]
+    operation_id: int,
+    reason: str,
+) -> None:
+    """
+    Handle test failure by skipping remaining operations and trying next test.
+
+    Logs the skip, marks remaining operations as failed, saves plan,
+    and provides next operation or finishes if no more tests.
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    type_name = cast(str, current_test.get("type_name", "unknown"))
+
+    # Log the skip with type name
+    try:
+        with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+            _ = f.write(
+                f"[{timestamp}] port={port} ** SKIPPING TYPE: {type_name} ** {reason} at op_id={operation_id}\n"
+            )
+    except Exception:
+        pass
+
+    # Skip all remaining operations in this test
+    skip_remaining_operations_in_test(current_test, reason)
+
+    # Save updated test plan
+    save_test_plan(file_path, test_plan)
+
+    # Try to find next operation from a different test
+    next_operation, _ = find_next_operation(test_plan)
+
+    if next_operation is None:
+        # No more tests to run - all done
+        try:
+            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                _ = f.write(f"[{timestamp}] port={port} ** FINISHED **\n")
+        except Exception:
+            pass
+        print(json.dumps({"status": "finished"}, indent=2))
+        return
+
+    # Provide next operation from next test
+    next_op_id = cast(int, next_operation.get("operation_id"))
+    try:
+        with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+            _ = f.write(f"[{timestamp}] port={port} op_id={next_op_id} provided to subagent\n")
+            f.flush()
+    except Exception:
+        pass
+
+    execution_params = get_execution_params(next_operation)
+    response = {"status": "next_operation", "operation": execution_params}
+    print(json.dumps(response, indent=2))
+
+
 def action_get_next(port: int) -> None:
     """Get next operation that needs execution."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Defensive check: Has this port already been terminated or finished?
-    port_already_done = False
+    port_finished = False
+    port_timeout_terminated = False
+    port_hard_terminated = False
+    test_complete = False
+
     try:
         with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
             for line in log_f:
-                if f"port={port} ** FINISHED **" in line or f"port={port} ** TERMINATED" in line:
-                    port_already_done = True
-                    break
+                # Check for test completion
+                if "** MUTATION TEST COMPLETE **" in line:
+                    test_complete = True
+
+                # Check port-specific termination states
+                if f"port={port}" in line:
+                    if "** FINISHED **" in line:
+                        port_finished = True
+                    elif "** TERMINATED (TIMEOUT) **" in line:
+                        port_timeout_terminated = True
+                    elif "** TERMINATED" in line:  # Other terminations (retry limit, BRP failed, etc.)
+                        port_hard_terminated = True
     except Exception:
         pass
 
-    if port_already_done:
-        # Port is requesting work after being terminated/finished
+    # Block requests if: test complete, port finished, or hard terminated (non-timeout)
+    if test_complete or port_finished or port_hard_terminated:
         try:
             with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
                 _ = f.write(f"[{timestamp}] port={port} ** REQUEST AFTER TERMINATION ** - Returning finished status\n")
@@ -369,10 +460,18 @@ def action_get_next(port: int) -> None:
         print(json.dumps({"status": "finished"}, indent=2))
         return
 
+    # Resume after timeout - subagent is still alive
+    if port_timeout_terminated:
+        try:
+            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                _ = f.write(f"[{timestamp}] port={port} ** RESUMING AFTER TIMEOUT ** - Subagent is still active\n")
+        except Exception:
+            pass
+
     file_path = get_plan_file_path(port)
     test_plan = load_test_plan(file_path)
 
-    operation, _ = find_next_operation(test_plan)
+    operation, current_test = find_next_operation(test_plan)
 
     if operation is None:
         # All operations complete for this subagent
@@ -386,8 +485,8 @@ def action_get_next(port: int) -> None:
             participated_ports: set[int] = set()
             finished_ports: set[int] = set()
             summary_exists = False
-            # Track last provided time per port (for timeout detection)
-            last_provided: dict[int, datetime] = {}
+            # Track last activity time per port (for timeout detection)
+            last_activity: dict[int, datetime] = {}
 
             try:
                 with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
@@ -396,37 +495,66 @@ def action_get_next(port: int) -> None:
                         if "** MUTATION TEST COMPLETE **" in line:
                             summary_exists = True
 
-                        # Find ports that provided operations (participated in the test)
-                        if " provided to subagent" in line:
-                            try:
-                                timestamp_match = None
-                                port_match = None
-                                parts = line.split()
-                                for i, part in enumerate(parts):
-                                    if i == 0 and part.startswith("["):
-                                        # Extract timestamp [YYYY-MM-DD HH:MM:SS]
-                                        timestamp_str = " ".join(parts[0:2]).strip("[]")
-                                        try:
-                                            timestamp_match = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
-                                        except Exception:
-                                            pass
-                                    if part.startswith("port="):
-                                        port_match = int(part.split("=")[1])
+                        # Extract timestamp and port from any activity line
+                        timestamp_match = None
+                        port_match = None
+                        parts = line.split()
+                        for i, part in enumerate(parts):
+                            if i == 0 and part.startswith("["):
+                                # Extract timestamp [YYYY-MM-DD HH:MM:SS]
+                                timestamp_str = " ".join(parts[0:2]).strip("[]")
+                                try:
+                                    timestamp_match = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                                except Exception:
+                                    pass
+                            if part.startswith("port="):
+                                try:
+                                    port_match = int(part.split("=")[1])
+                                except Exception:
+                                    pass
 
-                                if port_match:
-                                    participated_ports.add(port_match)
-                                    if timestamp_match:
-                                        last_provided[port_match] = timestamp_match
-                            except Exception:
-                                pass
+                        # Track ports that provided operations (participated in the test)
+                        if " provided to subagent" in line and port_match:
+                            participated_ports.add(port_match)
+                            if timestamp_match:
+                                last_activity[port_match] = timestamp_match
 
-                        # Find ports that finished or terminated
-                        if " ** FINISHED **" in line or " ** TERMINATED **" in line:
+                        # Update activity time for status updates (subagent is working)
+                        if " status=" in line and port_match and timestamp_match:
+                            last_activity[port_match] = timestamp_match
+
+                        # Find ports that finished or hard-terminated (not timeout)
+                        # Note: TIMEOUT terminations are not considered done (subagent may resume)
+                        if " ** FINISHED **" in line:
                             try:
                                 for part in line.split():
                                     if part.startswith("port="):
                                         finished_port = int(part.split("=")[1])
                                         finished_ports.add(finished_port)
+                                        break
+                            except Exception:
+                                pass
+                        elif " ** TERMINATED **" in line and " ** TERMINATED (TIMEOUT) **" not in line:
+                            # Hard terminations (retry limit, BRP failed, etc.) - not timeout
+                            try:
+                                for part in line.split():
+                                    if part.startswith("port="):
+                                        finished_port = int(part.split("=")[1])
+                                        finished_ports.add(finished_port)
+                                        break
+                            except Exception:
+                                pass
+
+                        # Resume after timeout - remove from finished list
+                        if " ** RESUMING AFTER TIMEOUT **" in line:
+                            try:
+                                for part in line.split():
+                                    if part.startswith("port="):
+                                        resumed_port = int(part.split("=")[1])
+                                        finished_ports.discard(resumed_port)
+                                        # Update activity timestamp to current time
+                                        if timestamp_match:
+                                            last_activity[resumed_port] = timestamp_match
                                         break
                             except Exception:
                                 pass
@@ -437,16 +565,46 @@ def action_get_next(port: int) -> None:
             # Check for timeouts on active ports (participated but not finished)
             active_ports = participated_ports - finished_ports
             timed_out_ports: set[int] = set()
+            already_logged_timeout: set[int] = set()
             now = datetime.now()
 
+            # First pass: find which ports already have timeout logs (but not resumed)
+            # A port that resumed can timeout again and should be logged
+            try:
+                with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
+                    for line in log_f:
+                        if " ** TERMINATED (TIMEOUT) **" in line:
+                            try:
+                                for part in line.split():
+                                    if part.startswith("port="):
+                                        timeout_port = int(part.split("=")[1])
+                                        already_logged_timeout.add(timeout_port)
+                                        break
+                            except Exception:
+                                pass
+                        # If port resumed, allow it to be logged again if it times out
+                        if " ** RESUMING AFTER TIMEOUT **" in line:
+                            try:
+                                for part in line.split():
+                                    if part.startswith("port="):
+                                        resumed_port = int(part.split("=")[1])
+                                        already_logged_timeout.discard(resumed_port)
+                                        break
+                            except Exception:
+                                pass
+            except Exception:
+                pass
+
+            # Second pass: check for new timeouts and log only if not already logged
             for check_port in active_ports:
-                if check_port in last_provided:
-                    time_since_provided = (now - last_provided[check_port]).total_seconds()
-                    if time_since_provided > 60:  # 60 second timeout
+                if check_port in last_activity:
+                    time_since_activity = (now - last_activity[check_port]).total_seconds()
+                    if time_since_activity > 60:  # 60 second timeout
                         timed_out_ports.add(check_port)
-                        # Log timeout
-                        with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
-                            _ = f.write(f"[{timestamp}] port={check_port} ** TERMINATED (TIMEOUT) ** - No response for {time_since_provided:.0f} seconds\n")
+                        # Only log timeout if we haven't already logged it for this port
+                        if check_port not in already_logged_timeout:
+                            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                                _ = f.write(f"[{timestamp}] port={check_port} ** TERMINATED (TIMEOUT) ** - No activity for {time_since_activity:.0f} seconds\n")
 
             # All complete if: summary not written AND all participated ports finished or timed out
             all_ports_done = finished_ports | timed_out_ports
@@ -536,44 +694,51 @@ def action_get_next(port: int) -> None:
         return
 
     # Check termination conditions before providing operation to subagent
+    # Safety check: operation exists, so current_test must also exist
+    if current_test is None:
+        print(json.dumps({"status": "finished"}, indent=2))
+        return
+
     operation_id = cast(int, operation.get("operation_id"))
     call_count = cast(int, operation.get("call_count", 0))
     error = cast(str, operation.get("error", ""))
 
     # Termination check 1: Retry limit exceeded
     if call_count >= 4:
-        try:
-            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
-                _ = f.write(
-                    f"[{timestamp}] port={port} ** TERMINATED ** Retry limit exceeded at op_id={operation_id}\n"
-                )
-        except Exception:
-            pass
-        print(json.dumps({"status": "finished"}, indent=2))
+        handle_test_failure(
+            port, file_path, test_plan, current_test, operation_id, "Retry limit exceeded"
+        )
         return
 
-    # Termination check 2: BRP connection failed
+    # Termination check 2: Hard safety limit (should never reach this if check 1 works)
+    if call_count > 10:
+        handle_test_failure(
+            port,
+            file_path,
+            test_plan,
+            current_test,
+            operation_id,
+            f"Excessive retries (call_count={call_count})",
+        )
+        return
+
+    # Termination check 3: BRP connection failed
     if "JSON-RPC error: HTTP request failed" in error:
-        try:
-            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
-                _ = f.write(
-                    f"[{timestamp}] port={port} ** TERMINATED ** BRP connection failed at op_id={operation_id}\n"
-                )
-        except Exception:
-            pass
-        print(json.dumps({"status": "finished"}, indent=2))
+        handle_test_failure(
+            port, file_path, test_plan, current_test, operation_id, "BRP connection failed"
+        )
         return
 
-    # Termination check 3: Resource/component not found
+    # Termination check 4: Resource/component not found
     if "not present in the world" in error:
-        try:
-            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
-                _ = f.write(
-                    f"[{timestamp}] port={port} ** TERMINATED ** Resource/component not found at op_id={operation_id}\n"
-                )
-        except Exception:
-            pass
-        print(json.dumps({"status": "finished"}, indent=2))
+        handle_test_failure(
+            port,
+            file_path,
+            test_plan,
+            current_test,
+            operation_id,
+            "Resource/component not found",
+        )
         return
 
     # Operation is viable - log and provide to subagent

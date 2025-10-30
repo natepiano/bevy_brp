@@ -98,30 +98,66 @@ def load_files(
     return baseline, current
 
 
-def extract_mutation_path(path: str) -> str | None:
+def extract_mutation_path(
+    path: str,
+    type_name: str = "",
+    baseline_data: dict[str, JsonValue] | None = None,
+    current_data: dict[str, JsonValue] | None = None,
+) -> str | None:
     """Extract the mutation path key from a JSON path if it's within mutation_paths.
 
     With array format, paths look like: mutation_paths[INDEX].field
     We extract the actual mutation path by looking at the .path field in the comparison data.
+
+    Args:
+        path: JSON path string (e.g., "mutation_paths[0].example.player")
+        type_name: Name of the type being compared (optional, for array resolution)
+        baseline_data: Full baseline type guide data (optional, for array resolution)
+        current_data: Full current type guide data (optional, for array resolution)
     """
     if not path.startswith("mutation_paths"):
         return None
 
     # Handle array format: mutation_paths[INDEX] or mutation_paths[INDEX].field
     if path.startswith("mutation_paths["):
-        # Extract the index and what comes after
+        # Extract the index from path like "mutation_paths[0]" or "mutation_paths[0].field"
         # Format: mutation_paths[INDEX] or mutation_paths[INDEX].rest
         rest = path[len("mutation_paths") :]
 
-        # Check if there's a field after the array index
-        if "]" in rest:
-            after_bracket = rest.split("]", 1)[1]
-            if after_bracket.startswith("."):
-                # We have mutation_paths[INDEX].field_name
-                # The actual mutation path is stored in the .path field of the array element
-                # We can't extract it from the JSON path alone in array format
-                # Return a placeholder that the caller can resolve
+        # Extract the index number
+        if "[" in rest and "]" in rest:
+            index_str = rest[rest.find("[") + 1 : rest.find("]")]
+            try:
+                index = int(index_str)
+            except ValueError:
                 return "__ARRAY_ELEMENT__"
+
+            # Try to resolve the actual mutation path from the data
+            if type_name and (baseline_data or current_data):
+                # Try current data first, then baseline
+                for data in [current_data, baseline_data]:
+                    if not data or type_name not in data:
+                        continue
+
+                    type_data = data[type_name]
+                    if not isinstance(type_data, dict):
+                        continue
+
+                    mutation_paths = type_data.get("mutation_paths")
+                    if not isinstance(mutation_paths, list):
+                        continue
+
+                    # Check if index is valid
+                    if 0 <= index < len(mutation_paths):
+                        path_obj = mutation_paths[index]
+                        if isinstance(path_obj, dict) and "path" in path_obj:
+                            path_value = path_obj["path"]
+                            # The path field is always a string in our schema
+                            if isinstance(path_value, str):
+                                return path_value
+
+            # Couldn't resolve - return placeholder
+            return "__ARRAY_ELEMENT__"
 
         # Just mutation_paths[INDEX] with no field - this is the whole element
         return "__ARRAY_ELEMENT__"
@@ -216,9 +252,23 @@ def describe_value(val: JsonValue) -> str:
 
 
 def deep_compare_values(
-    path: str, baseline_val: JsonValue, current_val: JsonValue
+    path: str,
+    baseline_val: JsonValue,
+    current_val: JsonValue,
+    type_name: str = "",
+    baseline_data: dict[str, JsonValue] | None = None,
+    current_data: dict[str, JsonValue] | None = None,
 ) -> list[DifferenceDict]:
-    """Recursively compare values and return all differences."""
+    """Recursively compare values and return all differences.
+
+    Args:
+        path: JSON path to the current value
+        baseline_val: Value from baseline
+        current_val: Value from current
+        type_name: Name of the type being compared (for mutation path resolution)
+        baseline_data: Full baseline type guide data (for mutation path resolution)
+        current_data: Full current type guide data (for mutation path resolution)
+    """
     differences: list[DifferenceDict] = []
 
     # Check if both are None
@@ -235,7 +285,7 @@ def deep_compare_values(
                 current=current_val,
                 description=f"Added: {describe_value(current_val)}",
                 type_name="",
-                mutation_path=extract_mutation_path(path),
+                mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
             )
         )
         return differences
@@ -249,7 +299,7 @@ def deep_compare_values(
                 current=None,
                 description=f"Removed: {describe_value(baseline_val)}",
                 type_name="",
-                mutation_path=extract_mutation_path(path),
+                mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
             )
         )
         return differences
@@ -264,7 +314,7 @@ def deep_compare_values(
                 current=current_val,
                 description=f"Type changed: {type(baseline_val).__name__} → {type(current_val).__name__}",
                 type_name="",
-                mutation_path=extract_mutation_path(path),
+                mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
             )
         )
         return differences
@@ -290,7 +340,16 @@ def deep_compare_values(
 
             if base_has_key and curr_has_key:
                 # Both have the key, compare values (even if both are None)
-                differences.extend(deep_compare_values(new_path, baseline_val[key], current_val[key]))
+                differences.extend(
+                    deep_compare_values(
+                        new_path,
+                        baseline_val[key],
+                        current_val[key],
+                        type_name,
+                        baseline_data,
+                        current_data,
+                    )
+                )
             elif base_has_key and not curr_has_key:
                 # Key exists in baseline but not current (field removed)
                 # Directly create the difference entry to avoid (None, None) comparison
@@ -302,7 +361,7 @@ def deep_compare_values(
                         current=None,
                         description=f"Removed: {describe_value(baseline_val[key])}",
                         type_name="",
-                        mutation_path=extract_mutation_path(new_path),
+                        mutation_path=extract_mutation_path(new_path, type_name, baseline_data, current_data),
                     )
                 )
             elif not base_has_key and curr_has_key:
@@ -316,7 +375,7 @@ def deep_compare_values(
                         current=current_val[key],
                         description=f"Added: {describe_value(current_val[key])}",
                         type_name="",
-                        mutation_path=extract_mutation_path(new_path),
+                        mutation_path=extract_mutation_path(new_path, type_name, baseline_data, current_data),
                     )
                 )
 
@@ -339,7 +398,7 @@ def deep_compare_values(
                             current=curr_item,
                             description=f"Added element at index {i}",
                             type_name="",
-                            mutation_path=extract_mutation_path(new_path),
+                            mutation_path=extract_mutation_path(new_path, type_name, baseline_data, current_data),
                         )
                     )
                 elif base_item is not None and curr_item is None:
@@ -351,12 +410,12 @@ def deep_compare_values(
                             current=None,
                             description=f"Removed element at index {i}",
                             type_name="",
-                            mutation_path=extract_mutation_path(new_path),
+                            mutation_path=extract_mutation_path(new_path, type_name, baseline_data, current_data),
                         )
                     )
                 else:
                     differences.extend(
-                        deep_compare_values(new_path, base_item, curr_item)
+                        deep_compare_values(new_path, base_item, curr_item, type_name, baseline_data, current_data)
                     )
         else:
             # Same length - check if arrays contain primitive values that can be compared as sets
@@ -375,7 +434,7 @@ def deep_compare_values(
                 for i in range(len(baseline_val)):
                     new_path = f"{path}[{i}]"
                     differences.extend(
-                        deep_compare_values(new_path, baseline_val[i], current_val[i])
+                        deep_compare_values(new_path, baseline_val[i], current_val[i], type_name, baseline_data, current_data)
                     )
 
     elif baseline_val != current_val:
@@ -388,7 +447,7 @@ def deep_compare_values(
                 current=current_val,
                 description=f"Value changed: {describe_value(baseline_val)} → {describe_value(current_val)}",
                 type_name="",
-                mutation_path=extract_mutation_path(path),
+                mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
             )
         )
 
@@ -420,7 +479,9 @@ def compare_types(
         baseline_entry = baseline[type_name]
         current_entry = current[type_name]
 
-        type_differences = deep_compare_values("", baseline_entry, current_entry)
+        type_differences = deep_compare_values(
+            "", baseline_entry, current_entry, type_name, baseline, current
+        )
 
         if type_differences:
             type_stats["modified"].append(type_name)

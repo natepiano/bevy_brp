@@ -117,8 +117,8 @@ class TestOperation(TypedDict, total=False):
     resource: str | None
     path: str | None
     value: object
-    # Entity ID substitution
-    entity_id_substitution: dict[str, str] | None
+    # Entity ID substitution - placeholder value to replace
+    entity_id_substitution: int | None
 
 
 class TypeTest(TypedDict, total=False):
@@ -232,7 +232,8 @@ def renumber_batches(
     untested_types: list[tuple[str, TypeData]] = [
         (type_name, type_data)
         for type_name, type_data in type_guide.items()
-        if type_data.get("test_status") == "untested" and type_name not in excluded_type_names
+        if type_data.get("test_status") == "untested"
+        and type_name not in excluded_type_names
     ]
 
     current_batch = max_batch + 1
@@ -257,7 +258,9 @@ def renumber_batches(
             mutation_type = extract_mutation_type(schema_info)
 
             # Build complete type_data with mutation_type (same as preparation phase)
-            type_data = build_type_data_complete(type_name, type_data_raw, mutation_type)
+            type_data = build_type_data_complete(
+                type_name, type_data_raw, mutation_type
+            )
 
             # Calculate operations needed for this type
             ops_needed = calculate_type_operations(type_data)
@@ -283,7 +286,9 @@ def renumber_batches(
             # Simulate packing to see if it fits
             test_ops_remaining = ops_needed
             test_subagent_idx = 0
-            test_ops_in_subagent = current_ops_in_subagent  # How many ops USED in current subagent
+            test_ops_in_subagent = (
+                current_ops_in_subagent  # How many ops USED in current subagent
+            )
             parts_needed = 0
 
             while test_ops_remaining > 0 and test_subagent_idx < remaining_subagents:
@@ -300,7 +305,9 @@ def renumber_batches(
                 if parts_needed > 0 and mutation_type == "Component":
                     extra_ops = 1  # Query operation for this part
 
-                ops_in_this_part = min(test_ops_remaining, available_in_subagent - extra_ops)
+                ops_in_this_part = min(
+                    test_ops_remaining, available_in_subagent - extra_ops
+                )
                 if ops_in_this_part <= 0:
                     # Can't fit even the query, need next subagent
                     test_subagent_idx += 1
@@ -461,7 +468,7 @@ def format_type_description(
         prefix = type_name[:generic_start]
         last_separator = prefix.rfind("::")
         if last_separator != -1:
-            short_name = type_name[last_separator + 2:]
+            short_name = type_name[last_separator + 2 :]
         else:
             short_name = type_name
     else:
@@ -485,27 +492,24 @@ def format_type_description(
 ENTITY_ID_PLACEHOLDER = 8589934670  # Placeholder entity ID used in spawn_format
 
 
-def find_entity_id_placeholders(value: Any, path: str = "") -> dict[str, str]:  # pyright: ignore[reportExplicitAny,reportAny]
+def contains_entity_placeholder(value: Any) -> bool:  # pyright: ignore[reportExplicitAny]
     """
-    Recursively find entity ID placeholders in a value and return paths to them.
-    Returns dict of path -> "QUERY_ENTITY" for substitution.
+    Check if a value contains the entity ID placeholder anywhere in its structure.
 
     Note: Uses Any type for recursive JSON traversal - unavoidable for arbitrary JSON structures.
     """
-    substitutions: dict[str, str] = {}
-
     if isinstance(value, int) and value == ENTITY_ID_PLACEHOLDER:
-        return {path: "QUERY_ENTITY"}
+        return True
     elif isinstance(value, list):
-        for i, item in enumerate(value):  # pyright: ignore[reportUnknownVariableType,reportUnknownArgumentType]
-            item_path = f"{path}[{i}]" if path else f"[{i}]"
-            substitutions.update(find_entity_id_placeholders(item, item_path))
+        for item in value:  # pyright: ignore[reportUnknownVariableType]
+            if contains_entity_placeholder(item):  # pyright: ignore[reportUnknownArgumentType]
+                return True
     elif isinstance(value, dict):
-        for key, val in value.items():  # pyright: ignore[reportUnknownVariableType]
-            val_path: str = f"{path}.{key}" if path else str(key)  # pyright: ignore[reportUnknownArgumentType]
-            substitutions.update(find_entity_id_placeholders(val, val_path))
+        for val in value.values():  # pyright: ignore[reportUnknownVariableType]
+            if contains_entity_placeholder(val):  # pyright: ignore[reportUnknownArgumentType]
+                return True
 
-    return substitutions
+    return False
 
 
 def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]:
@@ -533,9 +537,8 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
             )
 
             # Check for entity ID placeholders
-            substitutions = find_entity_id_placeholders({type_name: spawn_format}, "")
-            if substitutions:
-                op["entity_id_substitution"] = substitutions
+            if contains_entity_placeholder(spawn_format):
+                op["entity_id_substitution"] = ENTITY_ID_PLACEHOLDER
 
             operations.append(op)
         elif mutation_type == "Resource":
@@ -554,9 +557,8 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
             )
 
             # Check for entity ID placeholders
-            substitutions = find_entity_id_placeholders(spawn_format, "")
-            if substitutions:
-                op["entity_id_substitution"] = substitutions
+            if contains_entity_placeholder(spawn_format):
+                op["entity_id_substitution"] = ENTITY_ID_PLACEHOLDER
 
             operations.append(op)
 
@@ -632,6 +634,10 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
                         ),
                     )
 
+                # Check for entity ID placeholders in root example
+                if contains_entity_placeholder(root_example):
+                    root_op["entity_id_substitution"] = ENTITY_ID_PLACEHOLDER
+
                 operations.append(root_op)
 
         # Get test value for this mutation path (path_info is already object type)
@@ -691,9 +697,8 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
                 ),
             )
 
-        substitutions = find_entity_id_placeholders(test_value, "")
-        if substitutions:
-            op["entity_id_substitution"] = substitutions
+        if contains_entity_placeholder(test_value):
+            op["entity_id_substitution"] = ENTITY_ID_PLACEHOLDER
 
         operations.append(op)
 
@@ -1076,10 +1081,16 @@ for type_name, type_data in list(type_guide.items())[:5]:  # Check first 5 types
 if needs_initialization:
     print("Test metadata not found - initializing...", file=sys.stderr)
     import subprocess
+
     result = subprocess.run(
-        ["python3", ".claude/scripts/mutation_test/initialize_test_metadata.py", "--file", json_file],
+        [
+            "python3",
+            ".claude/scripts/mutation_test/initialize_test_metadata.py",
+            "--file",
+            json_file,
+        ],
         capture_output=True,
-        text=True
+        text=True,
     )
     if result.returncode != 0:
         print(f"Error initializing test metadata: {result.stderr}", file=sys.stderr)
@@ -1115,7 +1126,9 @@ if excluded_types_file.exists():
         print(f"Warning: Failed to load excluded types: {e}", file=sys.stderr)
 
 # Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
-data = renumber_batches(data, batch_capacity, max_subagents, ops_per_subagent, excluded_type_names)
+data = renumber_batches(
+    data, batch_capacity, max_subagents, ops_per_subagent, excluded_type_names
+)
 
 # Write updated data back to file
 try:

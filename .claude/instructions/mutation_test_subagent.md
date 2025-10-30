@@ -210,39 +210,43 @@ Report final state based on how loop exited:
 ## Entity ID Substitution
 
 <EntityIdSubstitution>
-**Some operations need to reference existing entities** (e.g., spawning a `Children` component that contains entity IDs).
+Some operations contain placeholder entity IDs that must be replaced with real entities before execution.
 
-**ONLY IF** an operation has `entity_id_substitution` field:
+**ONLY IF** an operation has `entity_id_substitution` field (contains the placeholder entity ID):
 
-1. **Get an available entity using MCP tool**:
+1. **Query for all entities**:
    ```bash
    mcp__brp__world_query(data={}, filter={}, port=PORT)
    ```
-   - Extract first entity ID from the result array
-   - Use this entity ID for all substitutions
 
-2. **Apply substitutions**:
-   - For each `path → "QUERY_ENTITY"` in `entity_id_substitution`:
-     - Navigate to that path in the operation parameters
-     - Replace the placeholder value with the entity ID from step 1
+2. **Get a real entity ID**:
+   - Extract entity IDs from the result array
+   - If operation has `entity` field: exclude that entity from the list
+   - Use the first remaining entity ID
 
-**Example**:
+3. **Replace all placeholders**:
+   - Recursively search through `operation["value"]` field
+   - Replace ALL instances of the placeholder (e.g., `8589934670`) with the real entity ID
+   - This handles both simple cases (`"value": 8589934670`) and nested cases (`{"position": {"Entity": 8589934670}}`)
+
+**Example 1 - Simple:**
 ```json
-Operation with entity_id_substitution:
-{
-  "tool": "mcp__brp__world_spawn_entity",
-  "components": {"bevy_ecs::hierarchy::Children": [8589934670]},
-  "entity_id_substitution": {"components.bevy_ecs::hierarchy::Children[0]": "QUERY_ENTITY"}
-}
+Before: {"value": 8589934670, "entity_id_substitution": 8589934670}
+After:  {"value": 4294967262}  // Queried entity, placeholder removed
+```
 
-After substitution (using entity ID 4294967297):
-{
-  "tool": "mcp__brp__world_spawn_entity",
-  "components": {"bevy_ecs::hierarchy::Children": [4294967297]}
+**Example 2 - Nested:**
+```json
+Before: {
+  "value": {"position": {"Entity": 8589934670}, "mode": {"Entity": 8589934670}},
+  "entity_id_substitution": 8589934670
+}
+After: {
+  "value": {"position": {"Entity": 4294967262}, "mode": {"Entity": 4294967262}}
 }
 ```
 
-**Note**: The `entity` field in operations is pre-resolved automatically by the hook - you don't need to do anything with it.
+**Note**: The `entity` field is already set by the operation manager - don't modify it.
 </EntityIdSubstitution>
 
 ## Query Result Validation
