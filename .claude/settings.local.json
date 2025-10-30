@@ -202,7 +202,9 @@
       "Bash(git -C /Users/natemccoy/rust/bevy_brp diff --cached)",
       "Bash(git -C /Users/natemccoy/rust/bevy_brp status --short)",
       "Bash(.claude/scripts/get_mutation_path_list.sh:*)",
-      "Bash(.claude/scripts/create_mutation_test_json/preserve_test_metadata.sh:*)"
+      "Bash(.claude/scripts/create_mutation_test_json/preserve_test_metadata.sh:*)",
+      "WebFetch(domain:stevekinney.com)",
+      "WebFetch(domain:www.arsturn.com)"
     ],
     "deny": [
       "Bash(sed:*)",
