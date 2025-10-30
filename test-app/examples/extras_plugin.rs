@@ -1477,6 +1477,7 @@ fn spawn_keyboard_display_text(
             ..default()
         },
         TextColor(Color::WHITE),
+        bevy::text::TextBackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.3)),
         KeyboardDisplayText,
         bevy::text::TextBounds {
             width: Some(400.0),

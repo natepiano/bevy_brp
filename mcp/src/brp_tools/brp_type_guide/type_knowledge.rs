@@ -13,17 +13,6 @@ use serde_json::json;
 
 use super::constants::TYPE_ALLOC_STRING;
 use super::constants::TYPE_BEVY_CAMERA;
-use super::constants::TYPE_BEVY_COLOR;
-use super::constants::TYPE_BEVY_COLOR_HSLA;
-use super::constants::TYPE_BEVY_COLOR_HSVA;
-use super::constants::TYPE_BEVY_COLOR_HWBA;
-use super::constants::TYPE_BEVY_COLOR_LABA;
-use super::constants::TYPE_BEVY_COLOR_LCHA;
-use super::constants::TYPE_BEVY_COLOR_LINEAR_RGBA;
-use super::constants::TYPE_BEVY_COLOR_OKLABA;
-use super::constants::TYPE_BEVY_COLOR_OKLCHA;
-use super::constants::TYPE_BEVY_COLOR_SRGBA;
-use super::constants::TYPE_BEVY_COLOR_XYZA;
 use super::constants::TYPE_BEVY_ENTITY;
 use super::constants::TYPE_BEVY_MAT2;
 use super::constants::TYPE_BEVY_MAT3;
@@ -39,6 +28,7 @@ use super::constants::TYPE_BEVY_VEC4;
 use super::constants::TYPE_BLOOM;
 use super::constants::TYPE_BOOL;
 use super::constants::TYPE_CHAR;
+use super::constants::TYPE_CORE_DURATION;
 use super::constants::TYPE_F32;
 use super::constants::TYPE_F64;
 use super::constants::TYPE_GLAM_AFFINE2;
@@ -290,6 +280,14 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
             TypeKnowledge::as_root_value(json!(true), TYPE_BOOL),
         );
 
+        // ===== Time types =====
+        // Duration - core time type with secs (u64) and nanos (u32) fields
+        // Serializes as struct with both fields required
+        map.insert(
+            KnowledgeKey::exact(TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(json!({"secs": 0, "nanos": 0}), TYPE_CORE_DURATION),
+        );
+
         // ===== Unit tuple =====
         // Unit tuple () serializes as empty array [] in BRP mutations
         // required for `bevy_time::time::Time<()>`
@@ -440,111 +438,6 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
                 "min": [0.0, 0.0],
                 "max": [100.0, 100.0]
             })), // Has nested paths via Vec2 fields
-        );
-
-        // // ===== Bevy color types =====
-
-        // Color variant signatures - treat all as opaque root values to avoid nested mutation paths
-        // All variants use compact array format
-
-        // Srgba variant - array format [r, g, b, a]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_SRGBA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([1.0, 0.0, 0.0, 1.0]), TYPE_BEVY_COLOR_SRGBA),
-        );
-
-        // LinearRgba variant - array format [r, g, b, a]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_LINEAR_RGBA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([1.0, 0.0, 0.0, 1.0]), TYPE_BEVY_COLOR_LINEAR_RGBA),
-        );
-
-        // Hsla variant - array format [h, s, l, a]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_HSLA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([180.0, 0.5, 0.5, 1.0]), TYPE_BEVY_COLOR_HSLA),
-        );
-
-        // Hsva variant - array format [h, s, v, a]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_HSVA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([240.0, 0.7, 0.9, 1.0]), TYPE_BEVY_COLOR_HSVA),
-        );
-
-        // Hwba variant - array format [h, w, b, a]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_HWBA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([60.0, 0.2, 0.1, 1.0]), TYPE_BEVY_COLOR_HWBA),
-        );
-
-        // Laba variant - array format [l, a, b, alpha]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_LABA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([0.5, 0.3, 0.2, 1.0]), TYPE_BEVY_COLOR_LABA),
-        );
-
-        // Lcha variant - array format [l, c, h, a]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_LCHA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([0.6, 0.4, 90.0, 1.0]), TYPE_BEVY_COLOR_LCHA),
-        );
-
-        // Oklaba variant - array format [l, a, b, alpha]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_OKLABA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([0.55, 0.15, 0.25, 1.0]), TYPE_BEVY_COLOR_OKLABA),
-        );
-
-        // Oklcha variant - array format [l, c, h, a]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_OKLCHA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([0.65, 0.35, 150.0, 1.0]), TYPE_BEVY_COLOR_OKLCHA),
-        );
-
-        // Xyza variant - array format [x, y, z, a]
-        map.insert(
-            KnowledgeKey::enum_variant_signature(
-                TYPE_BEVY_COLOR,
-                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_BEVY_COLOR_XYZA)]),
-                0,
-            ),
-            TypeKnowledge::as_root_value(json!([0.8, 0.7, 0.6, 1.0]), TYPE_BEVY_COLOR_XYZA),
         );
 
         // ===== Bevy ECS types =====

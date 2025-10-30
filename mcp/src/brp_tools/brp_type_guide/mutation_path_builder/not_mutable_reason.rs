@@ -146,29 +146,28 @@ impl Display for NotMutableReason {
                 element_type,
             } => write!(
                 f,
-                "Type `{container_type}` is a TupleStruct wrapper around `{element_type}` which lacks the `ReflectDeserialize` type data required for mutation"
+                "`{container_type}` is a TupleStruct wrapper around `{element_type}` which lacks the `ReflectDeserialize` type data required for mutation"
             ),
             Self::NotInRegistry(type_name) => {
-                write!(f, "Type {type_name} not found in schema registry")
+                write!(f, "`{type_name}` not found in schema registry")
             }
-            Self::RecursionLimitExceeded(type_name) => write!(
-                f,
-                "Type {type_name} analysis exceeded maximum recursion depth"
-            ),
+            Self::RecursionLimitExceeded(type_name) => {
+                write!(f, "`{type_name}` analysis exceeded maximum recursion depth")
+            }
             Self::ComplexCollectionKey(type_name) => write!(
                 f,
-                "HashMap type {type_name} has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet"
+                "HashMap `{type_name}` has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet"
             ),
             Self::NoMutableChildren { parent_type } => {
-                write!(f, "Type {parent_type} has no mutable child paths")
+                write!(f, "`{parent_type}` has no mutable child paths")
             }
             Self::NoExampleAvailable(type_name) => write!(
                 f,
-                "Type {type_name} is a leaf type registered in the schema but has no hardcoded example value available for mutations"
+                "`{type_name}` is registered in the schema but has no discoverable example value available for mutations. If you look up the type definition yourself you may be able to use it to mutate this type directly."
             ),
             Self::PartialChildMutability { parent_type, .. } => write!(
                 f,
-                "Type {parent_type} has partial child mutability - some children can be mutated, others cannot"
+                "`{parent_type}` has partial child mutability - some children can be mutated, others cannot"
             ),
         }
     }

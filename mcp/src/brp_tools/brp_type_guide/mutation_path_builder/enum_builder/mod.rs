@@ -5,4 +5,5 @@ mod variant_signature;
 
 pub use enum_path_builder::process_enum;
 pub use enum_path_builder::select_preferred_example;
+pub use option_classification::OptionClassification;
 pub use variant_signature::VariantSignature;

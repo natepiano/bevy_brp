@@ -8,7 +8,10 @@ use serde::Serialize;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
+use super::enum_builder::OptionClassification;
 use super::new_types::StructFieldName;
+use super::new_types::VariantName;
+use super::types::EnumPathInfo;
 
 /// A semantic identifier for mutation paths in the builder system
 ///
@@ -111,6 +114,42 @@ impl PathKind {
         }
     }
 
+    /// Returns the variant if there's exactly one applicable variant whose short name
+    /// matches the parent type (indicating redundancy that should be eliminated in description)
+    ///
+    /// Example: For path `.0.z` where parent_type is "Xyza" and applicable_variants is
+    /// ["Color::Xyza"], returns Some(&VariantName) to enable integrated description
+    /// "Mutate the z field of Color::Xyza variant" instead of redundant
+    /// "Mutate the z field of Xyza within Color::Xyza variant"
+    fn single_variant_matching_parent<'a>(
+        &self,
+        enum_path_info: &'a Option<EnumPathInfo>,
+    ) -> Option<&'a VariantName> {
+        let enum_data = enum_path_info.as_ref()?;
+
+        // Must have exactly one variant
+        if enum_data.applicable_variants.len() != 1 {
+            return None;
+        }
+
+        let variant = &enum_data.applicable_variants[0];
+        let variant_short = variant.short_name();
+
+        // Check if parent_type matches variant short name
+        let parent_short = match self {
+            Self::StructField { parent_type, .. }
+            | Self::IndexedElement { parent_type, .. }
+            | Self::ArrayElement { parent_type, .. } => parent_type.short_name(),
+            Self::RootValue { .. } => return None, // No parent_type
+        };
+
+        if parent_short == variant_short {
+            Some(variant)
+        } else {
+            None
+        }
+    }
+
     /// Extract a descriptor suitable for `HashMap<MutationPathDescriptor, Value>` from this
     /// `PathKind` Used by `MutationPathBuilder` to build `child_examples` `HashMap`
     pub fn to_mutation_path_descriptor(&self) -> MutationPathDescriptor {
@@ -124,14 +163,39 @@ impl PathKind {
     }
 
     /// Generate a human-readable description for this mutation
-    pub fn description(&self, type_kind: &TypeKind) -> String {
+    pub fn description(
+        &self,
+        type_kind: &TypeKind,
+        enum_path_info: &Option<EnumPathInfo>,
+    ) -> String {
+        // Handle redundancy case: parent_type matches single variant's short name
+        // Example: ".0.z" where parent="Xyza" and variants=["Color::Xyza"]
+        // Generate: "Mutate the z field of Color::Xyza variant" (integrated, no suffix)
+        if let Some(variant) = self.single_variant_matching_parent(enum_path_info) {
+            return match self {
+                Self::StructField { field_name, .. } => {
+                    format!("Mutate the {field_name} field of {variant} variant")
+                }
+                Self::IndexedElement { index, .. } => {
+                    format!("Mutate element {index} of {variant} variant")
+                }
+                Self::ArrayElement { index, .. } => {
+                    format!("Mutate element [{index}] of {variant} variant")
+                }
+                Self::RootValue { .. } => {
+                    unreachable!("single_variant_matching_parent returns None for RootValue")
+                }
+            };
+        }
+
+        // Normal case: generate base description with type_kind suffix
         let type_kind_str = if matches!(type_kind, TypeKind::Value) {
             String::new()
         } else {
             format!(" {}", type_kind.as_ref().to_lowercase())
         };
 
-        match self {
+        let base_description = match self {
             Self::RootValue { type_name, .. } => {
                 let short_name = type_name.short_name();
                 format!("Replace the entire {short_name}{type_kind_str}")
@@ -139,14 +203,35 @@ impl PathKind {
             Self::StructField {
                 field_name,
                 parent_type,
+                type_name,
                 ..
             } => {
-                let short_parent = parent_type.short_name();
-                format!("Mutate the {field_name} field of {short_parent}{type_kind_str}")
+                // Check if field type is Option<T>
+                if let OptionClassification::Option { inner_type } =
+                    OptionClassification::from_type_name(type_name)
+                {
+                    let inner_short = inner_type.short_name();
+                    format!("Set {field_name} to None or Some({inner_short})")
+                } else {
+                    let short_parent = parent_type.short_name();
+                    format!("Mutate the {field_name} field of {short_parent}{type_kind_str}")
+                }
             }
             Self::IndexedElement {
-                index, parent_type, ..
+                index,
+                parent_type,
+                type_name,
+                ..
             } => {
+                // Check if parent is Option<T> and index is 0
+                if *index == 0 {
+                    if let OptionClassification::Option { .. } =
+                        OptionClassification::from_type_name(parent_type)
+                    {
+                        let value_short = type_name.short_name();
+                        return format!("Mutate the {value_short} value inside Some variant");
+                    }
+                }
                 let short_parent = parent_type.short_name();
                 format!("Mutate element {index} of {short_parent}{type_kind_str}")
             }
@@ -156,7 +241,28 @@ impl PathKind {
                 let short_parent = parent_type.short_name();
                 format!("Mutate element [{index}] of {short_parent}{type_kind_str}")
             }
-        }
+        };
+
+        // Add variant suffix if applicable
+        let suffix = match enum_path_info {
+            Some(enum_data) => match &enum_data.applicable_variants {
+                variants if variants.is_empty() => String::new(),
+                variants if variants.len() == 1 => {
+                    format!(" within {} variant", variants[0])
+                }
+                variants => {
+                    let variant_list = variants
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!(" within '{variant_list}' variants")
+                }
+            },
+            None => String::new(),
+        };
+
+        format!("{base_description}{suffix}")
     }
 
     /// Get just the variant name for serialization

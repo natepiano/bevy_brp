@@ -158,7 +158,7 @@ impl MutationPathInternal {
                     base_msg
                 }
             }
-            _ => self.path_kind.description(type_kind),
+            _ => self.path_kind.description(type_kind, &self.enum_path_info),
         }
     }
 
@@ -203,8 +203,7 @@ impl MutationPathInternal {
             .map_or((None, None,   None), |enum_data| {
                 let instructions = match &enum_data.root_example {
                     Some(RootExample::Available { .. }) => Some(format!(
-                        "First, set the root mutation path to 'root_example', then you can mutate the '{}' path. See 'applicable_variants' for which variants support this field.",
-                        &self.mutation_path
+                        "Current mutation path is nested within an enum variant. To mutate, first mutate path \"\" to 'root_example', then this path.",
                     )),
                     _ => None,  // Unavailable - no instructions
                 };
