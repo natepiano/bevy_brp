@@ -252,14 +252,16 @@ fn process_signature_path(
     // Track which variants make these child paths valid
     // Only populate for DIRECT children (not grandchildren nested deeper)
     for child_path in &mut child_paths {
-        if let Some(enum_data) = &mut child_path.enum_path_info {
+        if let Some(enum_path_info) = &mut child_path.enum_path_info {
             // Check if this path is a direct child of the current enum level
             // Direct children have variant_chain.len() == ctx.variant_chain.len() + 1
-            if enum_data.variant_chain.len() == ctx.variant_chain.len() + 1 {
+            if enum_path_info.variant_chain.len() == ctx.variant_chain.len() + 1 {
                 // Add all variants from this signature group
                 // (all variants in a group share the same signature/structure)
                 for variant_name in applicable_variants {
-                    enum_data.applicable_variants.push(variant_name.clone());
+                    enum_path_info
+                        .applicable_variants
+                        .push(variant_name.clone());
                 }
             }
         }

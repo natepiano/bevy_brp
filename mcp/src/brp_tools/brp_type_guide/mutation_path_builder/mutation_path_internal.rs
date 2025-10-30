@@ -158,7 +158,9 @@ impl MutationPathInternal {
                     base_msg
                 }
             }
-            _ => self.path_kind.description(type_kind, &self.enum_path_info),
+            _ => self
+                .path_kind
+                .description(type_kind, self.enum_path_info.as_ref()),
         }
     }
 
@@ -167,7 +169,7 @@ impl MutationPathInternal {
     /// - `NotMutable`: Returns null (no example provided)
     /// - `PartiallyMutable`: Returns enum examples or empty object if Default trait exists
     /// - Mutable: Returns the original example
-    fn resolve_path_example(&mut self, has_default_for_root: bool) -> PathExample {
+    fn resolve_path_example(&self, has_default_for_root: bool) -> PathExample {
         match self.mutability {
             Mutability::NotMutable => PathExample::Simple(Value::Null),
             Mutability::PartiallyMutable => match &self.example {
@@ -200,24 +202,22 @@ impl MutationPathInternal {
 
         self.enum_path_info
             .take()
-            .map_or((None, None,   None), |enum_data| {
-                let instructions = match &enum_data.root_example {
-                    Some(RootExample::Available { .. }) => Some(format!(
-                        "Current mutation path is nested within an enum variant. To mutate, first mutate path \"\" to 'root_example', then this path.",
-                    )),
+            .map_or((None, None,   None), |enum_path_info| {
+                let instructions = match &enum_path_info.root_example {
+                    Some(RootExample::Available { .. }) => Some("Current mutation path is nested within an enum variant. To mutate, first mutate path \"\" to 'root_example', then this path.".to_string()),
                     _ => None,  // Unavailable - no instructions
                 };
 
-                let variants = if enum_data.applicable_variants.is_empty() {
+                let variants = if enum_path_info.applicable_variants.is_empty() {
                     None
                 } else {
-                    Some(enum_data.applicable_variants)
+                    Some(enum_path_info.applicable_variants)
                 };
 
                 (
                     instructions,
                     variants,
-                    enum_data.root_example,
+                    enum_path_info.root_example,
                 )
             })
     }

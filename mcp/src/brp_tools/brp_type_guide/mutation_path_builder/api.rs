@@ -63,7 +63,7 @@ pub fn build_mutation_paths(
 pub fn extract_spawn_format(mutation_paths: &[MutationPathExternal]) -> Option<Value> {
     mutation_paths
         .iter()
-        .find(|p| *p.path == "")
+        .find(|p| (*p.path).is_empty())
         .and_then(|root_path| match &root_path.path_example {
             PathExample::Simple(val) => Some(val.clone()),
             PathExample::EnumRoot { groups, .. } => select_preferred_example(groups),

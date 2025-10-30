@@ -117,22 +117,22 @@ impl PathKind {
     /// Returns the variant if there's exactly one applicable variant whose short name
     /// matches the parent type (indicating redundancy that should be eliminated in description)
     ///
-    /// Example: For path `.0.z` where parent_type is "Xyza" and applicable_variants is
-    /// ["Color::Xyza"], returns Some(&VariantName) to enable integrated description
-    /// "Mutate the z field of Color::Xyza variant" instead of redundant
-    /// "Mutate the z field of Xyza within Color::Xyza variant"
-    fn single_variant_matching_parent<'a>(
+    /// Example: For path `.0.z` where `parent_type` is "Xyza" and `applicable_variants` is
+    /// [`Color::Xyza`], returns Some(&VariantName) to enable integrated description
+    /// "Mutate the z field of `Color::Xyza` variant" instead of redundant
+    /// "Mutate the z field of `Xyza` within `Color::Xyza` variant"
+    fn single_variant_matching_parent(
         &self,
-        enum_path_info: &'a Option<EnumPathInfo>,
-    ) -> Option<&'a VariantName> {
-        let enum_data = enum_path_info.as_ref()?;
+        enum_path_info: Option<&EnumPathInfo>,
+    ) -> Option<VariantName> {
+        let enum_path_info = enum_path_info?;
 
         // Must have exactly one variant
-        if enum_data.applicable_variants.len() != 1 {
+        if enum_path_info.applicable_variants.len() != 1 {
             return None;
         }
 
-        let variant = &enum_data.applicable_variants[0];
+        let variant = &enum_path_info.applicable_variants[0];
         let variant_short = variant.short_name();
 
         // Check if parent_type matches variant short name
@@ -144,7 +144,7 @@ impl PathKind {
         };
 
         if parent_short == variant_short {
-            Some(variant)
+            Some(variant.clone())
         } else {
             None
         }
@@ -166,7 +166,7 @@ impl PathKind {
     pub fn description(
         &self,
         type_kind: &TypeKind,
-        enum_path_info: &Option<EnumPathInfo>,
+        enum_path_info: Option<&EnumPathInfo>,
     ) -> String {
         // Handle redundancy case: parent_type matches single variant's short name
         // Example: ".0.z" where parent="Xyza" and variants=["Color::Xyza"]
@@ -224,13 +224,12 @@ impl PathKind {
                 ..
             } => {
                 // Check if parent is Option<T> and index is 0
-                if *index == 0 {
-                    if let OptionClassification::Option { .. } =
+                if *index == 0
+                    && let OptionClassification::Option { .. } =
                         OptionClassification::from_type_name(parent_type)
-                    {
-                        let value_short = type_name.short_name();
-                        return format!("Mutate the {value_short} value inside Some variant");
-                    }
+                {
+                    let value_short = type_name.short_name();
+                    return format!("Mutate the {value_short} value inside Some variant");
                 }
                 let short_parent = parent_type.short_name();
                 format!("Mutate element {index} of {short_parent}{type_kind_str}")
@@ -244,8 +243,8 @@ impl PathKind {
         };
 
         // Add variant suffix if applicable
-        let suffix = match enum_path_info {
-            Some(enum_data) => match &enum_data.applicable_variants {
+        let suffix = enum_path_info.map_or_else(String::new, |enum_data| {
+            match &enum_data.applicable_variants {
                 variants if variants.is_empty() => String::new(),
                 variants if variants.len() == 1 => {
                     format!(" within {} variant", variants[0])
@@ -253,14 +252,13 @@ impl PathKind {
                 variants => {
                     let variant_list = variants
                         .iter()
-                        .map(|v| v.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect::<Vec<_>>()
                         .join(", ");
                     format!(" within '{variant_list}' variants")
                 }
-            },
-            None => String::new(),
-        };
+            }
+        });
 
         format!("{base_description}{suffix}")
     }
