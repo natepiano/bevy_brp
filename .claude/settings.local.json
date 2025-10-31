@@ -227,6 +227,15 @@
             "command": ".claude/hooks/mutation-tester-prevent-for-loop.sh"
           }
         ]
+      },
+      {
+        "matcher": "mcp__brp__world_query",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/mutation-tester-prevent-double-serialization.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [
