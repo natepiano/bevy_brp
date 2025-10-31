@@ -150,7 +150,8 @@
       "WebFetch(domain:releases.rs)",
       "WebFetch(domain:poignardazur.github.io)",
       "WebFetch(domain:internals.rust-lang.org)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(curl:*)"
     ],
     "deny": [
       "Bash(sed:*)",
