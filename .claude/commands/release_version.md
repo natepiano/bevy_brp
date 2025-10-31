@@ -165,7 +165,7 @@ Execute <Phase3ReleaseExtrasAndMcp/>
 **Note**: Phase 1 uses --no-tag to skip tag creation. Tags are created in Phase 3 after all crates are ready.
 
 ```bash
-cargo release ${VERSION} --package bevy_brp_mcp_macros --no-tag --dry-run
+cargo release ${VERSION} --package bevy_brp_mcp_macros --no-tag
 ```
 → **Manual verification**: Review the dry run output - version bumps, CHANGELOG updates, git operations all look correct
   - Type **continue** to proceed with release execution
@@ -244,7 +244,7 @@ git add mcp/Cargo.toml && git commit -m "chore: update mcp_macros dependency to 
 **Note**: Phase 3 creates the version tag (v${VERSION}) since all crates are now ready.
 
 ```bash
-cargo release ${VERSION} --workspace --exclude bevy_brp_mcp_macros --dry-run
+cargo release ${VERSION} --workspace --exclude bevy_brp_mcp_macros
 ```
 → **Manual verification**: Review output - both extras and mcp will be released together, tag will be created
   - Type **continue** to proceed with workspace release

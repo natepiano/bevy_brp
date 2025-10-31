@@ -6,7 +6,6 @@ keywords             = ["bevy", "brp", "testing"]
 license              = "MIT OR Apache-2.0"
 name                 = "test-app-b"
 publish              = false
-readme               = "../test-app/README.md"
 repository.workspace = true
 version              = "0.3.0"
 
