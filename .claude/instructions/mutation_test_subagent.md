@@ -271,10 +271,6 @@ When you execute `mcp__brp__world_query`, the post-tool hook will:
 <MatchErrorPattern>
 **When an operation fails, check the error message against these patterns IN THIS EXACT ORDER:**
 
-Does error contain `"Unable to extract parameters"` AND `"invalid type: string"` with serialized JSON?
-- ✓ YES → Execute <FilterDoubleSerializationError/> recovery
-- ✗ NO → Continue
-
 Does error contain `"invalid type: string"`?
 - ✓ YES → Execute <InvalidTypeStringError/> recovery
 - ✗ NO → Continue
@@ -376,57 +372,3 @@ UUID parsing failed: invalid character: expected an optional prefix of `urn:uuid
 1. Reorder parameters in your tool call (change the order you pass them)
 2. Re-execute operation with reordered parameters
 </ParameterExtractionError>
-
-<FilterDoubleSerializationError>
-**Pattern**: Error contains `"Unable to extract parameters"` AND mentions `"invalid type: string"` with serialized JSON content
-
-**Key indicator**: If you see `\n` (newline characters) in the error message, you used `json.dumps(filter, indent=2)` which is FORBIDDEN.
-
-**Example error** (your error may differ):
-```
-Unable to extract parameters: Invalid parameter format for 'QueryParams': invalid type: string "{\n  \"with\": [\n    \"bevy_input::gamepad::GamepadSettings\"\n  ]\n}", expected struct BrpQueryFilter
-```
-Notice the `\n` characters? That proves you called `json.dumps(filter, indent=2)`.
-
-**Cause**: You're converting the parameter to a string using `json.dumps()`, `str()`, or pretty-printing with `indent=`
-
-**What's happening**:
-1. operation_manager.py gives you a dict: `{"with": ["Type"]}` ✓
-2. YOU are converting it to a string (YOUR BUG):
-   - `json.dumps(filter_obj)` → `"{\"with\": [\"Type\"]}"` ❌
-   - `json.dumps(filter_obj, indent=2)` → `"{\n  \"with\": [...]\n}"` ❌ (notice the \n newlines!)
-   - `str(filter_obj)` → `"{'with': ['Type']}"` ❌
-3. You pass the STRING to the MCP tool instead of the DICT ❌
-
-**What serde sees**:
-- Expected: An object/struct (the actual `{"with": [...]}` structure)
-- Got: A string literal containing JSON text
-
-**Recovery** - FOLLOW THESE EXACT STEPS:
-
-Step 1: Re-read the operation from the most recent `operation_manager.py` output
-Step 2: Parse the JSON response to get the operation object
-Step 3: Look at the `filter` field in the operation - it should already be an object like `{"with": ["Type"]}`
-Step 4: Call the MCP tool with that object DIRECTLY - do not convert it to a string first
-
-**Concrete example of correct recovery**:
-```python
-# The operation_manager.py gave you this JSON:
-# {"status": "next_operation", "operation": {"tool": "mcp__brp__world_query", "filter": {"with": ["SomeType"]}, "data": {}, "port": 30001}}
-
-# Step 1-3: Parse it
-response_json = # ... the JSON from operation_manager.py
-response = json.loads(response_json)  # Parse JSON to dict
-operation = response["operation"]     # Extract operation dict
-filter_param = operation["filter"]    # This is {"with": ["SomeType"]} - an object, NOT a string
-
-# Step 4: Pass the object directly
-mcp__brp__world_query(data={}, filter=filter_param, port=30001)  # CORRECT!
-
-# DO NOT DO THIS:
-filter_string = json.dumps(filter_param)  # ❌ NO! Don't convert to string!
-mcp__brp__world_query(data={}, filter=filter_string, port=30001)  # ❌ WRONG!
-```
-
-**Critical**: If you converted `filter` to a string using `json.dumps()` or quotes, that's the bug. Remove that conversion step entirely.
-</FilterDoubleSerializationError>

@@ -402,7 +402,7 @@ def check_and_log_timeouts(
     last_activity: dict[int, datetime],
     timestamp: str,
     log_file: str,
-    timeout_threshold: int = 60,
+    timeout_threshold: int = 90,
 ) -> set[int]:
     """
     Check for timed out ports and log newly detected timeouts.
@@ -550,6 +550,8 @@ def action_get_next(port: int) -> None:
                 if f"port={port}" in line:
                     if "** FINISHED **" in line:
                         port_finished = True
+                    elif "** RESUMING AFTER TIMEOUT **" in line:
+                        port_timeout_terminated = False  # Reset timeout flag on resume
                     elif "** TERMINATED (TIMEOUT) **" in line:
                         port_timeout_terminated = True
                     elif "** TERMINATED" in line:  # Other terminations (retry limit, BRP failed, etc.)

@@ -96,6 +96,7 @@ use bevy::sprite::SpritePickingMode;
 use bevy::sprite::SpritePickingSettings;
 use bevy::sprite::Text2dShadow;
 use bevy::sprite_render::Wireframe2dColor;
+use bevy::sprite_render::Wireframe2dConfig;
 use bevy::ui::BoxShadow;
 use bevy::ui::CalculatedClip;
 use bevy::ui::FocusPolicy;
@@ -487,6 +488,10 @@ fn main() {
         .init_resource::<GlobalsUniform>()
         .insert_resource(CurrentPort(port))
         .insert_resource(WireframeConfig {
+            global:        true,
+            default_color: Color::WHITE,
+        })
+        .insert_resource(Wireframe2dConfig {
             global:        true,
             default_color: Color::WHITE,
         })
