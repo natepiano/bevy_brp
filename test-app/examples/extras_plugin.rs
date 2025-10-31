@@ -181,17 +181,12 @@ struct TestEnumKeyedMap {
 }
 
 /// Simple test enum for `HashMap` key testing
-#[derive(Reflect, Hash, Eq, PartialEq, Clone)]
+#[derive(Default, Reflect, Hash, Eq, PartialEq, Clone)]
 enum SimpleTestEnum {
+    #[default]
     Variant1,
     Variant2,
     Variant3,
-}
-
-impl Default for SimpleTestEnum {
-    fn default() -> Self {
-        Self::Variant1
-    }
 }
 
 /// Test component struct for testing
