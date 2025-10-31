@@ -546,7 +546,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_brp_extras"
-version = "0.3.0"
+version = "0.17.0"
 dependencies = [
  "bevy",
  "reqwest",
@@ -559,7 +559,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_brp_mcp"
-version = "0.3.0"
+version = "0.17.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5474,7 +5474,7 @@ dependencies = [
 
 [[package]]
 name = "test-app-a"
-version = "0.3.0"
+version = "0.17.0"
 dependencies = [
  "bevy",
  "bevy_brp_extras",
@@ -5482,7 +5482,7 @@ dependencies = [
 
 [[package]]
 name = "test-app-b"
-version = "0.3.0"
+version = "0.17.0"
 dependencies = [
  "bevy",
  "bevy_brp_extras",
