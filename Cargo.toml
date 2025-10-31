@@ -21,7 +21,7 @@ bevy_winit = { version = "0.17.2" }
 # Core dependencies (shared between extras and mcp)
 anyhow = "1.0"
 async-trait = "0.1.89"
-bevy_brp_mcp_macros = { path = "./mcp_macros", version = "0.17.0" }
+bevy_brp_mcp_macros = "0.17.0"
 cargo_metadata = "0.23"
 chrono = "0.4"
 either = "1.15"
