@@ -108,7 +108,6 @@
       "Read(//**)",
       "SlashCommand(/create_mutation_test_json)",
       "SlashCommand(/get_guide_baseline:*)",
-      "WebFetch(domain:*)",
       "mcp__brp__brp_all_type_guides",
       "mcp__brp__brp_delete_logs",
       "mcp__brp__brp_execute",
@@ -144,7 +143,11 @@
       "mcp__brp__world_remove_components",
       "mcp__brp__world_remove_resources",
       "mcp__brp__world_reparent_entities",
-      "mcp__brp__world_spawn_entity"
+      "mcp__brp__world_spawn_entity",
+      "WebFetch(domain:*)",
+      "WebSearch",
+      "WebFetch(domain:blog.rust-lang.org)",
+      "WebFetch(domain:releases.rs)"
     ],
     "deny": [
       "Bash(sed:*)",
