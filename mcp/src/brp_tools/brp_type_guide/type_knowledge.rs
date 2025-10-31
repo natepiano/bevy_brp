@@ -630,7 +630,10 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
         // Default is 1/64 second (15625000 nanos) - setting to zero causes divide-by-zero panic
         map.insert(
             KnowledgeKey::struct_field("bevy_time::fixed::Fixed", "timestep"),
-            TypeKnowledge::as_root_value(json!({"secs": 0, "nanos": 15625000}), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(
+                json!({"secs": 0, "nanos": 15_625_000}),
+                TYPE_CORE_DURATION,
+            ),
         );
 
         // ===== Time<Virtual> field-specific values =====
@@ -649,7 +652,7 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
         map.insert(
             KnowledgeKey::struct_field("bevy_time::virt::Virtual", "max_delta"),
             TypeKnowledge::as_root_value(
-                json!({"secs": 0, "nanos": 250000000}),
+                json!({"secs": 0, "nanos": 250_000_000}),
                 TYPE_CORE_DURATION,
             ),
         );
