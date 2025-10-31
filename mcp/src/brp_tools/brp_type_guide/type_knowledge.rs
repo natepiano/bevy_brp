@@ -614,6 +614,46 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
             TypeKnowledge::as_root_value(json!(1), "NonZeroIsize"),
         );
 
+        // ===== Time<Fixed> field-specific values =====
+        // wrap_period must be non-zero to prevent divide-by-zero in time wrapping calculations
+        // Default is 3600 seconds (1 hour) - setting to zero causes panic in
+        // run_fixed_main_schedule
+        map.insert(
+            KnowledgeKey::struct_field(
+                "bevy_time::time::Time<bevy_time::fixed::Fixed>",
+                "wrap_period",
+            ),
+            TypeKnowledge::as_root_value(json!({"secs": 3600, "nanos": 0}), TYPE_CORE_DURATION),
+        );
+
+        // timestep must be non-zero for fixed timestep to function
+        // Default is 1/64 second (15625000 nanos) - setting to zero causes divide-by-zero panic
+        map.insert(
+            KnowledgeKey::struct_field("bevy_time::fixed::Fixed", "timestep"),
+            TypeKnowledge::as_root_value(json!({"secs": 0, "nanos": 15625000}), TYPE_CORE_DURATION),
+        );
+
+        // ===== Time<Virtual> field-specific values =====
+        // wrap_period must be non-zero to prevent divide-by-zero in time wrapping calculations
+        // Default is 3600 seconds (1 hour) - setting to zero causes app crash
+        map.insert(
+            KnowledgeKey::struct_field(
+                "bevy_time::time::Time<bevy_time::virt::Virtual>",
+                "wrap_period",
+            ),
+            TypeKnowledge::as_root_value(json!({"secs": 3600, "nanos": 0}), TYPE_CORE_DURATION),
+        );
+
+        // max_delta must be non-zero to allow virtual time to advance
+        // Default is 250ms (250000000 nanos) - setting to zero prevents time updates
+        map.insert(
+            KnowledgeKey::struct_field("bevy_time::virt::Virtual", "max_delta"),
+            TypeKnowledge::as_root_value(
+                json!({"secs": 0, "nanos": 250000000}),
+                TYPE_CORE_DURATION,
+            ),
+        );
+
         // ===== AlphaMode2d enum variant signatures =====
         // Mask(f32) variant requires alpha threshold in 0.0-1.0 range
         map.insert(

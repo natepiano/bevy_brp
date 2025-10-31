@@ -32,7 +32,7 @@ Prepare Bevy application instances for mutation testing by shutting down existin
 <ShutdownExistingApps>
 For each port in the assignments JSON, execute in parallel:
 
-```python
+```
 mcp__brp__brp_shutdown(
     app_name="extras_plugin",
     port=assignment.port
@@ -40,11 +40,14 @@ mcp__brp__brp_shutdown(
 ```
 
 Execute ALL shutdown operations in parallel using the port values from the assignments array.
+
 </ShutdownExistingApps>
 
 ## STEP 2: LAUNCH FRESH APPS
 
 <LaunchFreshApps>
+
+
 Launch application instances for all assigned ports:
 
 1. Extract values from assignments JSON:
@@ -52,7 +55,7 @@ Launch application instances for all assigned ports:
    - `base_port` = lowest port in assignments array
 
 2. Launch instances:
-```python
+```
 mcp__brp__brp_launch_bevy_example(
     target_name="extras_plugin",
     port=base_port,
@@ -68,7 +71,7 @@ This will launch exactly the number of instances needed for this batch.
 <VerifyAppsRunning>
 For each port in the assignments JSON, execute in parallel:
 
-```python
+```
 mcp__brp__brp_status(
     app_name="extras_plugin",
     port=assignment.port

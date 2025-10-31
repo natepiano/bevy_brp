@@ -72,6 +72,8 @@ use bevy::pbr::ScreenSpaceReflections;
 use bevy::pbr::decal::ForwardDecalMaterialExt;
 use bevy::pbr::wireframe::WireframeConfig;
 use bevy::picking::mesh_picking::MeshPickingPlugin;
+use bevy::picking::mesh_picking::MeshPickingSettings;
+use bevy::picking::mesh_picking::ray_cast::RayCastVisibility;
 use bevy::post_process::auto_exposure::AutoExposure;
 use bevy::post_process::bloom::Bloom;
 use bevy::post_process::dof::DepthOfField;
@@ -90,8 +92,11 @@ use bevy::render::view::Msaa;
 use bevy::render::view::window::screenshot::Screenshot;
 use bevy::scene::Scene;
 use bevy::scene::SceneRoot;
+use bevy::sprite::SpritePickingMode;
+use bevy::sprite::SpritePickingSettings;
 use bevy::sprite::Text2dShadow;
 use bevy::sprite_render::Wireframe2dColor;
+use bevy::ui::BoxShadow;
 use bevy::ui::CalculatedClip;
 use bevy::ui::FocusPolicy;
 use bevy::ui::Interaction;
@@ -495,6 +500,14 @@ fn main() {
             total_time:  0.0,
             debug_mode:  false,
         })
+        .insert_resource(MeshPickingSettings {
+            require_markers:     false,
+            ray_cast_visibility: RayCastVisibility::VisibleInView,
+        })
+        .insert_resource(SpritePickingSettings {
+            require_markers: false,
+            picking_mode:    SpritePickingMode::AlphaThreshold(0.1),
+        })
         .insert_resource(InputFocus::default())
         .add_systems(
             Startup,
@@ -704,6 +717,16 @@ fn spawn_sprite_and_ui_components(commands: &mut Commands) {
         Node {
             width: Val::Px(200.0),
             height: Val::Px(200.0),
+            grid_template_rows: vec![bevy::ui::RepeatedGridTrack::minmax(
+                2,
+                bevy::ui::MinTrackSizingFunction::Auto,
+                bevy::ui::MaxTrackSizingFunction::MaxContent,
+            )],
+            grid_template_columns: vec![bevy::ui::RepeatedGridTrack::minmax(
+                1,
+                bevy::ui::MinTrackSizingFunction::Px(50.0),
+                bevy::ui::MaxTrackSizingFunction::Px(100.0),
+            )],
             ..default()
         },
         bevy::ui::BackgroundGradient(vec![bevy::ui::Gradient::Linear(bevy::ui::LinearGradient {
@@ -1430,6 +1453,16 @@ fn spawn_ui_elements(commands: &mut Commands, port: &Res<CurrentPort>) {
                 height: Val::Percent(100.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
+                grid_template_rows: vec![bevy::ui::RepeatedGridTrack::minmax(
+                    2,
+                    bevy::ui::MinTrackSizingFunction::Auto,
+                    bevy::ui::MaxTrackSizingFunction::MaxContent,
+                )],
+                grid_template_columns: vec![bevy::ui::RepeatedGridTrack::minmax(
+                    1,
+                    bevy::ui::MinTrackSizingFunction::Px(50.0),
+                    bevy::ui::MaxTrackSizingFunction::Px(100.0),
+                )],
                 ..default()
             },
             BackgroundColor(Color::srgb(0.1, 0.1, 0.1)), // Back to dark background
@@ -1445,6 +1478,16 @@ fn spawn_text_container(parent: &mut RelatedSpawnerCommands<ChildOf>, port: &Res
         .spawn((
             Node {
                 padding: UiRect::all(Val::Px(20.0)),
+                grid_template_rows: vec![bevy::ui::RepeatedGridTrack::minmax(
+                    2,
+                    bevy::ui::MinTrackSizingFunction::Auto,
+                    bevy::ui::MaxTrackSizingFunction::MaxContent,
+                )],
+                grid_template_columns: vec![bevy::ui::RepeatedGridTrack::minmax(
+                    1,
+                    bevy::ui::MinTrackSizingFunction::Px(50.0),
+                    bevy::ui::MaxTrackSizingFunction::Px(100.0),
+                )],
                 ..default()
             },
             BackgroundColor(Color::srgb(0.2, 0.3, 0.5)), /* Blue background for the entire text
@@ -1510,6 +1553,16 @@ fn spawn_button_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
             width: Val::Px(100.0),
             height: Val::Px(40.0),
             margin: UiRect::all(Val::Px(10.0)),
+            grid_template_rows: vec![bevy::ui::RepeatedGridTrack::minmax(
+                2,
+                bevy::ui::MinTrackSizingFunction::Auto,
+                bevy::ui::MaxTrackSizingFunction::MaxContent,
+            )],
+            grid_template_columns: vec![bevy::ui::RepeatedGridTrack::minmax(
+                1,
+                bevy::ui::MinTrackSizingFunction::Px(50.0),
+                bevy::ui::MaxTrackSizingFunction::Px(100.0),
+            )],
             ..default()
         },
         BackgroundColor(Color::srgb(0.4, 0.6, 0.8)),
@@ -1536,6 +1589,25 @@ fn spawn_label_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
         Label,
         UiTargetCamera(Entity::PLACEHOLDER), // For testing mutations
         Name::new("LabelTestEntity"),
+    ));
+
+    // BoxShadow component for testing mutations
+    parent.spawn((
+        Node {
+            width: Val::Px(150.0),
+            height: Val::Px(100.0),
+            margin: UiRect::all(Val::Px(10.0)),
+            ..default()
+        },
+        BackgroundColor(Color::srgb(0.8, 0.9, 1.0)), // Light blue background
+        BoxShadow::new(
+            Color::srgba(0.0, 0.0, 0.0, 0.5), // Black shadow with 50% opacity
+            Val::Px(5.0),                     // x_offset
+            Val::Px(5.0),                     // y_offset
+            Val::Px(2.0),                     // spread_radius
+            Val::Px(10.0),                    // blur_radius
+        ),
+        Name::new("BoxShadowTestEntity"),
     ));
 }
 

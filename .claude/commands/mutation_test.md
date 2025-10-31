@@ -79,11 +79,11 @@ Example: "Processing batch 1 of 16 - Testing 8 types split across 10 subagents (
 </ReportProgress>
 
 <PrepareApplications>
-Task a general-purpose subagent to prepare applications using the assignments JSON:
+Task a 'mutation-prepper' subagent to prepare applications using the assignments JSON:
 
 ```
 description: "Prepare apps for batch N"
-subagent_type: "general-purpose"
+subagent_type: "mutation-prepper"
 prompt: |
   Execute the workflow defined in @.claude/instructions/mutation_test_prep.md
 

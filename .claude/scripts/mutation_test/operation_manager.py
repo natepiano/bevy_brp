@@ -396,6 +396,70 @@ def handle_test_failure(
     print(json.dumps(response, indent=2))
 
 
+def check_and_log_timeouts(
+    participated_ports: set[int],
+    finished_ports: set[int],
+    last_activity: dict[int, datetime],
+    timestamp: str,
+    log_file: str,
+    timeout_threshold: int = 60,
+) -> set[int]:
+    """
+    Check for timed out ports and log newly detected timeouts.
+
+    Returns:
+        Set of ports that have timed out (including previously logged ones)
+    """
+    active_ports = participated_ports - finished_ports
+    timed_out_ports: set[int] = set()
+    already_logged_timeout: set[int] = set()
+    now = datetime.now()
+
+    # First pass: find which ports already have timeout logs (but not resumed)
+    try:
+        with open(log_file, "r", encoding="utf-8") as log_f:
+            for line in log_f:
+                if "** TERMINATED (TIMEOUT) **" in line:
+                    try:
+                        for part in line.split():
+                            if part.startswith("port="):
+                                timeout_port = int(part.split("=")[1])
+                                already_logged_timeout.add(timeout_port)
+                                break
+                    except Exception:
+                        pass
+                # If port resumed, allow it to be logged again if it times out
+                if "** RESUMING AFTER TIMEOUT **" in line:
+                    try:
+                        for part in line.split():
+                            if part.startswith("port="):
+                                resumed_port = int(part.split("=")[1])
+                                already_logged_timeout.discard(resumed_port)
+                                break
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+    # Second pass: check for new timeouts and log only if not already logged
+    for check_port in active_ports:
+        if check_port in last_activity:
+            time_since_activity = (now - last_activity[check_port]).total_seconds()
+            if time_since_activity > timeout_threshold:
+                timed_out_ports.add(check_port)
+                # Only log timeout if we haven't already logged it for this port
+                if check_port not in already_logged_timeout:
+                    try:
+                        with open(log_file, "a", encoding="utf-8") as f:
+                            _ = f.write(
+                                f"[{timestamp}] port={check_port} ** TERMINATED (TIMEOUT) ** - No activity for {time_since_activity:.0f} seconds\n"
+                            )
+                    except Exception:
+                        pass
+
+    return timed_out_ports
+
+
 def action_get_next(port: int) -> None:
     """Get next operation that needs execution."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -405,6 +469,11 @@ def action_get_next(port: int) -> None:
     port_timeout_terminated = False
     port_hard_terminated = False
     test_complete = False
+    start_time = None
+    last_elapsed_log_time = None
+    participated_ports: set[int] = set()
+    finished_ports: set[int] = set()
+    last_activity: dict[int, datetime] = {}
 
     try:
         with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
@@ -412,6 +481,70 @@ def action_get_next(port: int) -> None:
                 # Check for test completion
                 if "** MUTATION TEST COMPLETE **" in line:
                     test_complete = True
+
+                # Track start time for elapsed duration
+                if line.startswith("# Started:"):
+                    start_time_str = line.split("Started:", 1)[1].strip()
+                    try:
+                        start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
+                    except Exception:
+                        pass
+
+                # Track last elapsed duration log
+                if "** ELAPSED:" in line:
+                    try:
+                        timestamp_str = " ".join(line.split()[0:2]).strip("[]")
+                        last_elapsed_log_time = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                    except Exception:
+                        pass
+
+                # Extract timestamp and port from activity lines for timeout tracking
+                timestamp_match = None
+                port_match = None
+                parts = line.split()
+                for i, part in enumerate(parts):
+                    if i == 0 and part.startswith("["):
+                        # Extract timestamp [YYYY-MM-DD HH:MM:SS]
+                        timestamp_str = " ".join(parts[0:2]).strip("[]")
+                        try:
+                            timestamp_match = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                        except Exception:
+                            pass
+                    if part.startswith("port="):
+                        try:
+                            port_match = int(part.split("=")[1])
+                        except Exception:
+                            pass
+
+                # Track ports that provided operations (participated) and their activity time
+                if " provided to subagent" in line and port_match:
+                    participated_ports.add(port_match)
+                    if timestamp_match:
+                        last_activity[port_match] = timestamp_match
+
+                # Update activity time for status updates (subagent is working)
+                if " status=" in line and port_match and timestamp_match:
+                    last_activity[port_match] = timestamp_match
+
+                # Track ports that finished or hard-terminated
+                if " ** FINISHED **" in line or (" ** TERMINATED **" in line and " ** TERMINATED (TIMEOUT) **" not in line):
+                    try:
+                        for part in line.split():
+                            if part.startswith("port="):
+                                finished_ports.add(int(part.split("=")[1]))
+                                break
+                    except Exception:
+                        pass
+
+                # Remove ports that resumed after timeout from finished set
+                if " ** RESUMING AFTER TIMEOUT **" in line:
+                    try:
+                        for part in line.split():
+                            if part.startswith("port="):
+                                finished_ports.discard(int(part.split("=")[1]))
+                                break
+                    except Exception:
+                        pass
 
                 # Check port-specific termination states
                 if f"port={port}" in line:
@@ -423,6 +556,45 @@ def action_get_next(port: int) -> None:
                         port_hard_terminated = True
     except Exception:
         pass
+
+    # Log elapsed duration once per minute - designated logger is lowest active port
+    if start_time and not test_complete and participated_ports:
+        active_ports = participated_ports - finished_ports
+        if active_ports:
+            designated_logger = min(active_ports)
+            if port == designated_logger:
+                now = datetime.now()
+                should_log_elapsed = False
+
+                if last_elapsed_log_time is None:
+                    # Never logged elapsed duration - check if at least 60 seconds have passed
+                    if (now - start_time).total_seconds() >= 60:
+                        should_log_elapsed = True
+                else:
+                    # Check if 60 seconds have passed since last elapsed log
+                    if (now - last_elapsed_log_time).total_seconds() >= 60:
+                        should_log_elapsed = True
+
+                if should_log_elapsed:
+                    try:
+                        with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
+                            elapsed = now - start_time
+                            total_seconds = int(elapsed.total_seconds())
+                            hours = total_seconds // 3600
+                            minutes = (total_seconds % 3600) // 60
+                            seconds = total_seconds % 60
+                            _ = f.write(f"[{timestamp}] ** ELAPSED: {hours}h {minutes}m {seconds}s **\n")
+                    except Exception:
+                        pass
+
+                    # Check for timeouts after logging elapsed duration
+                    _ = check_and_log_timeouts(
+                        participated_ports,
+                        finished_ports,
+                        last_activity,
+                        timestamp,
+                        MUTATION_TEST_LOG,
+                    )
 
     # Block requests if: test complete, port finished, or hard terminated (non-timeout)
     if test_complete or port_finished or port_hard_terminated:
@@ -456,11 +628,12 @@ def action_get_next(port: int) -> None:
 
             # Check if all other subagents are also complete (purely log-based)
             # Parse log to find which ports participated and which finished
-            participated_ports: set[int] = set()
-            finished_ports: set[int] = set()
+            # Re-scan log to get complete picture (reuse outer scope variables)
+            participated_ports = set()
+            finished_ports = set()
             summary_exists = False
             # Track last activity time per port (for timeout detection)
-            last_activity: dict[int, datetime] = {}
+            last_activity = {}
 
             try:
                 with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
@@ -537,48 +710,13 @@ def action_get_next(port: int) -> None:
                 summary_exists = True
 
             # Check for timeouts on active ports (participated but not finished)
-            active_ports = participated_ports - finished_ports
-            timed_out_ports: set[int] = set()
-            already_logged_timeout: set[int] = set()
-            now = datetime.now()
-
-            # First pass: find which ports already have timeout logs (but not resumed)
-            # A port that resumed can timeout again and should be logged
-            try:
-                with open(MUTATION_TEST_LOG, "r", encoding="utf-8") as log_f:
-                    for line in log_f:
-                        if " ** TERMINATED (TIMEOUT) **" in line:
-                            try:
-                                for part in line.split():
-                                    if part.startswith("port="):
-                                        timeout_port = int(part.split("=")[1])
-                                        already_logged_timeout.add(timeout_port)
-                                        break
-                            except Exception:
-                                pass
-                        # If port resumed, allow it to be logged again if it times out
-                        if " ** RESUMING AFTER TIMEOUT **" in line:
-                            try:
-                                for part in line.split():
-                                    if part.startswith("port="):
-                                        resumed_port = int(part.split("=")[1])
-                                        already_logged_timeout.discard(resumed_port)
-                                        break
-                            except Exception:
-                                pass
-            except Exception:
-                pass
-
-            # Second pass: check for new timeouts and log only if not already logged
-            for check_port in active_ports:
-                if check_port in last_activity:
-                    time_since_activity = (now - last_activity[check_port]).total_seconds()
-                    if time_since_activity > 60:  # 60 second timeout
-                        timed_out_ports.add(check_port)
-                        # Only log timeout if we haven't already logged it for this port
-                        if check_port not in already_logged_timeout:
-                            with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
-                                _ = f.write(f"[{timestamp}] port={check_port} ** TERMINATED (TIMEOUT) ** - No activity for {time_since_activity:.0f} seconds\n")
+            timed_out_ports = check_and_log_timeouts(
+                participated_ports,
+                finished_ports,
+                last_activity,
+                timestamp,
+                MUTATION_TEST_LOG,
+            )
 
             # All complete if: summary not written AND all participated ports finished or timed out
             all_ports_done = finished_ports | timed_out_ports
@@ -734,7 +872,8 @@ def action_get_next(port: int) -> None:
 
     try:
         with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
-            _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} provided to subagent (attempt {operation['times_provided']})\n")
+            attempt_suffix = f" (attempt {operation['times_provided']})" if operation['times_provided'] > 1 else ""
+            _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} provided to subagent{attempt_suffix}\n")
             f.flush()  # Explicitly flush to ensure write happens
     except Exception:
         # Silently ignore debug log write failures
