@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.17.0] - 2025-10-31
 
 ### Changed
 - Version numbering now tracks Bevy releases for clearer compatibility signaling
@@ -14,9 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Bevy 0.17.0 through 0.17.2
 - New `brp_extras/send_keys` method for simulating keyboard input
 - New `brp_extras/set_window_title` method for changing window title
-- Optional `enable_debug_info` parameter for `brp_extras/discover_format` method
-  - Provides detailed diagnostic information about type discovery process when enabled
-  - Helps troubleshoot format discovery issues with complex types
 - Environment variable port override support via `BRP_EXTRAS_PORT`
   - Allows runtime port configuration without code changes
   - Priority: `BRP_EXTRAS_PORT` environment variable > `with_port()` > default port (15702)

@@ -5,26 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.17.0] - 2025-10-31
 
 ### Changed
 - Version numbering now tracks Bevy releases for clearer compatibility signaling
 
 ### Added
 - Support for Bevy 0.17.0 through 0.17.2
+- `brp_type_guide` tool for type discovery using registry schema introspection
 - Multi-instance launch support via `instance_count` parameter for `brp_launch_bevy_app` and `brp_launch_bevy_example`
   - Launch multiple instances on sequential ports for parallel testing and load simulation
 - 'brp_extras_set_window_title` tool, allowing agent to change the running apps window title
 - `brp_extras_send_keys` tool for simulating keyboard input
 - Optional `path` parameter to `brp_launch_bevy_app` and `brp_launch_bevy_example` for disambiguation when multiple apps/examples have the same name
-- File-based tracing system with dynamic level control (error, warn, info, debug, trace)
+- Optional Feature for mcp development: File-based tracing system with dynamic level control (error, warn, info, debug, trace)
   - `brp_set_tracing_level` tool for runtime diagnostic level management
   - `brp_get_trace_log_path` tool to locate trace log files
   - Implements "do no harm" principle - no trace log files created until explicitly enabled via `brp_set_tracing_level` tool
-- `brp_type_guide` tool for type discovery using registry schema introspection
 - Optional `port` parameter to `brp_launch_bevy_app` and `brp_launch_bevy_example` for custom BRP port support (requires bevy_brp_extras)
 - Configurable timeouts for watch operations (`world_get_components_watch` and `world_list_components_watch`) with `timeout_seconds` parameter
-- Trace logging integration for watch operations controlled by tracing level
 - Timeout status tracking in `brp_list_active_watches` output
 - Optional `verbose` parameter to `brp_list_logs` (default: false) for minimal output
 - Tool annotations: All tools now display semantic annotations (read-only vs destructive) with human-readable titles
