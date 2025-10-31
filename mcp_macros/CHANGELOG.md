@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Version numbering now tracks Bevy releases for clearer compatibility signaling
+
 ### Added
 - Initial release of procedural macros for bevy_brp_mcp
 - `ToolDescription` derive macro for automatic help text loading from files

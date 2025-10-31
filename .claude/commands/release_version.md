@@ -1,8 +1,5 @@
 # Release Command - cargo-release Integration
 
-# Template Variables
-VERSION = [from $ARGUMENTS]
-
 **Migration Strategy: Phased**
 
 Perform a coordinated release for bevy_brp workspace crates using cargo-release. This command handles the 3-crate dependency chain and ensures safe publishing to crates.io.
@@ -42,14 +39,25 @@ Before starting the release, verify:
 </ExecutionSteps>
 
 <ArgumentValidation>
-## Argument Validation
+## Argument Validation and VERSION Setup
 
+**First, capture VERSION from arguments:**
 ```bash
-bash .claude/scripts/release_version_validate.sh "$ARGUMENTS"
+VERSION="$ARGUMENTS"
+```
+
+**Then validate the version format:**
+```bash
+bash .claude/scripts/release_version_validate.sh "${VERSION}"
 ```
 → **Auto-check**: Continue if version is valid format, stop with clear error if invalid
 
-**Note**: This script validates the version format and sets up the VERSION variable for use throughout the release process.
+**Confirm VERSION is set correctly:**
+```bash
+echo "Release version set to: ${VERSION}"
+```
+
+**Note**: The VERSION variable is now available for all subsequent commands in this release process.
 </ArgumentValidation>
 
 ## Step 0: One-Time Repository Setup (if not already done)
@@ -84,9 +92,9 @@ Execute <PreReleaseChecks/>
 
 <ConfirmVersionFormat>
 **Confirm version format with user:**
-```
-Version to release: ${VERSION}
-Format should be X.Y.Z (e.g., 0.3.0) or X.Y.Z-rc.N (e.g., 0.3.0-rc.1)
+```bash
+echo "Version to release: ${VERSION}"
+echo "Format: X.Y.Z (e.g., 0.3.0) or X.Y.Z-rc.N (e.g., 0.3.0-rc.1)"
 ```
 → **Manual confirmation**: Verify the version looks correct before proceeding
 </ConfirmVersionFormat>
@@ -154,17 +162,19 @@ Execute <Phase3ReleaseExtrasAndMcp/>
 <Phase1ReleaseMcpMacros>
 ### Phase 1: Release mcp_macros
 
+**Note**: Phase 1 uses --no-tag to skip tag creation. Tags are created in Phase 3 after all crates are ready.
+
 ```bash
-cargo release ${VERSION} --package bevy_brp_mcp_macros --dry-run
+cargo release ${VERSION} --package bevy_brp_mcp_macros --no-tag --dry-run
 ```
 → **Manual verification**: Review the dry run output - version bumps, CHANGELOG updates, git operations all look correct
   - Type **continue** to proceed with release execution
   - Type **stop** to halt process for manual review
 
 ```bash
-cargo release ${VERSION} --package bevy_brp_mcp_macros --execute
+cargo release ${VERSION} --package bevy_brp_mcp_macros --no-tag --execute
 ```
-→ **Manual verification**: Release completed successfully, git commit created
+→ **Manual verification**: Release completed successfully, git commit created (no tag)
   - Type **continue** to proceed to next phase
   - Type **stop** to halt and investigate issues
 
@@ -173,23 +183,17 @@ git push origin main
 ```
 → **Auto-check**: Continue if push succeeds, stop if fails
 
-# Phase 1 does not create tags
-
 ```bash
-cd mcp_macros && cargo publish --dry-run
+cargo publish -p bevy_brp_mcp_macros --dry-run
 ```
 → **Manual verification**: Review package contents, ensure all files included, no errors
   - Type **continue** to proceed with publishing
   - Type **stop** to halt and fix package issues
 
 ```bash
-cargo publish
+cargo publish -p bevy_brp_mcp_macros
 ```
 → **Auto-check**: Continue if publish succeeds, stop if fails
-
-```bash
-cd ..
-```
 </Phase1ReleaseMcpMacros>
 
 <Phase2UpdateMcpDependency>
@@ -205,16 +209,19 @@ curl -s https://crates.io/api/v1/crates/bevy_brp_mcp_macros | jq '.crate.max_ver
   - Type **retry** to check again after waiting
 - If null or incorrect, wait 10-20 seconds and try again
 
-**Update mcp/Cargo.toml dependency**
-Edit `mcp/Cargo.toml` to change:
+**Update mcp/Cargo.toml dependency from path to version:**
+
+**I will edit `mcp/Cargo.toml` to change:**
 ```toml
 # FROM:
 bevy_brp_mcp_macros = { path = "../mcp_macros" }
-# TO:
-bevy_brp_mcp_macros = "${VERSION}"  # the version you just published
-```
-→ **I will make this edit for you using the version specified**
 
+# TO (example for version 0.3.0):
+bevy_brp_mcp_macros = "0.3.0"
+```
+→ **I will make this edit using the actual ${VERSION} value**
+
+**After the edit, verify it builds:**
 ```bash
 cargo build --package bevy_brp_mcp
 ```
@@ -226,7 +233,7 @@ cargo nextest run --package bevy_brp_mcp
 → **Auto-check**: Continue if tests pass, stop if any fail
 
 ```bash
-git add mcp/Cargo.toml && git commit -m "chore: update mcp_macros dependency to crates.io version"
+git add mcp/Cargo.toml && git commit -m "chore: update mcp_macros dependency to crates.io version ${VERSION}"
 ```
 → **Auto-check**: Continue if commit succeeds
 </Phase2UpdateMcpDependency>
@@ -234,17 +241,19 @@ git add mcp/Cargo.toml && git commit -m "chore: update mcp_macros dependency to 
 <Phase3ReleaseExtrasAndMcp>
 ### Phase 3: Release extras and mcp
 
+**Note**: Phase 3 creates the version tag (v${VERSION}) since all crates are now ready.
+
 ```bash
 cargo release ${VERSION} --workspace --exclude bevy_brp_mcp_macros --dry-run
 ```
-→ **Manual verification**: Review output - both extras and mcp will be released together
+→ **Manual verification**: Review output - both extras and mcp will be released together, tag will be created
   - Type **continue** to proceed with workspace release
   - Type **stop** to halt and review changes
 
 ```bash
 cargo release ${VERSION} --workspace --exclude bevy_brp_mcp_macros --execute
 ```
-→ **Auto-check**: Continue if release succeeds, stop if errors
+→ **Auto-check**: Continue if release succeeds with tag created, stop if errors
 </Phase3ReleaseExtrasAndMcp>
 
 <PushAndPublishRemaining>
@@ -267,33 +276,31 @@ git push origin --tags
 </PushToGit>
 
 <PublishRemainingCrates>
+**Dry-run both crates to verify packaging:**
 ```bash
-cd extras && cargo publish --dry-run
+cargo publish -p bevy_brp_extras --dry-run
 ```
 → **Manual verification**: Review package contents for extras
   - Type **continue** to proceed with extras publishing
   - Type **stop** to halt and fix package issues
 
 ```bash
-cd ../mcp && cargo publish --dry-run
+cargo publish -p bevy_brp_mcp --dry-run
 ```
 → **Manual verification**: Review package contents for mcp
   - Type **continue** to proceed with mcp publishing
   - Type **stop** to halt and fix package issues
 
+**Publish both crates to crates.io:**
 ```bash
-cd ../extras && cargo publish
+cargo publish -p bevy_brp_extras
 ```
 → **Auto-check**: Continue if publish succeeds, stop if fails
 
 ```bash
-cd ../mcp && cargo publish
+cargo publish -p bevy_brp_mcp
 ```
 → **Auto-check**: Continue if publish succeeds, stop if fails
-
-```bash
-cd ..
-```
 </PublishRemainingCrates>
 
 <UpdateDocumentation>
@@ -334,7 +341,7 @@ git add README.md && git commit -m "docs: add migration guide for split crate us
 → **I will gather CHANGELOG entries from all three crates and create a combined release using GitHub CLI**
 
 ```bash
-gh release create v${VERSION} \
+gh release create "v${VERSION}" \
   --repo natepiano/bevy_brp \
   --title "bevy_brp v${VERSION}" \
   --notes "Combined release notes from all three crates"
@@ -348,7 +355,7 @@ gh release create v${VERSION} \
 ```bash
 for crate in bevy_brp_mcp_macros bevy_brp_extras bevy_brp_mcp; do
   echo -n "$crate: "
-  curl -s https://crates.io/api/v1/crates/$crate | jq '.crate.max_version'
+  curl -s "https://crates.io/api/v1/crates/$crate" | jq '.crate.max_version'
 done
 ```
 → **Manual verification**: All three show version ${VERSION}
@@ -356,7 +363,7 @@ done
   - Type **retry** to check versions again
 
 ```bash
-cargo install bevy_brp_mcp --version ${VERSION}
+cargo install bevy_brp_mcp --version "${VERSION}"
 ```
 → **Manual verification**: Installation succeeds, pulling all dependencies from crates.io
   - Type **continue** to proceed to agentic testing
@@ -393,10 +400,10 @@ If something goes wrong after pushing but before publishing:
 
 ```bash
 # Delete local tag
-git tag -d v${VERSION}
+git tag -d "v${VERSION}"
 
-# Delete remote tag  
-git push origin :refs/tags/v${VERSION}
+# Delete remote tag
+git push origin ":refs/tags/v${VERSION}"
 
 # Revert the version bump commits (may be multiple commits)
 git revert HEAD~2..HEAD  # Adjust range as needed
@@ -425,29 +432,53 @@ The workspace uses `release.toml` with:
 
 **After the first release establishes all crates on crates.io:**
 
-Once the initial release is complete and all crates use version dependencies (not path dependencies), future releases can use the simplified Rust 1.90.0+ workflow:
+Once the initial release is complete, future releases can use the simplified Rust 1.90.0+ workflow. However, this workflow is **ONLY for release time**, not for development.
 
 ### Simplified Process
-1. **Version Management**: Use cargo-release for version bumps and CHANGELOG updates
+1. **Update to version dependencies** (temporarily for release):
+   ```bash
+   # Edit mcp/Cargo.toml: change path to version dependency
+   # FROM: bevy_brp_mcp_macros = { path = "../mcp_macros" }
+   # TO:   bevy_brp_mcp_macros = "0.3.0"  # previous version
+   ```
+
+2. **Version Management**: Use cargo-release for version bumps and CHANGELOG updates
    ```bash
    cargo release ${VERSION} --workspace --no-publish --execute
    ```
 
-2. **Publishing**: Use native workspace publishing (automatically handles dependency order)
+3. **Publishing**: Use native workspace publishing (automatically handles dependency order)
    ```bash
    cargo publish --workspace --dry-run
    cargo publish --workspace
    ```
 
-This eliminates the complex 3-phase process and manual dependency updates. The native `cargo publish --workspace` (available since Rust 1.90.0) automatically:
+4. **Restore path dependencies** (for development):
+   ```bash
+   # Edit mcp/Cargo.toml back to path dependency
+   # FROM: bevy_brp_mcp_macros = "0.3.0"
+   # TO:   bevy_brp_mcp_macros = { path = "../mcp_macros" }
+   git add mcp/Cargo.toml
+   git commit -m "chore: restore path dependency for development"
+   git push origin main
+   ```
+
+This eliminates the complex 3-phase process. The native `cargo publish --workspace` (available since Rust 1.90.0) automatically:
 - Determines correct publishing order based on dependencies
 - Verifies the entire workspace builds with to-be-published versions
 - Publishes all crates in the correct sequence
 
 ### Prerequisites for Simplified Workflow
 - All crates must already exist on crates.io
-- `mcp/Cargo.toml` must use version dependency for `mcp_macros` (not path)
+- `mcp/Cargo.toml` temporarily uses version dependency for release process
+- Path dependencies are restored after release for local development
 - Rust toolchain version 1.90.0 or later
+
+### Why Path Dependencies for Development?
+Path dependencies are essential for development because they allow you to:
+- Test changes to mcp_macros immediately in the mcp crate
+- Make coordinated changes across crates without publishing
+- Iterate quickly without crates.io round-trips
 
 ## Common Issues
 
@@ -457,4 +488,3 @@ This eliminates the complex 3-phase process and manual dependency updates. The n
 4. **Build failures**: Fix any compilation errors before releasing
 5. **Dependency chain**: Always publish mcp_macros → extras → mcp
 6. **Path dependency**: Ensure mcp/Cargo.toml uses crates.io version of mcp_macros, not path
-

@@ -31,3 +31,6 @@ fi
 
 echo "✓ Version format valid: $VERSION_ARG"
 echo "Proceeding with release version: $VERSION_ARG"
+echo ""
+echo "# To set VERSION in your shell, run:"
+echo "export VERSION=\"$VERSION_ARG\""
