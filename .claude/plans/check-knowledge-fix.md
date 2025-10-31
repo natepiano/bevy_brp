@@ -217,7 +217,11 @@ let knowledge_example = match ctx.check_knowledge()? {
 ```
 
 **Technical Verification:**
-- ✅ Error propagation: `?` operator works with `Result<KnowledgeAction, BuilderError>`
+- ✅ Error propagation: `?` operator works with `Result<KnowledgeAction, BuilderError>` - no error conversion needed
+  - `ctx.check_knowledge()` returns `Result<KnowledgeAction, BuilderError>` (defined in Step 2)
+  - `build_paths()` returns `Result<Vec<MutationPathInternal>, BuilderError>`
+  - Error types match exactly, so `?` operator propagates errors directly without conversion
+  - `BuilderError` is already imported in path_builder.rs from the parent module
 - ✅ `PathExample::Simple(example)` is the correct enum variant
 - ✅ `knowledge_example` variable maintains `Option<Value>` type for downstream usage (line 121)
 - ✅ `Mutability::Mutable` import already exists at line 49
@@ -319,6 +323,12 @@ let default_example = match ctx.check_knowledge()? {
 **Implementation Note:** `MutationPathInternal` must be constructed manually because `build_mutation_path_internal()` is private to `path_builder.rs`. This follows the existing pattern at line 812-825 in `enum_path_builder.rs`.
 
 **Field Ordering:** The fields in the struct initialization above match the declaration order in `MutationPathInternal` (example, mutation_path, type_name, path_kind, mutability, mutability_reason, enum_path_info, depth, partial_root_examples). While Rust allows any order with named field syntax, matching the declaration order improves code readability and consistency.
+
+**Error Handling:** The `?` operator in `ctx.check_knowledge()?` works correctly because:
+- `ctx.check_knowledge()` returns `Result<KnowledgeAction, BuilderError>` (defined in Step 2)
+- `build_paths()` in enum_path_builder.rs returns `Result<Vec<MutationPathInternal>, BuilderError>`
+- Error types match exactly, enabling direct error propagation without conversion
+- This fixes the existing bug where `.ok()` silently swallowed errors
 
 ## Alternative Considered: Use `TypeKnowledge` Directly
 
