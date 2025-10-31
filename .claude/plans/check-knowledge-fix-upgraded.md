@@ -1,5 +1,202 @@
 # Check Knowledge Function Complexity Fix
 
+## EXECUTION PROTOCOL
+
+<Instructions>
+For each step in the implementation sequence:
+
+1. **DESCRIBE**: Present the changes with:
+   - Summary of what will change and why
+   - Code examples showing before/after
+   - List of files to be modified
+   - Expected impact on the system
+
+2. **AWAIT APPROVAL**: Stop and wait for user confirmation ("go ahead" or similar)
+
+3. **IMPLEMENT**: Make the changes and stop
+
+4. **BUILD & VALIDATE**: Execute the build process:
+   ```bash
+   cargo build --package bevy_brp_mcp
+   cargo nextest run --package bevy_brp_mcp
+   ```
+
+5. **CONFIRM**: Wait for user to confirm the build succeeded
+
+6. **MARK COMPLETE**: Update this document to mark the step as ✅ COMPLETED
+
+7. **PROCEED**: Move to next step only after confirmation
+</Instructions>
+
+<ExecuteImplementation>
+    Find the next ⏳ PENDING step in the INTERACTIVE IMPLEMENTATION SEQUENCE below.
+
+    For the current step:
+    1. Follow the <Instructions/> above for executing the step
+    2. When step is complete, use Edit tool to mark it as ✅ COMPLETED
+    3. Continue to next PENDING step
+
+    If all steps are COMPLETED:
+        Display: "✅ Implementation complete! All steps have been executed."
+</ExecuteImplementation>
+
+## INTERACTIVE IMPLEMENTATION SEQUENCE
+
+### Step 1: Add KnowledgeAction enum ⏳ PENDING
+
+**Objective**: Create the `KnowledgeAction` enum in `type_knowledge.rs` to represent control flow decisions based on type knowledge lookup.
+
+**Why**: Replace the opaque tuple return type `(Option<Result<...>>, Option<Value>)` with a self-documenting enum that clearly expresses intent.
+
+**Changes**:
+- Add `KnowledgeAction` enum with 3 variants after `TypeKnowledge` definition
+- Variants: `CompleteWithExample(Value)`, `UseExampleAndRecurse(Value)`, `NoHardcodedKnowledge`
+
+**Files to modify**:
+- `mcp/src/brp_tools/brp_type_guide/type_knowledge.rs`
+
+**Build command**:
+```bash
+cargo build --package bevy_brp_mcp
+```
+
+**Change type**: Additive (safe - no breaking changes)
+
+---
+
+### Step 2: Add check_knowledge() method ⏳ PENDING
+
+**Objective**: Add `check_knowledge()` method to `RecursionContext` that translates `TypeKnowledge` into `KnowledgeAction`.
+
+**Why**: Create a single interpretation point where all builders get consistent behavior when consulting the knowledge base.
+
+**Changes**:
+- Update imports in `recursion_context.rs` to include `KnowledgeAction` and `TypeKnowledge`
+- Add `check_knowledge()` method that matches on `find_knowledge()` result and returns appropriate `KnowledgeAction`
+
+**Files to modify**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/recursion_context.rs`
+
+**Build command**:
+```bash
+cargo build --package bevy_brp_mcp
+```
+
+**Change type**: Additive (safe - no breaking changes)
+
+**Dependencies**: Requires Step 1 (imports `KnowledgeAction`)
+
+---
+
+### Step 3: Update path_builder.rs ⏳ PENDING
+
+**Objective**: Update `path_builder.rs` to use the new `ctx.check_knowledge()` method and remove the old private `check_knowledge` function.
+
+**Why**: Migrate to the new API and eliminate the opaque tuple-based implementation.
+
+**Changes**:
+- Add import for `KnowledgeAction`
+- Replace lines 92-96 with new match statement using `ctx.check_knowledge()?`
+- Update documentation comment at line 400
+- Remove old private `check_knowledge` function (lines 582-626, 45 lines total)
+
+**Files to modify**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
+
+**Build command**:
+```bash
+cargo build --package bevy_brp_mcp
+```
+
+**Change type**: Breaking (removes old function, but it's private)
+
+**Dependencies**: Requires Steps 1 and 2
+
+---
+
+### Step 4: Update enum_path_builder.rs ⏳ PENDING
+
+**Objective**: Update `enum_path_builder.rs` to use the new `ctx.check_knowledge()` method, fixing two bugs in the process.
+
+**Why**: Fix semantic bug where `TreatAsRootValue` enums incorrectly expose variant paths, and fix error suppression bug where `.ok()` silently swallows errors.
+
+**Changes**:
+- Add import for `KnowledgeAction`
+- Replace lines 106-120 with new match statement using `ctx.check_knowledge()?`
+- Handle `CompleteWithExample` by returning single root path immediately
+- Properly propagate errors instead of silently swallowing them
+
+**Files to modify**:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs`
+
+**Build and test commands**:
+```bash
+cargo build --package bevy_brp_mcp
+cargo nextest run --package bevy_brp_mcp
+```
+
+**Change type**: Breaking (changes behavior - bug fixes)
+
+**Dependencies**: Requires Steps 1 and 2
+
+**Bug fixes**:
+1. TreatAsRootValue enums now return immediately (previously continued processing variants)
+2. Errors are now propagated (previously silently swallowed)
+
+---
+
+### Step 5: Complete Validation ⏳ PENDING
+
+**Objective**: Verify all changes are correct and complete.
+
+**Validation steps**:
+
+1. **Search verification** - No remaining references to old function:
+   ```bash
+   rg "Self::check_knowledge" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/
+   # Should return no matches
+   ```
+
+2. **Compilation check**:
+   ```bash
+   cargo build --package bevy_brp_mcp
+   # Should compile without errors
+   ```
+
+3. **Unit tests**:
+   ```bash
+   cargo nextest run --package bevy_brp_mcp
+   # All tests should pass
+   ```
+
+4. **File length check**:
+   ```bash
+   wc -l mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs
+   # Should show 581 lines (626 - 45 deleted lines)
+   ```
+
+5. **Documentation review**:
+   - Confirm line 400 comment no longer references `check_knowledge`
+   - Confirm `ctx.check_knowledge()` is used consistently
+
+6. **Enum behavioral changes verification**:
+   ```bash
+   rg "select_preferred_example" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs -A 2 -B 2
+   # Verify fallback is in NoHardcodedKnowledge branch
+   ```
+
+7. **Error propagation verification**:
+   ```bash
+   rg "find_knowledge.*\.ok\(\)" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/
+   # Should return no matches
+   ```
+
+8. **Mutation test suite** (after unit tests pass):
+   - Run comprehensive mutation test suite to validate type guide output unchanged
+   - See Testing Strategy section for details
+
+---
+
 ## Problem
 
 The `check_knowledge` function in `path_builder.rs:577-620` has a semantically opaque return type that encodes multiple distinct control flow decisions in an unnamed tuple.
