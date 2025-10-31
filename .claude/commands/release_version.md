@@ -32,10 +32,9 @@ Before starting the release, verify:
     **STEP 2:** Execute <ChangelogVerification/>
     **STEP 3:** Execute <ThreePhaseReleaseProcess/>
     **STEP 4:** Execute <PushAndPublishRemaining/>
-    **STEP 5:** Execute <UpdateDocumentation/>
-    **STEP 6:** Execute <CreateGitHubRelease/>
-    **STEP 7:** Execute <PostReleaseVerification/>
-    **STEP 8:** Execute <PrepareNextReleaseCycle/>
+    **STEP 5:** Execute <CreateGitHubRelease/>
+    **STEP 6:** Execute <PostReleaseVerification/>
+    **STEP 7:** Execute <PrepareNextReleaseCycle/>
 </ExecutionSteps>
 
 <ArgumentValidation>
@@ -302,38 +301,6 @@ cargo publish -p bevy_brp_mcp
 ```
 → **Auto-check**: Continue if publish succeeds, stop if fails
 </PublishRemainingCrates>
-
-<UpdateDocumentation>
-## Update Documentation (First Release Only)
-
-**For first release, add migration guide to README.md:**
-
-→ **Manual edit**: Add this section to main README.md:
-```markdown
-## Migrating from Split Crates
-
-If you were using the previous split crates, update your `Cargo.toml`:
-
-```toml
-# Old (remove these)
-bevy_mcp = "0.2.0"
-bevy_mcp_macros = "0.2.0"
-bevy_mcp_extras = "0.2.0"
-
-# New (use these)
-bevy_brp_mcp = "0.3.0"
-bevy_brp_mcp_macros = "0.3.0"
-bevy_brp_extras = "0.3.0"
-```
-
-No code changes required - just dependency updates.
-```
-
-```bash
-git add README.md && git commit -m "docs: add migration guide for split crate users"
-```
-→ **Auto-check**: Continue if commit succeeds
-</UpdateDocumentation>
 
 <CreateGitHubRelease>
 ## Create GitHub Release
