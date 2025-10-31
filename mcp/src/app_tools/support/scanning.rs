@@ -713,12 +713,12 @@ mod tests {
         assert!(
             filtered
                 .iter()
-                .any(|i| i.relative_path == PathBuf::from("workspace1/app1"))
+                .any(|i| i.relative_path == Path::new("workspace1/app1"))
         );
         assert!(
             filtered
                 .iter()
-                .any(|i| i.relative_path == PathBuf::from("workspace2/app1"))
+                .any(|i| i.relative_path == Path::new("workspace2/app1"))
         );
     }
 
