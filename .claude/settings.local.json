@@ -148,7 +148,8 @@
       "WebSearch",
       "WebFetch(domain:blog.rust-lang.org)",
       "WebFetch(domain:releases.rs)",
-      "WebFetch(domain:poignardazur.github.io)"
+      "WebFetch(domain:poignardazur.github.io)",
+      "WebFetch(domain:internals.rust-lang.org)"
     ],
     "deny": [
       "Bash(sed:*)",
