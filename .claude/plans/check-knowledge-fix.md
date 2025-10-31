@@ -262,6 +262,26 @@ use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
 
 **Prerequisites:** Complete Steps 1 and 2 first (`KnowledgeAction` enum and `RecursionContext::check_knowledge()` method must exist).
 
+#### Behavioral Changes
+
+**IMPORTANT**: This change fixes two bugs in enum knowledge handling:
+
+1. **TreatAsRootValue enums now return immediately** (previously continued processing variants)
+   - Example: If an enum has `TreatAsRootValue` knowledge, it should be treated as opaque
+   - Old behavior: Generated variant paths anyway (semantic bug)
+   - New behavior: Returns single root path, no variant paths (correct)
+
+2. **Errors are now propagated** (previously silently swallowed)
+   - Old behavior: `.ok()` converted errors to `None`, then fell back to variant selection
+   - New behavior: `?` operator propagates errors to caller for proper handling
+
+**Fallback behavior preserved**: When no knowledge exists (`NoHardcodedKnowledge`), the code still falls back to `select_preferred_example(&enum_examples)`. This is the same as the current behavior when `.flatten()` returns `None`. The `.or_else()` in the current code is NOT a fallback for invalid knowledge examples - it's a fallback for when no knowledge entry exists at all.
+
+**Knowledge example validation**: No validation is needed because:
+- All `TypeKnowledge` variants require a `Value` in the `example` field (enforced by type system)
+- All 60+ entries in `type_knowledge.rs` provide valid `Value` objects
+- The only way to get "no example" is when no knowledge entry exists (handled by `NoHardcodedKnowledge`)
+
 **Replace lines 106-120:**
 ```rust
 // OLD - treats both knowledge types the same and silently ignores errors:
@@ -512,3 +532,27 @@ wc -l mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs
 ### 5. Documentation Review
 - Confirm line 400 comment no longer references `check_knowledge`
 - Confirm `ctx.check_knowledge()` is used consistently across all builders
+
+### 6. Enum Behavioral Changes Verification
+```bash
+# Verify fallback behavior is preserved in the correct place
+rg "select_preferred_example" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/enum_builder/enum_path_builder.rs -A 2 -B 2
+# Should show:
+# - Line ~176: Function definition
+# - Line ~312: Inside NoHardcodedKnowledge match arm (NEW - correct usage)
+# - Line ~546: Inside build_partial_root_examples (different use case)
+
+# Verify no .or_else() chains remain that could mask behavioral changes
+rg "\.or_else.*select_preferred_example" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/
+# Should only show line ~546 in enum_path_builder.rs (build_partial_root_examples)
+```
+
+### 7. Error Propagation Verification
+After implementation, verify that errors are properly propagated:
+- Enum builder no longer uses `.ok()` to swallow errors from knowledge lookup
+- Both `path_builder.rs` and `enum_path_builder.rs` use `ctx.check_knowledge()?` for consistent error handling
+- Search for any remaining `.ok()` patterns that might suppress errors:
+```bash
+rg "find_knowledge.*\.ok\(\)" mcp/src/brp_tools/brp_type_guide/mutation_path_builder/
+# Should return no matches (all usages should now use check_knowledge with ?)
+```
