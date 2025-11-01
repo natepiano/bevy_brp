@@ -112,7 +112,11 @@ impl NotMutableReason {
         let mut not_mutable = Vec::new();
         let mut partially_mutable = Vec::new();
 
-        for (path_str, statuses) in path_statuses {
+        // Sort path_statuses for deterministic ordering
+        let mut sorted_paths: Vec<_> = path_statuses.into_iter().collect();
+        sorted_paths.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (path_str, statuses) in sorted_paths {
             if statuses.len() > 1 {
                 // Path has conflicting statuses across different variants → partially_mutable
                 // Example: `.color_lut.0.0` is mutable in Uuid variant but not_mutable in Strong
