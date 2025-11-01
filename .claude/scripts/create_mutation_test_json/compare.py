@@ -251,6 +251,28 @@ def describe_value(val: JsonValue) -> str:
             return f"object{{{','.join(str(k) for k in keys)}}}"
 
 
+def values_equal(val1: JsonValue, val2: JsonValue) -> bool:
+    """Check if two JSON values are semantically equal (ignoring dict field order)."""
+    if type(val1) != type(val2):
+        return False
+
+    if val1 is None or val2 is None:
+        return val1 == val2
+
+    if isinstance(val1, dict) and isinstance(val2, dict):
+        if set(val1.keys()) != set(val2.keys()):
+            return False
+        return all(values_equal(val1[k], val2[k]) for k in val1.keys())
+
+    if isinstance(val1, list) and isinstance(val2, list):
+        if len(val1) != len(val2):
+            return False
+        return all(values_equal(v1, v2) for v1, v2 in zip(val1, val2))
+
+    # Primitives
+    return val1 == val2
+
+
 def deep_compare_values(
     path: str,
     baseline_val: JsonValue,
@@ -321,6 +343,26 @@ def deep_compare_values(
 
     # Compare based on type
     if isinstance(baseline_val, dict) and isinstance(current_val, dict):
+        # Check if dicts are semantically equal (same keys, same values) but potentially different order
+        if values_equal(baseline_val, current_val):
+            # Check if field order actually differs
+            baseline_keys = list(baseline_val.keys())
+            current_keys = list(current_val.keys())
+            if baseline_keys != current_keys:
+                # Same content, different order - report as field_reordering
+                differences.append(
+                    DifferenceDict(
+                        path=path,
+                        change_type="field_reordering",
+                        baseline=cast(JsonValue, baseline_keys),
+                        current=cast(JsonValue, current_keys),
+                        description=f"Field ordering changed (values unchanged)",
+                        type_name="",
+                        mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
+                    )
+                )
+            # If both keys and values are identical in same order, no difference to report
+            return differences
         all_keys = set(baseline_val.keys()) | set(current_val.keys())
 
         # Test metadata fields to ignore during comparison
@@ -427,8 +469,19 @@ def deep_compare_values(
             )
 
             if all_primitives and set(baseline_val) == set(current_val):  # type: ignore[arg-type]
-                # Same elements, different order - ignore this difference
-                pass
+                # Same elements, different order - report as array_reordering
+                if baseline_val != current_val:  # Only report if order actually differs
+                    differences.append(
+                        DifferenceDict(
+                            path=path,
+                            change_type="array_reordering",
+                            baseline=baseline_val,
+                            current=current_val,
+                            description=f"Array element ordering changed (values unchanged)",
+                            type_name="",
+                            mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
+                        )
+                    )
             else:
                 # Either not all primitives, or different elements - compare by index
                 for i in range(len(baseline_val)):
@@ -548,6 +601,12 @@ def main() -> None:
     added_types = type_stats["current_only"]
     removed_types = type_stats["baseline_only"]
 
+    # Separate cosmetic changes from actual changes
+    field_reordering_changes = [c for c in all_changes if c["change_type"] == "field_reordering"]
+    array_reordering_changes = [c for c in all_changes if c["change_type"] == "array_reordering"]
+    cosmetic_changes = field_reordering_changes + array_reordering_changes
+    actual_changes = [c for c in all_changes if c["change_type"] not in ["field_reordering", "array_reordering"]]
+
     print("🔍 MUTATION TEST COMPARISON COMPLETE")
     print("=" * 60)
     print()
@@ -559,15 +618,24 @@ def main() -> None:
     print()
     print("Comparison Results:")
     print("=" * 60)
-    print(f"Total changes: {len(all_changes)}")
+    print(f"Field reordering (cosmetic): {len(field_reordering_changes)}")
+    print(f"Array reordering (cosmetic): {len(array_reordering_changes)}")
+    print(f"Actual changes: {len(actual_changes)}")
     print(f"Types modified: {len(modified_types)}")
     print(f"Types added: {len(added_types)}")
     print(f"Types removed: {len(removed_types)}")
     print()
 
-    if len(all_changes) > 0:
-        print(f"⚠️  CHANGES DETECTED: {len(all_changes)}")
+    if len(actual_changes) > 0:
+        print(f"⚠️  ACTUAL CHANGES DETECTED: {len(actual_changes)}")
         print("   Use comparison_review to examine them")
+    elif len(cosmetic_changes) > 0:
+        print(f"ℹ️  Only cosmetic changes detected ({len(cosmetic_changes)} instances)")
+        if len(field_reordering_changes) > 0:
+            print(f"   - Field reordering: {len(field_reordering_changes)}")
+        if len(array_reordering_changes) > 0:
+            print(f"   - Array reordering: {len(array_reordering_changes)}")
+        print("   These changes are cosmetic and don't affect functionality")
     else:
         print("✅ No changes detected!")
 

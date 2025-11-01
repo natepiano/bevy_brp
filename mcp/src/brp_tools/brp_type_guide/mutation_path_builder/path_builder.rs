@@ -25,7 +25,7 @@ use serde_json::Value;
 use serde_json::json;
 
 use super::super::type_kind::TypeKind;
-use super::super::type_knowledge::TypeKnowledge;
+use super::super::type_knowledge::KnowledgeAction;
 use super::BuilderError;
 use super::enum_builder;
 use super::mutation_path_internal::MutationPathInternal;
@@ -90,10 +90,22 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
         }
 
         // Check knowledge - might return early or provide example
-        let (knowledge_result, knowledge_example) = Self::check_knowledge(ctx);
-        if let Some(result) = knowledge_result {
-            return result;
-        }
+        let knowledge_example = match ctx.check_knowledge()? {
+            KnowledgeAction::CompleteWithExample(example) => {
+                // Build single root path and return immediately
+                // Note: build_mutation_path_internal() returns MutationPathInternal,
+                // so we wrap in vec![] to match build_paths() return type
+                return Ok(vec![Self::build_mutation_path_internal(
+                    ctx,
+                    PathExample::Simple(example),
+                    Mutability::Mutable,
+                    None,
+                    None,
+                )]);
+            }
+            KnowledgeAction::UseExampleAndRecurse(example) => Some(example),
+            KnowledgeAction::NoHardcodedKnowledge => None,
+        };
 
         // Process all children and collect paths
         let ChildProcessingResult {
@@ -397,7 +409,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
     /// Build a `MutationPathInternal` with the provided status and example
     ///
-    /// Used by `build_not_mutable_path` for `NotMutableReason`s and `check_knowledge`
+    /// Used by `build_not_mutable_path` for `NotMutableReason`s and knowledge handling
     /// when we already have a hard coded example and don't need to try to build our own.
     ///
     /// Finally, used by `build_final_result`
@@ -576,51 +588,6 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             )))
         } else {
             None
-        }
-    }
-
-    /// Check knowledge base and handle based on guidance type
-    fn check_knowledge(
-        ctx: &RecursionContext,
-    ) -> (
-        Option<std::result::Result<Vec<MutationPathInternal>, BuilderError>>,
-        Option<Value>,
-    ) {
-        // Use unified knowledge lookup that handles all cases
-        let knowledge_result = ctx.find_knowledge();
-        match knowledge_result {
-            Ok(Some(knowledge)) => {
-                let example = knowledge.example().clone();
-
-                // Only return early for TreatAsValue types - they should not recurse
-                // and we're returning this as our single Vec! `MutationPathInternal` in order fit
-                // with the return type
-                //
-                if matches!(knowledge, TypeKnowledge::TreatAsRootValue { .. }) {
-                    return (
-                        Some(Ok(vec![Self::build_mutation_path_internal(
-                            ctx,
-                            PathExample::Simple(example),
-                            Mutability::Mutable,
-                            None,
-                            None, // No partial roots for TreatAsRootValue paths
-                        )])),
-                        None,
-                    );
-                }
-
-                // the second return value means we're returning the hard coded knowledge
-                // but allowing recursion - this is not obvious by the current return type
-                (None, Some(example))
-            }
-            Ok(None) => {
-                // Continue with normal processing, no hard coded mutation knowledge found
-                (None, None)
-            }
-            Err(e) => {
-                // Propagate error from find_knowledge()
-                (Some(Err(e)), None)
-            }
         }
     }
 }

@@ -20,7 +20,6 @@ use super::constants::TYPE_BEVY_MAT4;
 use super::constants::TYPE_BEVY_NAME;
 use super::constants::TYPE_BEVY_QUAT;
 use super::constants::TYPE_BEVY_RECT;
-use super::constants::TYPE_BEVY_RENDER_TARGET;
 use super::constants::TYPE_BEVY_VEC2;
 use super::constants::TYPE_BEVY_VEC3;
 use super::constants::TYPE_BEVY_VEC3A;
@@ -129,6 +128,30 @@ pub enum TypeKnowledge {
         example:         Value,
         simplified_type: String,
     },
+}
+
+/// Action to take based on type knowledge lookup
+///
+/// This enum represents the **control flow decisions** that builders should make
+/// after consulting the knowledge base, distinct from `TypeKnowledge` which
+/// represents the **static facts** stored in the knowledge base.
+#[derive(Debug, Clone)]
+pub enum KnowledgeAction {
+    /// Use this example as the root value - DO NOT recurse into children
+    ///
+    /// Returned for `TreatAsRootValue` knowledge where the type should be treated
+    /// as opaque (e.g., `Duration`, `String`, primitive wrappers).
+    CompleteWithExample(Value),
+
+    /// Use this example but CONTINUE recursing into children
+    ///
+    /// Returned for `TeachAndRecurse` knowledge where we want to override the
+    /// example but still expose child mutation paths (e.g., struct field defaults,
+    /// enum variant selection).
+    UseExampleAndRecurse(Value),
+
+    /// No hardcoded knowledge found - assemble example from children normally
+    NoHardcodedKnowledge,
 }
 
 impl TypeKnowledge {
@@ -456,12 +479,14 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
         );
 
         // ===== Camera field-specific values =====
-        // Provide safe RenderTarget to prevent crashes from invalid TextureView handles
-        // TextureView variant requires handle to exist in ManualTextureViews resource
-        // Window::Primary is always valid and references the default primary window
+        // Provide safe RenderTarget default example to prevent crashes from invalid TextureView
+        // handles TextureView variant requires handle to exist in ManualTextureViews
+        // resource Window::Primary is always valid and references the default primary
+        // window Use TeachAndRecurse to provide safe default while still exposing nested
+        // mutation paths
         map.insert(
             KnowledgeKey::struct_field(TYPE_BEVY_CAMERA, "target"),
-            TypeKnowledge::as_root_value(json!({"Window": "Primary"}), TYPE_BEVY_RENDER_TARGET),
+            TypeKnowledge::new(json!({"Window": "Primary"})),
         );
 
         // ===== Camera3d field-specific values =====

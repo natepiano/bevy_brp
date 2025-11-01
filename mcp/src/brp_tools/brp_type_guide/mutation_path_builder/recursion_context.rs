@@ -82,7 +82,9 @@ use serde_json::Value;
 use super::super::brp_type_name::BrpTypeName;
 use super::super::constants::MAX_TYPE_RECURSION_DEPTH;
 use super::super::type_knowledge::BRP_TYPE_KNOWLEDGE;
+use super::super::type_knowledge::KnowledgeAction;
 use super::super::type_knowledge::KnowledgeKey;
+use super::super::type_knowledge::TypeKnowledge;
 use super::BuilderError;
 use super::NotMutableReason;
 use super::enum_builder::VariantSignature;
@@ -331,6 +333,29 @@ impl RecursionContext {
         // Try exact type match as fallback - this handles most cases
         let exact_key = KnowledgeKey::exact(self.type_name());
         Ok(BRP_TYPE_KNOWLEDGE.get(&exact_key))
+    }
+
+    /// Check knowledge and determine what action to take
+    ///
+    /// This is the **single interpretation point** where we translate `TypeKnowledge`
+    /// (static facts) into `KnowledgeAction` (control flow decisions). All builders
+    /// should use this method instead of calling `find_knowledge()` directly to ensure
+    /// consistent behavior.
+    pub fn check_knowledge(&self) -> Result<KnowledgeAction, BuilderError> {
+        match self.find_knowledge()? {
+            Some(TypeKnowledge::TreatAsRootValue { example, .. }) => {
+                // Return example immediately - caller will build single root path
+                Ok(KnowledgeAction::CompleteWithExample(example.clone()))
+            }
+            Some(TypeKnowledge::TeachAndRecurse { example }) => {
+                // Use this example but continue recursing children
+                Ok(KnowledgeAction::UseExampleAndRecurse(example.clone()))
+            }
+            None => {
+                // No knowledge - proceed with normal processing
+                Ok(KnowledgeAction::NoHardcodedKnowledge)
+            }
+        }
     }
 
     /// Creates a `NoMutableChildren` error with this context's type name

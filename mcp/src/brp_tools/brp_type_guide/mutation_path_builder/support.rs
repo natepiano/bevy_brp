@@ -150,8 +150,13 @@ pub fn assemble_struct_from_children(
 ) -> serde_json::Map<String, Value> {
     let mut struct_obj = serde_json::Map::new();
 
-    for (descriptor, example) in children {
+    // Sort keys by string representation for deterministic field ordering in output
+    let mut sorted_keys: Vec<_> = children.keys().collect();
+    sorted_keys.sort_by_key(|k| k.to_string());
+
+    for descriptor in sorted_keys {
         let field_name = (*descriptor).to_string();
+        let example = &children[descriptor];
         struct_obj.insert(field_name, example.clone());
     }
 

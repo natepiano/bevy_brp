@@ -56,6 +56,7 @@ use super::option_classification::apply_option_transformation;
 use super::variant_kind::VariantKind;
 use super::variant_signature::VariantSignature;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
+use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
 use crate::error::Error;
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
@@ -106,18 +107,46 @@ pub fn process_enum(
     // Select default example - check knowledge first, then fall back to enum examples
     // Knowledge allows struct-field-specific overrides (e.g., Camera.target should use
     // Window::Primary)
-    let default_example = ctx
-        .find_knowledge()
-        .ok()
-        .flatten()
-        .map(|knowledge| knowledge.example().clone())
-        .or_else(|| select_preferred_example(&enum_examples))
-        .ok_or_else(|| {
-            BuilderError::SystemError(Report::new(Error::InvalidState(format!(
-                "Enum {} has no valid example: no struct field knowledge and no mutable variants",
-                ctx.type_name()
-            ))))
-        })?;
+    let default_example = match ctx.check_knowledge()? {
+        KnowledgeAction::CompleteWithExample(example) => {
+            // Enum is opaque - return single root path immediately
+            // Build enum_path_info if nested in another enum
+            let enum_path_data = if ctx.variant_chain.is_empty() {
+                None
+            } else {
+                Some(EnumPathInfo {
+                    variant_chain:       ctx.variant_chain.clone(),
+                    applicable_variants: Vec::new(),
+                    root_example:        None,
+                })
+            };
+
+            return Ok(vec![MutationPathInternal {
+                example:               PathExample::Simple(example),
+                mutation_path:         ctx.mutation_path.clone(),
+                type_name:             ctx.type_name().display_name(),
+                path_kind:             ctx.path_kind.clone(),
+                mutability:            Mutability::Mutable,
+                mutability_reason:     None,
+                enum_path_info:        enum_path_data,
+                depth:                 *ctx.depth,
+                partial_root_examples: None,
+            }]);
+        }
+        KnowledgeAction::UseExampleAndRecurse(example) => {
+            // Use this example but still process variants
+            example
+        }
+        KnowledgeAction::NoHardcodedKnowledge => {
+            // Use preferred example from processed variants
+            select_preferred_example(&enum_examples).ok_or_else(|| {
+                BuilderError::SystemError(Report::new(Error::InvalidState(format!(
+                    "Enum {} has no valid example: no knowledge and no mutable variants",
+                    ctx.type_name()
+                ))))
+            })?
+        }
+    };
 
     // Create result paths including both root AND child paths
     Ok(create_enum_mutation_paths(
