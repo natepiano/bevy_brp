@@ -152,7 +152,9 @@
       "WebFetch(domain:internals.rust-lang.org)",
       "Bash(git push:*)",
       "Bash(curl:*)",
-      "Bash(.claude/scripts/get_guide_current_validate_args.sh:*)"
+      "Bash(.claude/scripts/get_guide_current_validate_args.sh:*)",
+      "Bash(/tmp/baseline_no_spawn.json)",
+      "Bash(/tmp/current_no_spawn.json)"
     ],
     "deny": [
       "Bash(sed:*)",
