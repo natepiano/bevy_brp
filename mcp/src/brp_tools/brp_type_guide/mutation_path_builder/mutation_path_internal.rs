@@ -11,8 +11,11 @@ use serde_json::Value;
 use serde_json::json;
 
 use super::super::brp_type_name::BrpTypeName;
-use super::super::constants::DEFAULT_SPAWN_GUIDANCE;
+use super::super::constants::OPERATION_INSERT;
+use super::super::constants::OPERATION_SPAWN;
+use super::super::constants::REFLECT_TRAIT_COMPONENT;
 use super::super::constants::REFLECT_TRAIT_DEFAULT;
+use super::super::constants::REFLECT_TRAIT_RESOURCE;
 use super::super::type_kind::TypeKind;
 use super::new_types::MutationPath;
 use super::new_types::VariantName;
@@ -98,7 +101,7 @@ impl MutationPathInternal {
         let has_default_for_root = self.has_default_for_root(field_schema);
 
         // Generate description with proper handling of PartiallyMutable status
-        let description = self.resolve_description(&type_kind, has_default_for_root);
+        let description = self.resolve_description(&type_kind, has_default_for_root, field_schema);
 
         // Resolve the appropriate path example based on mutability status
         let path_example = self.resolve_path_example(has_default_for_root);
@@ -146,7 +149,12 @@ impl MutationPathInternal {
     /// Uses type-specific terminology (fields, elements, entries, variants) instead of
     /// generic "descendants". Adds spawn guidance for paths with Default trait and notes
     /// when examples are unavailable for `PartiallyMutable` and `NotMutable` paths.
-    fn resolve_description(&self, type_kind: &TypeKind, has_default_for_root: bool) -> String {
+    fn resolve_description(
+        &self,
+        type_kind: &TypeKind,
+        has_default_for_root: bool,
+        field_schema: &Value,
+    ) -> String {
         match self.mutability {
             Mutability::PartiallyMutable => {
                 let base_msg = format!(
@@ -155,7 +163,8 @@ impl MutationPathInternal {
                     type_kind.child_terminology()
                 );
                 if has_default_for_root {
-                    format!("{base_msg}.{DEFAULT_SPAWN_GUIDANCE}")
+                    let guidance = self.get_default_spawn_guidance(field_schema);
+                    format!("{base_msg}.{guidance}")
                 } else {
                     format!("{base_msg}. No example is provided.")
                 }
@@ -165,7 +174,8 @@ impl MutationPathInternal {
                 let base_msg = format!("This {} is not mutable", type_kind.as_ref().to_lowercase());
 
                 if is_root && has_default_for_root {
-                    format!("{base_msg}.{DEFAULT_SPAWN_GUIDANCE}")
+                    let guidance = self.get_default_spawn_guidance(field_schema);
+                    format!("{base_msg}.{guidance}")
                 } else {
                     format!("{base_msg}. No example is provided.")
                 }
@@ -174,6 +184,31 @@ impl MutationPathInternal {
                 .path_kind
                 .description(type_kind, self.enum_path_info.as_ref()),
         }
+    }
+
+    /// Get the appropriate Default spawn guidance based on whether the type is a Component or
+    /// Resource
+    fn get_default_spawn_guidance(&self, field_schema: &Value) -> String {
+        let reflect_traits = field_schema
+            .get_field_array(SchemaField::ReflectTypes)
+            .map(|arr| arr.iter().filter_map(Value::as_str).collect::<Vec<_>>())
+            .unwrap_or_default();
+
+        let is_component = reflect_traits.contains(&REFLECT_TRAIT_COMPONENT);
+        let is_resource = reflect_traits.contains(&REFLECT_TRAIT_RESOURCE);
+
+        let operation = if is_component {
+            OPERATION_SPAWN
+        } else if is_resource {
+            OPERATION_INSERT
+        } else {
+            // Fallback for types that are neither Component nor Resource
+            OPERATION_SPAWN
+        };
+
+        format!(
+            " However this type implements Default and accepts empty object {{}} for {operation} or mutate operations on the root path"
+        )
     }
 
     /// Resolve the appropriate `PathExample` based on mutability status

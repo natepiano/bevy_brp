@@ -99,8 +99,11 @@ pub const ENTITY_WARNING: &str = " CAUTION: This type contains bevy_ecs::entity:
 /// Guidance for types that failed during processing
 pub const ERROR_GUIDANCE: &str = "This type was found in the registry but failed during processing. Check the 'error' field for details. No mutation paths or spawn format are available due to the processing failure.";
 
-/// Guidance appended to root path description for Default trait spawning
-pub const DEFAULT_SPAWN_GUIDANCE: &str = " However this type implements Default and accepts empty object {} for spawn, insert, or mutate operations on the root path";
+/// Operation word for Component default guidance
+pub const OPERATION_SPAWN: &str = "spawn";
+
+/// Operation word for Resource default guidance
+pub const OPERATION_INSERT: &str = "insert";
 
 /// Guidance for `spawn_format` when type is a Component
 pub const SPAWN_FORMAT_COMPONENT_GUIDANCE: &str = "The 'spawn_format' field provides an example that can be used to spawn this component on an entity.";
