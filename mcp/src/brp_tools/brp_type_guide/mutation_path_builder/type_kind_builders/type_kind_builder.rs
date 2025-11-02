@@ -8,6 +8,7 @@ use super::super::NotMutableReason;
 use super::super::mutation_path_internal::MutationPathInternal;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::recursion_context::RecursionContext;
+use super::super::types::Example;
 use super::super::types::PathAction;
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
@@ -95,7 +96,7 @@ pub trait TypeKindBuilder {
     fn assemble_from_children(
         &self,
         _ctx: &RecursionContext,
-        _children: HashMap<MutationPathDescriptor, Value>,
+        _children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         // Default - not implemented for MutationPathBuilder
         Ok(json!(null))

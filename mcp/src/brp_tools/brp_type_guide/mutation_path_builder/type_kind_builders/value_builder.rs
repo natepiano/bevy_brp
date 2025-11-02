@@ -14,6 +14,7 @@ use super::super::NotMutableReason;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
+use super::super::types::Example;
 use super::type_kind_builder::TypeKindBuilder;
 use crate::error::Result;
 
@@ -33,7 +34,7 @@ impl TypeKindBuilder for ValueMutationBuilder {
     fn assemble_from_children(
         &self,
         ctx: &RecursionContext,
-        _children: HashMap<MutationPathDescriptor, Value>,
+        _children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         // For leaf types without mutation knowledge, return appropriate reason
         Err(BuilderError::NotMutable(

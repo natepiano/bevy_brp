@@ -17,6 +17,7 @@ use super::super::new_types::StructFieldName;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
+use super::super::types::Example;
 use super::super::types::PathAction;
 use super::type_kind_builder::TypeKindBuilder;
 use crate::error::Error;
@@ -90,7 +91,7 @@ impl TypeKindBuilder for MapMutationBuilder {
     fn assemble_from_children(
         &self,
         ctx: &RecursionContext,
-        children: HashMap<MutationPathDescriptor, Value>,
+        children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         let Some(key_example) = children.get(SchemaField::Key.as_ref()) else {
             return Err(BuilderError::SystemError(
@@ -112,11 +113,15 @@ impl TypeKindBuilder for MapMutationBuilder {
             ));
         };
 
+        // Convert to Value for complexity check
+        let key_value = key_example.to_value();
+        let value_value = value_example.to_value();
+
         // Check if the key is complex (non-primitive) type
-        self.check_collection_element_complexity(key_example, ctx)?;
+        self.check_collection_element_complexity(&key_value, ctx)?;
 
         // Convert key to string (JSON maps need string keys)
-        let key_str = match key_example {
+        let key_str = match &key_value {
             Value::String(s) => s.clone(),
             Value::Number(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
@@ -137,7 +142,7 @@ impl TypeKindBuilder for MapMutationBuilder {
         // Build final map with the COMPLETE value example
         // For HashMap<String, Transform>, value_example is the full Transform
         let mut map = serde_json::Map::new();
-        map.insert(key_str, value_example.clone());
+        map.insert(key_str, value_value);
         Ok(json!(map))
     }
 }

@@ -47,6 +47,7 @@ use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::support;
 use super::super::types::EnumPathInfo;
+use super::super::types::Example;
 use super::super::types::ExampleGroup;
 use super::super::types::Mutability;
 use super::super::types::MutabilityIssue;
@@ -122,7 +123,7 @@ pub fn process_enum(
             };
 
             return Ok(vec![MutationPathInternal {
-                example:               PathExample::Simple(example),
+                example:               PathExample::Simple(Example::Json(example)),
                 mutation_path:         ctx.mutation_path.clone(),
                 type_name:             ctx.type_name().display_name(),
                 path_kind:             ctx.path_kind.clone(),
@@ -135,7 +136,7 @@ pub fn process_enum(
         }
         KnowledgeAction::UseExampleAndRecurse(example) => {
             // Use this example but still process variants
-            example
+            Example::Json(example)
         }
         KnowledgeAction::NoHardcodedKnowledge => {
             // Use preferred example from processed variants
@@ -202,7 +203,7 @@ pub fn process_enum(
 ///
 /// 3. **Fallback**: Return `None` if no `Mutable` variants exist
 ///    - The entire enum is not spawnable
-pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
+pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Example> {
     // First priority: Find a non-unit Mutable variant with a complete example
     // Note: We check mutability explicitly for clarity and safety, even though
     // example.is_some() now implies Mutable due to build_variant_group_example's logic
@@ -220,7 +221,7 @@ pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Value> {
                 .iter()
                 .find(|eg| eg.example.is_some() && eg.mutability == Mutability::Mutable)
         })
-        .and_then(|eg| eg.example.clone())
+        .and_then(|eg| eg.example.clone().map(Example::Json))
 }
 
 /// Extract all variants from schema and group them by signature
@@ -257,7 +258,7 @@ fn process_signature_path(
     applicable_variants: &[VariantName],
     signature: &VariantSignature,
     ctx: &RecursionContext,
-    child_examples: &mut HashMap<MutationPathDescriptor, Value>,
+    child_examples: &mut HashMap<MutationPathDescriptor, Example>,
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
     let mut child_ctx = ctx.create_recursion_context(path.clone(), PathAction::Create)?;
 
@@ -350,7 +351,7 @@ fn determine_signature_mutability(
 fn build_variant_group_example(
     signature: &VariantSignature,
     variants_in_group: &[VariantName],
-    child_examples: &HashMap<MutationPathDescriptor, Value>,
+    child_examples: &HashMap<MutationPathDescriptor, Example>,
     mutability: Mutability,
     ctx: &RecursionContext,
 ) -> std::result::Result<Option<Value>, BuilderError> {
@@ -364,12 +365,15 @@ fn build_variant_group_example(
     ) {
         None // Omit example field for variants that cannot be fully constructed
     } else {
-        Some(build_variant_example(
-            signature,
-            representative_variant_name,
-            child_examples,
-            ctx.type_name(),
-        ))
+        Some(
+            build_variant_example(
+                signature,
+                representative_variant_name,
+                child_examples,
+                ctx.type_name(),
+            )
+            .to_value(),
+        )
     };
 
     Ok(example)
@@ -392,33 +396,34 @@ fn build_variant_group_example(
 fn build_variant_example(
     signature: &VariantSignature,
     variant_name: &VariantName,
-    children: &HashMap<MutationPathDescriptor, Value>,
+    children: &HashMap<MutationPathDescriptor, Example>,
     enum_type: &BrpTypeName,
-) -> Value {
+) -> Example {
     let example = match signature {
-        VariantSignature::Unit => {
-            json!(variant_name.short_name())
-        }
+        VariantSignature::Unit => Example::Json(json!(variant_name.short_name())),
         VariantSignature::Tuple(types) => {
             let mut tuple_values = Vec::new();
             for index in 0..types.len() {
                 let descriptor = MutationPathDescriptor::from(index.to_string());
-                let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
-                tuple_values.push(value);
+                let example = children
+                    .get(&descriptor)
+                    .cloned()
+                    .unwrap_or(Example::NotApplicable);
+                tuple_values.push(example.to_value());
             }
             // Fix: Single-element tuples should not be wrapped in arrays
             // Vec<Value> always serializes as JSON array, but BRP expects single-element
             // tuples to use direct value format for mutations, not array format
             if tuple_values.len() == 1 {
-                json!({ variant_name.short_name(): tuple_values[0] })
+                Example::Json(json!({ variant_name.short_name(): tuple_values[0] }))
             } else {
-                json!({ variant_name.short_name(): tuple_values })
+                Example::Json(json!({ variant_name.short_name(): tuple_values }))
             }
         }
         VariantSignature::Struct(_field_types) => {
             // Use shared function to assemble struct from children (only includes mutable fields)
             let field_values = support::assemble_struct_from_children(children);
-            json!({ variant_name.short_name(): field_values })
+            Example::Json(json!({ variant_name.short_name(): field_values }))
         }
     };
 
@@ -571,9 +576,9 @@ fn build_partial_root_examples(
             let spawn_example = enum_examples
                 .iter()
                 .find(|ex| ex.applicable_variants.contains(variant_name))
-                .and_then(|ex| ex.example.clone())
+                .and_then(|ex| ex.example.clone().map(Example::Json))
                 .or_else(|| select_preferred_example(enum_examples))
-                .unwrap_or(json!(null));
+                .unwrap_or(Example::NotApplicable);
 
             // Find this variant's mutability status
             // DEFENSIVE: This lookup should always succeed because enum_examples is built by
@@ -668,7 +673,7 @@ fn build_variant_example_for_chain(
     child_mutation_paths: &[MutationPathInternal],
     variant_chain: &[VariantName],
     ctx: &RecursionContext,
-) -> Value {
+) -> Example {
     let child_refs: Vec<&MutationPathInternal> = child_mutation_paths.iter().collect();
     let children = support::collect_children_for_chain(&child_refs, ctx, Some(variant_chain));
 
@@ -822,7 +827,7 @@ fn build_enum_mutability_reason(
 fn build_enum_root_path(
     ctx: &RecursionContext,
     enum_examples: Vec<ExampleGroup>,
-    default_example: Value,
+    default_example: Example,
     enum_mutability: Mutability,
     mutability_reason: Option<NotMutableReason>,
 ) -> MutationPathInternal {
@@ -875,7 +880,7 @@ fn propagate_partial_root_examples_to_children(
 fn create_enum_mutation_paths(
     ctx: &RecursionContext,
     enum_examples: Vec<ExampleGroup>,
-    default_example: Value,
+    default_example: Example,
     mut child_mutation_paths: Vec<MutationPathInternal>,
     partial_root_examples: HashMap<Vec<VariantName>, RootExample>,
 ) -> Vec<MutationPathInternal> {

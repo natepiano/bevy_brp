@@ -20,6 +20,7 @@ use super::not_mutable_reason::NotMutableReason;
 use super::path_example::PathExample;
 use super::path_kind::PathKind;
 use super::types::EnumPathInfo;
+use super::types::Example;
 use super::types::Mutability;
 use super::types::MutabilityIssue;
 use super::types::MutabilityIssueTarget;
@@ -166,19 +167,19 @@ impl MutationPathInternal {
 
     /// Resolve the appropriate `PathExample` based on mutability status
     ///
-    /// - `NotMutable`: Returns null (no example provided)
+    /// - `NotMutable`: Returns `NotApplicable` (no example provided)
     /// - `PartiallyMutable`: Returns enum examples or empty object if Default trait exists
     /// - Mutable: Returns the original example
     fn resolve_path_example(&self, has_default_for_root: bool) -> PathExample {
         match self.mutability {
-            Mutability::NotMutable => PathExample::Simple(Value::Null),
+            Mutability::NotMutable => PathExample::Simple(Example::NotApplicable),
             Mutability::PartiallyMutable => match &self.example {
                 PathExample::EnumRoot { .. } => self.example.clone(),
                 PathExample::Simple(_) => {
                     if has_default_for_root {
-                        PathExample::Simple(json!({}))
+                        PathExample::Simple(Example::Json(json!({})))
                     } else {
-                        PathExample::Simple(Value::Null)
+                        PathExample::Simple(Example::NotApplicable)
                     }
                 }
             },

@@ -17,8 +17,12 @@ use serde_json::Value;
 use super::constants::AGENT_GUIDANCE;
 use super::constants::ENTITY_WARNING;
 use super::constants::ERROR_GUIDANCE;
+use super::constants::NO_SPAWN_FORMAT_COMPONENT;
+use super::constants::NO_SPAWN_FORMAT_RESOURCE;
 use super::constants::REFLECT_TRAIT_COMPONENT;
 use super::constants::REFLECT_TRAIT_RESOURCE;
+use super::constants::SPAWN_FORMAT_COMPONENT_GUIDANCE;
+use super::constants::SPAWN_FORMAT_RESOURCE_GUIDANCE;
 use super::constants::TYPE_BEVY_ENTITY;
 use super::mutation_path_builder::MutationPathExternal;
 use super::mutation_path_builder::{self};
@@ -76,6 +80,12 @@ impl TypeGuide {
         let mutation_paths =
             mutation_path_builder::build_mutation_paths(&brp_type_name, Arc::clone(&registry))?;
 
+        // Extract reflect traits for guidance generation
+        let reflect_traits = registry_schema
+            .get_field_array(SchemaField::ReflectTypes)
+            .map(|arr| arr.iter().filter_map(Value::as_str).into_strings())
+            .unwrap_or_default();
+
         // Extract spawn format if type is spawnable (Component or Resource)
         let spawn_format =
             Self::extract_spawn_format_if_spawnable(registry_schema, &mutation_paths);
@@ -83,8 +93,9 @@ impl TypeGuide {
         // Extract schema info from registry
         let schema_info = Some(Self::extract_schema_info(registry_schema));
 
-        // Generate agent guidance (with Entity warning if needed)
-        let agent_guidance = Self::generate_agent_guidance(&mutation_paths)?;
+        // Generate agent guidance (with Entity warning and spawn format guidance)
+        let agent_guidance =
+            Self::generate_agent_guidance(&mutation_paths, spawn_format.as_ref(), &reflect_traits)?;
 
         Ok(Self {
             type_name: brp_type_name,
@@ -126,25 +137,55 @@ impl TypeGuide {
         }
     }
 
-    /// Generate agent guidance with Entity warning if type contains Entity fields
+    /// Generate agent guidance with Entity warning and spawn format guidance
     ///
-    /// Checks all mutation paths for Entity types and adds a warning about using
-    /// valid Entity IDs from the running app.
-    fn generate_agent_guidance(mutation_paths: &[MutationPathExternal]) -> Result<String> {
-        // Check if any mutation path contains Entity type
+    /// Builds guidance text that includes:
+    /// - Base mutation paths guidance
+    /// - Entity warning (if type contains Entity fields)
+    /// - Spawn format guidance (if `spawn_format` is present)
+    fn generate_agent_guidance(
+        mutation_paths: &[MutationPathExternal],
+        spawn_format: Option<&Value>,
+        reflect_traits: &[String],
+    ) -> Result<String> {
+        let mut guidance = AGENT_GUIDANCE.to_string();
+
+        // Add Entity warning if needed
         let has_entity = mutation_paths
             .iter()
             .any(|path| path.path_info.type_name.as_str().contains(TYPE_BEVY_ENTITY));
 
         if has_entity {
-            // Get the Entity example value from type knowledge
             let entity_example = TypeKnowledge::get_entity_example_value()?;
-
             let entity_suffix = ENTITY_WARNING.replace("{}", &entity_example.to_string());
-            Ok(format!("{AGENT_GUIDANCE}{entity_suffix}"))
-        } else {
-            Ok(AGENT_GUIDANCE.to_string())
+            guidance.push_str(&entity_suffix);
         }
+
+        // Add spawn format guidance for spawnable types (Component or Resource)
+        let is_component = reflect_traits.contains(&REFLECT_TRAIT_COMPONENT.to_string());
+        let is_resource = reflect_traits.contains(&REFLECT_TRAIT_RESOURCE.to_string());
+
+        if is_component || is_resource {
+            guidance.push_str("\n\n");
+
+            if spawn_format.is_some() {
+                // Type has spawn_format - explain how to use it
+                if is_component {
+                    guidance.push_str(SPAWN_FORMAT_COMPONENT_GUIDANCE);
+                } else {
+                    guidance.push_str(SPAWN_FORMAT_RESOURCE_GUIDANCE);
+                }
+            } else {
+                // Type is spawnable but lacks spawn_format - explain why
+                if is_component {
+                    guidance.push_str(NO_SPAWN_FORMAT_COMPONENT);
+                } else {
+                    guidance.push_str(NO_SPAWN_FORMAT_RESOURCE);
+                }
+            }
+        }
+
+        Ok(guidance)
     }
 
     /// Extract spawn format if the type is spawnable (Component or Resource)

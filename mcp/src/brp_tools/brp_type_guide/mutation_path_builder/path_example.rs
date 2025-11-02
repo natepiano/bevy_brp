@@ -4,8 +4,8 @@
 //! Enum roots MUST use `EnumRoot` variant, non-enum paths MUST use `Simple` variant.
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Value;
 
+use super::types::Example;
 use super::types::ExampleGroup;
 
 #[derive(Debug, Clone)]
@@ -15,9 +15,8 @@ pub enum PathExample {
     /// Examples:
     /// - Structs: `{"field1": value1, "field2": value2}`
     /// - Primitives: `42`, `"text"`, `true`
-    /// - Arrays: `[1, 2, 3]`
     /// - `Option::None`: `null` (special case for Option enum)
-    Simple(Value),
+    Simple(Example),
 
     /// Enum root with variant groups and parent assembly value
     ///
@@ -28,21 +27,21 @@ pub enum PathExample {
         /// All variant groups for this enum (the `examples` array in JSON output)
         groups:     Vec<ExampleGroup>,
         /// Simplified example for parent assembly
-        for_parent: Value,
+        for_parent: Example,
     },
 }
 
 impl PathExample {
     /// Get the value to use for parent assembly
     ///
-    /// For `Simple`, returns the value directly.
+    /// For `Simple`, returns the example directly.
     /// For `EnumRoot`, returns the `for_parent` field.
     ///
     /// This is the ONLY helper method provided. All other usage should use explicit
     /// pattern matching to maintain type safety and force exhaustive handling of both cases.
-    pub const fn for_parent(&self) -> &Value {
+    pub const fn for_parent(&self) -> &Example {
         match self {
-            Self::Simple(val) => val,
+            Self::Simple(ex) => ex,
             Self::EnumRoot { for_parent, .. } => for_parent,
         }
     }
@@ -51,7 +50,7 @@ impl PathExample {
 /// Custom serialization for `PathExample` that flattens into parent struct
 ///
 /// This produces the correct JSON format for `MutationPathExternal`:
-/// - `Simple(value)` → `"example": <value>` (skipped if value is null)
+/// - `Simple(example)` → `"example": <value>` (skipped if value is null)
 /// - `EnumRoot { groups, .. }` → `"examples": <groups>`
 impl Serialize for PathExample {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -61,13 +60,14 @@ impl Serialize for PathExample {
         use serde::ser::SerializeMap;
 
         match self {
-            Self::Simple(value) => {
+            Self::Simple(example) => {
+                let value = example.to_value();
                 // Skip serializing null examples to match V1 behavior
                 if value.is_null() {
                     serializer.serialize_map(Some(0))?.end()
                 } else {
                     let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry("example", value)?;
+                    map.serialize_entry("example", &value)?;
                     map.end()
                 }
             }

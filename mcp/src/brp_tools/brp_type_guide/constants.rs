@@ -102,6 +102,19 @@ pub const ERROR_GUIDANCE: &str = "This type was found in the registry but failed
 /// Guidance appended to root path description for Default trait spawning
 pub const DEFAULT_SPAWN_GUIDANCE: &str = " However this type implements Default and accepts empty object {} for spawn, insert, or mutate operations on the root path";
 
+/// Guidance for `spawn_format` when type is a Component
+pub const SPAWN_FORMAT_COMPONENT_GUIDANCE: &str = "The 'spawn_format' field provides an example that can be used to spawn this component on an entity.";
+
+/// Guidance for `spawn_format` when type is a Resource
+pub const SPAWN_FORMAT_RESOURCE_GUIDANCE: &str =
+    "The 'spawn_format' field provides an example that can be used to insert this resource.";
+
+/// Explanation when Component lacks `spawn_format`
+pub const NO_SPAWN_FORMAT_COMPONENT: &str = "This component does not have a 'spawn_format' field because the root mutation path is not 'mutable'.";
+
+/// Explanation when Resource lacks `spawn_format`
+pub const NO_SPAWN_FORMAT_RESOURCE: &str = "This resource does not have a 'spawn_format' field because the root mutation path is not 'mutable'.";
+
 // ============================================================================
 // PATH PROCESSING CONSTANTS
 // ============================================================================

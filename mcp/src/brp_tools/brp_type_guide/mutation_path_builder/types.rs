@@ -15,6 +15,41 @@ use super::new_types::VariantName;
 use super::path_example::PathExample;
 use super::path_kind::PathKind;
 
+/// Self-documenting wrapper for example values in mutation paths
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Example {
+    /// A regular JSON value
+    Json(Value),
+
+    /// Explicit `Option::None` (serializes to null)
+    OptionNone,
+
+    /// No example available (for `NotMutable` paths)
+    NotApplicable,
+}
+
+impl Example {
+    /// Convert to Value for JSON operations (assembly, serialization)
+    pub fn to_value(&self) -> Value {
+        match self {
+            Self::Json(v) => v.clone(),
+            Self::OptionNone | Self::NotApplicable => Value::Null,
+        }
+    }
+}
+
+impl From<Value> for Example {
+    fn from(value: Value) -> Self {
+        Self::Json(value)
+    }
+}
+
+impl From<Example> for Value {
+    fn from(example: Example) -> Self {
+        example.to_value()
+    }
+}
+
 /// Action to take regarding path creation during recursion
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathAction {

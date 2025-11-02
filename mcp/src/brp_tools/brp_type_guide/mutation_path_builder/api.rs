@@ -16,6 +16,7 @@ use super::path_builder::recurse_mutation_paths;
 use super::path_example::PathExample;
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
+use super::types::Example;
 use super::types::MutationPathExternal;
 use crate::error::Error;
 use crate::error::Result;
@@ -65,7 +66,13 @@ pub fn extract_spawn_format(mutation_paths: &[MutationPathExternal]) -> Option<V
         .iter()
         .find(|p| (*p.path).is_empty())
         .and_then(|root_path| match &root_path.path_example {
-            PathExample::Simple(val) => Some(val.clone()),
-            PathExample::EnumRoot { groups, .. } => select_preferred_example(groups),
+            PathExample::Simple(example) => match example {
+                Example::Json(val) => Some(val.clone()),
+                Example::OptionNone => Some(Value::Null),
+                Example::NotApplicable => None,
+            },
+            PathExample::EnumRoot { groups, .. } => {
+                select_preferred_example(groups).map(|ex| ex.to_value())
+            }
         })
 }

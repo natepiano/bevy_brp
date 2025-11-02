@@ -16,6 +16,7 @@ use super::super::BuilderError;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
+use super::super::types::Example;
 use super::type_kind_builder::TypeKindBuilder;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::Error;
@@ -62,26 +63,28 @@ impl TypeKindBuilder for ArrayMutationBuilder {
     fn assemble_from_children(
         &self,
         ctx: &RecursionContext,
-        children: HashMap<MutationPathDescriptor, Value>,
+        children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         // Get the single element at index 0
         // The key is just "0", not "[0]" - that's how ArrayElement converts to
         // MutationPathDescriptor
-        let element_example =
-            children.get("0").ok_or_else(|| {
+        let element_example = children
+            .get("0")
+            .ok_or_else(|| {
                 BuilderError::SystemError(Error::InvalidState(format!(
                 "Protocol violation: Array {} missing element at index 0. Available keys: {:?}",
                 ctx.type_name(),
                 children.keys().collect::<Vec<_>>()
             )).into())
-            })?;
+            })?
+            .to_value();
 
         // Create array with appropriate size
         let array_size = Self::extract_array_size(ctx.type_name());
         let size = array_size.unwrap_or(2);
 
         // Create array filled with the element example
-        let array = vec![element_example.clone(); size];
+        let array = vec![element_example; size];
         Ok(json!(array))
     }
 

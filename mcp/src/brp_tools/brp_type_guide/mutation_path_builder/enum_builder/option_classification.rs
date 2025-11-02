@@ -5,11 +5,9 @@
 //! - `None` → `null`
 //! - `Some(value)` → `value` (unwrapped)
 
-use serde_json::Value;
-use serde_json::json;
-
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::new_types::VariantName;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::types::Example;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptionClassification {
@@ -46,10 +44,10 @@ impl OptionClassification {
 
 /// Apply `Option<T>` transformation if needed: `{"Some": value}` → `value`, `"None"` → `null`
 pub fn apply_option_transformation(
-    example: Value,
+    example: Example,
     variant_name: &VariantName,
     enum_type: &BrpTypeName,
-) -> Value {
+) -> Example {
     let type_category = OptionClassification::from_type_name(enum_type);
 
     if !type_category.is_option() {
@@ -58,15 +56,14 @@ pub fn apply_option_transformation(
 
     // Transform Option variants for BRP mutations
     match variant_name.short_name() {
-        "None" => {
-            json!(null)
-        }
+        "None" => Example::OptionNone,
         "Some" => {
             // Extract the inner value from {"Some": value}
-            if let Some(obj) = example.as_object()
+            if let Example::Json(val) = &example
+                && let Some(obj) = val.as_object()
                 && let Some(value) = obj.get("Some")
             {
-                return value.clone();
+                return Example::Json(value.clone());
             }
             example
         }

@@ -17,6 +17,7 @@ use super::super::new_types::StructFieldName;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
+use super::super::types::Example;
 use super::super::types::PathAction;
 use super::type_kind_builder::TypeKindBuilder;
 use crate::error::Error;
@@ -59,7 +60,7 @@ impl TypeKindBuilder for SetMutationBuilder {
     fn assemble_from_children(
         &self,
         ctx: &RecursionContext,
-        children: HashMap<MutationPathDescriptor, Value>,
+        children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         // At this point, children contains a COMPLETE example for the item type
         let Some(item_example) = children.get(SchemaField::Items.as_ref()) else {
@@ -72,12 +73,15 @@ impl TypeKindBuilder for SetMutationBuilder {
             ));
         };
 
+        // Convert to Value for complexity check
+        let item_value = item_example.to_value();
+
         // Check if the element is complex (non-primitive) type
-        self.check_collection_element_complexity(item_example, ctx)?;
+        self.check_collection_element_complexity(&item_value, ctx)?;
 
         // Create array with 2 example elements
         // For Sets, these represent unique values to add
-        let array = vec![item_example.clone(); 2];
+        let array = vec![item_value; 2];
         Ok(json!(array))
     }
 

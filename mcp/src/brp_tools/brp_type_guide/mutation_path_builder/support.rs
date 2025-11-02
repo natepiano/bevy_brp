@@ -13,6 +13,7 @@ use super::mutation_path_internal::MutationPathInternal;
 use super::new_types::VariantName;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
+use super::types::Example;
 use super::types::Mutability;
 use super::types::RootExample;
 
@@ -71,18 +72,18 @@ fn is_variant_chain_compatible(child: &MutationPathInternal, child_chain: &[Vari
 fn extract_child_value_for_chain(
     child: &MutationPathInternal,
     child_chain: Option<&[VariantName]>,
-) -> Value {
+) -> Example {
     let fallback = || child.example.for_parent().clone();
 
     child_chain.map_or_else(fallback, |chain| {
         child
-            .partial_root_examples // Changed from partial_root_examples
+            .partial_root_examples
             .as_ref()
             .and_then(|partials| {
                 // Helper to extract Value from RootExample
                 let get_value = |root_ex: &RootExample| match root_ex {
                     RootExample::Available { root_example } if !root_example.is_null() => {
-                        Some(root_example.clone())
+                        Some(Example::Json(root_example.clone()))
                     } // Skip null to prefer data-filled variants
                     _ => None,
                 };
@@ -118,7 +119,7 @@ pub fn collect_children_for_chain(
     child_paths: &[&MutationPathInternal],
     ctx: &RecursionContext,
     target_chain: Option<&[VariantName]>,
-) -> HashMap<MutationPathDescriptor, Value> {
+) -> HashMap<MutationPathDescriptor, Example> {
     child_paths
         .iter()
         // Skip grandchildren - only process direct children
@@ -128,11 +129,11 @@ pub fn collect_children_for_chain(
         // Exclude NotMutable children - they can't be set in root_example
         // Include Mutable and PartiallyMutable (enum builder selects mutable variants)
         .filter(|child| !matches!(child.mutability, Mutability::NotMutable))
-        // Map to (descriptor, value) pairs
+        // Map to (descriptor, example) pairs
         .map(|child| {
             let descriptor = child.path_kind.to_mutation_path_descriptor();
-            let value = extract_child_value_for_chain(child, target_chain);
-            (descriptor, value)
+            let example = extract_child_value_for_chain(child, target_chain);
+            (descriptor, example)
         })
         .collect()
 }
@@ -146,7 +147,7 @@ pub fn collect_children_for_chain(
 /// Used for assembling struct-like objects from child examples in both structs and enum struct
 /// variants.
 pub fn assemble_struct_from_children(
-    children: &HashMap<MutationPathDescriptor, Value>,
+    children: &HashMap<MutationPathDescriptor, Example>,
 ) -> serde_json::Map<String, Value> {
     let mut struct_obj = serde_json::Map::new();
 
@@ -157,7 +158,7 @@ pub fn assemble_struct_from_children(
     for descriptor in sorted_keys {
         let field_name = (*descriptor).to_string();
         let example = &children[descriptor];
-        struct_obj.insert(field_name, example.clone());
+        struct_obj.insert(field_name, example.to_value());
     }
 
     struct_obj
@@ -195,7 +196,7 @@ pub fn populate_root_examples_from_partials(
 /// This is shared between `path_builder.rs` (non-enum types) and `enum_path_builder.rs`
 /// (enum types) to avoid code duplication.
 pub fn wrap_example_with_availability(
-    example: Value,
+    example: Example,
     children: &[&MutationPathInternal],
     chain: &[VariantName],
     parent_unavailable_reason: Option<String>,
@@ -218,7 +219,7 @@ pub fn wrap_example_with_availability(
 
     unavailable_reason.map_or(
         RootExample::Available {
-            root_example: example,
+            root_example: example.to_value(),
         },
         |reason| RootExample::Unavailable {
             root_example_unavailable_reason: reason,

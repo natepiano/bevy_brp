@@ -17,6 +17,7 @@ use super::super::NotMutableReason;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
+use super::super::types::Example;
 use super::type_kind_builder::TypeKindBuilder;
 use crate::error::Error;
 use crate::error::Result;
@@ -78,7 +79,7 @@ impl TypeKindBuilder for TupleMutationBuilder {
     fn assemble_from_children(
         &self,
         ctx: &RecursionContext,
-        children: HashMap<MutationPathDescriptor, Value>,
+        children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         // First extract element types to check for Handle wrapper
         let schema = ctx.require_registry_schema()?;
@@ -102,7 +103,9 @@ impl TypeKindBuilder for TupleMutationBuilder {
             // MutationPathBuilder creates descriptors from PathKind.to_mutation_path_descriptor()
             // For IndexedElement, this returns just the index as a string
             let key = MutationPathDescriptor::from(index.to_string());
-            let example = children.get(&key).cloned().unwrap_or(json!(null));
+            let example = children
+                .get(&key)
+                .map_or_else(|| json!(null), Example::to_value);
             tuple_examples.push(example);
         }
 

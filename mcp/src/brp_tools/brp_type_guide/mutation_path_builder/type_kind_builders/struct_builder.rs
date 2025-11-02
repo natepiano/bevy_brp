@@ -18,6 +18,7 @@ use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::support;
+use super::super::types::Example;
 use super::type_kind_builder::TypeKindBuilder;
 use crate::error::Error;
 use crate::error::Result;
@@ -83,7 +84,7 @@ impl TypeKindBuilder for StructMutationBuilder {
     fn assemble_from_children(
         &self,
         _ctx: &RecursionContext,
-        children: HashMap<MutationPathDescriptor, Value>,
+        children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         if children.is_empty() {
             // Valid case: empty struct with no fields (e.g., marker structs)

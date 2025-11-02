@@ -46,6 +46,7 @@ use super::type_kind_builders::TupleMutationBuilder;
 use super::type_kind_builders::TypeKindBuilder;
 use super::type_kind_builders::ValueMutationBuilder;
 use super::types::EnumPathInfo;
+use super::types::Example;
 use super::types::Mutability;
 use super::types::MutabilityIssue;
 use super::types::PathAction;
@@ -60,7 +61,7 @@ struct ChildProcessingResult {
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Example>,
 }
 
 pub struct MutationPathBuilder<B: TypeKindBuilder> {
@@ -97,13 +98,13 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                 // so we wrap in vec![] to match build_paths() return type
                 return Ok(vec![Self::build_mutation_path_internal(
                     ctx,
-                    PathExample::Simple(example),
+                    PathExample::Simple(Example::Json(example)),
                     Mutability::Mutable,
                     None,
                     None,
                 )]);
             }
-            KnowledgeAction::UseExampleAndRecurse(example) => Some(example),
+            KnowledgeAction::UseExampleAndRecurse(example) => Some(Example::Json(example)),
             KnowledgeAction::NoHardcodedKnowledge => None,
         };
 
@@ -115,9 +116,13 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
         } = self.process_all_children(ctx)?;
 
         // Assemble THIS level from children (post-order)
-        let assembled_example = self
+        // Clone child_examples since we need it later for filtering
+        let assembled_value = self
             .inner
             .assemble_from_children(ctx, child_examples.clone())?;
+
+        // Wrap result in Example
+        let assembled_example = Example::Json(assembled_value);
 
         // Assemble partial_root_examples from children (same bottom-up approach)
         // Filter to only direct children by matching against child_examples keys
@@ -129,17 +134,14 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
             Self::build_partial_root_examples(&self.inner, ctx, direct_children.as_slice())?;
 
         // Use knowledge example if available (for Teach types), otherwise use assembled example
-        let final_example =
-            knowledge_example.map_or(assembled_example, |knowledge_example| knowledge_example);
+        let final_example = knowledge_example.unwrap_or(assembled_example);
 
         // Compute parent's mutation status from children's statuses
         let (parent_status, mutability_reason) = determine_parent_mutability(ctx, &all_paths);
 
-        // Conversion removed - pass typed enum directly
-
         // Build examples appropriately based on mutation status
-        let example_to_use = match parent_status {
-            Mutability::NotMutable => json!(null),
+        let example_to_use: Example = match parent_status {
+            Mutability::NotMutable => Example::NotApplicable,
             Mutability::PartiallyMutable => {
                 // Build partial example with only mutable children
                 let mutable_child_examples: HashMap<_, _> = child_examples
@@ -151,13 +153,16 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                                 && matches!(p.mutability, Mutability::Mutable)
                         })
                     })
-                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .map(|(k, ex)| (k.clone(), ex.clone()))
                     .collect();
 
                 // Assemble from only mutable children
-                self.inner
+                let assembled = self
+                    .inner
                     .assemble_from_children(ctx, mutable_child_examples)
-                    .unwrap_or(json!(null))
+                    .unwrap_or_else(|_| json!(null));
+
+                Example::Json(assembled)
             }
             Mutability::Mutable => final_example,
         };
@@ -332,7 +337,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             .map_err(BuilderError::SystemError)?;
         let mut all_paths = vec![];
         let mut paths_to_expose = vec![]; // Paths that should be included in final result
-        let mut child_examples = HashMap::<MutationPathDescriptor, Value>::new();
+        let mut child_examples = HashMap::<MutationPathDescriptor, Example>::new();
 
         // Recurse to each child (they handle their own protocol)
         for path_kind in child_items {
@@ -365,7 +370,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     fn process_child(
         descriptor: &MutationPathDescriptor,
         child_ctx: &RecursionContext,
-    ) -> Result<(Vec<MutationPathInternal>, Value)> {
+    ) -> Result<(Vec<MutationPathInternal>, Example)> {
         tracing::debug!(
             "PROCESS_CHILD: descriptor='{}', type='{}', path='{}', depth={}",
             &**descriptor,
@@ -382,7 +387,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 child_ctx,
                 NotMutableReason::NotInRegistry(child_ctx.type_name().clone()),
             );
-            return Ok((vec![not_mutable_path], json!(null)));
+            return Ok((vec![not_mutable_path], Example::NotApplicable));
         };
 
         let child_kind = TypeKind::from_schema(child_schema);
@@ -402,7 +407,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         // Extract child's example - handle both simple and enum root cases
         let child_example = child_paths
             .first()
-            .map_or(json!(null), |p| p.example.for_parent().clone());
+            .map_or(Example::NotApplicable, |p| p.example.for_parent().clone());
 
         Ok((child_paths, child_example))
     }
@@ -499,12 +504,13 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             let examples_for_chain =
                 support::collect_children_for_chain(child_paths, ctx, Some(&chain));
 
+            // Convert to values for assembly
             // Assemble from filtered children
-            let assembled_example = builder.assemble_from_children(ctx, examples_for_chain)?;
+            let assembled_value = builder.assemble_from_children(ctx, examples_for_chain)?;
 
             // Use shared helper to wrap with availability status
             let root_example = support::wrap_example_with_availability(
-                assembled_example,
+                Example::Json(assembled_value),
                 child_paths,
                 &chain,
                 None,
@@ -520,7 +526,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     fn build_final_result(
         ctx: &RecursionContext,
         mut paths_to_expose: Vec<MutationPathInternal>,
-        example_to_use: Value,
+        example_to_use: Example,
         parent_status: Mutability,
         mutability_reason: Option<NotMutableReason>,
         partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
@@ -571,7 +577,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     ) -> MutationPathInternal {
         Self::build_mutation_path_internal(
             ctx,
-            PathExample::Simple(json!(null)), // No example for NotMutable paths
+            PathExample::Simple(Example::NotApplicable), // Self-documenting!
             Mutability::NotMutable,
             Some(reason),
             None, // No partial roots for NotMutable paths
