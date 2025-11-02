@@ -151,7 +151,8 @@
       "WebFetch(domain:poignardazur.github.io)",
       "WebFetch(domain:internals.rust-lang.org)",
       "Bash(git push:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(.claude/scripts/get_guide_current_validate_args.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",
