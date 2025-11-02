@@ -144,7 +144,8 @@ impl MutationPathInternal {
     /// Generate human-readable description for this mutation path
     ///
     /// Uses type-specific terminology (fields, elements, entries, variants) instead of
-    /// generic "descendants". Adds spawn guidance for `PartiallyMutable` root paths with Default.
+    /// generic "descendants". Adds spawn guidance for paths with Default trait and notes
+    /// when examples are unavailable for `PartiallyMutable` and `NotMutable` paths.
     fn resolve_description(&self, type_kind: &TypeKind, has_default_for_root: bool) -> String {
         match self.mutability {
             Mutability::PartiallyMutable => {
@@ -156,10 +157,20 @@ impl MutationPathInternal {
                 if has_default_for_root {
                     format!("{base_msg}.{DEFAULT_SPAWN_GUIDANCE}")
                 } else {
-                    base_msg
+                    format!("{base_msg}. No example is provided.")
                 }
             }
-            _ => self
+            Mutability::NotMutable => {
+                let is_root = matches!(self.path_kind, PathKind::RootValue { .. });
+                let base_msg = format!("This {} is not mutable", type_kind.as_ref().to_lowercase());
+
+                if is_root && has_default_for_root {
+                    format!("{base_msg}.{DEFAULT_SPAWN_GUIDANCE}")
+                } else {
+                    format!("{base_msg}. No example is provided.")
+                }
+            }
+            Mutability::Mutable => self
                 .path_kind
                 .description(type_kind, self.enum_path_info.as_ref()),
         }
