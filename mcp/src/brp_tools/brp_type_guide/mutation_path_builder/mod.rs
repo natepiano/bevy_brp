@@ -14,11 +14,12 @@ mod types;
 
 // public use
 pub(super) use api::build_mutation_paths;
-pub(super) use api::extract_spawn_format;
+pub(super) use api::extract_spawn_insert_example;
 pub(super) use enum_builder::VariantSignature;
 use error_stack::Report;
 use not_mutable_reason::NotMutableReason;
 pub(super) use types::MutationPathExternal;
+pub(super) use types::SpawnInsertExample;
 
 // local use
 use crate::error::Error;

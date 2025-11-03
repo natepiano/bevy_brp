@@ -17,14 +17,9 @@ use serde_json::Value;
 use super::constants::AGENT_GUIDANCE;
 use super::constants::ENTITY_WARNING;
 use super::constants::ERROR_GUIDANCE;
-use super::constants::NO_SPAWN_FORMAT_COMPONENT;
-use super::constants::NO_SPAWN_FORMAT_RESOURCE;
-use super::constants::REFLECT_TRAIT_COMPONENT;
-use super::constants::REFLECT_TRAIT_RESOURCE;
-use super::constants::SPAWN_FORMAT_COMPONENT_GUIDANCE;
-use super::constants::SPAWN_FORMAT_RESOURCE_GUIDANCE;
 use super::constants::TYPE_BEVY_ENTITY;
 use super::mutation_path_builder::MutationPathExternal;
+use super::mutation_path_builder::SpawnInsertExample;
 use super::mutation_path_builder::{self};
 use super::response_types::BrpTypeName;
 use super::response_types::SchemaInfo;
@@ -40,25 +35,25 @@ use crate::json_schema::SchemaField;
 /// because that's what's on the tin
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeGuide {
-    /// Guidance for AI agents about using mutation paths
-    pub agent_guidance: String,
     /// Fully-qualified type name
-    pub type_name:      BrpTypeName,
+    pub type_name:            BrpTypeName,
     /// Whether the type is registered in the Bevy registry
-    pub in_registry:    bool,
+    pub in_registry:          bool,
+    /// Example format for spawn/insert operations with guidance
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub spawn_insert_example: Option<SpawnInsertExample>,
+    /// Guidance for AI agents about using mutation paths
+    pub agent_guidance:       String,
     /// Mutation paths available for this type - using same format as V1
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub mutation_paths: Vec<MutationPathExternal>,
-    /// Example format for spawn/insert operations when supported
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub spawn_format:   Option<Value>,
+    pub mutation_paths:       Vec<MutationPathExternal>,
     /// Schema information from the registry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schema_info:    Option<SchemaInfo>,
+    pub schema_info:          Option<SchemaInfo>,
     /// Type information for direct fields (struct fields only, one level deep)
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error:          Option<String>,
+    pub error:                Option<String>,
 }
 
 impl TypeGuide {
@@ -80,28 +75,27 @@ impl TypeGuide {
         let mutation_paths =
             mutation_path_builder::build_mutation_paths(&brp_type_name, Arc::clone(&registry))?;
 
-        // Extract reflect traits for guidance generation
+        // Extract reflect traits for guidance generation and spawn/insert example
         let reflect_traits = registry_schema
             .get_field_array(SchemaField::ReflectTypes)
             .map(|arr| arr.iter().filter_map(Value::as_str).into_strings())
             .unwrap_or_default();
 
-        // Extract spawn format if type is spawnable (Component or Resource)
-        let spawn_format =
-            Self::extract_spawn_format_if_spawnable(registry_schema, &mutation_paths);
+        // Extract spawn/insert example (calls api.rs directly, no wrapper needed)
+        let spawn_insert_example =
+            mutation_path_builder::extract_spawn_insert_example(&mutation_paths, &reflect_traits);
 
         // Extract schema info from registry
         let schema_info = Some(Self::extract_schema_info(registry_schema));
 
-        // Generate agent guidance (with Entity warning and spawn format guidance)
-        let agent_guidance =
-            Self::generate_agent_guidance(&mutation_paths, spawn_format.as_ref(), &reflect_traits)?;
+        // Generate agent guidance (with Entity warning)
+        let agent_guidance = Self::generate_agent_guidance(&mutation_paths)?;
 
         Ok(Self {
             type_name: brp_type_name,
             in_registry: true,
             mutation_paths,
-            spawn_format,
+            spawn_insert_example,
             schema_info,
             agent_guidance,
             error: None,
@@ -114,7 +108,7 @@ impl TypeGuide {
             type_name,
             in_registry: false,
             mutation_paths: Vec::new(),
-            spawn_format: None,
+            spawn_insert_example: None,
             schema_info: None,
             agent_guidance: AGENT_GUIDANCE.to_string(),
             error: Some(error_msg),
@@ -130,24 +124,19 @@ impl TypeGuide {
             type_name,
             in_registry: true, // Type WAS found in registry
             mutation_paths: Vec::new(),
-            spawn_format: None,
+            spawn_insert_example: None,
             schema_info: None,
             agent_guidance: ERROR_GUIDANCE.to_string(),
             error: Some(error_msg),
         }
     }
 
-    /// Generate agent guidance with Entity warning and spawn format guidance
+    /// Generate agent guidance with Entity warning
     ///
     /// Builds guidance text that includes:
     /// - Base mutation paths guidance
     /// - Entity warning (if type contains Entity fields)
-    /// - Spawn format guidance (if `spawn_format` is present)
-    fn generate_agent_guidance(
-        mutation_paths: &[MutationPathExternal],
-        spawn_format: Option<&Value>,
-        reflect_traits: &[String],
-    ) -> Result<String> {
+    fn generate_agent_guidance(mutation_paths: &[MutationPathExternal]) -> Result<String> {
         let mut guidance = AGENT_GUIDANCE.to_string();
 
         // Add Entity warning if needed
@@ -161,56 +150,7 @@ impl TypeGuide {
             guidance.push_str(&entity_suffix);
         }
 
-        // Add spawn format guidance for spawnable types (Component or Resource)
-        let is_component = reflect_traits.contains(&REFLECT_TRAIT_COMPONENT.to_string());
-        let is_resource = reflect_traits.contains(&REFLECT_TRAIT_RESOURCE.to_string());
-
-        if is_component || is_resource {
-            guidance.push_str("\n\n");
-
-            if spawn_format.is_some() {
-                // Type has spawn_format - explain how to use it
-                if is_component {
-                    guidance.push_str(SPAWN_FORMAT_COMPONENT_GUIDANCE);
-                } else {
-                    guidance.push_str(SPAWN_FORMAT_RESOURCE_GUIDANCE);
-                }
-            } else {
-                // Type is spawnable but lacks spawn_format - explain why
-                if is_component {
-                    guidance.push_str(NO_SPAWN_FORMAT_COMPONENT);
-                } else {
-                    guidance.push_str(NO_SPAWN_FORMAT_RESOURCE);
-                }
-            }
-        }
-
         Ok(guidance)
-    }
-
-    /// Extract spawn format if the type is spawnable (Component or Resource)
-    ///
-    /// Encapsulates the logic for determining whether a type should have a spawn format
-    /// and extracting it from the mutation paths.
-    fn extract_spawn_format_if_spawnable(
-        registry_schema: &Value,
-        mutation_paths: &[MutationPathExternal],
-    ) -> Option<Value> {
-        // Check if type is spawnable (has Component or Resource trait)
-        let reflect_types = registry_schema
-            .get_field_array(SchemaField::ReflectTypes)
-            .map(|arr| arr.iter().filter_map(Value::as_str).into_strings())
-            .unwrap_or_default();
-
-        let is_spawnable = reflect_types.iter().any(|trait_name| {
-            trait_name == REFLECT_TRAIT_COMPONENT || trait_name == REFLECT_TRAIT_RESOURCE
-        });
-
-        if is_spawnable {
-            mutation_path_builder::extract_spawn_format(mutation_paths)
-        } else {
-            None
-        }
     }
 
     /// Extract schema information from registry schema
