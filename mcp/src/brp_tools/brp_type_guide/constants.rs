@@ -105,18 +105,21 @@ pub const OPERATION_SPAWN: &str = "spawn";
 /// Operation word for Resource default guidance
 pub const OPERATION_INSERT: &str = "insert";
 
-/// Guidance for `spawn_format` when type is a Component
-pub const SPAWN_FORMAT_COMPONENT_GUIDANCE: &str = "The 'spawn_format' field provides an example that can be used to spawn this component on an entity.";
+/// Guidance for `spawn_example` when type is a Component
+pub const SPAWN_COMPONENT_GUIDANCE: &str =
+    "The 'example' below can be used to spawn this component on an entity.";
 
-/// Guidance for `spawn_format` when type is a Resource
-pub const SPAWN_FORMAT_RESOURCE_GUIDANCE: &str =
-    "The 'spawn_format' field provides an example that can be used to insert this resource.";
+/// Guidance for `resource_example` when type is a Resource
+pub const INSERT_RESOURCE_GUIDANCE: &str =
+    "The 'example' below can be used to insert this resource.";
 
-/// Explanation when Component lacks `spawn_format`
-pub const NO_SPAWN_FORMAT_COMPONENT: &str = "This component does not have a 'spawn_format' field because the root mutation path is not 'mutable'.";
+/// Template for Component without spawn example (use with OPERATION_SPAWN)
+pub const NO_COMPONENT_EXAMPLE_TEMPLATE: &str =
+    "This component does not have a {} example because the root mutation path is not 'mutable'.";
 
-/// Explanation when Resource lacks `spawn_format`
-pub const NO_SPAWN_FORMAT_RESOURCE: &str = "This resource does not have a 'spawn_format' field because the root mutation path is not 'mutable'.";
+/// Template for Resource without insert example (use with OPERATION_INSERT)
+pub const NO_RESOURCE_EXAMPLE_TEMPLATE: &str =
+    "This resource does not have an {} example because the root mutation path is not 'mutable'.";
 
 // ============================================================================
 // PATH PROCESSING CONSTANTS

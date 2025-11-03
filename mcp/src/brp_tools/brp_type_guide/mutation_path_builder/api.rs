@@ -10,6 +10,14 @@ use std::sync::Arc;
 use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
+use super::super::constants::INSERT_RESOURCE_GUIDANCE;
+use super::super::constants::NO_COMPONENT_EXAMPLE_TEMPLATE;
+use super::super::constants::NO_RESOURCE_EXAMPLE_TEMPLATE;
+use super::super::constants::OPERATION_INSERT;
+use super::super::constants::OPERATION_SPAWN;
+use super::super::constants::REFLECT_TRAIT_COMPONENT;
+use super::super::constants::REFLECT_TRAIT_RESOURCE;
+use super::super::constants::SPAWN_COMPONENT_GUIDANCE;
 use super::super::type_kind::TypeKind;
 use super::enum_builder::select_preferred_example;
 use super::path_builder::recurse_mutation_paths;
@@ -18,6 +26,7 @@ use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
 use super::types::Example;
 use super::types::MutationPathExternal;
+use super::types::SpawnInsertExample;
 use crate::error::Error;
 use crate::error::Result;
 
@@ -57,22 +66,54 @@ pub fn build_mutation_paths(
     Ok(external_paths)
 }
 
-/// Extract spawn format from the root mutation path
+/// Extract spawn/insert example with guidance for AI agents
 ///
-/// This is a helper function for extracting the example value from the root path ("")
-/// which is used as the spawn format for types that support spawn/insert operations.
-pub fn extract_spawn_format(mutation_paths: &[MutationPathExternal]) -> Option<Value> {
-    mutation_paths
-        .iter()
-        .find(|p| (*p.path).is_empty())
-        .and_then(|root_path| match &root_path.path_example {
-            PathExample::Simple(example) => match example {
-                Example::Json(val) => Some(val.clone()),
-                Example::OptionNone => Some(Value::Null),
-                Example::NotApplicable => None,
-            },
-            PathExample::EnumRoot { groups, .. } => {
-                select_preferred_example(groups).map(|ex| ex.to_value())
-            }
+/// Returns `None` if the type is neither a Component nor a Resource.
+/// Otherwise, returns a `SpawnInsertExample` with appropriate guidance and example.
+pub fn extract_spawn_insert_example(
+    mutation_paths: &[MutationPathExternal],
+    reflect_traits: &[String],
+) -> Option<SpawnInsertExample> {
+    // Check if type is Component or Resource
+    let is_component = reflect_traits.iter().any(|t| t == REFLECT_TRAIT_COMPONENT);
+    let is_resource = reflect_traits.iter().any(|t| t == REFLECT_TRAIT_RESOURCE);
+
+    if !is_component && !is_resource {
+        return None;
+    }
+
+    // Extract root path example
+    let root_path = mutation_paths.iter().find(|p| (*p.path).is_empty())?;
+
+    let example = match &root_path.path_example {
+        PathExample::Simple(ex) => ex.clone(),
+        PathExample::EnumRoot { groups, .. } => {
+            select_preferred_example(groups).unwrap_or(Example::NotApplicable)
+        }
+    };
+
+    // Build appropriate variant based on type
+    if is_component {
+        let agent_guidance = if matches!(example, Example::NotApplicable) {
+            NO_COMPONENT_EXAMPLE_TEMPLATE.replace("{}", OPERATION_SPAWN)
+        } else {
+            SPAWN_COMPONENT_GUIDANCE.to_string()
+        };
+
+        Some(SpawnInsertExample::SpawnExample {
+            agent_guidance,
+            example,
         })
+    } else {
+        let agent_guidance = if matches!(example, Example::NotApplicable) {
+            NO_RESOURCE_EXAMPLE_TEMPLATE.replace("{}", OPERATION_INSERT)
+        } else {
+            INSERT_RESOURCE_GUIDANCE.to_string()
+        };
+
+        Some(SpawnInsertExample::ResourceExample {
+            agent_guidance,
+            example,
+        })
+    }
 }

@@ -5,6 +5,7 @@
 
 use serde::Deserialize;
 use serde::Serialize;
+use serde::ser::SerializeMap;
 use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
@@ -35,6 +36,12 @@ impl Example {
             Self::Json(v) => v.clone(),
             Self::OptionNone | Self::NotApplicable => Value::Null,
         }
+    }
+
+    /// Returns true if this Example represents a null-equivalent value
+    /// (OptionNone or NotApplicable)
+    pub const fn is_null_equivalent(&self) -> bool {
+        matches!(self, Self::OptionNone | Self::NotApplicable)
     }
 }
 
@@ -206,4 +213,106 @@ pub enum RootExample {
     Unavailable {
         root_example_unavailable_reason: String,
     },
+}
+
+/// Spawn/insert example with educational guidance for AI agents
+///
+/// Serializes differently based on variant:
+/// - `SpawnExample` → `{"spawn_example": {"agent_guidance": "...", "example": <value>}}`
+/// - `ResourceExample` → `{"resource_example": {"agent_guidance": "...", "example": <value>}}`
+///
+/// When `example` is `Example::NotApplicable`, only `agent_guidance` is included.
+///
+/// Note: Only derives Debug and Clone (NOT Deserialize) because we implement
+/// Deserialize manually below with a stub that returns an error.
+#[derive(Debug, Clone)]
+pub enum SpawnInsertExample {
+    SpawnExample {
+        agent_guidance: String,
+        example:        Example,
+    },
+    ResourceExample {
+        agent_guidance: String,
+        example:        Example,
+    },
+}
+
+impl Serialize for SpawnInsertExample {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::SpawnExample {
+                agent_guidance,
+                example,
+            } => {
+                // Check if example is NotApplicable (null-equivalent)
+                if example.is_null_equivalent() {
+                    // Only serialize agent_guidance field
+                    let mut map = serializer.serialize_map(Some(1))?;
+                    map.serialize_entry(
+                        "spawn_example",
+                        &serde_json::json!({
+                            "agent_guidance": agent_guidance
+                        }),
+                    )?;
+                    map.end()
+                } else {
+                    // Serialize both fields
+                    let mut map = serializer.serialize_map(Some(1))?;
+                    map.serialize_entry(
+                        "spawn_example",
+                        &serde_json::json!({
+                            "agent_guidance": agent_guidance,
+                            "example": example.to_value()
+                        }),
+                    )?;
+                    map.end()
+                }
+            }
+            Self::ResourceExample {
+                agent_guidance,
+                example,
+            } => {
+                // Check if example is NotApplicable (null-equivalent)
+                if example.is_null_equivalent() {
+                    // Only serialize agent_guidance field
+                    let mut map = serializer.serialize_map(Some(1))?;
+                    map.serialize_entry(
+                        "resource_example",
+                        &serde_json::json!({
+                            "agent_guidance": agent_guidance
+                        }),
+                    )?;
+                    map.end()
+                } else {
+                    // Serialize both fields
+                    let mut map = serializer.serialize_map(Some(1))?;
+                    map.serialize_entry(
+                        "resource_example",
+                        &serde_json::json!({
+                            "agent_guidance": agent_guidance,
+                            "example": example.to_value()
+                        }),
+                    )?;
+                    map.end()
+                }
+            }
+        }
+    }
+}
+
+/// Stub `Deserialize` implementation for `SpawnInsertExample`
+///
+/// Required by serde's flatten attribute but never actually used.
+impl<'de> Deserialize<'de> for SpawnInsertExample {
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Err(serde::de::Error::custom(
+            "SpawnInsertExample deserialization not implemented - this type is write-only",
+        ))
+    }
 }

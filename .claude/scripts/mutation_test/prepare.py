@@ -429,7 +429,9 @@ def build_type_data_complete(
             object,
             {
                 "type_name": type_name,
-                "spawn_format": type_data_raw.get("spawn_format"),
+                "spawn_example": type_data_raw.get("spawn_example"),
+                "resource_example": type_data_raw.get("resource_example"),
+                "agent_guidance": type_data_raw.get("agent_guidance"),
                 "mutation_paths": type_data_raw.get("mutation_paths"),
                 "supported_operations": type_data_raw.get("supported_operations"),
                 "in_registry": type_data_raw.get("in_registry"),
@@ -490,7 +492,7 @@ def format_type_description(
     return f"{short_name} ({category}: {op_count} ops)"
 
 
-ENTITY_ID_PLACEHOLDER = 8589934670  # Placeholder entity ID used in spawn_format
+ENTITY_ID_PLACEHOLDER = 8589934670  # Placeholder entity ID used in spawn/resource examples
 
 
 def contains_entity_placeholder(value: Any) -> bool:  # pyright: ignore[reportExplicitAny]
@@ -513,16 +515,41 @@ def contains_entity_placeholder(value: Any) -> bool:  # pyright: ignore[reportEx
     return False
 
 
+def extract_example_value(type_data: TypeDataComplete, mutation_type: str | None) -> object | None:
+    """
+    Extract the example value from spawn_example or resource_example.
+
+    Args:
+        type_data: Complete type data
+        mutation_type: "Component" or "Resource" or None
+
+    Returns:
+        The example value if present, None otherwise
+    """
+    if mutation_type == "Component":
+        spawn_example = type_data.get("spawn_example")
+        if spawn_example is not None:
+            return spawn_example.get("example")
+    elif mutation_type == "Resource":
+        resource_example = type_data.get("resource_example")
+        if resource_example is not None:
+            return resource_example.get("example")
+
+    return None
+
+
 def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]:
     """Generate test operations for a single type."""
     operations: list[TestOperation] = []
     type_name = type_data["type_name"]
     mutation_type = type_data.get("mutation_type")
-    spawn_format = type_data.get("spawn_format")
     mutation_paths = type_data.get("mutation_paths") or []
 
-    # Step 1: Spawn or Insert (if spawn_format exists)
-    if spawn_format is not None:
+    # Extract example value based on mutation_type
+    example_value = extract_example_value(type_data, mutation_type)
+
+    # Step 1: Spawn or Insert (if example exists)
+    if example_value is not None:
         if mutation_type == "Component":
             # Spawn entity with component
             op = cast(
@@ -532,13 +559,13 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
                     {
                         "operation_id": len(operations),
                         "tool": "mcp__brp__world_spawn_entity",
-                        "components": {type_name: spawn_format},
+                        "components": {type_name: example_value},
                     },
                 ),
             )
 
             # Check for entity ID placeholders
-            if contains_entity_placeholder(spawn_format):
+            if contains_entity_placeholder(example_value):
                 op["entity_id_substitution"] = ENTITY_ID_PLACEHOLDER
 
             operations.append(op)
@@ -552,13 +579,13 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
                         "operation_id": len(operations),
                         "tool": "mcp__brp__world_insert_resources",
                         "resource": type_name,
-                        "value": spawn_format,
+                        "value": example_value,
                     },
                 ),
             )
 
             # Check for entity ID placeholders
-            if contains_entity_placeholder(spawn_format):
+            if contains_entity_placeholder(example_value):
                 op["entity_id_substitution"] = ENTITY_ID_PLACEHOLDER
 
             operations.append(op)
