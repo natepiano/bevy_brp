@@ -113,11 +113,11 @@ pub const SPAWN_COMPONENT_GUIDANCE: &str =
 pub const INSERT_RESOURCE_GUIDANCE: &str =
     "The 'example' below can be used to insert this resource.";
 
-/// Template for Component without spawn example (use with OPERATION_SPAWN)
+/// Template for Component without spawn example (use with `OPERATION_SPAWN`)
 pub const NO_COMPONENT_EXAMPLE_TEMPLATE: &str =
     "This component does not have a {} example because the root mutation path is not 'mutable'.";
 
-/// Template for Resource without insert example (use with OPERATION_INSERT)
+/// Template for Resource without insert example (use with `OPERATION_INSERT`)
 pub const NO_RESOURCE_EXAMPLE_TEMPLATE: &str =
     "This resource does not have an {} example because the root mutation path is not 'mutable'.";
 

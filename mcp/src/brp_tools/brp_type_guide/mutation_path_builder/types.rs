@@ -39,7 +39,7 @@ impl Example {
     }
 
     /// Returns true if this Example represents a null-equivalent value
-    /// (OptionNone or NotApplicable)
+    /// (`OptionNone` or `NotApplicable`)
     pub const fn is_null_equivalent(&self) -> bool {
         matches!(self, Self::OptionNone | Self::NotApplicable)
     }
