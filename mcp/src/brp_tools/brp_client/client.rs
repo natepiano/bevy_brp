@@ -43,7 +43,7 @@ impl BrpClient {
         }
     }
 
-    /// Prepare parameters for BRP calls by filtering nulls and removing MCP-specific fields
+    /// Prepare parameters for BRP calls by filtering nulls and Port parameter
     pub fn prepare_params<T: serde::Serialize>(params: T) -> Result<Option<Value>> {
         let mut params_json = serde_json::to_value(params)
             .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;

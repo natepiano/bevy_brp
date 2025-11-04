@@ -58,11 +58,7 @@ impl BrpHttpClient {
             );
             builder = builder.params(params.clone());
         }
-        let request_body = builder.build().to_string();
-
-        debug!("BRP execute_brp_method: Request body - {}", request_body);
-
-        request_body
+        builder.build().to_string()
     }
 
     /// Send an HTTP request with timeout
