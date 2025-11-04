@@ -391,8 +391,11 @@ fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
                     has_value_ref = true;
                     continue;
                 }
-                // For other $ref types, we can't easily resolve without full schema context
-                continue;
+                // For other $ref types (like BrpQueryFilter), treat as Object
+                // since they're references to custom structs
+                // This fixes Option<CustomStruct> being treated as "Any" which causes
+                // Claude Code to serialize it as ["object", "array", "null"]
+                return ParameterType::Object;
             }
 
             // Try to map the variant directly
