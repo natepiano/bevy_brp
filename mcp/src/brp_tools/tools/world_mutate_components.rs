@@ -79,31 +79,31 @@ impl<'de> Deserialize<'de> for MutateComponentsParams {
                                 return Err(Error::duplicate_field("entity"));
                             }
                             entity = Some(map.next_value()?);
-                        }
+                        },
                         Field::Component => {
                             if component.is_some() {
                                 return Err(Error::duplicate_field("component"));
                             }
                             component = Some(map.next_value()?);
-                        }
+                        },
                         Field::Value => {
                             if value.is_some() {
                                 return Err(Error::duplicate_field("value"));
                             }
                             value = Some(map.next_value()?);
-                        }
+                        },
                         Field::Path => {
                             if path.is_some() {
                                 return Err(Error::duplicate_field("path"));
                             }
                             path = Some(map.next_value()?);
-                        }
+                        },
                         Field::Port => {
                             if port.is_some() {
                                 return Err(Error::duplicate_field("port"));
                             }
                             port = Some(map.next_value()?);
-                        }
+                        },
                     }
                 }
 

@@ -107,23 +107,17 @@ impl RecursionDepth {
     pub const ZERO: Self = Self(0);
 
     /// Increment depth - private to this module
-    const fn increment(self) -> Self {
-        Self(self.0 + 1)
-    }
+    const fn increment(self) -> Self { Self(self.0 + 1) }
 
     /// Check if depth exceeds limit - private to this module
-    const fn exceeds_limit(self) -> bool {
-        self.0 > MAX_TYPE_RECURSION_DEPTH
-    }
+    const fn exceeds_limit(self) -> bool { self.0 > MAX_TYPE_RECURSION_DEPTH }
 }
 
 // Allow direct comparison with integers
 impl Deref for RecursionDepth {
     type Target = usize;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 /// Context for mutation path building operations
@@ -166,9 +160,7 @@ impl RecursionContext {
     }
 
     /// Get the type name being processed
-    pub const fn type_name(&self) -> &BrpTypeName {
-        self.path_kind.type_name()
-    }
+    pub const fn type_name(&self) -> &BrpTypeName { self.path_kind.type_name() }
 
     /// Generate the path segment string for a `PathKind` (private to this module)
     fn path_kind_to_segment(path_kind: &PathKind) -> String {
@@ -288,7 +280,7 @@ impl RecursionContext {
                 }
 
                 // Fall through to exact type match for struct fields without specific knowledge
-            }
+            },
             PathKind::IndexedElement {
                 index, parent_type, ..
             } => {
@@ -308,7 +300,7 @@ impl RecursionContext {
                             if let Some(knowledge) = BRP_TYPE_KNOWLEDGE.get(&key) {
                                 return Ok(Some(knowledge));
                             }
-                        }
+                        },
                         VariantSignature::Struct(_) | VariantSignature::Unit => {
                             // ARCHITECTURAL INVARIANT VIOLATION
                             // IndexedElement should only occur with Tuple signatures
@@ -320,14 +312,14 @@ impl RecursionContext {
                                     parent_type.display_name()
                                 )),
                             )));
-                        }
+                        },
                     }
                 }
                 // Fall through to exact type match
-            }
+            },
             PathKind::RootValue { .. } | PathKind::ArrayElement { .. } => {
                 // For these path kinds, only exact type matching applies
-            }
+            },
         }
 
         // Try exact type match as fallback - this handles most cases
@@ -346,15 +338,15 @@ impl RecursionContext {
             Some(TypeKnowledge::TreatAsRootValue { example, .. }) => {
                 // Return example immediately - caller will build single root path
                 Ok(KnowledgeAction::CompleteWithExample(example.clone()))
-            }
+            },
             Some(TypeKnowledge::TeachAndRecurse { example }) => {
                 // Use this example but continue recursing children
                 Ok(KnowledgeAction::UseExampleAndRecurse(example.clone()))
-            }
+            },
             None => {
                 // No knowledge - proceed with normal processing
                 Ok(KnowledgeAction::NoHardcodedKnowledge)
-            }
+            },
         }
     }
 

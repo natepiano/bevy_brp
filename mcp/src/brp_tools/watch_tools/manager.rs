@@ -46,9 +46,7 @@ impl WatchManager {
     }
 
     /// Get the next watch ID (monotonically increasing)
-    pub fn next_id(&self) -> u32 {
-        self.next_watch_id.fetch_add(1, Ordering::SeqCst)
-    }
+    pub fn next_id(&self) -> u32 { self.next_watch_id.fetch_add(1, Ordering::SeqCst) }
 
     /// Stop a watch by ID
     pub fn stop_watch(&mut self, watch_id: u32) -> Result<()> {

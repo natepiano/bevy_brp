@@ -97,7 +97,7 @@ impl BrpClient {
                     None,
                     Some(FormatCorrectionStatus::NotAttempted),
                 ))
-            }
+            },
             ResponseStatus::Error(err) => {
                 // Check if this result type supports adding the `TypeGuide`
                 if R::ADD_TYPE_GUIDE_TO_ERROR && err.has_format_error_code() {
@@ -105,7 +105,7 @@ impl BrpClient {
                     match self.try_add_type_guide_to_error(&err).await {
                         Ok(_) => {
                             unreachable!("ADD_TYPE_GUIDE_TO_ERROR error should always return Err")
-                        }
+                        },
                         Err(error_report) => Err(error_report),
                     }
                 } else {
@@ -117,7 +117,7 @@ impl BrpClient {
                     ))
                     .into())
                 }
-            }
+            },
         }
     }
 
@@ -208,7 +208,7 @@ impl BrpClient {
                         ))
                         .attach(format!("Error: {e}")),
                 )
-            }
+            },
         }
     }
 

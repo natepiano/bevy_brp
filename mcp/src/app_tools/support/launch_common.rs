@@ -417,13 +417,13 @@ fn log_build_result(build_state: BuildState, target_name: &str, target_type: Tar
                 "Target '{}' not found in build output, assuming it was built",
                 target_name
             );
-        }
+        },
         BuildState::Fresh => {
             debug!("{} '{}' was already up to date", target_type, target_name);
-        }
+        },
         BuildState::Rebuilt => {
             info!("{} '{}' was built successfully", target_type, target_name);
-        }
+        },
     }
 }
 
@@ -621,7 +621,7 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                     return Err(Error::Structured {
                         result: Box::new(no_targets_error),
                     })?;
-                }
+                },
                 1 => {
                     // Exactly one target exists but path disambiguation failed
                     let available_paths: Vec<String> = all_targets
@@ -637,16 +637,16 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                     return Err(Error::Structured {
                         result: Box::new(target_not_found_error),
                     })?;
-                }
+                },
                 _ => {
                     // This should not happen due to duplicate_paths logic above, but fallback
                     return Err(Report::new(Error::tool_call_failed_with_details(
                         err.to_string(),
                         create_error_details(config, None),
                     )));
-                }
+                },
             }
-        }
+        },
     };
 
     Ok(target)
@@ -761,7 +761,7 @@ pub fn launch_target<T: LaunchConfigTrait>(
         BuildState::NotFound => {
             use tracing::warn;
             warn!("Target not found in build output but build succeeded");
-        }
+        },
     }
 
     let instance_count = *config.instance_count();
@@ -800,37 +800,23 @@ impl FromLaunchParams for LaunchConfig<App> {
 impl LaunchConfigTrait for LaunchConfig<App> {
     const TARGET_TYPE: TargetType = TargetType::App;
 
-    fn target_name(&self) -> &str {
-        &self.target_name
-    }
+    fn target_name(&self) -> &str { &self.target_name }
 
-    fn profile(&self) -> &str {
-        &self.profile
-    }
+    fn profile(&self) -> &str { &self.profile }
 
-    fn path(&self) -> Option<&str> {
-        self.path.as_deref()
-    }
+    fn path(&self) -> Option<&str> { self.path.as_deref() }
 
-    fn port(&self) -> Port {
-        self.port
-    }
+    fn port(&self) -> Port { self.port }
 
-    fn instance_count(&self) -> InstanceCount {
-        self.instance_count
-    }
+    fn instance_count(&self) -> InstanceCount { self.instance_count }
 
-    fn set_port(&mut self, port: Port) {
-        self.port = port;
-    }
+    fn set_port(&mut self, port: Port) { self.port = port; }
 
     fn build_command(&self, target: &BevyTarget) -> Command {
         build_app_command(&target.get_binary_path(self.profile()), Some(self.port))
     }
 
-    fn extra_log_info(&self, _target: &BevyTarget) -> Option<String> {
-        None
-    }
+    fn extra_log_info(&self, _target: &BevyTarget) -> Option<String> { None }
 }
 
 impl FromLaunchParams for LaunchConfig<Example> {
@@ -848,29 +834,17 @@ impl FromLaunchParams for LaunchConfig<Example> {
 impl LaunchConfigTrait for LaunchConfig<Example> {
     const TARGET_TYPE: TargetType = TargetType::Example;
 
-    fn target_name(&self) -> &str {
-        &self.target_name
-    }
+    fn target_name(&self) -> &str { &self.target_name }
 
-    fn profile(&self) -> &str {
-        &self.profile
-    }
+    fn profile(&self) -> &str { &self.profile }
 
-    fn path(&self) -> Option<&str> {
-        self.path.as_deref()
-    }
+    fn path(&self) -> Option<&str> { self.path.as_deref() }
 
-    fn port(&self) -> Port {
-        self.port
-    }
+    fn port(&self) -> Port { self.port }
 
-    fn instance_count(&self) -> InstanceCount {
-        self.instance_count
-    }
+    fn instance_count(&self) -> InstanceCount { self.instance_count }
 
-    fn set_port(&mut self, port: Port) {
-        self.port = port;
-    }
+    fn set_port(&mut self, port: Port) { self.port = port; }
 
     fn build_command(&self, _target: &BevyTarget) -> Command {
         build_cargo_example_command(&self.target_name, self.profile(), Some(self.port))

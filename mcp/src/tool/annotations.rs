@@ -89,7 +89,7 @@ impl From<Annotation> for ToolAnnotations {
                 // MCP client requires destructive_hint: Some(true) to show annotations
                 // So we mark additive tools as "destructive" even though they're safe
                 (Some(false), Some(true), Some(true))
-            }
+            },
             EnvironmentImpact::DestructiveNonIdempotent
             | EnvironmentImpact::AdditiveNonIdempotent => (Some(false), Some(true), Some(false)),
         };

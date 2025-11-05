@@ -354,7 +354,7 @@ impl KeyCodeWrapper {
             // Navigation
             ArrowDown | ArrowLeft | ArrowRight | ArrowUp | End | Home | PageDown | PageUp => {
                 "Navigation"
-            }
+            },
 
             // Editing
             Backspace | Delete | Enter | Escape | Insert | Space | Tab => "Editing",
@@ -387,9 +387,7 @@ pub struct SendKeysRequest {
     pub duration_ms: u32,
 }
 
-const fn default_duration() -> u32 {
-    DEFAULT_KEY_DURATION_MS
-}
+const fn default_duration() -> u32 { DEFAULT_KEY_DURATION_MS }
 
 /// Response structure for `send_keys`
 #[derive(Debug, Serialize, Deserialize)]
@@ -410,14 +408,14 @@ fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCode)>, BrpError> {
         match parse_key_code(key_str) {
             Ok(key_code) => {
                 validated_keys.push((key_str.clone(), key_code));
-            }
+            },
             Err(e) => {
                 return Err(BrpError {
                     code:    INVALID_PARAMS,
                     message: format!("Invalid key code '{key_str}': {e}"),
                     data:    None,
                 });
-            }
+            },
         }
     }
 

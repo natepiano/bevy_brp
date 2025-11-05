@@ -136,7 +136,7 @@ impl TypeKindBuilder for MapMutationBuilder {
                     )
                     .into(),
                 ));
-            }
+            },
         };
 
         // Build final map with the COMPLETE value example

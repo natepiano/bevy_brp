@@ -108,10 +108,10 @@ impl TypeGuideEngine {
                 }
 
                 Ok(registry_map)
-            }
+            },
             Ok(_) => {
                 Err(Error::BrpCommunication("Registry call returned no data".to_string()).into())
-            }
+            },
             Err(e) => Err(e),
         }
     }

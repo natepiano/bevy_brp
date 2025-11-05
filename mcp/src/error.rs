@@ -89,7 +89,7 @@ impl std::fmt::Debug for Error {
             Self::LogOperation(s) => f.debug_tuple("LogOperation").field(s).finish(),
             Self::McpClientCommunication(s) => {
                 f.debug_tuple("McpClientCommunication").field(s).finish()
-            }
+            },
             Self::MissingMessageTemplate(s) => f.debug_tuple("Configuration").field(s).finish(),
             Self::ParameterExtraction(s) => f.debug_tuple("ParameterExtraction").field(s).finish(),
             Self::ProcessManagement(s) => f.debug_tuple("ProcessManagement").field(s).finish(),

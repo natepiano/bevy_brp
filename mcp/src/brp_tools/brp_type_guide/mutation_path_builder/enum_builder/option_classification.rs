@@ -23,9 +23,7 @@ impl OptionClassification {
         )
     }
 
-    pub const fn is_option(&self) -> bool {
-        matches!(self, Self::Option { .. })
-    }
+    pub const fn is_option(&self) -> bool { matches!(self, Self::Option { .. }) }
 
     fn extract_option_inner(type_name: &BrpTypeName) -> Option<BrpTypeName> {
         const OPTION_PREFIX: &str = "core::option::Option<";
@@ -66,7 +64,7 @@ pub fn apply_option_transformation(
                 return Example::Json(value.clone());
             }
             example
-        }
+        },
         _ => example,
     }
 }

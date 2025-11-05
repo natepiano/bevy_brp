@@ -34,23 +34,17 @@ impl<'de> Deserialize<'de> for InstanceCount {
 }
 
 impl Default for InstanceCount {
-    fn default() -> Self {
-        Self(1)
-    }
+    fn default() -> Self { Self(1) }
 }
 
 impl std::fmt::Display for InstanceCount {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { self.0.fmt(f) }
 }
 
 impl Deref for InstanceCount {
     type Target = usize;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 /// Deserialize and validate instance count

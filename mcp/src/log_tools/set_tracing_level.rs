@@ -52,7 +52,7 @@ impl ToolFn for SetTracingLevel {
                     ),
                 )
                 .into());
-            }
+            },
         };
 
         // Update the tracing level

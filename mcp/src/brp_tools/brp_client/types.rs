@@ -37,14 +37,10 @@ pub struct BrpClientError {
 
 impl BrpClientError {
     /// Get the error code
-    pub const fn get_code(&self) -> i32 {
-        self.code
-    }
+    pub const fn get_code(&self) -> i32 { self.code }
 
     /// Get the error message
-    pub fn get_message(&self) -> &str {
-        &self.message
-    }
+    pub fn get_message(&self) -> &str { &self.message }
 
     /// Check if this error indicates a format issue that can be recovered
     /// This function was constructed through trial and error via vibe coding with claude
@@ -156,7 +152,7 @@ impl TryFrom<BrpMethod> for Operation {
                 Ok(Self::SpawnInsert {
                     parameter_name: ParameterName::Components,
                 })
-            }
+            },
 
             BrpMethod::WorldInsertResources => Ok(Self::SpawnInsert {
                 parameter_name: ParameterName::Value,
@@ -185,22 +181,22 @@ impl Operation {
                 ParameterName::Components => {
                     // Extract from params.components object keys
                     extract_from_components_object(params)
-                }
+                },
                 ParameterName::Value => {
                     // Extract from params.resource field
                     extract_from_resource_field(params)
-                }
+                },
                 _ => Vec::new(),
             },
             Self::Mutate { parameter_name } => match parameter_name {
                 ParameterName::Component => {
                     // Extract from params.component string field
                     extract_single_component_type(params)
-                }
+                },
                 ParameterName::Resource => {
                     // Extract from params.resource string field
                     extract_single_resource_type(params)
-                }
+                },
                 _ => Vec::new(),
             },
         }

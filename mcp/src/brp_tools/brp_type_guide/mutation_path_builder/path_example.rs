@@ -70,12 +70,12 @@ impl Serialize for PathExample {
                     map.serialize_entry("example", &value)?;
                     map.end()
                 }
-            }
+            },
             Self::EnumRoot { groups, .. } => {
                 let mut map = serializer.serialize_map(Some(1))?;
                 map.serialize_entry("examples", groups)?;
                 map.end()
-            }
+            },
         }
     }
 }

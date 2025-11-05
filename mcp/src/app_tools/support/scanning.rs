@@ -20,7 +20,7 @@ fn safe_canonicalize(path: &Path) -> PathBuf {
         Err(e) => {
             debug!("Failed to canonicalize path '{}': {}", path.display(), e);
             path.to_path_buf()
-        }
+        },
     }
 }
 
@@ -92,13 +92,13 @@ pub fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> Vec<PathBuf> {
             ProjectType::Workspace { workspace_root } => {
                 // For workspace members, use the workspace root
                 final_paths.insert(workspace_root.clone());
-            }
+            },
             ProjectType::Standalone => {
                 // For standalone projects (not found as workspace members), use their actual path
                 if !workspace_members.contains(&project.path) {
                     final_paths.insert(project.path.clone());
                 }
-            }
+            },
         }
         // If a project was found both ways, the workspace discovery takes precedence
     }
@@ -577,7 +577,7 @@ fn validate_single_result_or_error<T>(
             Err(Error::Structured {
                 result: Box::new(no_targets_error),
             })
-        }
+        },
         1 => {
             // We know exactly one item exists
             let mut iter = items.into_iter();
@@ -591,7 +591,7 @@ fn validate_single_result_or_error<T>(
                 },
                 |item| Ok(item),
             )
-        }
+        },
         _ => {
             let all_paths: Vec<String> = items
                 .iter()
@@ -615,7 +615,7 @@ fn validate_single_result_or_error<T>(
             Err(Error::Structured {
                 result: Box::new(path_disambiguation_error),
             })
-        }
+        },
     }
 }
 

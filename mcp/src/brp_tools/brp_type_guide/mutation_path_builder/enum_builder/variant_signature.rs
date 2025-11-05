@@ -31,14 +31,14 @@ impl std::fmt::Display for VariantSignature {
                 let type_names: Vec<String> =
                     types.iter().map(|t| t.display_name().to_string()).collect();
                 write!(f, "tuple({})", type_names.join(", "))
-            }
+            },
             Self::Struct(fields) => {
                 let field_strs: Vec<String> = fields
                     .iter()
                     .map(|(name, type_name)| format!("{}: {}", name, type_name.display_name()))
                     .collect();
                 write!(f, "struct{{{}}}", field_strs.join(", "))
-            }
+            },
         }
     }
 }

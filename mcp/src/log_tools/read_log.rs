@@ -75,7 +75,7 @@ async fn handle_impl(params: ReadLogParams) -> Result<ReadLogResult> {
             Ok(n) => Some(n),
             Err(_) => {
                 return Err(Error::invalid("tail_lines", "tail_lines value too large").into());
-            }
+            },
         },
         None => None,
     };

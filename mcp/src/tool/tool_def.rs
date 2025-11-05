@@ -29,9 +29,7 @@ pub struct ToolDef {
 }
 
 impl ToolDef {
-    pub fn name(&self) -> &'static str {
-        self.tool_name.into()
-    }
+    pub fn name(&self) -> &'static str { self.tool_name.into() }
 
     pub async fn call_tool(
         &self,

@@ -84,7 +84,7 @@ fn extract_child_value_for_chain(
                 let get_value = |root_ex: &RootExample| match root_ex {
                     RootExample::Available { root_example } if !root_example.is_null() => {
                         Some(Example::Json(root_example.clone()))
-                    } // Skip null to prefer data-filled variants
+                    }, // Skip null to prefer data-filled variants
                     _ => None,
                 };
 

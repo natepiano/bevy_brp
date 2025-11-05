@@ -24,26 +24,18 @@ impl BrpTypeName {
     ///
     /// This is commonly used as a fallback when type information
     /// is not available or cannot be determined.
-    pub fn unknown() -> Self {
-        Self("unknown".to_string())
-    }
+    pub fn unknown() -> Self { Self("unknown".to_string()) }
 
     /// Get the underlying string reference
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+    pub fn as_str(&self) -> &str { &self.0 }
 
     /// Extract the base type name by stripping generic parameters
     /// For example: `Vec<String>` returns `Some("Vec")`
-    pub fn base_type(&self) -> Option<&str> {
-        self.0.split('<').next()
-    }
+    pub fn base_type(&self) -> Option<&str> { self.0.split('<').next() }
 
     /// Check if this type is a Handle wrapper type
     /// Returns true for types like `bevy_asset::handle::Handle<...>`
-    pub fn is_handle(&self) -> bool {
-        self.0.starts_with("bevy_asset::handle::Handle<")
-    }
+    pub fn is_handle(&self) -> bool { self.0.starts_with("bevy_asset::handle::Handle<") }
 
     /// Get the short name (last segment after ::)
     /// For example: `bevy_transform::components::transform::Transform` returns `Transform`
@@ -128,21 +120,15 @@ impl BrpTypeName {
 }
 
 impl From<&str> for BrpTypeName {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
+    fn from(s: &str) -> Self { Self(s.to_string()) }
 }
 
 impl From<String> for BrpTypeName {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
+    fn from(s: String) -> Self { Self(s) }
 }
 
 impl From<&String> for BrpTypeName {
-    fn from(s: &String) -> Self {
-        Self(s.clone())
-    }
+    fn from(s: &String) -> Self { Self(s.clone()) }
 }
 
 // this one is because in `type_knowledge` we allow
@@ -151,37 +137,25 @@ impl From<&String> for BrpTypeName {
 // but we also want to be able to pass in a `&BrpTypeName`
 // hence this odd beast
 impl From<&Self> for BrpTypeName {
-    fn from(type_name: &Self) -> Self {
-        type_name.clone()
-    }
+    fn from(type_name: &Self) -> Self { type_name.clone() }
 }
 
 impl From<BrpTypeName> for String {
-    fn from(type_name: BrpTypeName) -> Self {
-        type_name.0
-    }
+    fn from(type_name: BrpTypeName) -> Self { type_name.0 }
 }
 
 impl From<&BrpTypeName> for String {
-    fn from(type_name: &BrpTypeName) -> Self {
-        type_name.0.clone()
-    }
+    fn from(type_name: &BrpTypeName) -> Self { type_name.0.clone() }
 }
 
 impl std::fmt::Display for BrpTypeName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
 }
 
 impl From<BrpTypeName> for Value {
-    fn from(type_name: BrpTypeName) -> Self {
-        Self::String(type_name.0)
-    }
+    fn from(type_name: BrpTypeName) -> Self { Self::String(type_name.0) }
 }
 
 impl From<&BrpTypeName> for Value {
-    fn from(type_name: &BrpTypeName) -> Self {
-        Self::String(type_name.0.clone())
-    }
+    fn from(type_name: &BrpTypeName) -> Self { Self::String(type_name.0.clone()) }
 }

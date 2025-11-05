@@ -62,9 +62,7 @@ fn type_path_inner(input: &str) -> IResult<&str, &str> {
 }
 
 /// Parse a complete type path (`module::Type`<Generics>)
-fn type_path(input: &str) -> IResult<&str, &str> {
-    type_path_inner(input)
-}
+fn type_path(input: &str) -> IResult<&str, &str> { type_path_inner(input) }
 
 /// Parse the complete type path with optional variant
 fn full_type_path(input: &str) -> IResult<&str, (&str, Option<&str>)> {
@@ -147,11 +145,11 @@ fn simplify_generics(generics_str: &str) -> String {
             '<' => {
                 depth += 1;
                 current_type.push(ch);
-            }
+            },
             '>' => {
                 depth -= 1;
                 current_type.push(ch);
-            }
+            },
             ',' if depth == 0 => {
                 // End of a type parameter
                 if !result.ends_with('<') {
@@ -159,10 +157,10 @@ fn simplify_generics(generics_str: &str) -> String {
                 }
                 result.push_str(&simplify_type(current_type.trim()));
                 current_type.clear();
-            }
+            },
             _ => {
                 current_type.push(ch);
-            }
+            },
         }
     }
 
@@ -195,7 +193,7 @@ pub fn parse_type_with_variant(input: &str) -> Result<ParsedTypePath, String> {
                 simplified_type: simplified,
                 variant:         variant.map(ToString::to_string),
             })
-        }
+        },
         Err(e) => Err(format!("Failed to parse type path: {e:?}")),
     }
 }
@@ -211,7 +209,7 @@ pub fn extract_simplified_variant_name(type_path: &str) -> String {
             } else {
                 parsed.simplified_type
             }
-        }
+        },
         Err(_) => {
             // Fallback: if parsing fails, try simple extraction
             type_path.rfind("::").map_or_else(
@@ -221,7 +219,7 @@ pub fn extract_simplified_variant_name(type_path: &str) -> String {
                     format!("UnknownType::{variant}")
                 },
             )
-        }
+        },
     }
 }
 

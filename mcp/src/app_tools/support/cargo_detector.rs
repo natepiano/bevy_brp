@@ -31,10 +31,10 @@ impl TargetType {
         match self {
             Self::App => {
                 cmd.arg("--bin").arg(target_name);
-            }
+            },
             Self::Example => {
                 cmd.arg("--example").arg(target_name);
-            }
+            },
         }
     }
 }
@@ -75,14 +75,10 @@ impl BevyTarget {
     }
 
     /// Check if this target is an app
-    pub fn is_app(&self) -> bool {
-        self.target_type == TargetType::App
-    }
+    pub fn is_app(&self) -> bool { self.target_type == TargetType::App }
 
     /// Check if this target is an example
-    pub fn is_example(&self) -> bool {
-        self.target_type == TargetType::Example
-    }
+    pub fn is_example(&self) -> bool { self.target_type == TargetType::Example }
 }
 
 /// Detects binary targets in a project or workspace

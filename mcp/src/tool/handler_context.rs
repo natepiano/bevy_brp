@@ -46,9 +46,7 @@ impl HandlerContext {
     ///
     /// # Errors
     /// Returns an error if the tool definition is not found.
-    pub const fn tool_def(&self) -> &ToolDef {
-        &self.tool_def
-    }
+    pub const fn tool_def(&self) -> &ToolDef { &self.tool_def }
 
     /// Common parameter extraction methods (used by both BRP and local handlers)
     pub fn extract_parameter_values<T>(&self) -> Result<T>
@@ -112,7 +110,7 @@ impl HandlerContext {
                                 call_info,
                             )
                             .to_call_tool_result();
-                        }
+                        },
                     };
 
                 // Handle large response here with access to tool_name
@@ -124,7 +122,7 @@ impl HandlerContext {
                     )
                     .to_call_tool_result(),
                 }
-            }
+            },
             Err(report) => match report.current_context() {
                 Error::Structured { result } => {
                     // Create error response from structured result
@@ -141,12 +139,12 @@ impl HandlerContext {
                         )
                         .to_call_tool_result(),
                     }
-                }
+                },
                 Error::ToolCall { message, details } => {
                     // Create error response with the error message and details
                     Response::error_with_details(message, details.as_ref(), call_info)
                         .to_call_tool_result()
-                }
+                },
                 _ => Response::error_message(
                     format!("Internal error: {}", report.current_context()),
                     call_info,

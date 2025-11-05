@@ -70,9 +70,7 @@ pub trait TypeKindBuilder {
     /// Example: `HashMap<String, Transform>`
     /// - Returns false: only exposes path "" with complete map {"key": {transform}}
     /// - Does NOT expose ".rotation", ".scale" etc. from the Transform values
-    fn child_path_action(&self) -> PathAction {
-        PathAction::Create
-    }
+    fn child_path_action(&self) -> PathAction { PathAction::Create }
 
     /// Collect `PathKind`sfor child elements
     ///

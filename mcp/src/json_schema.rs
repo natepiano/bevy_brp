@@ -24,9 +24,7 @@ pub enum JsonSchemaType {
 }
 
 impl From<JsonSchemaType> for Value {
-    fn from(schema_type: JsonSchemaType) -> Self {
-        Self::String(schema_type.as_ref().to_string())
-    }
+    fn from(schema_type: JsonSchemaType) -> Self { Self::String(schema_type.as_ref().to_string()) }
 }
 
 /// Registry schema field names

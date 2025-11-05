@@ -35,9 +35,7 @@ pub enum BrpSupportedOperation {
 }
 
 impl From<BrpSupportedOperation> for String {
-    fn from(op: BrpSupportedOperation) -> Self {
-        op.as_ref().to_string()
-    }
+    fn from(op: BrpSupportedOperation) -> Self { op.as_ref().to_string() }
 }
 
 /// Schema information extracted from the registry

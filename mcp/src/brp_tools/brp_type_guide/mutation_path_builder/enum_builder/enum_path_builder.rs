@@ -133,11 +133,11 @@ pub fn process_enum(
                 depth:                 *ctx.depth,
                 partial_root_examples: None,
             }]);
-        }
+        },
         KnowledgeAction::UseExampleAndRecurse(example) => {
             // Use this example but still process variants
             Example::Json(example)
-        }
+        },
         KnowledgeAction::NoHardcodedKnowledge => {
             // Use preferred example from processed variants
             select_preferred_example(&enum_examples).ok_or_else(|| {
@@ -146,7 +146,7 @@ pub fn process_enum(
                     ctx.type_name()
                 ))))
             })?
-        }
+        },
     };
 
     // Create result paths including both root AND child paths
@@ -419,12 +419,12 @@ fn build_variant_example(
             } else {
                 Example::Json(json!({ variant_name.short_name(): tuple_values }))
             }
-        }
+        },
         VariantSignature::Struct(_field_types) => {
             // Use shared function to assemble struct from children (only includes mutable fields)
             let field_values = support::assemble_struct_from_children(children);
             Example::Json(json!({ variant_name.short_name(): field_values }))
-        }
+        },
     };
 
     // Apply `Option<T>` transformation only for actual Option types
@@ -812,13 +812,13 @@ fn build_enum_mutability_reason(
                 mutability_issues,
                 message,
             ))
-        }
+        },
         Mutability::NotMutable => {
             // Use NoMutableChildren variant instead of raw JSON
             Some(NotMutableReason::NoMutableChildren {
                 parent_type: type_name,
             })
-        }
+        },
         Mutability::Mutable => None,
     }
 }

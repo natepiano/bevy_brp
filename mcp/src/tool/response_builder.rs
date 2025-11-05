@@ -141,7 +141,7 @@ impl ResponseBuilder {
                             builder // Keep the original builder if add_field fails
                         })
                     })
-            }
+            },
             _ => self,
         }
     }
@@ -175,12 +175,12 @@ impl ResponseBuilder {
                     map.insert(key.to_string(), value_json);
                     self.metadata = Some(Value::Object(map));
                 }
-            }
+            },
             FieldPlacement::Result => {
                 // For result, set the entire result field to the value
                 // Field name is ignored to match raw BRP behavior
                 self.result = Some(value_json);
-            }
+            },
             FieldPlacement::ErrorInfo => {
                 // For error_info, use field name as key in object
                 if let Some(Value::Object(map)) = &mut self.error_info {
@@ -190,7 +190,7 @@ impl ResponseBuilder {
                     map.insert(key.to_string(), value_json);
                     self.error_info = Some(Value::Object(map));
                 }
-            }
+            },
         }
 
         Ok(self)
@@ -210,14 +210,10 @@ impl ResponseBuilder {
     }
 
     /// Get metadata for template substitution
-    pub const fn metadata(&self) -> Option<&Value> {
-        self.metadata.as_ref()
-    }
+    pub const fn metadata(&self) -> Option<&Value> { self.metadata.as_ref() }
 
     /// Get result for template substitution
-    pub const fn result(&self) -> Option<&Value> {
-        self.result.as_ref()
-    }
+    pub const fn result(&self) -> Option<&Value> { self.result.as_ref() }
 
     /// Set parameters with optional parameter tracking
     pub fn parameters(mut self, params: impl Serialize) -> Result<Self> {
@@ -267,9 +263,7 @@ impl ResponseBuilder {
     }
 
     /// Get parameters for template substitution
-    pub const fn parameters_ref(&self) -> Option<&Value> {
-        self.parameters.as_ref()
-    }
+    pub const fn parameters_ref(&self) -> Option<&Value> { self.parameters.as_ref() }
 
     /// Terminal operation: Build complete response from a `ResultStruct`, handling all formatting
     /// and template substitution

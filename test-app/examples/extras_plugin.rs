@@ -1639,7 +1639,7 @@ fn track_keyboard_input(
                 if !history.complete_combination.contains(&key_str) {
                     history.complete_combination.push(key_str.clone());
                 }
-            }
+            },
             bevy::input::ButtonState::Released => {
                 info!("Key released: {key_str}");
 
@@ -1673,7 +1673,7 @@ fn track_keyboard_input(
 
                     history.completed = true;
                 }
-            }
+            },
         }
 
         // Remove this - we now update last_keys only when all keys are released

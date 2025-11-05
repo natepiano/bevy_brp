@@ -294,22 +294,22 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
                 "Process '{app_name}' not found. Did you mean: {suggestion}? (BRP is responding on port {})",
                 port.0
             )
-        }
+        },
         (Some(suggestion), false) => {
             format!("Process '{app_name}' not found. Did you mean: {suggestion}?")
-        }
+        },
         (None, true) => {
             format!(
                 "Process '{app_name}' not found. BRP is responding on port {} - another process may be using it.",
                 port.0
             )
-        }
+        },
         (None, false) => {
             format!(
                 "Process '{app_name}' not found and BRP is not responding on port {}.",
                 port.0
             )
-        }
+        },
     };
 
     let process_not_found_error =
@@ -330,11 +330,11 @@ async fn check_brp_on_port(port: Port) -> Result<bool> {
             Ok(ResponseStatus::Success(_)) => {
                 // BRP is responding and working
                 return Ok(true);
-            }
+            },
             Ok(ResponseStatus::Error(_)) | Err(_) => {
                 // BRP not responding or returned an error, wait and retry
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            }
+            },
         }
     }
 

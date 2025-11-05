@@ -45,7 +45,7 @@ impl<'de> Deserialize<'de> for ComponentSelector {
                     })
                     .collect::<core::result::Result<Vec<_>, _>>()?;
                 Ok(Self::Paths(paths))
-            }
+            },
             _ => Err(Error::custom(
                 "option field must be either the string \"all\" or an array of component type \
                  paths like [\"bevy_transform::components::transform::Transform\"]",
@@ -55,9 +55,7 @@ impl<'de> Deserialize<'de> for ComponentSelector {
 }
 
 impl Default for ComponentSelector {
-    fn default() -> Self {
-        Self::Paths(vec![])
-    }
+    fn default() -> Self { Self::Paths(vec![]) }
 }
 
 /// Query data specification - what component data to retrieve

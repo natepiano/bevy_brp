@@ -96,14 +96,10 @@ pub fn format_bytes(bytes: u64) -> String {
 }
 
 /// Gets the log directory (system temp directory)
-pub fn get_log_directory() -> PathBuf {
-    std::env::temp_dir()
-}
+pub fn get_log_directory() -> PathBuf { std::env::temp_dir() }
 
 /// Gets the full path for a log file given its filename
-pub fn get_log_file_path(filename: &str) -> PathBuf {
-    get_log_directory().join(filename)
-}
+pub fn get_log_file_path(filename: &str) -> PathBuf { get_log_directory().join(filename) }
 
 /// Represents a log file entry with metadata
 #[derive(Debug, Clone)]

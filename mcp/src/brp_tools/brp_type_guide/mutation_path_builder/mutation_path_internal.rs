@@ -168,7 +168,7 @@ impl MutationPathInternal {
                 } else {
                     format!("{base_msg}. No example is provided.")
                 }
-            }
+            },
             Mutability::NotMutable => {
                 let is_root = matches!(self.path_kind, PathKind::RootValue { .. });
                 let base_msg = format!("This {} is not mutable", type_kind.as_ref().to_lowercase());
@@ -179,7 +179,7 @@ impl MutationPathInternal {
                 } else {
                     format!("{base_msg}. No example is provided.")
                 }
-            }
+            },
             Mutability::Mutable => self
                 .path_kind
                 .description(type_kind, self.enum_path_info.as_ref()),
@@ -227,7 +227,7 @@ impl MutationPathInternal {
                     } else {
                         PathExample::Simple(Example::NotApplicable)
                     }
-                }
+                },
             },
             Mutability::Mutable => self.example.clone(),
         }

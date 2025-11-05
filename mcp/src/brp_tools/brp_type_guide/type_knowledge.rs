@@ -89,9 +89,7 @@ pub enum KnowledgeKey {
 
 impl KnowledgeKey {
     /// Create an exact match key
-    pub fn exact(s: impl Into<BrpTypeName>) -> Self {
-        Self::Exact(s.into())
-    }
+    pub fn exact(s: impl Into<BrpTypeName>) -> Self { Self::Exact(s.into()) }
 
     /// Create a struct field match key
     pub fn struct_field(
@@ -156,9 +154,7 @@ pub enum KnowledgeAction {
 
 impl TypeKnowledge {
     /// Create a simple knowledge entry with no subfields
-    pub const fn new(example: Value) -> Self {
-        Self::TeachAndRecurse { example }
-    }
+    pub const fn new(example: Value) -> Self { Self::TeachAndRecurse { example } }
 
     /// Create a knowledge entry that should be treated as a simple value
     pub fn as_root_value(example: Value, simplified_type: impl Into<String>) -> Self {

@@ -29,23 +29,17 @@ pub struct BrpExtrasPlugin {
 }
 
 impl Default for BrpExtrasPlugin {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl BrpExtrasPlugin {
     /// Create a new plugin instance with default port
     #[must_use]
-    pub const fn new() -> Self {
-        Self { port: None }
-    }
+    pub const fn new() -> Self { Self { port: None } }
 
     /// Create plugin with custom port
     #[must_use]
-    pub const fn with_port(port: u16) -> Self {
-        Self { port: Some(port) }
-    }
+    pub const fn with_port(port: u16) -> Self { Self { port: Some(port) } }
 
     /// Get the effective port, checking environment variable first
     ///
@@ -64,10 +58,10 @@ impl BrpExtrasPlugin {
         let source_description = match (env_port, self.port) {
             (Some(_), Some(with_port_value)) => {
                 format!("environment override from with_port {with_port_value}")
-            }
+            },
             (Some(_), None) => {
                 format!("environment override from default {DEFAULT_REMOTE_PORT}")
-            }
+            },
             (None, Some(_)) => "with_port".to_string(),
             (None, None) => "default".to_string(),
         };

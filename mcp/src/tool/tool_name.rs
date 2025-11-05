@@ -80,9 +80,7 @@ pub enum CallInfo {
 
 impl CallInfo {
     /// Create `CallInfo` for a local tool
-    pub const fn local(mcp_tool: String) -> Self {
-        Self::Local { mcp_tool }
-    }
+    pub const fn local(mcp_tool: String) -> Self { Self::Local { mcp_tool } }
 
     /// Create `CallInfo` for a BRP tool
     pub const fn brp(mcp_tool: String, brp_method: String) -> Self {
@@ -537,58 +535,58 @@ impl ToolName {
         match self {
             Self::WorldDespawnEntity => {
                 Some(parameters::build_parameters_from::<DespawnEntityParams>)
-            }
+            },
             Self::WorldGetComponents => {
                 Some(parameters::build_parameters_from::<GetComponentsParams>)
-            }
+            },
             Self::WorldGetResources => {
                 Some(parameters::build_parameters_from::<GetResourcesParams>)
-            }
+            },
             Self::WorldInsertComponents => {
                 Some(parameters::build_parameters_from::<InsertComponentsParams>)
-            }
+            },
             Self::WorldInsertResources => {
                 Some(parameters::build_parameters_from::<InsertResourcesParams>)
-            }
+            },
             Self::WorldListComponents => {
                 Some(parameters::build_parameters_from::<ListComponentsParams>)
-            }
+            },
             Self::WorldListResources => {
                 Some(parameters::build_parameters_from::<ListResourcesParams>)
-            }
+            },
             Self::WorldMutateComponents => {
                 Some(parameters::build_parameters_from::<MutateComponentsParams>)
-            }
+            },
             Self::WorldMutateResources => {
                 Some(parameters::build_parameters_from::<MutateResourcesParams>)
-            }
+            },
             Self::WorldQuery => Some(parameters::build_parameters_from::<QueryParams>),
             Self::RegistrySchema => Some(parameters::build_parameters_from::<RegistrySchemaParams>),
             Self::WorldRemoveComponents => {
                 Some(parameters::build_parameters_from::<RemoveComponentsParams>)
-            }
+            },
             Self::WorldRemoveResources => {
                 Some(parameters::build_parameters_from::<RemoveResourcesParams>)
-            }
+            },
             Self::WorldReparentEntities => {
                 Some(parameters::build_parameters_from::<ReparentEntitiesParams>)
-            }
+            },
             Self::RpcDiscover => Some(parameters::build_parameters_from::<RpcDiscoverParams>),
             Self::WorldSpawnEntity => Some(parameters::build_parameters_from::<SpawnEntityParams>),
             Self::BrpExecute => Some(parameters::build_parameters_from::<ExecuteParams>),
             Self::BrpExtrasScreenshot => {
                 Some(parameters::build_parameters_from::<ScreenshotParams>)
-            }
+            },
             Self::BrpExtrasSendKeys => Some(parameters::build_parameters_from::<SendKeysParams>),
             Self::BrpExtrasSetWindowTitle => {
                 Some(parameters::build_parameters_from::<SetWindowTitleParams>)
-            }
+            },
             Self::WorldGetComponentsWatch => {
                 Some(parameters::build_parameters_from::<GetComponentsWatchParams>)
-            }
+            },
             Self::WorldListComponentsWatch => {
                 Some(parameters::build_parameters_from::<ListComponentsWatchParams>)
-            }
+            },
             Self::BrpDeleteLogs => Some(parameters::build_parameters_from::<DeleteLogsParams>),
 
             // this lot has no parametrers
@@ -602,20 +600,20 @@ impl ToolName {
             // and thest of these app and watch tools do have parameters
             Self::BrpLaunchBevyApp | Self::BrpLaunchBevyExample => {
                 Some(parameters::build_parameters_from::<LaunchBevyBinaryParams>)
-            }
+            },
             Self::BrpStopWatch => Some(parameters::build_parameters_from::<StopWatchParams>),
             Self::BrpListLogs => Some(parameters::build_parameters_from::<ListLogsParams>),
             Self::BrpReadLog => Some(parameters::build_parameters_from::<ReadLogParams>),
             #[cfg(feature = "mcp-debug")]
             Self::BrpSetTracingLevel => {
                 Some(parameters::build_parameters_from::<SetTracingLevelParams>)
-            }
+            },
             Self::BrpStatus => Some(parameters::build_parameters_from::<StatusParams>),
             Self::BrpShutdown => Some(parameters::build_parameters_from::<ShutdownParams>),
             Self::BrpTypeGuide => Some(parameters::build_parameters_from::<TypeGuideParams>),
             Self::BrpAllTypeGuides => {
                 Some(parameters::build_parameters_from::<AllTypeGuidesParams>)
-            }
+            },
         }
     }
 
@@ -690,7 +688,5 @@ impl ToolName {
 
     /// Get a short human-readable title for this tool
     /// Extracted from the annotation data we already have
-    pub fn short_title(self) -> String {
-        self.get_annotations().title
-    }
+    pub fn short_title(self) -> String { self.get_annotations().title }
 }

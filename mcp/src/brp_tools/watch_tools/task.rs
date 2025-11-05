@@ -178,7 +178,7 @@ async fn process_chunk(
         Err(e) => {
             debug!("[{}] Invalid UTF-8 in stream chunk: {}", watch_type, e);
             return Ok(());
-        }
+        },
     };
 
     // Add to line buffer and check total buffer size
@@ -371,12 +371,12 @@ async fn process_watch_stream(
                     logger,
                 )
                 .await?;
-            }
+            },
             Err(e) => {
                 handle_stream_error(e, entity_id, watch_type, logger, start_time, total_chunks)
                     .await;
                 break;
-            }
+            },
         }
     }
 
@@ -484,10 +484,10 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
             {
                 error!("Watch stream processing failed: {}", e);
             }
-        }
+        },
         Err(e) => {
             handle_connection_error(e, &conn_params, &logger, start_time).await;
-        }
+        },
     }
 
     // Write final log entry
@@ -553,7 +553,7 @@ async fn start_watch_task(
                 serde_json::json!(chrono::Local::now().to_rfc3339()),
             );
             Value::Object(map)
-        }
+        },
         _ => serde_json::json!({
             ParameterName::Entity: entity_id,
             ParameterName::Port: port,

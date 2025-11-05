@@ -91,7 +91,7 @@ async fn fetch_type_list(method: BrpMethod, port: Port, method_name: &str) -> Re
         ),
         Ok(ResponseStatus::Success(None)) => {
             Err(Error::BrpCommunication(format!("{method_name} returned no data")).into())
-        }
+        },
         Ok(ResponseStatus::Error(err)) => Err(Error::BrpCommunication(format!(
             "{method_name} failed: {}",
             err.get_message()

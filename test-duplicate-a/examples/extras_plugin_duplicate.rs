@@ -173,7 +173,7 @@ fn track_keyboard_input(
                 {
                     history.modifiers.push("Alt".to_string());
                 }
-            }
+            },
             bevy::input::ButtonState::Released => {
                 info!("Key released: {key_str}");
 
@@ -196,7 +196,7 @@ fn track_keyboard_input(
                 if history.active_keys.is_empty() && !history.last_keys.is_empty() {
                     history.completed = true;
                 }
-            }
+            },
         }
 
         if !history.active_keys.is_empty() {

@@ -25,39 +25,27 @@ pub struct MutationPathDescriptor(String);
 
 impl Deref for MutationPathDescriptor {
     type Target = str;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 impl Borrow<str> for MutationPathDescriptor {
-    fn borrow(&self) -> &str {
-        &self.0
-    }
+    fn borrow(&self) -> &str { &self.0 }
 }
 
 impl From<String> for MutationPathDescriptor {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
+    fn from(s: String) -> Self { Self(s) }
 }
 
 impl From<&str> for MutationPathDescriptor {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
+    fn from(s: &str) -> Self { Self(s.to_string()) }
 }
 
 impl From<StructFieldName> for MutationPathDescriptor {
-    fn from(field_name: StructFieldName) -> Self {
-        Self(field_name.to_string())
-    }
+    fn from(field_name: StructFieldName) -> Self { Self(field_name.to_string()) }
 }
 
 impl From<&StructFieldName> for MutationPathDescriptor {
-    fn from(field_name: &StructFieldName) -> Self {
-        Self(field_name.to_string())
-    }
+    fn from(field_name: &StructFieldName) -> Self { Self(field_name.to_string()) }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -87,9 +75,7 @@ pub enum PathKind {
 
 impl PathKind {
     /// Create a new `RootValue`
-    pub const fn new_root_value(type_name: BrpTypeName) -> Self {
-        Self::RootValue { type_name }
-    }
+    pub const fn new_root_value(type_name: BrpTypeName) -> Self { Self::RootValue { type_name } }
 
     /// Create a new `IndexedElement`
     pub const fn new_indexed_element(
@@ -157,7 +143,7 @@ impl PathKind {
             Self::StructField { field_name, .. } => MutationPathDescriptor::from(field_name),
             Self::IndexedElement { index, .. } | Self::ArrayElement { index, .. } => {
                 MutationPathDescriptor::from(index.to_string())
-            }
+            },
             Self::RootValue { .. } => MutationPathDescriptor::from(String::new()),
         }
     }
@@ -175,16 +161,16 @@ impl PathKind {
             return match self {
                 Self::StructField { field_name, .. } => {
                     format!("Mutate the {field_name} field of {variant} variant")
-                }
+                },
                 Self::IndexedElement { index, .. } => {
                     format!("Mutate element {index} of {variant} variant")
-                }
+                },
                 Self::ArrayElement { index, .. } => {
                     format!("Mutate element [{index}] of {variant} variant")
-                }
+                },
                 Self::RootValue { .. } => {
                     unreachable!("single_variant_matching_parent returns None for RootValue")
-                }
+                },
             };
         }
 
@@ -199,7 +185,7 @@ impl PathKind {
             Self::RootValue { type_name, .. } => {
                 let short_name = type_name.short_name();
                 format!("Replace the entire {short_name}{type_kind_str}")
-            }
+            },
             Self::StructField {
                 field_name,
                 parent_type,
@@ -216,7 +202,7 @@ impl PathKind {
                     let short_parent = parent_type.short_name();
                     format!("Mutate the {field_name} field of {short_parent}{type_kind_str}")
                 }
-            }
+            },
             Self::IndexedElement {
                 index,
                 parent_type,
@@ -233,13 +219,13 @@ impl PathKind {
                 }
                 let short_parent = parent_type.short_name();
                 format!("Mutate element {index} of {short_parent}{type_kind_str}")
-            }
+            },
             Self::ArrayElement {
                 index, parent_type, ..
             } => {
                 let short_parent = parent_type.short_name();
                 format!("Mutate element [{index}] of {short_parent}{type_kind_str}")
-            }
+            },
         };
 
         // Add variant suffix if applicable
@@ -248,7 +234,7 @@ impl PathKind {
                 variants if variants.is_empty() => String::new(),
                 variants if variants.len() == 1 => {
                     format!(" within {} variant", variants[0])
-                }
+                },
                 variants => {
                     let variant_list = variants
                         .iter()
@@ -256,7 +242,7 @@ impl PathKind {
                         .collect::<Vec<_>>()
                         .join(", ");
                     format!(" within '{variant_list}' variants")
-                }
+                },
             }
         });
 

@@ -144,9 +144,7 @@ pub struct ParameterBuilder {
 }
 
 impl ParameterBuilder {
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Add a string property to the schema
     pub fn add_string_property(mut self, name: &str, description: &str, required: bool) -> Self {
@@ -299,7 +297,7 @@ fn handle_array_type(obj: &Map<String, Value>) -> ParameterType {
             s if s == JsonSchemaType::String.as_ref() => ParameterType::StringArray,
             s if s == JsonSchemaType::Integer.as_ref() || s == JsonSchemaType::Number.as_ref() => {
                 ParameterType::NumberArray
-            }
+            },
             _ => ParameterType::Any,
         })
 }
@@ -310,7 +308,7 @@ fn handle_string_type(type_str: &str, obj: &Map<String, Value>) -> ParameterType
         s if s == JsonSchemaType::String.as_ref() => ParameterType::String,
         s if s == JsonSchemaType::Integer.as_ref() || s == JsonSchemaType::Number.as_ref() => {
             ParameterType::Number
-        }
+        },
         s if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
         s if s == JsonSchemaType::Object.as_ref() => ParameterType::Object,
         s if s == JsonSchemaType::Array.as_ref() => handle_array_type(obj),
@@ -334,7 +332,7 @@ fn handle_type_array(types: &[Value]) -> ParameterType {
                     || s == JsonSchemaType::Number.as_ref() =>
             {
                 ParameterType::Number
-            }
+            },
             Some(&s) if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
             _ => ParameterType::Any,
         }
@@ -534,13 +532,13 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
             ParameterType::Number => builder.add_number_property(field_name, description, required),
             ParameterType::Boolean => {
                 builder.add_boolean_property(field_name, description, required)
-            }
+            },
             ParameterType::StringArray => {
                 builder.add_string_array_property(field_name, description, required)
-            }
+            },
             ParameterType::NumberArray => {
                 builder.add_number_array_property(field_name, description, required)
-            }
+            },
             ParameterType::Object => builder.add_object_property(field_name, description, required),
             ParameterType::Any => builder.add_any_property(field_name, description, required),
         };
@@ -550,7 +548,5 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
 }
 
 impl From<ParameterName> for String {
-    fn from(param: ParameterName) -> Self {
-        param.as_ref().to_string()
-    }
+    fn from(param: ParameterName) -> Self { param.as_ref().to_string() }
 }

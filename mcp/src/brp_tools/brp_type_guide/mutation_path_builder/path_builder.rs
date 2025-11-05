@@ -103,7 +103,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                     None,
                     None,
                 )]);
-            }
+            },
             KnowledgeAction::UseExampleAndRecurse(example) => Some(Example::Json(example)),
             KnowledgeAction::NoHardcodedKnowledge => None,
         };
@@ -163,7 +163,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                     .unwrap_or_else(|_| json!(null));
 
                 Example::Json(assembled)
-            }
+            },
             Mutability::Mutable => final_example,
         };
 
@@ -176,7 +176,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                     )))
                 })?;
                 Err(BuilderError::NotMutable(reason))
-            }
+            },
             Mutability::Mutable | Mutability::PartiallyMutable => Ok(Self::build_final_result(
                 ctx,
                 paths_to_expose,
@@ -212,7 +212,7 @@ pub fn recurse_mutation_paths(
         TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx),
         TypeKind::Tuple | TypeKind::TupleStruct => {
             MutationPathBuilder::new(TupleMutationBuilder).build_paths(ctx)
-        }
+        },
         TypeKind::Array => MutationPathBuilder::new(ArrayMutationBuilder).build_paths(ctx),
         TypeKind::List => MutationPathBuilder::new(ListMutationBuilder).build_paths(ctx),
         TypeKind::Map => MutationPathBuilder::new(MapMutationBuilder).build_paths(ctx),
@@ -228,7 +228,7 @@ pub fn recurse_mutation_paths(
             Ok(vec![
                 MutationPathBuilder::<ValueMutationBuilder>::build_not_mutable_path(ctx, reason),
             ])
-        }
+        },
         Err(BuilderError::SystemError(e)) => Err(e),
     }
 }
@@ -312,7 +312,7 @@ pub fn determine_parent_mutability(
                 mutability_issues,
                 message,
             ))
-        }
+        },
         Mutability::NotMutable => Some(ctx.create_no_mutable_children_error()),
         Mutability::Mutable => None,
     };
@@ -321,9 +321,7 @@ pub fn determine_parent_mutability(
 }
 
 impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
-    pub const fn new(inner: B) -> Self {
-        Self { inner }
-    }
+    pub const fn new(inner: B) -> Self { Self { inner } }
 
     /// Process all children and collect their paths and examples
     fn process_all_children(
@@ -557,13 +555,13 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
                 // Normal mode: Add root path and return only paths marked for exposure
                 paths_to_expose.insert(0, mutation_path_internal);
                 paths_to_expose
-            }
+            },
             PathAction::Skip => {
                 // Skip mode: Return ONLY a root path with the example
                 // This ensures the example is available for parent assembly
                 // but child paths aren't exposed in the final result
                 vec![mutation_path_internal]
-            }
+            },
         }
     }
 

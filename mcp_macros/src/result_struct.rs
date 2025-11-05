@@ -268,7 +268,7 @@ fn generate_message_template_provider(
                 | "count_methods"
                 | "count_query_components" => {
                     quote! { 0 }
-                }
+                },
                 "count_errors" => quote! { None }, // count_errors is always optional
                 "extract_entity" => quote! { 0 },
                 "extract_duration_ms" => quote! { 100 },
@@ -344,7 +344,7 @@ fn generate_message_template_provider(
                     | "count_methods"
                     | "count_query_components" => {
                         quote! { 0 }
-                    }
+                    },
                     "count_errors" => quote! { None },
                     "extract_entity" => quote! { 0 },
                     "extract_duration_ms" => quote! { 100 },
@@ -518,7 +518,7 @@ fn generate_from_brp_client_response(
                         })
                         .unwrap_or(0)
                 }
-            }
+            },
             "count_type_guide" => {
                 quote! {
                     #source.as_ref()
@@ -527,7 +527,7 @@ fn generate_from_brp_client_response(
                         .map(|obj| obj.len())
                         .unwrap_or(0)
                 }
-            }
+            },
             "count_components" => {
                 // For world.get_components - handles both strict=true (flat) and strict=false
                 // (nested) formats
@@ -547,7 +547,7 @@ fn generate_from_brp_client_response(
                         })
                         .unwrap_or(0)
                 }
-            }
+            },
             "count_errors" => {
                 // For world.get_components result structure
                 quote! {
@@ -557,7 +557,7 @@ fn generate_from_brp_client_response(
                         .and_then(|v| v.as_array())
                         .map(|arr| arr.len())
                 }
-            }
+            },
             "count_query_components" => {
                 // Total components across all entities in query result
                 quote! {
@@ -572,7 +572,7 @@ fn generate_from_brp_client_response(
                         })
                         .unwrap_or(0)
                 }
-            }
+            },
             "count_methods" => {
                 // For rpc.discover
                 quote! {
@@ -583,7 +583,7 @@ fn generate_from_brp_client_response(
                         .map(|arr| arr.len())
                         .unwrap_or(0)
                 }
-            }
+            },
             "extract_entity" => {
                 // For spawn result - extracts entity ID from {entity: 123}
                 quote! {
@@ -593,7 +593,7 @@ fn generate_from_brp_client_response(
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0)
                 }
-            }
+            },
             "extract_keys_sent" => {
                 // For send_keys result
                 quote! {
@@ -608,7 +608,7 @@ fn generate_from_brp_client_response(
                         })
                         .unwrap_or_else(Vec::new)
                 }
-            }
+            },
             "count_keys_sent" => {
                 // For send_keys result - count the keys_sent array
                 quote! {
@@ -619,7 +619,7 @@ fn generate_from_brp_client_response(
                         .map(|arr| arr.len())
                         .unwrap_or(0)
                 }
-            }
+            },
             "extract_duration_ms" => {
                 // For send_keys result
                 quote! {
@@ -630,7 +630,7 @@ fn generate_from_brp_client_response(
                         .map(|v| v as u32)
                         .unwrap_or(100)
                 }
-            }
+            },
             "extract_debug_enabled" => {
                 // For set_debug_mode result
                 quote! {
@@ -640,7 +640,7 @@ fn generate_from_brp_client_response(
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false)
                 }
-            }
+            },
             "extract_message" => {
                 // For extracting message field
                 quote! {
@@ -650,7 +650,7 @@ fn generate_from_brp_client_response(
                         .and_then(|v| v.as_str())
                         .map(String::from)
                 }
-            }
+            },
             "extract_status" => {
                 // For extracting status field
                 quote! {
@@ -661,7 +661,7 @@ fn generate_from_brp_client_response(
                         .map(String::from)
                         .unwrap_or_else(|| "unknown".to_string())
                 }
-            }
+            },
             "extract_old_title" => {
                 // For extracting old_title field
                 quote! {
@@ -672,7 +672,7 @@ fn generate_from_brp_client_response(
                         .map(String::from)
                         .unwrap_or_else(|| String::new())
                 }
-            }
+            },
             "extract_new_title" => {
                 // For extracting new_title field
                 quote! {
@@ -683,7 +683,7 @@ fn generate_from_brp_client_response(
                         .map(String::from)
                         .unwrap_or_else(|| String::new())
                 }
-            }
+            },
             _ => panic!("Unknown computed operation: {operation}"),
         };
 

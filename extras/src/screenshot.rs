@@ -101,12 +101,12 @@ pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
                             match dyn_img.save(&path_clone) {
                                 Ok(()) => {
                                     info!("Screenshot successfully saved to: {path_clone}");
-                                }
+                                },
                                 Err(e) => {
                                     error!("Failed to save screenshot to {path_clone}: {e}");
-                                }
+                                },
                             }
-                        }
+                        },
                         Err(e) => error!("Failed to convert screenshot to dynamic image: {e}"),
                     }
                 })

@@ -71,11 +71,11 @@ impl Write for LazyWriter {
                     drop(file_guard);
                     Ok(bytes)
                 }
-            }
+            },
             None => {
                 // This should not happen due to the check above, but handle it
                 Err(io::Error::other("File handle unexpectedly None"))
-            }
+            },
         }
     }
 

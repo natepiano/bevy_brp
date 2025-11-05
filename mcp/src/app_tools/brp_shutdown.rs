@@ -90,17 +90,17 @@ async fn shutdown_app(app_name: &str, port: Port) -> ShutdownOutcome {
                     0
                 });
             ShutdownOutcome::CleanShutdown { pid }
-        }
+        },
         Ok(None) => {
             debug!("Graceful shutdown failed, falling back to process kill");
             // BRP responded but bevy_brp_extras not available - fall back to kill
             handle_kill_process_fallback(app_name, port, None)
-        }
+        },
         Err(e) => {
             debug!("BRP communication error, falling back to process kill: {e}");
             // BRP not responsive - fall back to kill
             handle_kill_process_fallback(app_name, port, Some(e.to_string()))
-        }
+        },
     }
 }
 
@@ -114,7 +114,7 @@ fn handle_kill_process_fallback(
         Ok(Some(pid)) => {
             debug!("Successfully killed process {app_name} with PID {pid}");
             ShutdownOutcome::ProcessKilled { pid }
-        }
+        },
         Ok(None) => {
             if brp_error.is_some() {
                 debug!("Process '{app_name}' not found when attempting to kill after BRP failure");
@@ -122,7 +122,7 @@ fn handle_kill_process_fallback(
                 debug!("Process '{app_name}' not found when attempting to kill");
             }
             ShutdownOutcome::NotRunning
-        }
+        },
         Err(kill_err) => {
             if brp_error.is_some() {
                 debug!("Failed to kill process '{app_name}' after BRP failure: {kill_err:?}");
@@ -136,7 +136,7 @@ fn handle_kill_process_fallback(
             ShutdownOutcome::Error {
                 message: error_message,
             }
-        }
+        },
     }
 }
 
@@ -186,7 +186,7 @@ async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> 
             // Graceful shutdown succeeded
             debug!("BRP extras shutdown successful: {result:?}");
             Ok(result)
-        }
+        },
         Ok(ResponseStatus::Error(brp_error)) => {
             // Check if this is a method not found error (bevy_brp_extras not available)
             if brp_error.get_code() == JSON_RPC_ERROR_METHOD_NOT_FOUND {
@@ -204,7 +204,7 @@ async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> 
                 );
             }
             Ok(None)
-        }
+        },
         Err(e) => {
             // BRP communication failed entirely
             debug!("BRP communication failed: {e}");
@@ -213,7 +213,7 @@ async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> 
             ))
             .attach("BRP not responsive")
             .attach(format!("Port: {port}")))
-        }
+        },
     }
 }
 

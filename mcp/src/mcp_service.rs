@@ -56,9 +56,7 @@ impl McpService {
     }
 
     /// Get tool definition by name with O(1) lookup
-    pub fn get_tool_def(&self, name: &str) -> Option<&ToolDef> {
-        self.tool_defs.get(name)
-    }
+    pub fn get_tool_def(&self, name: &str) -> Option<&ToolDef> { self.tool_defs.get(name) }
 
     /// List all MCP tools using pre-converted and sorted tools
     fn list_mcp_tools(&self) -> ListToolsResult {
@@ -108,14 +106,14 @@ impl McpService {
 
                 tracing::debug!("Processed roots: {:?}", paths);
                 Ok(paths)
-            }
+            },
             Err(e) => {
                 tracing::error!("Failed to send roots/list request: {}", e);
                 Err(McpError::internal_error(
                     format!("Failed to list roots: {e}"),
                     None,
                 ))
-            }
+            },
         }
     }
 }
