@@ -62,11 +62,11 @@ pub struct ResponseBuilder {
     status:                ResponseStatus,
     message:               String,
     call_info:             CallInfo,
-    metadata:              Option<Value>,
-    parameters:            Option<Value>,
-    result:                Option<Value>,
-    error_info:            Option<Value>,
-    brp_extras_debug_info: Option<Value>,
+    metadata:              Option<super::json_response::AnySchemaValue>,
+    parameters:            Option<super::json_response::AnySchemaValue>,
+    result:                Option<super::json_response::AnySchemaValue>,
+    error_info:            Option<super::json_response::AnySchemaValue>,
+    brp_extras_debug_info: Option<super::json_response::AnySchemaValue>,
 }
 
 impl ResponseBuilder {
@@ -106,6 +106,7 @@ impl ResponseBuilder {
     /// Add a field to the metadata object. Creates a new object if metadata is None.
     pub fn add_field(mut self, key: &str, value: impl Serialize) -> Result<Self> {
         use error_stack::ResultExt;
+        use super::json_response::AnySchemaValue;
 
         let value_json = serde_json::to_value(value)
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
@@ -117,12 +118,12 @@ impl ResponseBuilder {
             return Ok(self);
         }
 
-        if let Some(Value::Object(map)) = &mut self.metadata {
+        if let Some(AnySchemaValue(Value::Object(map))) = &mut self.metadata {
             map.insert(key.to_string(), value_json);
         } else {
             let mut map = serde_json::Map::new();
             map.insert(key.to_string(), value_json);
-            self.metadata = Some(Value::Object(map));
+            self.metadata = Some(AnySchemaValue(Value::Object(map)));
         }
 
         Ok(self)
@@ -154,6 +155,7 @@ impl ResponseBuilder {
         placement: FieldPlacement,
     ) -> Result<Self> {
         use error_stack::ResultExt;
+        use super::json_response::AnySchemaValue;
 
         let value_json = serde_json::to_value(value)
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
@@ -168,27 +170,27 @@ impl ResponseBuilder {
         match placement {
             FieldPlacement::Metadata => {
                 // For metadata, use field name as key in object
-                if let Some(Value::Object(map)) = &mut self.metadata {
+                if let Some(AnySchemaValue(Value::Object(map))) = &mut self.metadata {
                     map.insert(key.to_string(), value_json);
                 } else {
                     let mut map = serde_json::Map::new();
                     map.insert(key.to_string(), value_json);
-                    self.metadata = Some(Value::Object(map));
+                    self.metadata = Some(AnySchemaValue(Value::Object(map)));
                 }
             }
             FieldPlacement::Result => {
                 // For result, set the entire result field to the value
                 // Field name is ignored to match raw BRP behavior
-                self.result = Some(value_json);
+                self.result = Some(AnySchemaValue(value_json));
             }
             FieldPlacement::ErrorInfo => {
                 // For error_info, use field name as key in object
-                if let Some(Value::Object(map)) = &mut self.error_info {
+                if let Some(AnySchemaValue(Value::Object(map))) = &mut self.error_info {
                     map.insert(key.to_string(), value_json);
                 } else {
                     let mut map = serde_json::Map::new();
                     map.insert(key.to_string(), value_json);
-                    self.error_info = Some(Value::Object(map));
+                    self.error_info = Some(AnySchemaValue(Value::Object(map)));
                 }
             }
         }
@@ -211,17 +213,24 @@ impl ResponseBuilder {
 
     /// Get metadata for template substitution
     pub const fn metadata(&self) -> Option<&Value> {
-        self.metadata.as_ref()
+        match &self.metadata {
+            Some(any_val) => Some(&any_val.0),
+            None => None,
+        }
     }
 
     /// Get result for template substitution
     pub const fn result(&self) -> Option<&Value> {
-        self.result.as_ref()
+        match &self.result {
+            Some(any_val) => Some(&any_val.0),
+            None => None,
+        }
     }
 
     /// Set parameters with optional parameter tracking
     pub fn parameters(mut self, params: impl Serialize) -> Result<Self> {
         use error_stack::ResultExt;
+        use super::json_response::AnySchemaValue;
 
         let mut params_value = serde_json::to_value(params)
             .change_context(Error::General("Failed to serialize parameters".to_string()))?;
@@ -262,13 +271,16 @@ impl ResponseBuilder {
             }
         }
 
-        self.parameters = Some(params_value);
+        self.parameters = Some(AnySchemaValue(params_value));
         Ok(self)
     }
 
     /// Get parameters for template substitution
     pub const fn parameters_ref(&self) -> Option<&Value> {
-        self.parameters.as_ref()
+        match &self.parameters {
+            Some(any_val) => Some(&any_val.0),
+            None => None,
+        }
     }
 
     /// Terminal operation: Build complete response from a `ResultStruct`, handling all formatting
@@ -348,9 +360,11 @@ impl ResponseBuilder {
         builder: &Self,
         handler_context: &HandlerContext,
     ) -> Option<String> {
+        use super::json_response::AnySchemaValue;
+
         tracing::debug!("Looking for placeholder: '{}'", placeholder);
         // First check error_info (for error fields)
-        if let Some(Value::Object(error_info)) = &builder.error_info {
+        if let Some(AnySchemaValue(Value::Object(error_info))) = &builder.error_info {
             tracing::debug!(
                 "Error info contains: {:?}",
                 error_info.keys().collect::<Vec<_>>()
