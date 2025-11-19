@@ -23,7 +23,7 @@ pub struct SetTracingLevelParams {
 pub struct SetTracingLevelResult {
     /// The new tracing level that was set
     #[to_metadata]
-    tracing_level:    String,
+    tracing_level: String,
     /// The log file where trace output is written
     #[to_metadata]
     tracing_log_file: String,

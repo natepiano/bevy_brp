@@ -24,7 +24,7 @@ pub struct StatusParams {
     pub app_name: String,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    pub port:     Port,
+    pub port: Port,
 }
 
 /// Result from checking status of a Bevy app
@@ -32,13 +32,13 @@ pub struct StatusParams {
 pub struct StatusResult {
     /// App name
     #[to_metadata]
-    app_name:         String,
+    app_name: String,
     /// Process ID
     #[to_metadata]
-    pid:              u32,
+    pid: u32,
     /// Port where BRP is responding
     #[to_metadata]
-    port:             u16,
+    port: u16,
     /// Message template for formatting responses
     #[to_message(
         message_template = "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}"

@@ -27,12 +27,12 @@ const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
 /// Parameters for a watch connection
 struct WatchConnectionParams {
-    watch_id:   u32,
-    entity_id:  u64,
+    watch_id: u32,
+    entity_id: u64,
     watch_type: String,
     brp_method: BrpMethod,
-    params:     Value,
-    port:       Port,
+    params: Value,
+    port: Port,
 }
 
 /// Process a single SSE line and log the update if valid

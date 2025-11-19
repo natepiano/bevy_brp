@@ -37,7 +37,7 @@ pub enum NotMutableReason {
     /// Container type has non-mutable element type
     NonMutableHandle {
         container_type: BrpTypeName,
-        element_type:   BrpTypeName,
+        element_type: BrpTypeName,
     },
     /// Type not found in registry
     NotInRegistry(BrpTypeName),
@@ -51,10 +51,10 @@ pub enum NotMutableReason {
     NoExampleAvailable(BrpTypeName),
     /// Some children are mutable, others are not (results in `PartiallyMutable`)
     PartialChildMutability {
-        parent_type:       BrpTypeName,
-        message:           String,
-        mutable:           Vec<String>,
-        not_mutable:       Vec<String>,
+        parent_type: BrpTypeName,
+        message: String,
+        mutable: Vec<String>,
+        not_mutable: Vec<String>,
         partially_mutable: Vec<String>,
     },
 }

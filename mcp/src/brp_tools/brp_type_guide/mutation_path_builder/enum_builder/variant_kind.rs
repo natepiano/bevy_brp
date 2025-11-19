@@ -19,7 +19,7 @@ use crate::json_schema::SchemaField;
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantKind {
-    pub name:      VariantName,
+    pub name: VariantName,
     pub signature: VariantSignature,
 }
 
@@ -42,7 +42,7 @@ impl VariantKind {
 
             let qualified_name = format!("{type_name}::{variant_str}");
             return Ok(Self {
-                name:      VariantName::from(qualified_name),
+                name: VariantName::from(qualified_name),
                 signature: VariantSignature::Unit,
             });
         }
@@ -67,7 +67,7 @@ impl VariantKind {
 
         // Unit variant (no fields)
         Ok(Self {
-            name:      variant_name,
+            name: variant_name,
             signature: VariantSignature::Unit,
         })
     }

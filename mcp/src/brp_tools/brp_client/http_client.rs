@@ -24,7 +24,7 @@ use crate::tool::ParameterName;
 /// HTTP client for BRP communication
 pub struct BrpHttpClient {
     method: BrpMethod,
-    port:   Port,
+    port: Port,
     params: Option<Value>,
 }
 

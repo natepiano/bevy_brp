@@ -24,13 +24,13 @@ use nom::sequence::preceded;
 pub struct ParsedTypePath {
     /// The full type including module path and generics
     /// e.g., "`core::option::Option`<`bevy_asset::handle::Handle`<`bevy_mesh::mesh::Mesh`>>"
-    pub full_type:       String,
+    pub full_type: String,
     /// The simplified type name with generics but no module paths
     /// e.g., "Option<Handle<Mesh>>"
     pub simplified_type: String,
     /// The variant name if present
     /// e.g., "Some"
-    pub variant:         Option<String>,
+    pub variant: Option<String>,
 }
 
 /// Parse an identifier (alphanumeric + underscore, not starting with digit)
@@ -191,9 +191,9 @@ pub fn parse_type_with_variant(input: &str) -> Result<ParsedTypePath, String> {
             let simplified = simplify_type(type_part);
 
             Ok(ParsedTypePath {
-                full_type:       type_part.to_string(),
+                full_type: type_part.to_string(),
                 simplified_type: simplified,
-                variant:         variant.map(ToString::to_string),
+                variant: variant.map(ToString::to_string),
             })
         }
         Err(e) => Err(format!("Failed to parse type path: {e:?}")),

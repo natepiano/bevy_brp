@@ -43,17 +43,17 @@ impl TargetType {
 #[derive(Debug, Clone)]
 pub struct BevyTarget {
     /// Name of the target
-    pub name:           String,
+    pub name: String,
     /// Type of target (App or Example)
-    pub target_type:    TargetType,
+    pub target_type: TargetType,
     /// Package name (for examples, this is the package containing the example)
-    pub package_name:   String,
+    pub package_name: String,
     /// Workspace root (for apps)
     pub workspace_root: PathBuf,
     /// Path to the package's Cargo.toml
-    pub manifest_path:  PathBuf,
+    pub manifest_path: PathBuf,
     /// Relative path from scan root to this item
-    pub relative_path:  PathBuf,
+    pub relative_path: PathBuf,
 }
 
 impl BevyTarget {
@@ -129,24 +129,24 @@ impl CargoDetector {
         // Extract apps
         for target in package.targets.iter().filter(|t| t.is_bin()) {
             targets.push(BevyTarget {
-                name:           target.name.clone(),
-                target_type:    TargetType::App,
-                package_name:   package_name.clone(),
+                name: target.name.clone(),
+                target_type: TargetType::App,
+                package_name: package_name.clone(),
                 workspace_root: workspace_root.clone(),
-                manifest_path:  manifest_path.clone(),
-                relative_path:  PathBuf::new(), // Will be set by scanning logic
+                manifest_path: manifest_path.clone(),
+                relative_path: PathBuf::new(), // Will be set by scanning logic
             });
         }
 
         // Extract examples
         for target in package.targets.iter().filter(|t| t.is_example()) {
             targets.push(BevyTarget {
-                name:           target.name.clone(),
-                target_type:    TargetType::Example,
-                package_name:   package_name.clone(),
+                name: target.name.clone(),
+                target_type: TargetType::Example,
+                package_name: package_name.clone(),
                 workspace_root: workspace_root.clone(),
-                manifest_path:  manifest_path.clone(),
-                relative_path:  PathBuf::new(), // Will be set by scanning logic
+                manifest_path: manifest_path.clone(),
+                relative_path: PathBuf::new(), // Will be set by scanning logic
             });
         }
 

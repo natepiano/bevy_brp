@@ -25,8 +25,8 @@ use crate::tool::response_builder::Response;
 #[derive(Clone)]
 pub struct HandlerContext {
     pub(super) tool_def: ToolDef,
-    pub request:         CallToolRequestParam,
-    pub roots:           Vec<PathBuf>,
+    pub request: CallToolRequestParam,
+    pub roots: Vec<PathBuf>,
 }
 
 impl HandlerContext {

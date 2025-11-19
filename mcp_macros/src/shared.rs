@@ -11,7 +11,7 @@ use syn::Type;
 pub struct ComputedField {
     pub field_name: Ident,
     pub from_field: String,
-    pub operation:  String,
+    pub operation: String,
 }
 
 /// Parse placement attribute arguments
@@ -218,9 +218,9 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
 }
 
 pub struct FieldExtractionResult {
-    pub field_placements:       Vec<TokenStream>,
-    pub response_data_fields:   Vec<TokenStream>,
-    pub computed_fields:        Vec<ComputedField>,
-    pub regular_fields:         Vec<(Ident, Type)>,
+    pub field_placements: Vec<TokenStream>,
+    pub response_data_fields: Vec<TokenStream>,
+    pub computed_fields: Vec<ComputedField>,
+    pub regular_fields: Vec<(Ident, Type)>,
     pub message_template_field: Option<(Ident, Option<String>)>,
 }

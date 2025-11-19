@@ -21,10 +21,10 @@ use crate::tool::ToolResult;
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ReadLogParams {
     /// The log filename (e.g., `bevy_brp_mcp_myapp_1234567890.log`)
-    pub filename:   String,
+    pub filename: String,
     /// Optional keyword to filter lines (case-insensitive)
     #[to_metadata(skip_if_none)]
-    pub keyword:    Option<String>,
+    pub keyword: Option<String>,
     /// Optional number of lines to read from the end of file
     #[to_metadata(skip_if_none)]
     pub tail_lines: Option<u32>,
@@ -36,31 +36,31 @@ pub struct ReadLogParams {
 pub struct ReadLogResult {
     /// The filename that was read
     #[to_metadata]
-    filename:            String,
+    filename: String,
     /// Full path to the file
     #[to_metadata]
-    file_path:           String,
+    file_path: String,
     /// Size of the file in bytes
     #[to_metadata]
-    size_bytes:          u64,
+    size_bytes: u64,
     /// Human-readable file size
     #[to_metadata]
-    size_human:          String,
+    size_human: String,
     /// Number of lines read
     #[to_metadata]
-    lines_read:          usize,
+    lines_read: usize,
     /// The actual log content
     #[to_result]
-    content:             String,
+    content: String,
     /// Whether content was filtered by keyword
     #[to_metadata]
     filtered_by_keyword: bool,
     /// Whether tail mode was used
     #[to_metadata]
-    tail_mode:           bool,
+    tail_mode: bool,
     /// Message template for formatting responses
     #[to_message(message_template = "Read {lines_read} lines from {filename}")]
-    message_template:    String,
+    message_template: String,
 }
 
 #[derive(ToolFn)]

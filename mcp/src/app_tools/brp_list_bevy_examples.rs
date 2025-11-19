@@ -17,10 +17,10 @@ use crate::tool::ToolResult;
 pub struct ListBevyExamplesResult {
     /// Count of examples found
     #[to_metadata]
-    count:            usize,
+    count: usize,
     /// List of Bevy examples found
     #[to_result]
-    examples:         Vec<serde_json::Value>,
+    examples: Vec<serde_json::Value>,
     /// Message template for formatting responses
     #[to_message(message_template = "Found {count} Bevy examples")]
     message_template: String,

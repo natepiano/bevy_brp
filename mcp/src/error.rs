@@ -54,10 +54,10 @@ pub enum Error {
 
     #[error("Schema processing error: {message}")]
     SchemaProcessing {
-        message:   String,
+        message: String,
         type_name: Option<String>,
         operation: Option<String>,
-        details:   Option<String>,
+        details: Option<String>,
     },
 
     #[error("Structured error")] // Generic message, the real message comes from the ResultStruct
@@ -227,10 +227,10 @@ impl Error {
     /// Create a schema processing error with just a message
     pub fn schema_processing(message: impl Into<String>) -> Self {
         Self::SchemaProcessing {
-            message:   message.into(),
+            message: message.into(),
             type_name: None,
             operation: None,
-            details:   None,
+            details: None,
         }
     }
 
@@ -241,10 +241,10 @@ impl Error {
         details: impl Into<String>,
     ) -> Self {
         Self::SchemaProcessing {
-            message:   "Failed to process schema for type".to_string(),
+            message: "Failed to process schema for type".to_string(),
             type_name: Some(type_name.into()),
             operation: Some(operation.into()),
-            details:   Some(details.into()),
+            details: Some(details.into()),
         }
     }
 }

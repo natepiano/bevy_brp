@@ -18,15 +18,15 @@ use crate::tool::ToolResult;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WatchInfo {
     /// Watch ID
-    pub watch_id:   u32,
+    pub watch_id: u32,
     /// Entity ID being watched
-    pub entity_id:  u64,
+    pub entity_id: u64,
     /// Type of watch (get/list)
     pub watch_type: String,
     /// Log file path
-    pub log_path:   String,
+    pub log_path: String,
     /// BRP port
-    pub port:       Port,
+    pub port: Port,
 }
 
 /// Result from listing active watches
@@ -56,11 +56,11 @@ async fn handle_impl(_params: NoParams) -> Result<ListActiveWatchesResult> {
     let watches: Vec<WatchInfo> = active_watches
         .iter()
         .map(|watch| WatchInfo {
-            watch_id:   watch.watch_id,
-            entity_id:  watch.entity_id,
+            watch_id: watch.watch_id,
+            entity_id: watch.entity_id,
             watch_type: watch.watch_type.clone(),
-            log_path:   watch.log_path.to_string_lossy().to_string(),
-            port:       watch.port,
+            log_path: watch.log_path.to_string_lossy().to_string(),
+            port: watch.port,
         })
         .collect();
 

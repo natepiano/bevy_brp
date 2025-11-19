@@ -9,8 +9,8 @@ use syn::parse_macro_input;
 
 /// Attributes extracted from #[tool(...)]
 struct ToolAttrs {
-    params:     Option<String>,
-    result:     Option<String>,
+    params: Option<String>,
+    result: Option<String>,
     brp_method: String, // Make required (not Option)
 }
 
@@ -244,8 +244,8 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
 /// Extract unified tool attributes from #[tool(...)]
 fn extract_tool_attr(attrs: &[syn::Attribute]) -> ToolAttrs {
     let mut tool_attrs = ToolAttrs {
-        params:     None,
-        result:     None,
+        params: None,
+        result: None,
         brp_method: String::new(), // Required field
     };
 

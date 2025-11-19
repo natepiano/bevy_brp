@@ -27,7 +27,7 @@ pub struct ShutdownParams {
     pub app_name: String,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    pub port:     Port,
+    pub port: Port,
 }
 
 /// Result from shutting down a Bevy app
@@ -35,20 +35,20 @@ pub struct ShutdownParams {
 pub struct ShutdownResult {
     /// App name that was shut down
     #[to_metadata]
-    app_name:         String,
+    app_name: String,
     /// Process ID
     #[to_metadata]
-    pid:              u32,
+    pid: u32,
     /// Shutdown method used
     #[to_metadata]
-    shutdown_method:  String,
+    shutdown_method: String,
     /// Port where shutdown was attempted
     #[to_metadata]
-    port:             u16,
+    port: u16,
     /// Warning for degraded success (process kill)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_metadata(skip_if_none)]
-    warning:          Option<String>,
+    warning: Option<String>,
     /// Message template for formatting responses
     #[to_message]
     message_template: Option<String>,

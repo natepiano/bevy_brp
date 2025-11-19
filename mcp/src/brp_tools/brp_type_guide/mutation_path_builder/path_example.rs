@@ -25,7 +25,7 @@ pub enum PathExample {
     /// use when assembling their own examples.
     EnumRoot {
         /// All variant groups for this enum (the `examples` array in JSON output)
-        groups:     Vec<ExampleGroup>,
+        groups: Vec<ExampleGroup>,
         /// Simplified example for parent assembly
         for_parent: Example,
     },

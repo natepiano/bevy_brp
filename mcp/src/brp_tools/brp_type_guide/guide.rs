@@ -36,24 +36,24 @@ use crate::json_schema::SchemaField;
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeGuide {
     /// Fully-qualified type name
-    pub type_name:            BrpTypeName,
+    pub type_name: BrpTypeName,
     /// Whether the type is registered in the Bevy registry
-    pub in_registry:          bool,
+    pub in_registry: bool,
     /// Example format for spawn/insert operations with guidance
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub spawn_insert_example: Option<SpawnInsertExample>,
     /// Guidance for AI agents about using mutation paths
-    pub agent_guidance:       String,
+    pub agent_guidance: String,
     /// Mutation paths available for this type - using same format as V1
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub mutation_paths:       Vec<MutationPathExternal>,
+    pub mutation_paths: Vec<MutationPathExternal>,
     /// Schema information from the registry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schema_info:          Option<SchemaInfo>,
+    pub schema_info: Option<SchemaInfo>,
     /// Type information for direct fields (struct fields only, one level deep)
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error:                Option<String>,
+    pub error: Option<String>,
 }
 
 impl TypeGuide {

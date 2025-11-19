@@ -15,7 +15,7 @@ use crate::brp_tools::brp_client::constants::JSONRPC_VERSION;
 pub struct BrpJsonRpcBuilder {
     method: String,
     params: Option<Value>,
-    id:     u64,
+    id: u64,
 }
 
 impl BrpJsonRpcBuilder {
@@ -24,7 +24,7 @@ impl BrpJsonRpcBuilder {
         Self {
             method: method.into(),
             params: None,
-            id:     JSONRPC_DEFAULT_ID,
+            id: JSONRPC_DEFAULT_ID,
         }
     }
 
