@@ -32,17 +32,17 @@ impl JsonSchema for AnySchemaValue {
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ToolCallJsonResponse {
-    pub status: ResponseStatus,
-    pub message: String,
-    pub call_info: CallInfo,
+    pub status:                ResponseStatus,
+    pub message:               String,
+    pub call_info:             CallInfo,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<AnySchemaValue>,
+    pub metadata:              Option<AnySchemaValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<AnySchemaValue>,
+    pub parameters:            Option<AnySchemaValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub result: Option<AnySchemaValue>,
+    pub result:                Option<AnySchemaValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_info: Option<AnySchemaValue>,
+    pub error_info:            Option<AnySchemaValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brp_extras_debug_info: Option<AnySchemaValue>,
 }

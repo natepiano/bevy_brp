@@ -140,7 +140,7 @@ enum ParameterType {
 #[derive(Clone, Default)]
 pub struct ParameterBuilder {
     properties: Map<String, Value>,
-    required: Vec<String>,
+    required:   Vec<String>,
 }
 
 impl ParameterBuilder {

@@ -106,6 +106,7 @@ impl ResponseBuilder {
     /// Add a field to the metadata object. Creates a new object if metadata is None.
     pub fn add_field(mut self, key: &str, value: impl Serialize) -> Result<Self> {
         use error_stack::ResultExt;
+
         use super::json_response::AnySchemaValue;
 
         let value_json = serde_json::to_value(value)
@@ -155,6 +156,7 @@ impl ResponseBuilder {
         placement: FieldPlacement,
     ) -> Result<Self> {
         use error_stack::ResultExt;
+
         use super::json_response::AnySchemaValue;
 
         let value_json = serde_json::to_value(value)
@@ -230,6 +232,7 @@ impl ResponseBuilder {
     /// Set parameters with optional parameter tracking
     pub fn parameters(mut self, params: impl Serialize) -> Result<Self> {
         use error_stack::ResultExt;
+
         use super::json_response::AnySchemaValue;
 
         let mut params_value = serde_json::to_value(params)
