@@ -140,7 +140,7 @@ enum ParameterType {
 #[derive(Clone, Default)]
 pub struct ParameterBuilder {
     properties: Map<String, Value>,
-    required:   Vec<String>,
+    required: Vec<String>,
 }
 
 impl ParameterBuilder {
@@ -394,7 +394,7 @@ fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
                 // For other $ref types (like BrpQueryFilter), treat as Object
                 // since they're references to custom structs
                 // This fixes Option<CustomStruct> being treated as "Any" which causes
-                // some MCP clients to serialize it as ["object", "array", "null"]
+                // Claude Code to serialize it as ["object", "array", "null"]
                 return ParameterType::Object;
             }
 
