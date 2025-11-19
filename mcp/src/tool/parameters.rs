@@ -394,7 +394,7 @@ fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
                 // For other $ref types (like BrpQueryFilter), treat as Object
                 // since they're references to custom structs
                 // This fixes Option<CustomStruct> being treated as "Any" which causes
-                // Claude Code to serialize it as ["object", "array", "null"]
+                // some MCP clients to serialize it as ["object", "array", "null"]
                 return ParameterType::Object;
             }
 

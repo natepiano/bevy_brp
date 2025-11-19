@@ -10,6 +10,16 @@ use super::tool_name::CallInfo;
 use crate::error::Error;
 use crate::error::Result;
 
+use serde_json::json;
+
+fn schema_for_any_object(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    serde_json::from_value(json!({})).unwrap()
+}
+
+fn schema_for_any_value(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    serde_json::from_value(json!({})).unwrap()
+}
+
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ToolCallJsonResponse {
@@ -17,14 +27,19 @@ pub struct ToolCallJsonResponse {
     pub message:               String,
     pub call_info:             CallInfo,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(schema_with = "schema_for_any_object")]
     pub metadata:              Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(schema_with = "schema_for_any_object")]
     pub parameters:            Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(schema_with = "schema_for_any_value")]
     pub result:                Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(schema_with = "schema_for_any_object")]
     pub error_info:            Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(schema_with = "schema_for_any_object")]
     pub brp_extras_debug_info: Option<Value>,
 }
 

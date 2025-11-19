@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved mutation path descriptions for non-mutable paths to clarify when examples are unavailable
 
 ### Fixed
-- `world_query` tool description now correctly specifies `filter` parameter as object type, preventing Claude Code from passing it as a JSON string instead of a structured object
+- `world_query` tool description now correctly specifies `filter` parameter as object type, preventing some MCP clients from passing it as a JSON string instead of a structured object
 
 ## [0.17.0] - 2025-10-31
 
