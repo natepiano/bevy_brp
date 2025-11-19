@@ -116,21 +116,21 @@ pub fn process_enum(
                 None
             } else {
                 Some(EnumPathInfo {
-                    variant_chain: ctx.variant_chain.clone(),
+                    variant_chain:       ctx.variant_chain.clone(),
                     applicable_variants: Vec::new(),
-                    root_example: None,
+                    root_example:        None,
                 })
             };
 
             return Ok(vec![MutationPathInternal {
-                example: PathExample::Simple(Example::Json(example)),
-                mutation_path: ctx.mutation_path.clone(),
-                type_name: ctx.type_name().display_name(),
-                path_kind: ctx.path_kind.clone(),
-                mutability: Mutability::Mutable,
-                mutability_reason: None,
-                enum_path_info: enum_path_data,
-                depth: *ctx.depth,
+                example:               PathExample::Simple(Example::Json(example)),
+                mutation_path:         ctx.mutation_path.clone(),
+                type_name:             ctx.type_name().display_name(),
+                path_kind:             ctx.path_kind.clone(),
+                mutability:            Mutability::Mutable,
+                mutability_reason:     None,
+                enum_path_info:        enum_path_data,
+                depth:                 *ctx.depth,
                 partial_root_examples: None,
             }]);
         }
@@ -519,8 +519,8 @@ fn create_paths_for_signature(
             fields
                 .iter()
                 .map(|(field_name, type_name)| PathKind::StructField {
-                    field_name: field_name.clone(),
-                    type_name: type_name.clone(),
+                    field_name:  field_name.clone(),
+                    type_name:   type_name.clone(),
                     parent_type: ctx.type_name().clone(),
                 })
                 .collect(),
@@ -836,9 +836,9 @@ fn build_enum_root_path(
         None
     } else {
         Some(EnumPathInfo {
-            variant_chain: ctx.variant_chain.clone(),
+            variant_chain:       ctx.variant_chain.clone(),
             applicable_variants: Vec::new(),
-            root_example: None,
+            root_example:        None,
         })
     };
 
@@ -846,7 +846,7 @@ fn build_enum_root_path(
     MutationPathInternal {
         mutation_path: ctx.mutation_path.clone(),
         example: PathExample::EnumRoot {
-            groups: enum_examples,
+            groups:     enum_examples,
             for_parent: default_example,
         },
         type_name: ctx.type_name().display_name(),

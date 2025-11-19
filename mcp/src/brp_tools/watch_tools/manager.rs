@@ -21,17 +21,17 @@ pub static WATCH_MANAGER: std::sync::LazyLock<Arc<Mutex<WatchManager>>> =
 /// Information about an active watch
 #[derive(Debug, Clone)]
 pub struct WatchInfo {
-    pub watch_id: u32,
-    pub entity_id: u64,
+    pub watch_id:   u32,
+    pub entity_id:  u64,
     pub watch_type: String,
-    pub log_path: PathBuf,
-    pub port: Port,
+    pub log_path:   PathBuf,
+    pub port:       Port,
 }
 
 /// Manager for watch subscriptions
 pub struct WatchManager {
     /// Monotonic counter for watch IDs
-    next_watch_id: AtomicU32,
+    next_watch_id:      AtomicU32,
     /// Active watches mapped by watch ID
     pub active_watches: HashMap<u32, (WatchInfo, JoinHandle<()>)>,
 }
@@ -40,7 +40,7 @@ impl WatchManager {
     /// Create a new watch manager
     pub fn new() -> Self {
         Self {
-            next_watch_id: AtomicU32::new(1),
+            next_watch_id:  AtomicU32::new(1),
             active_watches: HashMap::new(),
         }
     }

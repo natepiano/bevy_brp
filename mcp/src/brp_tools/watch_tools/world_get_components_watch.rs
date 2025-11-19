@@ -21,10 +21,10 @@ pub struct GetComponentsWatchParams {
     pub entity: u64,
     /// Required array of component types to watch. Must contain at least one component. Without
     /// this, the watch will not detect any changes.
-    pub types: Vec<String>,
+    pub types:  Vec<String>,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    pub port: Port,
+    pub port:   Port,
 }
 
 #[derive(ToolFn)]

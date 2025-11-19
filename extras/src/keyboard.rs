@@ -27,7 +27,7 @@ const DEFAULT_KEY_DURATION_MS: u32 = 100;
 #[derive(Component)]
 pub struct TimedKeyRelease {
     /// The key codes to release
-    pub keys: Vec<KeyCode>,
+    pub keys:  Vec<KeyCode>,
     /// Timer tracking the remaining duration
     pub timer: Timer,
 }
@@ -381,7 +381,7 @@ impl KeyCodeWrapper {
 #[derive(Debug, Deserialize)]
 pub struct SendKeysRequest {
     /// Array of key codes to send
-    pub keys: Vec<String>,
+    pub keys:        Vec<String>,
     /// Duration in milliseconds to hold the keys before releasing
     #[serde(default = "default_duration")]
     pub duration_ms: u32,
@@ -395,9 +395,9 @@ const fn default_duration() -> u32 {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SendKeysResponse {
     /// Whether the operation was successful
-    pub success: bool,
+    pub success:     bool,
     /// List of keys that were sent
-    pub keys_sent: Vec<String>,
+    pub keys_sent:   Vec<String>,
     /// Duration in milliseconds the keys were held
     pub duration_ms: u32,
 }
@@ -413,9 +413,9 @@ fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCode)>, BrpError> {
             }
             Err(e) => {
                 return Err(BrpError {
-                    code: INVALID_PARAMS,
+                    code:    INVALID_PARAMS,
                     message: format!("Invalid key code '{key_str}': {e}"),
-                    data: None,
+                    data:    None,
                 });
             }
         }
@@ -464,15 +464,15 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     // Parse the request
     let request: SendKeysRequest = if let Some(params) = params {
         serde_json::from_value(params).map_err(|e| BrpError {
-            code: INVALID_PARAMS,
+            code:    INVALID_PARAMS,
             message: format!("Invalid request format: {e}"),
-            data: None,
+            data:    None,
         })?
     } else {
         return Err(BrpError {
-            code: INVALID_PARAMS,
+            code:    INVALID_PARAMS,
             message: "Missing request parameters".to_string(),
-            data: None,
+            data:    None,
         });
     };
 
@@ -484,12 +484,12 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     // Validate duration doesn't exceed maximum
     if request.duration_ms > MAX_KEY_DURATION_MS {
         return Err(BrpError {
-            code: INVALID_PARAMS,
+            code:    INVALID_PARAMS,
             message: format!(
                 "Duration {}ms exceeds maximum allowed duration of {}ms (1 minute)",
                 request.duration_ms, MAX_KEY_DURATION_MS
             ),
-            data: None,
+            data:    None,
         });
     }
 
@@ -502,7 +502,7 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     // Always spawn an entity to handle the timed release
     if !key_codes.is_empty() {
         world.spawn(TimedKeyRelease {
-            keys: key_codes,
+            keys:  key_codes,
             timer: Timer::new(
                 Duration::from_millis(u64::from(request.duration_ms)),
                 TimerMode::Once,
@@ -511,8 +511,8 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     }
 
     Ok(json!(SendKeysResponse {
-        success: true,
-        keys_sent: valid_key_strings,
+        success:     true,
+        keys_sent:   valid_key_strings,
         duration_ms: request.duration_ms,
     }))
 }
@@ -521,7 +521,7 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
 #[derive(Debug, Serialize, Deserialize)]
 pub struct KeyCodeInfo {
     /// The name of the key code (e.g., "`KeyA`", "`Space`")
-    pub name: String,
+    pub name:     String,
     /// The category of the key (e.g., "Letters", "Modifiers")
     pub category: String,
 }

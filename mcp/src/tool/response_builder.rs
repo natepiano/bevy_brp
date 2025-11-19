@@ -59,13 +59,13 @@ impl Response {
 /// Builder for constructing JSON responses
 #[derive(Clone)]
 pub struct ResponseBuilder {
-    status: ResponseStatus,
-    message: String,
-    call_info: CallInfo,
-    metadata: Option<super::json_response::AnySchemaValue>,
-    parameters: Option<super::json_response::AnySchemaValue>,
-    result: Option<super::json_response::AnySchemaValue>,
-    error_info: Option<super::json_response::AnySchemaValue>,
+    status:                ResponseStatus,
+    message:               String,
+    call_info:             CallInfo,
+    metadata:              Option<super::json_response::AnySchemaValue>,
+    parameters:            Option<super::json_response::AnySchemaValue>,
+    result:                Option<super::json_response::AnySchemaValue>,
+    error_info:            Option<super::json_response::AnySchemaValue>,
     brp_extras_debug_info: Option<super::json_response::AnySchemaValue>,
 }
 
@@ -105,8 +105,8 @@ impl ResponseBuilder {
 
     /// Add a field to the metadata object. Creates a new object if metadata is None.
     pub fn add_field(mut self, key: &str, value: impl Serialize) -> Result<Self> {
-        use super::json_response::AnySchemaValue;
         use error_stack::ResultExt;
+        use super::json_response::AnySchemaValue;
 
         let value_json = serde_json::to_value(value)
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
@@ -154,8 +154,8 @@ impl ResponseBuilder {
         value: impl Serialize,
         placement: FieldPlacement,
     ) -> Result<Self> {
-        use super::json_response::AnySchemaValue;
         use error_stack::ResultExt;
+        use super::json_response::AnySchemaValue;
 
         let value_json = serde_json::to_value(value)
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
@@ -200,13 +200,13 @@ impl ResponseBuilder {
 
     pub fn build(self) -> ToolCallJsonResponse {
         ToolCallJsonResponse {
-            status: self.status,
-            message: self.message,
-            call_info: self.call_info,
-            metadata: self.metadata,
-            parameters: self.parameters,
-            result: self.result,
-            error_info: self.error_info,
+            status:                self.status,
+            message:               self.message,
+            call_info:             self.call_info,
+            metadata:              self.metadata,
+            parameters:            self.parameters,
+            result:                self.result,
+            error_info:            self.error_info,
             brp_extras_debug_info: self.brp_extras_debug_info,
         }
     }
@@ -229,8 +229,8 @@ impl ResponseBuilder {
 
     /// Set parameters with optional parameter tracking
     pub fn parameters(mut self, params: impl Serialize) -> Result<Self> {
-        use super::json_response::AnySchemaValue;
         use error_stack::ResultExt;
+        use super::json_response::AnySchemaValue;
 
         let mut params_value = serde_json::to_value(params)
             .change_context(Error::General("Failed to serialize parameters".to_string()))?;

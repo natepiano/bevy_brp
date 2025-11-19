@@ -50,8 +50,8 @@ impl TypeKindBuilder for SetMutationBuilder {
 
         // Create PathKind for items (MutationPathBuilder will create context)
         Ok(vec![PathKind::StructField {
-            field_name: StructFieldName::from(SchemaField::Items),
-            type_name: item_t,
+            field_name:  StructFieldName::from(SchemaField::Items),
+            type_name:   item_t,
             parent_type: ctx.type_name().clone(),
         }]
         .into_iter())

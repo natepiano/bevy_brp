@@ -21,7 +21,7 @@ pub struct ListComponentsWatchParams {
     pub entity: u64,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    pub port: Port,
+    pub port:   Port,
 }
 
 #[derive(ToolFn)]

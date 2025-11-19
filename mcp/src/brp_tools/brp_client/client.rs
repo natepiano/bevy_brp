@@ -29,7 +29,7 @@ use crate::tool::ParameterName;
 /// Client for executing a BRP operation
 pub struct BrpClient {
     method: BrpMethod,
-    port: Port,
+    port:   Port,
     params: Option<Value>,
 }
 
@@ -311,9 +311,9 @@ impl BrpClient {
             };
 
             ResponseStatus::Error(BrpClientError {
-                code: error.code,
+                code:    error.code,
                 message: enhanced_message,
-                data: error.data,
+                data:    error.data,
             })
         } else {
             ResponseStatus::Success(brp_response_json.result)

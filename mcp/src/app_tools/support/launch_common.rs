@@ -32,12 +32,12 @@ pub struct Example;
 /// Parameterized launch configuration for apps and examples
 #[derive(Clone)]
 pub struct LaunchConfig<T> {
-    pub target_name: String,
-    pub profile: String,
-    pub path: Option<String>,
-    pub port: Port,
+    pub target_name:    String,
+    pub profile:        String,
+    pub path:           Option<String>,
+    pub port:           Port,
     pub instance_count: InstanceCount,
-    _phantom: PhantomData<T>,
+    _phantom:           PhantomData<T>,
 }
 
 impl<T> LaunchConfig<T> {
@@ -63,9 +63,9 @@ impl<T> LaunchConfig<T> {
 /// Represents a single launched instance
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LaunchedInstance {
-    pub pid: u32,
+    pub pid:      u32,
     pub log_file: String,
-    pub port: u16,
+    pub port:     u16,
 }
 
 /// Unified result type for launching Bevy apps and examples
@@ -74,37 +74,37 @@ pub struct LaunchedInstance {
 pub struct LaunchResult {
     /// Name of the target that was launched (app or example)
     #[to_metadata(skip_if_none)]
-    target_name: Option<String>,
+    target_name:        Option<String>,
     /// Array of launched instances (1 or more)
     #[to_result]
-    instances: Vec<LaunchedInstance>,
+    instances:          Vec<LaunchedInstance>,
     /// Working directory used for launch
     #[to_metadata(skip_if_none)]
-    working_directory: Option<String>,
+    working_directory:  Option<String>,
     /// Build profile used (debug/release)
     #[to_metadata(skip_if_none)]
-    profile: Option<String>,
+    profile:            Option<String>,
     /// Binary path of the launched app (only for apps, not examples)
     #[to_metadata(skip_if_none)]
-    binary_path: Option<String>,
+    binary_path:        Option<String>,
     /// Launch duration in milliseconds
     #[to_metadata(skip_if_none)]
     launch_duration_ms: Option<u128>,
     /// Launch timestamp
     #[to_metadata(skip_if_none)]
-    launch_timestamp: Option<String>,
+    launch_timestamp:   Option<String>,
     /// Workspace information
     #[to_metadata(skip_if_none)]
-    workspace: Option<String>,
+    workspace:          Option<String>,
     /// Package name containing the example (only for examples)
     #[to_metadata(skip_if_none)]
-    package_name: Option<String>,
+    package_name:       Option<String>,
     /// Available duplicate paths (for disambiguation errors)
     #[to_metadata(skip_if_none)]
-    duplicate_paths: Option<Vec<String>>,
+    duplicate_paths:    Option<Vec<String>>,
     /// Message template for formatting responses
     #[to_message]
-    message_template: Option<String>,
+    message_template:   Option<String>,
 }
 
 use crate::app_tools::instance_count::InstanceCount;
@@ -113,10 +113,10 @@ use crate::brp_tools::Port;
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
-    pub target_name: String,
-    pub profile: String,
-    pub path: Option<String>,
-    pub port: Port,
+    pub target_name:    String,
+    pub profile:        String,
+    pub path:           Option<String>,
+    pub port:           Port,
     pub instance_count: InstanceCount,
 }
 

@@ -25,11 +25,11 @@ pub enum FieldPlacement {
 #[allow(dead_code)]
 pub struct FieldPlacementInfo {
     /// The name of the field
-    pub field_name: &'static str,
+    pub field_name:   &'static str,
     /// Where to place this field (metadata or result)
-    pub placement: FieldPlacement,
+    pub placement:    FieldPlacement,
     /// Optional source path for response fields (e.g., "result.entities")
-    pub source_path: Option<&'static str>,
+    pub source_path:  Option<&'static str>,
     /// Whether to skip this field if it's None
     pub skip_if_none: bool,
 }

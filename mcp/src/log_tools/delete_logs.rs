@@ -22,7 +22,7 @@ use crate::tool::ToolResult;
 pub struct DeleteLogsParams {
     /// Optional filter to delete logs for a specific app only
     #[to_metadata(skip_if_none)]
-    pub app_name: Option<String>,
+    pub app_name:           Option<String>,
     /// Optional filter to delete logs older than N seconds
     #[to_metadata(skip_if_none)]
     pub older_than_seconds: Option<u32>,
@@ -33,19 +33,19 @@ pub struct DeleteLogsParams {
 pub struct DeleteLogsResult {
     /// List of deleted filenames
     #[to_metadata]
-    deleted_files: Vec<String>,
+    deleted_files:      Vec<String>,
     /// Number of files deleted
     #[to_metadata]
-    deleted_count: usize,
+    deleted_count:      usize,
     /// App name filter that was applied (if any)
     #[to_metadata(skip_if_none)]
-    app_name_filter: Option<String>,
+    app_name_filter:    Option<String>,
     /// Age filter in seconds that was applied (if any)
     #[to_metadata(skip_if_none)]
     older_than_seconds: Option<u32>,
     /// Message template for formatting responses
     #[to_message(message_template = "Deleted {deleted_count} log files")]
-    message_template: String,
+    message_template:   String,
 }
 
 #[derive(ToolFn)]

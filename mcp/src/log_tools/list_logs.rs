@@ -21,7 +21,7 @@ pub struct ListLogsParams {
     pub app_name: Option<String>,
     /// Include full details (path, timestamps, size in bytes). Default is false for minimal output
     #[to_metadata(skip_if_none)]
-    pub verbose: Option<bool>,
+    pub verbose:  Option<bool>,
 }
 
 /// Result from listing log files
@@ -29,13 +29,13 @@ pub struct ListLogsParams {
 pub struct ListLogResult {
     /// List of log files found
     #[to_result]
-    logs: Vec<LogFileInfo>,
+    logs:             Vec<LogFileInfo>,
     /// Path to the temp directory containing logs
     #[to_metadata]
-    temp_directory: String,
+    temp_directory:   String,
     /// Log file count
     #[to_metadata]
-    log_count: usize,
+    log_count:        usize,
     /// Message template for formatting responses
     #[to_message(message_template = "Found {log_count} log files")]
     message_template: String,
@@ -104,13 +104,13 @@ fn list_log_files(
                 }
             } else {
                 LogFileInfo {
-                    filename: entry.filename,
-                    app_name: entry.app_name,
-                    path: None,
-                    size: None,
+                    filename:   entry.filename,
+                    app_name:   entry.app_name,
+                    path:       None,
+                    size:       None,
                     size_bytes: None,
-                    created: None,
-                    modified: None,
+                    created:    None,
+                    modified:   None,
                 }
             }
         })
@@ -123,22 +123,22 @@ fn list_log_files(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogFileInfo {
     /// The filename
-    pub filename: String,
+    pub filename:   String,
     /// The app name extracted from the filename
-    pub app_name: String,
+    pub app_name:   String,
     /// Full path to the file (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub path: Option<String>,
+    pub path:       Option<String>,
     /// Human-readable file size (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub size: Option<String>,
+    pub size:       Option<String>,
     /// File size in bytes (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size_bytes: Option<u64>,
     /// Creation time as ISO string (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub created: Option<String>,
+    pub created:    Option<String>,
     /// Modification time as ISO string (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub modified: Option<String>,
+    pub modified:   Option<String>,
 }

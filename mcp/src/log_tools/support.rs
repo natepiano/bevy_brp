@@ -108,11 +108,11 @@ pub fn get_log_file_path(filename: &str) -> PathBuf {
 /// Represents a log file entry with metadata
 #[derive(Debug, Clone)]
 pub struct LogFileEntry {
-    pub filename: String,
-    pub app_name: String,
+    pub filename:  String,
+    pub app_name:  String,
     pub timestamp: String,
-    pub path: PathBuf,
-    pub metadata: fs::Metadata,
+    pub path:      PathBuf,
+    pub metadata:  fs::Metadata,
 }
 
 /// Iterates over app log files (port pattern only) in the temp directory with optional filtering

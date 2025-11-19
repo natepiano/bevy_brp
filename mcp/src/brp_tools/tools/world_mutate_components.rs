@@ -110,11 +110,11 @@ impl<'de> Deserialize<'de> for MutateComponentsParams {
                 if let (Some(entity), Some(component), Some(value)) = (&entity, &component, &value)
                 {
                     Ok(MutateComponentsParams {
-                        entity: *entity,
+                        entity:    *entity,
                         component: component.clone(),
-                        value: value.clone(),
-                        path: path.unwrap_or_default(),
-                        port: port.unwrap_or_default(),
+                        value:     value.clone(),
+                        path:      path.unwrap_or_default(),
+                        port:      port.unwrap_or_default(),
                     })
                 } else {
                     // Collect missing required fields for better error message

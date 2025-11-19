@@ -17,10 +17,10 @@ use crate::tool::ToolResult;
 pub struct ListBrpAppsResult {
     /// Count of apps found
     #[to_metadata]
-    count: usize,
+    count:            usize,
     /// List of BRP-enabled apps found
     #[to_result]
-    apps: Vec<serde_json::Value>,
+    apps:             Vec<serde_json::Value>,
     /// Message template for formatting responses
     #[to_message(message_template = "Found {count} BRP-enabled apps")]
     message_template: String,

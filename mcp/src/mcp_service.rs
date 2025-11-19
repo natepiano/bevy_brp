@@ -25,7 +25,7 @@ pub struct McpService {
     /// Tool definitions `HashMap` for O(1) lookup by name
     tool_defs: HashMap<String, ToolDef>,
     /// Pre-converted MCP tools for list operations
-    tools: Vec<Tool>,
+    tools:     Vec<Tool>,
 }
 
 impl McpService {
@@ -64,7 +64,7 @@ impl McpService {
     fn list_mcp_tools(&self) -> ListToolsResult {
         ListToolsResult {
             next_cursor: None,
-            tools: self.tools.clone(),
+            tools:       self.tools.clone(),
         }
     }
 
