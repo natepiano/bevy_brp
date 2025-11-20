@@ -156,7 +156,13 @@
       "Bash(/tmp/baseline_no_spawn.json)",
       "Bash(/tmp/current_no_spawn.json)",
       "WebFetch(domain:block.github.io)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(do echo \"=== $commit ===\")",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(git show:*)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": [
       "Bash(sed:*)",
