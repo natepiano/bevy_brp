@@ -407,7 +407,7 @@ grep "STEP 6.5" .claude/commands/release_version.md | head -1
 
 ---
 
-### STEP 6: Release v0.17.1 ⏳ PENDING
+### STEP 6: Release v0.17.1 ✅ COMPLETED (as v0.17.2)
 
 **Objective**: Execute the `/release 0.17.1` command to finalize and publish the release
 

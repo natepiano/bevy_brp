@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Upgrading `rmcp` to 0.9.0 to support structured content responses via `CallToolResult::structured()` instead of text-wrapped JSON
     - Correcting JSON Schema generation for optional response fields (`metadata`, `result`, etc.) to properly signal optionality and use compatible schema definitions
     - **Note**: This changes the response structure returned to coding agents from `{tool_response: [{text: "..."}]}` to `{tool_response: [{...}]}` (structured data). While coding agents handle both formats transparently, custom code that inspects the raw agent response structure (e.g., hooks, testing infrastructure) may require updates. The actual response content remains identical.
+    - Thanks to @tobert for identifying and fixing this issue!
 
 ## [0.17.0] - 2025-10-31
 
