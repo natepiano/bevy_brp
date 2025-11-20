@@ -89,7 +89,7 @@ pub fn extract_spawn_insert_example(
         PathExample::Simple(ex) => ex.clone(),
         PathExample::EnumRoot { groups, .. } => {
             select_preferred_example(groups).unwrap_or(Example::NotApplicable)
-        }
+        },
     };
 
     // Build appropriate variant based on type

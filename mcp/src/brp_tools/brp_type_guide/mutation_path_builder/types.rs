@@ -266,7 +266,7 @@ impl Serialize for SpawnInsertExample {
                     )?;
                     map.end()
                 }
-            }
+            },
             Self::ResourceExample {
                 agent_guidance,
                 example,
@@ -294,7 +294,7 @@ impl Serialize for SpawnInsertExample {
                     )?;
                     map.end()
                 }
-            }
+            },
         }
     }
 }
