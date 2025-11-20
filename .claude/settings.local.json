@@ -168,7 +168,8 @@
       "WebFetch(domain:docs.rs)",
       "Bash(/tmp/test_type_guide.json)",
       "Bash(~/.claude/scripts/integration_test_launch_retry.sh 1)",
-      "Bash(VERSION=\"0.17.1\")"
+      "Bash(VERSION=\"0.17.1\")",
+      "Bash(.claude/scripts/release_version_validate.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",
