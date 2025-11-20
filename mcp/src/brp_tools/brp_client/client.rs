@@ -109,13 +109,10 @@ impl BrpClient {
                         Err(error_report) => Err(error_report),
                     }
                 } else {
-                    // Regular error
-                    Err(Error::tool_call_failed(format!(
-                        "{} (error {})",
-                        err.get_message(),
-                        err.get_code()
-                    ))
-                    .into())
+                    // Regular error - enhance with context if possible
+                    let enhanced_message =
+                        self.enhance_error_message(err.get_message(), err.get_code());
+                    Err(Error::tool_call_failed(enhanced_message).into())
                 }
             },
         }
@@ -229,6 +226,27 @@ impl BrpClient {
                     .map(|m| (*m.as_str()).to_string())
             })
             .collect()
+    }
+
+    /// Enhance error messages with additional context when available
+    ///
+    /// Currently enhances:
+    /// - Entity deserialization errors: Adds entity ID from parameters
+    fn enhance_error_message(&self, original_message: &str, error_code: i32) -> String {
+        // Check for entity deserialization errors
+        if original_message.contains("Attempting to deserialize an invalid entity") {
+            // Try to extract entity ID from parameters
+            if let Some(params) = &self.params
+                && let Some(entity_id) = params.get("entity")
+            {
+                return format!(
+                    "Entity {entity_id} is not valid: {original_message} (error {error_code})"
+                );
+            }
+        }
+
+        // Default: return original message with error code
+        format!("{original_message} (error {error_code})")
     }
 
     /// Enhanced format error creation with type guide embedding

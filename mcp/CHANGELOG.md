@@ -7,17 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed (Breaking)
-- Type guide: `spawn_format` → `spawn_example`/`resource_example` with embedded agent guidance
-
 ### Changed
 - Improved mutation path descriptions for non-mutable paths to clarify when examples are unavailable
 
 ### Fixed
 - `world_query` tool description now correctly specifies `filter` parameter as object type, preventing some MCP clients from passing it as a JSON string instead of a structured object
 - Fixed "Invalid input" and "did not return structured content" errors in some MCP clients (e.g., Gemini) by:
-    - Upgrading `rmcp` to 0.9.0 to support structured content responses.
-    - Correcting JSON Schema generation for optional response fields (`metadata`, `result`, etc.) to properly signal optionality and use compatible schema definitions.
+    - Upgrading `rmcp` to 0.9.0 to support structured content responses via `CallToolResult::structured()` instead of text-wrapped JSON
+    - Correcting JSON Schema generation for optional response fields (`metadata`, `result`, etc.) to properly signal optionality and use compatible schema definitions
+    - **Note**: This changes the response structure returned to coding agents from `{tool_response: [{text: "..."}]}` to `{tool_response: [{...}]}` (structured data). While coding agents handle both formats transparently, custom code that inspects the raw agent response structure (e.g., hooks, testing infrastructure) may require updates. The actual response content remains identical.
 
 ## [0.17.0] - 2025-10-31
 

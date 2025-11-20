@@ -68,8 +68,8 @@ case "$OPERATION" in
             echo "Error: type_name and field_path required for validate_field operation"
             exit 1
         fi
-        # Check if the field path exists in mutation_paths
-        jq --arg type "$TYPE_NAME" --arg path "$FIELD_PATH" '.type_guide[$type].mutation_paths | has($path)' "$FILE_PATH"
+        # Check if the field path exists in mutation_paths array
+        jq --arg type "$TYPE_NAME" --arg path "$FIELD_PATH" '.type_guide[$type].mutation_paths | any(.path == $path)' "$FILE_PATH"
         ;;
     *)
         echo "Error: Unknown operation $OPERATION"

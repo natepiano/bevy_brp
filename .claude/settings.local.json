@@ -165,7 +165,9 @@
       "Bash(git ls-tree:*)",
       "mcp__brp__registry_schema",
       "mcp__brp__rpc_discover",
-      "WebFetch(domain:docs.rs)"
+      "WebFetch(domain:docs.rs)",
+      "Bash(/tmp/test_type_guide.json)",
+      "Bash(~/.claude/scripts/integration_test_launch_retry.sh 1)"
     ],
     "deny": [
       "Bash(sed:*)",

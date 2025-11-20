@@ -18,10 +18,9 @@ use crate::error::Result;
 pub struct AnySchemaValue(pub Value);
 
 impl JsonSchema for AnySchemaValue {
-    fn schema_name() -> Cow<'static, str> {
-        "AnySchemaValue".into()
-    }
+    fn schema_name() -> Cow<'static, str> { "AnySchemaValue".into() }
 
+    #[allow(clippy::expect_used)]
     fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
         serde_json::from_value(json!({}))
             .expect("Serializing empty JSON object to Schema should always succeed")

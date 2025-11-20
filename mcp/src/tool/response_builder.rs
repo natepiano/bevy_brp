@@ -143,7 +143,7 @@ impl ResponseBuilder {
                             builder // Keep the original builder if add_field fails
                         })
                     })
-            }
+            },
             _ => self,
         }
     }
@@ -179,12 +179,12 @@ impl ResponseBuilder {
                     map.insert(key.to_string(), value_json);
                     self.metadata = Some(AnySchemaValue(Value::Object(map)));
                 }
-            }
+            },
             FieldPlacement::Result => {
                 // For result, set the entire result field to the value
                 // Field name is ignored to match raw BRP behavior
                 self.result = Some(AnySchemaValue(value_json));
-            }
+            },
             FieldPlacement::ErrorInfo => {
                 // For error_info, use field name as key in object
                 if let Some(AnySchemaValue(Value::Object(map))) = &mut self.error_info {
@@ -194,7 +194,7 @@ impl ResponseBuilder {
                     map.insert(key.to_string(), value_json);
                     self.error_info = Some(AnySchemaValue(Value::Object(map)));
                 }
-            }
+            },
         }
 
         Ok(self)
