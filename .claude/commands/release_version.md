@@ -106,17 +106,27 @@ cargo +nightly fmt --all
 <ChangelogVerification>
 ## STEP 2: Verify CHANGELOG Entries
 
+**Note**: For coordinated workspace releases where some crates have no feature changes, add placeholder entries (without `## [Unreleased]` header - that gets added later in Step 9):
+
+```markdown
+### Changed
+- Version bump to X.Y.Z to maintain workspace version synchronization
+```
+
 ```bash
 for crate in mcp_macros extras mcp; do
   echo "Checking $crate CHANGELOG..."
-  if ! grep -q "## \[Unreleased\]" $crate/CHANGELOG.md; then
-    echo "ERROR: Missing [Unreleased] section in $crate/CHANGELOG.md"
+  # Look for either [Unreleased] section or placeholder entry at top
+  if ! (grep -q "## \[Unreleased\]" $crate/CHANGELOG.md || head -10 $crate/CHANGELOG.md | grep -q "### Changed"); then
+    echo "ERROR: Missing changelog entry in $crate/CHANGELOG.md"
     exit 1
   fi
-  grep -A 5 "## \[Unreleased\]" $crate/CHANGELOG.md
+  head -15 $crate/CHANGELOG.md | grep -A 5 "###"
 done
 ```
-→ **Auto-check**: Verify [Unreleased] section exists with content for all crates, stop if missing or empty
+→ **Manual verification**: Verify changelog entries exist for all crates (either `[Unreleased]` section or placeholder entry)
+  - Type **continue** to proceed
+  - Type **stop** to add missing entries
 </ChangelogVerification>
 
 <UpdateMcpDependency>
