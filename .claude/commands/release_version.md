@@ -21,6 +21,16 @@ Perform a coordinated release for bevy_brp workspace crates using a phased appro
 
 **Workspace dependency approach**: The workspace normally keeps `mcp_macros` as a version dependency pointing to the last published version. Only when actively developing macros would you temporarily use a path dependency. Before release, ensure it's set to the new version number.
 
+## IMPORTANT: Version Handling in Commands
+
+**Throughout this release process**, when you see `${VERSION}` in bash commands, you must substitute the actual version number directly (e.g., "0.17.2") instead of using shell variables. Shell variable assignments require user approval.
+
+**Example:**
+- Documentation shows: `cargo release ${VERSION} --package bevy_brp_mcp_macros`
+- You should run: `cargo release 0.17.2 --package bevy_brp_mcp_macros`
+
+This applies to ALL bash commands in this process.
+
 ## Prerequisites Check
 
 Before starting the release, verify:
@@ -50,23 +60,18 @@ Before starting the release, verify:
 <ArgumentValidation>
 ## STEP 0: Argument Validation and VERSION Setup
 
-**First, capture VERSION from arguments:**
+**Validate the version format (using the argument directly):**
 ```bash
-VERSION="$ARGUMENTS"
-```
-
-**Then validate the version format:**
-```bash
-bash .claude/scripts/release_version_validate.sh "${VERSION}"
+bash .claude/scripts/release_version_validate.sh "$ARGUMENTS"
 ```
 → **Auto-check**: Continue if version is valid format, stop with clear error if invalid
 
-**Confirm VERSION is set correctly:**
+**Confirm version:**
 ```bash
-echo "Release version set to: ${VERSION}"
+echo "Release version set to: $ARGUMENTS"
 ```
 
-**Note**: The VERSION variable is now available for all subsequent commands in this release process.
+**Note**: Throughout this process, `$ARGUMENTS` will be used directly instead of a shell variable to avoid approval requirements. In documentation below, when you see `${VERSION}` or `$VERSION`, substitute the actual version number from `$ARGUMENTS`.
 </ArgumentValidation>
 
 <PreReleaseChecks>
