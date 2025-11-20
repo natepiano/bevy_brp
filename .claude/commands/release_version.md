@@ -47,7 +47,9 @@ Before starting the release, verify:
     **STEP 2:** Execute <ChangelogVerification/>
     **STEP 2.5:** Execute <UpdateReadmeCompatibility/>
     **STEP 3:** Execute <CheckWorkspaceDependency/>
+    **STEP 3.5:** Execute <BumpMacrosVersion/>
     **STEP 4:** Execute <Phase1PublishMacros/>
+    **STEP 4.5:** Execute <UpdateWorkspaceDependency/>
     **STEP 5:** Execute <Phase2PublishExtrasAndMcp/>
     **STEP 6:** Execute <FinalizeChangelogs/>
     **STEP 7:** Execute <PushToGit/>
@@ -179,7 +181,7 @@ git commit -m "docs: update compatibility tables for v${VERSION}"
 </UpdateReadmeCompatibility>
 
 <CheckWorkspaceDependency>
-## STEP 3: Check and Update Workspace Dependency
+## STEP 3: Check Workspace Dependency
 
 **Check current workspace dependency for mcp_macros:**
 
@@ -187,44 +189,38 @@ git commit -m "docs: update compatibility tables for v${VERSION}"
 grep "bevy_brp_mcp_macros" Cargo.toml
 ```
 
-**If it shows a path dependency** (from macro development):
-```toml
-bevy_brp_mcp_macros = { path = "mcp_macros" }
-```
+→ **Manual note**: Observe current dependency (path or version). We'll update this AFTER publishing mcp_macros in Step 4.5.
 
-**Or if it shows an old version**:
-```toml
-bevy_brp_mcp_macros = "0.17.0"  # Example old version
-```
+**Note**: We deliberately DON'T update the workspace dependency yet. If we update it now to `"${VERSION}"`, cargo metadata will fail for the whole workspace until that version exists on crates.io. We'll update it after publishing mcp_macros.
+</CheckWorkspaceDependency>
 
-→ **I will update `Cargo.toml` (workspace root) AND `mcp_macros/Cargo.toml` to use the new release version:**
+<BumpMacrosVersion>
+## STEP 3.5: Bump mcp_macros Version
 
-**Workspace Cargo.toml:**
-```toml
-bevy_brp_mcp_macros = "${VERSION}"
-```
+→ **I will update only `mcp_macros/Cargo.toml` version:**
 
-**mcp_macros/Cargo.toml:**
-```toml
-version = "${VERSION}"
-```
-
-**Note**: We update both together because after updating the workspace dependency, `cargo metadata` will fail until the new version exists on crates.io. By also bumping mcp_macros version now, we can publish it directly in Step 4.
-
-**Commit both changes:**
 ```bash
-git add Cargo.toml mcp_macros/Cargo.toml
-git commit -m "chore: bump versions to ${VERSION} for release"
+# Check current version
+grep "^version" mcp_macros/Cargo.toml
+```
+
+**Update mcp_macros/Cargo.toml:**
+Set `version = "${VERSION}"`
+
+**Commit the mcp_macros version bump:**
+```bash
+git add mcp_macros/Cargo.toml
+git commit -m "chore: bump bevy_brp_mcp_macros to ${VERSION}"
 ```
 → **Auto-check**: Continue if commit succeeds
 
-**Note**: This ensures that when we publish `mcp`, it will correctly depend on the version of `mcp_macros` we're about to publish.
-</CheckWorkspaceDependency>
+**Note**: We only bump mcp_macros version here, not the workspace dependency. This allows cargo to still resolve the workspace while we publish mcp_macros.
+</BumpMacrosVersion>
 
 <Phase1PublishMacros>
 ## STEP 4: Phase 1 - Publish mcp_macros Only
 
-**Note**: We skip `cargo-release` for mcp_macros because `cargo metadata` fails after updating the workspace dependency in Step 3. The version was already bumped in mcp_macros/Cargo.toml during Step 3.
+**Note**: The workspace dependency still points to the old version, so cargo metadata works. The mcp_macros version was bumped in Step 3.5.
 
 **Publish mcp_macros to crates.io:**
 
@@ -259,6 +255,39 @@ sleep 30
 ```
 → **Auto-check**: Continue after wait completes
 </Phase1PublishMacros>
+
+<UpdateWorkspaceDependency>
+## STEP 4.5: Update Workspace Dependency
+
+**Now that mcp_macros ${VERSION} exists on crates.io, update the workspace dependency:**
+
+→ **I will update `Cargo.toml` (workspace root):**
+
+**If it shows a path dependency**, replace with version:
+```toml
+bevy_brp_mcp_macros = "${VERSION}"
+```
+
+**If it shows an old version**, update to:
+```toml
+bevy_brp_mcp_macros = "${VERSION}"
+```
+
+**Verify the workspace builds:**
+```bash
+cargo build --package bevy_brp_mcp
+```
+→ **Auto-check**: Continue if build succeeds (now that ${VERSION} exists on crates.io)
+
+**Commit the workspace dependency update:**
+```bash
+git add Cargo.toml Cargo.lock
+git commit -m "chore: update workspace dependency to bevy_brp_mcp_macros ${VERSION}"
+```
+→ **Auto-check**: Continue if commit succeeds
+
+**Note**: Now cargo-release will work for extras and mcp in Step 5 because the workspace dependency resolves correctly from crates.io.
+</UpdateWorkspaceDependency>
 
 <Phase2PublishExtrasAndMcp>
 ## STEP 5: Phase 2 - Publish extras and mcp
