@@ -42,7 +42,48 @@ If all steps are COMPLETED:
 
 ## INTERACTIVE IMPLEMENTATION SEQUENCE
 
-### STEP 1: Create Preservation Branches ⏳ PENDING
+### STEP 0.5: Create Backup Branch ✅ COMPLETED
+
+**Objective**: Create a safety backup of current main state before any modifications
+
+**Change Type**: SAFE - Creates backup branch only
+
+**Changes**:
+- Create `backup-main-before-split` branch from current main
+- Push to origin for safekeeping
+
+**Files**: None (git operations only)
+
+**Git Commands**:
+```bash
+git checkout main
+git branch backup-main-before-split
+git push -u origin backup-main-before-split
+```
+
+**Why this is important**:
+This backup branch gives you a **guaranteed recovery point**. If anything goes wrong during the process, you can always:
+```bash
+git checkout main
+git reset --hard backup-main-before-split
+git push origin main --force-with-lease
+```
+
+**Verification**:
+```bash
+# Verify backup branch exists
+git branch -a | grep backup-main-before-split
+git ls-remote --heads origin | grep backup-main-before-split
+```
+
+**Success Criteria**:
+- Backup branch created locally and pushed to remote
+- Main branch unchanged
+- Safe to proceed with modifications
+
+---
+
+### STEP 1: Create Preservation Branches ✅ COMPLETED
 
 **Objective**: Create release-0.17.0 and v0.18-dev branches to preserve release states
 
@@ -69,8 +110,8 @@ git push -u origin v0.18-dev
 
 **Verification**:
 ```bash
-# Should show 7 commits (the breaking change series)
-git log --oneline v0.17.0..v0.18-dev | wc -l
+# Should show 3 commits (the actual breaking changes only: 009beaa6, a47ffd59, dbae7815)
+git log --oneline 1afc1bff..v0.18-dev | wc -l
 
 # Verify branches exist on remote
 git ls-remote --heads origin | grep -E '(release-0.17.0|v0.18-dev)'
@@ -78,12 +119,12 @@ git ls-remote --heads origin | grep -E '(release-0.17.0|v0.18-dev)'
 
 **Success Criteria**:
 - Both branches created locally and on remote
-- v0.18-dev contains exactly 7 commits since v0.17.0
+- v0.18-dev contains exactly 3 commits since 1afc1bff (the actual breaking changes)
 - Current branch is main
 
 ---
 
-### STEP 2: Fix v0.18-dev Branch ⏳ PENDING
+### STEP 2: Fix v0.18-dev Branch ✅ COMPLETED
 
 **Objective**: Update integration tests and CHANGELOG on v0.18-dev to match the breaking changes
 
@@ -151,45 +192,57 @@ git show v0.18-dev:mcp/CHANGELOG.md | grep -A 10 "## \[Unreleased\]"
 
 ### STEP 3: Reset and Cherry-Pick (ATOMIC GROUP) ⏳ PENDING
 
-**Objective**: Reset main to before breaking changes, cherry-pick independent commits, force push
+**Objective**: Reset main to 1afc1bff (keeping non-breaking refactoring), cherry-pick commits after breaking changes, force push
 
 **Change Type**: CRITICAL - DANGEROUS (rewrites history)
 
-**Dependencies**: Requires Steps 1-2
+**Dependencies**: Requires Steps 0.5-2
 
-**⚠️ WARNING**: This is an ATOMIC operation. Once you start, you MUST complete all sub-steps (3→4→5) without stopping. This rewrites main history - coordinate with collaborators first!
+**⚠️ WARNING**: This is an ATOMIC operation. Once you start, you MUST complete all sub-steps (3a→3b→3c) without stopping. This rewrites main history - coordinate with collaborators first!
 
-**Changes**:
-1. Reset main to commit before breaking changes (c0b9a91e~1)
-2. Cherry-pick 6 independent commits one at a time
-3. Handle conflicts iteratively with user
+**What's happening**:
+1. Reset main to 1afc1bff (keeps 11 non-breaking refactoring commits: c0b9a91e through 1afc1bff)
+2. This skips the 3 breaking change commits (009beaa6 through dbae7815)
+3. Cherry-pick the 7 commits that came AFTER the breaking changes
 4. Force push rewritten main
 
-**Sub-Step 3a: Reset main**:
+**Sub-Step 3a: Reset main to 1afc1bff**:
 ```bash
 git checkout main
-git reset --hard c0b9a91e~1
+git reset --hard 1afc1bff
 ```
 
-**Sub-Step 3b: Cherry-pick commits individually**:
+This keeps all commits up to and including 1afc1bff, which includes:
+- c1488b98 (release workflow - from before)
+- c0b9a91e through 1afc1bff (11 non-breaking refactoring commits)
+
+**Sub-Step 3b: Cherry-pick commits after breaking changes**:
 ```bash
-# Release workflow improvement
-git cherry-pick c1488b98
+# Cherry-pick the 7 commits that came AFTER dbae7815 (the breaking changes)
+# Build verification after each cherry-pick to catch issues early
 
-# Important bug fix and cleanups
-git cherry-pick e6b1c939  # anyOf schema fix - CRITICAL
-# (If conflicts occur, resolve manually then: git cherry-pick --continue)
+git cherry-pick 988c15c0 && cargo build  # permission updates
+# (If conflicts occur, resolve manually then: git cherry-pick --continue && cargo build)
 
-git cherry-pick eb5813dc  # comment cleanup
+git cherry-pick eb5813dc && cargo build  # comment cleanup
 # (resolve conflicts if needed)
 
-git cherry-pick ddf61a0a  # file moves
+git cherry-pick ddf61a0a && cargo build  # file moves
 # (resolve conflicts if needed)
 
-git cherry-pick 5dc7992c  # debug_protocol
+git cherry-pick e6b1c939 && cargo build  # anyOf schema fix - CRITICAL
 # (resolve conflicts if needed)
 
-git cherry-pick f1d8bae9  # rustfmt settings
+git cherry-pick 5dc7992c && cargo build  # debug_protocol
+# (resolve conflicts if needed)
+
+git cherry-pick f1d8bae9 && cargo build  # rustfmt settings
+# (resolve conflicts if needed)
+
+git cherry-pick 92f2ed0f && cargo build  # ready to implement
+# (resolve conflicts if needed)
+
+git cherry-pick 20e2edc1 && cargo build  # permission update
 # (resolve conflicts if needed)
 ```
 
@@ -204,7 +257,7 @@ git cherry-pick f1d8bae9  # rustfmt settings
 - Run `git cherry-pick --abort` to cancel
 - Review commit: `git show <commit-hash>`
 - Ask for help with specific conflict
-- Can restart from Sub-Step 3a if needed
+- Can restore from backup: `git reset --hard backup-main-before-split`
 
 **Sub-Step 3c: Force push main**:
 ```bash
@@ -214,23 +267,30 @@ git push origin main --force-with-lease
 
 **Verification**:
 ```bash
-# Should show 6 commits since v0.17.0
-git log --oneline v0.17.0..HEAD
+# Should show 19 commits since v0.17.0 (1 + 11 + 7)
+git log --oneline v0.17.0..HEAD | wc -l
 
-# Verify no brp_type_guide changes (breaking change code)
-git diff v0.17.0..HEAD -- mcp/src/brp_tools/brp_type_guide/
-# Should show minimal/no output
+# Verify we're at 1afc1bff + 7 cherry-picks
+git log --oneline --graph HEAD~7..HEAD
+
+# Verify brp_type_guide has non-breaking changes only
+git diff v0.17.0..HEAD -- mcp/src/brp_tools/brp_type_guide/guide.rs | grep "spawn_format"
+# Should show spawn_format still present (not spawn_example/resource_example)
 
 # Verify builds successfully
 cargo build
+
+# Verify tests pass
+cargo nextest run
 ```
 
 **Success Criteria**:
-- Main reset to before breaking changes
-- All 6 independent commits cherry-picked successfully
-- Build succeeds
+- Main reset to 1afc1bff (keeps non-breaking refactoring)
+- All 7 commits from after breaking changes cherry-picked successfully
+- Total 19 commits since v0.17.0
+- Build and tests succeed
 - Force push completed
-- No breaking changes in code (no spawn_example/resource_example)
+- TypeGuide still uses `spawn_format` (breaking change excluded)
 
 ---
 
@@ -400,22 +460,43 @@ After v0.17.0 release, development continued on main with:
 
 ## Commits Analysis
 
-**Breaking Change Series** (Nov 1-3, moved to v0.18-dev):
-1. `c0b9a91e` - refactor: centralize type knowledge interpretation with KnowledgeAction enum
-2. `ce4a8626` - fix: ensure deterministic ordering of mutation paths
-3. `361e550c` - refactor: introduce Example enum for type-safe mutation path examples
-4. `aaae4746` - refactor: improve mutation path descriptions for non-mutable cases
-5. `9f5d5735` - refactor: differentiate default guidance between Component spawn and Resource insert
-6. `009beaa6` - **[BREAKING]** refactor: colocate agent guidance with spawn/insert examples
-7. `dbae7815` - refactor: make get_default_spawn_guidance static and improve doc comments
+### Actual Breaking Changes (Nov 3 only - moved to v0.18-dev)
+**Only 3 commits** that change the external API:
+1. `009beaa6` - **[BREAKING]** refactor: colocate agent guidance with spawn/insert examples
+   - Changes `spawn_format` → `spawn_example`/`resource_example`
+2. `a47ffd59` - implemented and obsolete (plans/docs for above)
+3. `dbae7815` - refactor: make get_default_spawn_guidance static (cleanup after above)
 
-**Independent Commits** (kept on main for v0.17.1):
-- `c1488b98` (Oct 31) - refactor: simplify release workflow with native workspace publishing
-- `e6b1c939` (Nov 4) - **fix: handle custom struct references in anyOf schemas** ⭐ Important bug fix
+### Non-Breaking Refactoring (Nov 1-2 - kept on main for v0.17.1)
+**11 commits** that improve code quality without changing external API:
+- `c0b9a91e` - refactor: centralize type knowledge with KnowledgeAction enum (internal)
+- `ce4a8626` - fix: ensure deterministic ordering of mutation paths (internal)
+- `5cd7d8a6` - permission updates
+- `44327e8b` - draft plan
+- `361e550c` - refactor: introduce Example enum (internal type system)
+- `aaae4746` - refactor: improve mutation path descriptions (text only, same structure)
+- `77a88d35` - obsolete plans
+- `46661934` - draft upgraded
+- `9f5d5735` - refactor: differentiate default guidance (text only, same structure)
+- `1afc1bff` - permission updates
+
+**Verified**: Build and tests pass at 1afc1bff, TypeGuide still uses `spawn_format`
+
+### Additional Commits (kept on main for v0.17.1)
+**Before breaking changes:**
+- `c1488b98` (Oct 31) - refactor: simplify release workflow
+
+**After breaking changes:**
+- `988c15c0` (Nov 3) - permission updates
 - `eb5813dc` (Nov 4) - comment change, debug! removal
 - `ddf61a0a` (Nov 4) - moved into ~/.claude/commands
+- `e6b1c939` (Nov 4) - **fix: handle custom struct references in anyOf schemas** ⭐
 - `5dc7992c` (Nov 5) - re-created debug_protocol
 - `f1d8bae9` (Nov 5) - changed rustfmt.toml settings
+- `92f2ed0f` (Nov 19) - ready to implement
+- `20e2edc1` (Nov 19) - permission update
+
+**Total for v0.17.1**: 19 commits (1 before + 11 refactoring + 7 after)
 
 **PR #1 Analysis**:
 - Author: @tobert
