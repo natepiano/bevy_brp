@@ -236,18 +236,6 @@ cargo publish --package bevy_brp_mcp_macros
 ```
 → **Auto-check**: Continue if publish succeeds, stop if fails
 
-**Create and push git tag for mcp_macros:**
-
-```bash
-git tag "bevy_brp_mcp_macros-v${VERSION}" -m "Release bevy_brp_mcp_macros v${VERSION}"
-```
-→ **Auto-check**: Continue if tag created
-
-```bash
-git push origin "bevy_brp_mcp_macros-v${VERSION}"
-```
-→ **Auto-check**: Continue if push succeeds
-
 **Wait for crates.io indexing:**
 ```bash
 echo "⏳ Waiting 30 seconds for crates.io to index bevy_brp_mcp_macros ${VERSION}..."
