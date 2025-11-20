@@ -8,13 +8,13 @@
 #   discovered_count                  - Get discovered count
 #   type_info <type_name>            - Get basic type info (has_serialize, supported_operations, etc.)
 #   mutation_paths <type_name>       - Get mutation paths for a type
-#   spawn_format <type_name>         - Get spawn format for a type
+#   spawn_example <type_name>         - Get spawn format for a type
 #   schema_info <type_name>          - Get schema info for a type
 #   validate_field <type_name> <path> - Check if specific field exists
 
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <file_path> <operation> [type_name] [field_path]"
-    echo "Operations: summary, discovered_count, type_info, mutation_paths, spawn_format, schema_info, validate_field"
+    echo "Operations: summary, discovered_count, type_info, mutation_paths, spawn_example, schema_info, validate_field"
     exit 1
 fi
 
@@ -49,12 +49,12 @@ case "$OPERATION" in
         fi
         jq --arg type "$TYPE_NAME" '.type_guide[$type].mutation_paths' "$FILE_PATH"
         ;;
-    "spawn_format")
+    "spawn_example")
         if [ -z "$TYPE_NAME" ]; then
-            echo "Error: type_name required for spawn_format operation"
+            echo "Error: type_name required for spawn_example operation"
             exit 1
         fi
-        jq --arg type "$TYPE_NAME" '.type_guide[$type].spawn_format' "$FILE_PATH"
+        jq --arg type "$TYPE_NAME" '.type_guide[$type].spawn_example' "$FILE_PATH"
         ;;
     "schema_info")
         if [ -z "$TYPE_NAME" ]; then
@@ -73,7 +73,7 @@ case "$OPERATION" in
         ;;
     *)
         echo "Error: Unknown operation $OPERATION"
-        echo "Valid operations: summary, discovered_count, type_info, mutation_paths, spawn_format, schema_info, validate_field"
+        echo "Valid operations: summary, discovered_count, type_info, mutation_paths, spawn_example, schema_info, validate_field"
         exit 1
         ;;
 esac

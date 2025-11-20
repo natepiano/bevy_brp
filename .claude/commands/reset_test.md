@@ -4,7 +4,7 @@ Reset all mutation test metadata to initial state, clearing all batch numbers, t
 
 ## What This Does
 
-Strips all test metadata and type metadata fields from all_types.json, leaving only the raw BRP data (spawn_format, mutation_paths, schema_info).
+Strips all test metadata and type metadata fields from all_types.json, leaving only the raw BRP data.
 
 This removes:
 - batch_number (test metadata)

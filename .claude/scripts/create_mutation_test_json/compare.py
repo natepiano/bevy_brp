@@ -5,10 +5,10 @@ Outputs raw differences without categorization.
 """
 
 import json
-import sys
 import os
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import TypedDict, cast
 
 # Type definitions for structured data
@@ -307,7 +307,9 @@ def deep_compare_values(
                 current=current_val,
                 description=f"Added: {describe_value(current_val)}",
                 type_name="",
-                mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
+                mutation_path=extract_mutation_path(
+                    path, type_name, baseline_data, current_data
+                ),
             )
         )
         return differences
@@ -321,7 +323,9 @@ def deep_compare_values(
                 current=None,
                 description=f"Removed: {describe_value(baseline_val)}",
                 type_name="",
-                mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
+                mutation_path=extract_mutation_path(
+                    path, type_name, baseline_data, current_data
+                ),
             )
         )
         return differences
@@ -336,7 +340,9 @@ def deep_compare_values(
                 current=current_val,
                 description=f"Type changed: {type(baseline_val).__name__} → {type(current_val).__name__}",
                 type_name="",
-                mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
+                mutation_path=extract_mutation_path(
+                    path, type_name, baseline_data, current_data
+                ),
             )
         )
         return differences
@@ -358,7 +364,9 @@ def deep_compare_values(
                         current=cast(JsonValue, current_keys),
                         description=f"Field ordering changed (values unchanged)",
                         type_name="",
-                        mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
+                        mutation_path=extract_mutation_path(
+                            path, type_name, baseline_data, current_data
+                        ),
                     )
                 )
             # If both keys and values are identical in same order, no difference to report
@@ -403,7 +411,9 @@ def deep_compare_values(
                         current=None,
                         description=f"Removed: {describe_value(baseline_val[key])}",
                         type_name="",
-                        mutation_path=extract_mutation_path(new_path, type_name, baseline_data, current_data),
+                        mutation_path=extract_mutation_path(
+                            new_path, type_name, baseline_data, current_data
+                        ),
                     )
                 )
             elif not base_has_key and curr_has_key:
@@ -417,7 +427,9 @@ def deep_compare_values(
                         current=current_val[key],
                         description=f"Added: {describe_value(current_val[key])}",
                         type_name="",
-                        mutation_path=extract_mutation_path(new_path, type_name, baseline_data, current_data),
+                        mutation_path=extract_mutation_path(
+                            new_path, type_name, baseline_data, current_data
+                        ),
                     )
                 )
 
@@ -440,7 +452,9 @@ def deep_compare_values(
                             current=curr_item,
                             description=f"Added element at index {i}",
                             type_name="",
-                            mutation_path=extract_mutation_path(new_path, type_name, baseline_data, current_data),
+                            mutation_path=extract_mutation_path(
+                                new_path, type_name, baseline_data, current_data
+                            ),
                         )
                     )
                 elif base_item is not None and curr_item is None:
@@ -452,12 +466,21 @@ def deep_compare_values(
                             current=None,
                             description=f"Removed element at index {i}",
                             type_name="",
-                            mutation_path=extract_mutation_path(new_path, type_name, baseline_data, current_data),
+                            mutation_path=extract_mutation_path(
+                                new_path, type_name, baseline_data, current_data
+                            ),
                         )
                     )
                 else:
                     differences.extend(
-                        deep_compare_values(new_path, base_item, curr_item, type_name, baseline_data, current_data)
+                        deep_compare_values(
+                            new_path,
+                            base_item,
+                            curr_item,
+                            type_name,
+                            baseline_data,
+                            current_data,
+                        )
                     )
         else:
             # Same length - check if arrays contain primitive values that can be compared as sets
@@ -479,7 +502,9 @@ def deep_compare_values(
                             current=current_val,
                             description=f"Array element ordering changed (values unchanged)",
                             type_name="",
-                            mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
+                            mutation_path=extract_mutation_path(
+                                path, type_name, baseline_data, current_data
+                            ),
                         )
                     )
             else:
@@ -487,7 +512,14 @@ def deep_compare_values(
                 for i in range(len(baseline_val)):
                     new_path = f"{path}[{i}]"
                     differences.extend(
-                        deep_compare_values(new_path, baseline_val[i], current_val[i], type_name, baseline_data, current_data)
+                        deep_compare_values(
+                            new_path,
+                            baseline_val[i],
+                            current_val[i],
+                            type_name,
+                            baseline_data,
+                            current_data,
+                        )
                     )
 
     elif baseline_val != current_val:
@@ -500,7 +532,9 @@ def deep_compare_values(
                 current=current_val,
                 description=f"Value changed: {describe_value(baseline_val)} → {describe_value(current_val)}",
                 type_name="",
-                mutation_path=extract_mutation_path(path, type_name, baseline_data, current_data),
+                mutation_path=extract_mutation_path(
+                    path, type_name, baseline_data, current_data
+                ),
             )
         )
 
@@ -551,7 +585,7 @@ def calculate_file_statistics(data: dict[str, JsonValue]) -> FileStatsDict:
     spawn_supported = sum(
         1
         for t in data.values()
-        if isinstance(t, dict) and t.get("spawn_format") is not None
+        if isinstance(t, dict) and t.get("spawn_example") is not None
     )
     types_with_mutations = sum(
         1 for t in data.values() if isinstance(t, dict) and t.get("mutation_paths")
@@ -602,10 +636,18 @@ def main() -> None:
     removed_types = type_stats["baseline_only"]
 
     # Separate cosmetic changes from actual changes
-    field_reordering_changes = [c for c in all_changes if c["change_type"] == "field_reordering"]
-    array_reordering_changes = [c for c in all_changes if c["change_type"] == "array_reordering"]
+    field_reordering_changes = [
+        c for c in all_changes if c["change_type"] == "field_reordering"
+    ]
+    array_reordering_changes = [
+        c for c in all_changes if c["change_type"] == "array_reordering"
+    ]
     cosmetic_changes = field_reordering_changes + array_reordering_changes
-    actual_changes = [c for c in all_changes if c["change_type"] not in ["field_reordering", "array_reordering"]]
+    actual_changes = [
+        c
+        for c in all_changes
+        if c["change_type"] not in ["field_reordering", "array_reordering"]
+    ]
 
     print("🔍 MUTATION TEST COMPARISON COMPLETE")
     print("=" * 60)

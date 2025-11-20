@@ -189,7 +189,7 @@ pub fn process_enum(
 /// 1. `Strong`'s example is `None`
 /// 2. This becomes `enum_example_for_parent: None` for `Handle<Image>`
 /// 3. Parent `Option<Handle<Image>>::Some` uses this to build: `{"Some": null}`
-/// 4. Result: Invalid `spawn_format` that crashes when used
+/// 4. Result: Invalid `spawn_example` that crashes when used
 ///
 /// # Selection Strategy
 ///
@@ -344,7 +344,7 @@ fn determine_signature_mutability(
 ///
 /// We omit examples for `NotMutable` and `PartiallyMutable` variants because:
 /// 1. `child_examples` only contains mutable fields (`Arc`/`Handle` fields are excluded)
-/// 2. Building an example with incomplete fields would create invalid `spawn_format` values
+/// 2. Building an example with incomplete fields would create invalid `spawn_example` values
 /// 3. Attempting to spawn with incomplete examples causes Bevy reflection to panic
 /// 4. `select_preferred_example()` will automatically skip variants with `None` examples and choose
 ///    a fully `Mutable` variant (or return `None` if no `Mutable` variants exist)

@@ -82,7 +82,7 @@ Use extraction script ONLY (no direct jq/bash commands):
 # Should have translation/rotation/scale with all subfields
 
 # Get Transform spawn format
-.claude/scripts/type_guide_test_extract.sh <file_path> spawn_format "bevy_transform::components::transform::Transform"
+.claude/scripts/type_guide_test_extract.sh <file_path> spawn_example "bevy_transform::components::transform::Transform"
 # Should have example values
 
 # Get Transform schema info
@@ -131,7 +131,7 @@ Use extraction script ONLY (no direct jq/bash commands):
 ### 7. Validate Name Component
 Verify `result."type_guide"["bevy_ecs::name::Name"]`:
 - Has appropriate fields for a wrapper type
-- Has both `mutation_paths` and `spawn_format`
+- Has both `mutation_paths` and `spawn_example`
 - `schema_info.reflect_types` contains "Component"
 
 ### 8. Functional Mutation Testing
@@ -193,7 +193,7 @@ Test that format errors include embedded type_guide information for self-correct
   - type_guide: Embedded type_guide for Transform with correct array format
 
 **STEP 3**: Verify type_guide in error contains:
-- Transform spawn_format showing correct array format for Vec3 fields
+- Transform spawn_example showing correct array format for Vec3 fields
 - Transform mutation_paths for reference
 - Same structure as direct brp_type_guide response
 
@@ -245,7 +245,7 @@ mcp__brp__world_mutate_components with parameters:
 
 **STEP 3**: Verify mutation-specific type_guide contains:
 - Transform mutation_paths including `.translation` with correct array format
-- Transform spawn_format showing proper Vec3 array structure
+- Transform spawn_example showing proper Vec3 array structure
 - Clear guidance that Vec3 fields require `[x, y, z]` array format
 
 #### 9d. Test Non-Transformable Input Error

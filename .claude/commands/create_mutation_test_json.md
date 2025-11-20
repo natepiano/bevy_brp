@@ -121,13 +121,6 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
     python3 .claude/scripts/create_mutation_test_json/compare.py .claude/transient/all_types_baseline.json ${TARGET_FILE}
     ```
 
-    The file contains the COMPLETE BRP response:
-    - spawn_format with examples
-    - mutation_paths with examples for each path
-    - supported_operations
-    - reflection_traits
-    - schema_info
-
     **Comparison Output**: The compare.py script displays:
     - Current file statistics (total types, spawn-supported types, types with mutations, total mutation paths)
     - Comparison results (total changes, types modified/added/removed)

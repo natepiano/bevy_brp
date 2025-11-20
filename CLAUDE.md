@@ -40,7 +40,7 @@ The `.claude/transient/all_types.json` file stores complete BRP type guides with
   "type_guide": {
     "bevy_camera::camera::Camera": {
       "type_name": "bevy_camera::camera::Camera",
-      "spawn_format": {...},
+      "spawn_example": {...},
       "mutation_paths": [
         {
           "path": ".is_active",

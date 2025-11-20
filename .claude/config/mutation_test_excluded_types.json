@@ -62,7 +62,7 @@
     },
     {
       "type_name": "bevy_animation::transition::AnimationTransitions",
-      "reason": "Array element mutation paths cannot be tested. Type spawns with empty transitions array (spawn_format: {}), but type guide includes mutation paths for array elements (.transitions[0].current_weight, .transitions[0].weight_decline_per_sec). Cannot mutate array element [0] when array is empty - results in error: 'The list accessed doesn't have index `0`'. Would need non-empty spawn format or filtered mutation paths to be testable."
+      "reason": "Array element mutation paths cannot be tested. Type spawns with empty transitions array (spawn_example: {}), but type guide includes mutation paths for array elements (.transitions[0].current_weight, .transitions[0].weight_decline_per_sec). Cannot mutate array element [0] when array is empty - results in error: 'The list accessed doesn't have index `0`'. Would need non-empty spawn format or filtered mutation paths to be testable."
     },
     {
       "type_name": "bevy_picking::pointer::PointerInteraction",
