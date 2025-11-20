@@ -9,6 +9,7 @@ use rmcp::model::CallToolResult;
 use serde_json::Value;
 use serde_json::json;
 
+use super::json_response::AnySchemaValue;
 use super::json_response::ToolCallJsonResponse;
 use crate::error::Error;
 use crate::error::Result;
@@ -205,12 +206,12 @@ impl HandlerContext {
             )))?;
 
             let mut modified_response = response;
-            modified_response.result = Some(json!({
+            modified_response.result = Some(AnySchemaValue(json!({
                 "saved_to_file": true,
                 "filepath": filepath.to_string_lossy(),
                 "instructions": "Use Read tool to examine, Grep to search, or jq commands to filter the data.",
                 "original_size_tokens": estimated_tokens
-            }));
+            })));
 
             return Ok(modified_response);
         }

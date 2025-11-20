@@ -1,14 +1,31 @@
-//! `JsonResponse` and conversion methods
+use std::borrow::Cow;
+
 use rmcp::model::CallToolResult;
-use rmcp::model::Content;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
+use serde_json::json;
 
 use super::tool_name::CallInfo;
 use crate::error::Error;
 use crate::error::Result;
+
+/// Wrapper for Value that produces an empty object schema `{}` instead of `true` or specific types.
+/// This ensures compatibility with strict JSON Schema validators (like Gemini's).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct AnySchemaValue(pub Value);
+
+impl JsonSchema for AnySchemaValue {
+    fn schema_name() -> Cow<'static, str> { "AnySchemaValue".into() }
+
+    #[allow(clippy::expect_used)]
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        serde_json::from_value(json!({}))
+            .expect("Serializing empty JSON object to Schema should always succeed")
+    }
+}
 
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -17,15 +34,15 @@ pub struct ToolCallJsonResponse {
     pub message:               String,
     pub call_info:             CallInfo,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata:              Option<Value>,
+    pub metadata:              Option<AnySchemaValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub parameters:            Option<Value>,
+    pub parameters:            Option<AnySchemaValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub result:                Option<Value>,
+    pub result:                Option<AnySchemaValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_info:            Option<Value>,
+    pub error_info:            Option<AnySchemaValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub brp_extras_debug_info: Option<Value>,
+    pub brp_extras_debug_info: Option<AnySchemaValue>,
 }
 
 impl ToolCallJsonResponse {
@@ -58,7 +75,19 @@ impl ToolCallJsonResponse {
 
     /// Creates a `CallToolResult` from this `JsonResponse`
     pub fn to_call_tool_result(&self) -> CallToolResult {
-        CallToolResult::success(vec![Content::text(self.to_json_fallback())])
+        // Convert self to Value
+        let value = serde_json::to_value(self).unwrap_or_else(|e| {
+            serde_json::json!({
+                "status": "error",
+                "message": format!("Failed to serialize response: {}", e),
+                "call_info": self.call_info
+            })
+        });
+
+        match self.status {
+            ResponseStatus::Success => CallToolResult::structured(value),
+            ResponseStatus::Error => CallToolResult::structured_error(value),
+        }
     }
 }
 

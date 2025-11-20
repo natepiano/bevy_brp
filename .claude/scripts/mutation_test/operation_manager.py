@@ -44,16 +44,10 @@ class QueryResultEntry(TypedDict):
     entity: int
 
 
-class HookToolResponse(TypedDict):
-    """Type for hook tool_response element."""
-
-    text: str
-
-
 class HookEvent(TypedDict):
-    """Type for hook event JSON structure."""
+    """Type for hook event JSON structure with structured responses."""
 
-    tool_response: list[HookToolResponse]
+    tool_response: str  # JSON-serialized BrpResponse
     tool_name: str
     tool_input: dict[str, object]
 
@@ -295,8 +289,8 @@ def parse_mcp_response_with_input(
         mcp_data = cast(HookEvent, mcp_data_raw)
         tool_input = mcp_data.get("tool_input", {})
 
-        # Extract response JSON from tool_response[0].text
-        response_text = mcp_data["tool_response"][0]["text"]
+        # Extract response JSON - tool_response is now a JSON string directly
+        response_text = mcp_data["tool_response"]
         response_json_raw = json.loads(response_text)  # pyright: ignore[reportAny]
         response_json = cast(BrpResponse, response_json_raw)
 

@@ -101,7 +101,7 @@ Test filter combinations:
     },
     "filter": {
       "with": ["bevy_transform::components::transform::Transform"],
-      "without": ["bevy_render::camera::camera::Camera"]
+      "without": ["bevy_camera::camera::Camera"]
     }
   }
   ```
@@ -118,7 +118,7 @@ Test all query data fields together:
     "data": {
       "components": ["bevy_transform::components::transform::Transform"],
       "option": ["bevy_ecs::name::Name", "bevy_render::view::visibility::Visibility"],
-      "has": ["bevy_render::camera::camera::Camera"]
+      "has": ["bevy_camera::camera::Camera"]
     }
   }
   ```

@@ -286,11 +286,13 @@ mcp__brp__world_mutate_components with parameters:
 ```
 
 **Expected Result**:
-- Error with helpful guidance about enum mutation
+- Error with format error message: "Format error - see 'type_guide' field for correct format"
 - error_info includes:
-  - hint about using empty path for enums
-  - valid_values array: ["Visible", "Hidden", "Inherited"]
-  - examples of correct usage
+  - original_error: The BRP error message about the mutation failure
+  - type_guide: Full type_guide for the component including:
+    - mutation_paths array with entries for the enum field showing all variants
+    - Each variant entry includes examples showing the correct structure
+    - path_info with enum-specific metadata (applicable_variants, enum_instructions)
 
 ## Success Criteria
 

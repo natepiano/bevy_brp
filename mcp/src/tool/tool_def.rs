@@ -6,7 +6,7 @@ use std::sync::Arc;
 use rmcp::ErrorData;
 use rmcp::model::CallToolRequestParam;
 use rmcp::model::CallToolResult;
-use schemars::schema_for;
+use schemars::generate::SchemaSettings;
 
 use super::HandlerContext;
 use super::annotations::Annotation;
@@ -45,7 +45,11 @@ impl ToolDef {
 
     /// Generate unified output schema from the actual `ToolCallJsonResponse` struct
     fn generate_output_schema() -> Arc<rmcp::model::JsonObject> {
-        let schema = schema_for!(ToolCallJsonResponse);
+        let mut settings = SchemaSettings::default();
+        settings.inline_subschemas = true;
+        let generator = settings.into_generator();
+        let schema = generator.into_root_schema_for::<ToolCallJsonResponse>();
+
         let Ok(schema_value) = serde_json::to_value(schema) else {
             // Fallback to empty schema if serialization fails
             return Arc::new(rmcp::model::JsonObject::new());
@@ -88,6 +92,7 @@ impl ToolDef {
             output_schema: Some(Self::generate_output_schema()),
             annotations:   Some(enhanced_annotations.into()),
             icons:         None,
+            meta:          None,
         }
     }
 }

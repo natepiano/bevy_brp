@@ -42,7 +42,6 @@ requires `bevy_brp_extras`
 - **Type Discovery**: Get correct JSON formats for BRP operations using type schema introspection
 - **Screenshot Capture**: Take screenshots of running Bevy applications
 - **Keyboard Input**: Send keyboard input to Bevy applications for testing and automation
-- **Key Code Discovery**: List all available keyboard key codes for input operations
 - **Graceful Shutdown**: Clean application termination
 
 ## Getting started
