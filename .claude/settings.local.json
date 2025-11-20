@@ -164,7 +164,8 @@
       "Bash(git show:*)",
       "Bash(git ls-tree:*)",
       "mcp__brp__registry_schema",
-      "mcp__brp__rpc_discover"
+      "mcp__brp__rpc_discover",
+      "WebFetch(domain:docs.rs)"
     ],
     "deny": [
       "Bash(sed:*)",
