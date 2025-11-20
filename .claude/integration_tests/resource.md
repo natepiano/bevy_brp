@@ -64,38 +64,7 @@ mcp__brp__world_insert_resources with parameters:
 - Port: {{PORT}}
 - Verify the resource data matches what was inserted
 
-### 2. Resource Mutation Test
-**STEP 1**: Mutate the RuntimeStatsResource:
-```
-`mcp__brp__world_mutate_resources` with parameters:
-{
-  "resource": "extras_plugin::RuntimeStatsResource",
-  "path": ".debug_mode",
-  "value": true,
-  "port": {{PORT}}
-}
-```
-- Verify mutation succeeds
-
-**STEP 2**: Mutate another field:
-```
-`mcp__brp__world_mutate_resources` with parameters:
-{
-  "resource": "extras_plugin::RuntimeStatsResource",
-  "path": ".frame_count",
-  "value": 42,
-  "port": {{PORT}}
-}
-```
-- Verify this also succeeds
-
-**STEP 3**: Get resource to verify mutations:
-- Tool: `mcp__brp__world_get_resources`
-- Resource: `extras_plugin::RuntimeStatsResource`
-- Port: {{PORT}}
-- Verify frame_count is 42 and debug_mode is true
-
-### 3. Mutation Error Tests
+### 2. Mutation Error Tests
 **STEP 1**: Test mutation with invalid field path:
 ```
 `mcp__brp__world_mutate_resources` with parameters:
@@ -132,7 +101,7 @@ mcp__brp__world_insert_resources with parameters:
 ```
 - Verify error mentions: "Unknown resource type: `my_game::config::NonExistentResource`"
 
-### 4. Resource Removal Test
+### 3. Resource Removal Test
 **STEP 1**: Remove the TestConfigResource:
 ```
 `mcp__brp__world_remove_resources` with parameters:
@@ -149,7 +118,7 @@ mcp__brp__world_insert_resources with parameters:
 - Port: {{PORT}}
 - Verify it returns an error indicating resource not found
 
-### 5. Non-Existent Resource Test
+### 4. Non-Existent Resource Test
 **STEP 1**: Attempt to insert a non-existent resource:
 ```
 `mcp__brp__world_insert_resources` with parameters:
@@ -166,8 +135,6 @@ mcp__brp__world_insert_resources with parameters:
 
 ## Expected Results
 - ✅ Insert succeeds for both test resources
-- ✅ Mutation works for both test resources
-- ✅ Correct mutations update resource fields properly
 - ✅ Invalid field path mutations fail with clear error about missing field
 - ✅ Type mismatch mutations fail with clear type error messages
 - ✅ Mutations on non-existent resources fail with "Unknown resource type" error

@@ -39,15 +39,11 @@ impl Example {
 }
 
 impl From<Value> for Example {
-    fn from(value: Value) -> Self {
-        Self::Json(value)
-    }
+    fn from(value: Value) -> Self { Self::Json(value) }
 }
 
 impl From<Example> for Value {
-    fn from(example: Example) -> Self {
-        example.to_value()
-    }
+    fn from(example: Example) -> Self { example.to_value() }
 }
 
 /// Action to take regarding path creation during recursion

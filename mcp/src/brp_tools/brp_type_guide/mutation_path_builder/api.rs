@@ -73,6 +73,6 @@ pub fn extract_spawn_format(mutation_paths: &[MutationPathExternal]) -> Option<V
             },
             PathExample::EnumRoot { groups, .. } => {
                 select_preferred_example(groups).map(|ex| ex.to_value())
-            }
+            },
         })
 }

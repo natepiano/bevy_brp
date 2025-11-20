@@ -163,7 +163,7 @@ impl MutationPathInternal {
                     type_kind.child_terminology()
                 );
                 if has_default_for_root {
-                    let guidance = self.get_default_spawn_guidance(field_schema);
+                    let guidance = Self::get_default_spawn_guidance(field_schema);
                     format!("{base_msg}.{guidance}")
                 } else {
                     format!("{base_msg}. No example is provided.")
@@ -174,7 +174,7 @@ impl MutationPathInternal {
                 let base_msg = format!("This {} is not mutable", type_kind.as_ref().to_lowercase());
 
                 if is_root && has_default_for_root {
-                    let guidance = self.get_default_spawn_guidance(field_schema);
+                    let guidance = Self::get_default_spawn_guidance(field_schema);
                     format!("{base_msg}.{guidance}")
                 } else {
                     format!("{base_msg}. No example is provided.")
@@ -188,7 +188,7 @@ impl MutationPathInternal {
 
     /// Get the appropriate Default spawn guidance based on whether the type is a Component or
     /// Resource
-    fn get_default_spawn_guidance(&self, field_schema: &Value) -> String {
+    fn get_default_spawn_guidance(field_schema: &Value) -> String {
         let reflect_traits = field_schema
             .get_field_array(SchemaField::ReflectTypes)
             .map(|arr| arr.iter().filter_map(Value::as_str).collect::<Vec<_>>())

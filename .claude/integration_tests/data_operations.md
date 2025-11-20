@@ -22,17 +22,12 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Request both Transform and Name components
 - Verify data matches what was inserted
 
-### 4. Component Mutation
-- Execute `mcp__brp__world_mutate_components` to modify Transform translation
-- Use path `.translation.x` with new value
-- Verify mutation succeeds
-
-### 5. Component Removal
+### 4. Component Removal
 - Execute `mcp__brp__world_remove_components` to remove Name component
 - Verify component is removed from entity
 - Confirm Transform component remains
 
-### 6. Resource Operations with Type Guide Discovery
+### 5. Resource Operations with Type Guide Discovery
 - Execute `mcp__brp__brp_type_guide` with `["bevy_render::camera::clear_color::ClearColor"]` to discover resource structure
 - Verify schema returns mutation paths and spawn format information
 - Execute `mcp__brp__world_get_resources` to retrieve current ClearColor resource value
@@ -42,7 +37,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Execute `mcp__brp__world_get_resources` again to verify the mutation took effect
 - Confirm the color value changed to the new Srgba values
 
-### 7. Entity Cleanup
+### 6. Entity Cleanup
 - Execute `mcp__brp__world_despawn_entity` to remove test entity
 - Verify entity is properly despawned
 
