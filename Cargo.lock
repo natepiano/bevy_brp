@@ -564,7 +564,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bevy",
- "bevy_brp_mcp_macros 0.17.0",
+ "bevy_brp_mcp_macros 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata",
  "chrono",
  "either",
@@ -598,9 +598,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_brp_mcp_macros"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b123055668a5b130787f29118df0b481f69241ffa9e4dbb6ba0cde86d62d080"
+version = "0.17.1"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -611,6 +609,8 @@ dependencies = [
 [[package]]
 name = "bevy_brp_mcp_macros"
 version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d52ebd09c6a67863d8f8acf33abf339a030447ddf58bd8a143d351cd4fee18db"
 dependencies = [
  "heck",
  "proc-macro2",

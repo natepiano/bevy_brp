@@ -1,17 +1,25 @@
-# Release Command - Simplified Workspace Release
+# Release Command - Phased Workspace Release
 
-Perform a coordinated release for bevy_brp workspace crates using cargo-release and workspace publishing.
+Perform a coordinated release for bevy_brp workspace crates using a phased approach to ensure proper dependency versioning.
 
 ## Usage
 - `/release X.Y.Z-rc.N` - Release all 3 crates as RC version (e.g., `0.17.0-rc.1`)
 - `/release X.Y.Z` - Release all 3 crates as final version (e.g., `0.17.0`)
 
 ## Crate Dependency Chain
-1. `mcp_macros` (no dependencies)
-2. `extras` (depends on bevy only)
-3. `mcp` (depends on mcp_macros only)
+1. `mcp_macros` (no dependencies) - **Published FIRST**
+2. `extras` (depends on bevy only) - Published second
+3. `mcp` (depends on mcp_macros via workspace) - Published second
 
-`cargo publish --workspace` automatically handles this dependency order.
+## Phased Release Strategy
+
+**Why phased?** The `mcp` crate depends on `mcp_macros`. To ensure correct version dependencies on crates.io:
+
+1. **Check/Update**: Ensure workspace dependency is set to the new release version (not path)
+2. **Phase 1**: Publish `mcp_macros` alone
+3. **Phase 2**: Publish `extras` and `mcp` (which correctly depend on the published `mcp_macros` via workspace)
+
+**Workspace dependency approach**: The workspace normally keeps `mcp_macros` as a version dependency pointing to the last published version. Only when actively developing macros would you temporarily use a path dependency. Before release, ensure it's set to the new version number.
 
 ## Prerequisites Check
 
@@ -27,15 +35,16 @@ Before starting the release, verify:
     **STEP 0:** Execute <ArgumentValidation/>
     **STEP 1:** Execute <PreReleaseChecks/>
     **STEP 2:** Execute <ChangelogVerification/>
-    **STEP 3:** Execute <UpdateMcpDependency/>
-    **STEP 4:** Execute <RunCargoRelease/>
-    **STEP 5:** Execute <FinalizeChangelogs/>
-    **STEP 6:** Execute <PushAndPublish/>
-    **STEP 6.5:** Execute <CreateReleaseBranch/>
-    **STEP 7:** Execute <CreateGitHubRelease/>
-    **STEP 8:** Execute <PostReleaseVerification/>
-    **STEP 9:** Execute <PrepareNextReleaseCycle/>
-    **STEP 10:** Execute <RestorePathDependency/>
+    **STEP 2.5:** Execute <UpdateReadmeCompatibility/>
+    **STEP 3:** Execute <CheckWorkspaceDependency/>
+    **STEP 4:** Execute <Phase1PublishMacros/>
+    **STEP 5:** Execute <Phase2PublishExtrasAndMcp/>
+    **STEP 6:** Execute <FinalizeChangelogs/>
+    **STEP 7:** Execute <PushToGit/>
+    **STEP 8:** Execute <CreateReleaseBranch/>
+    **STEP 9:** Execute <CreateGitHubRelease/>
+    **STEP 10:** Execute <PostReleaseVerification/>
+    **STEP 11:** Execute <PrepareNextReleaseCycle/>
 </ExecutionSteps>
 
 <ArgumentValidation>
@@ -129,22 +138,66 @@ done
   - Type **stop** to add missing entries
 </ChangelogVerification>
 
-<UpdateMcpDependency>
-## STEP 3: Update mcp Dependency to crates.io Version
+<UpdateReadmeCompatibility>
+## STEP 2.5: Update README Compatibility Tables
 
-**Update mcp/Cargo.toml dependency from path to current crates.io version:**
+**Update the Bevy compatibility information in README files:**
 
-**I will edit `mcp/Cargo.toml` to change:**
-```toml
-# FROM:
-bevy_brp_mcp_macros = { path = "../mcp_macros" }
+→ **Manual task**: Update compatibility tables in the following files:
+  - `README.md` - Main repository README
+  - `mcp/README.md` - MCP crate README
+  - `extras/README.md` - Extras crate README (if exists)
 
-# TO (using current crates.io version):
-bevy_brp_mcp_macros = "0.17.0"  # or whatever the current version is
+**What to update:**
+- Update the version range for the current Bevy series (e.g., `0.17.0-0.17.1` for patch releases)
+- Update example version numbers in installation instructions
+- Any version-specific notes or warnings
+
+**Compatibility table format (use explicit ranges):**
+```markdown
+| bevy_brp_mcp   | Bevy  |
+|----------------|-------|
+| 0.17.0-0.17.1  | 0.17  |
+| 0.16.0         | 0.16  |
 ```
-→ **I will check the current version on crates.io first, then make this edit**
 
-**After the edit, verify it builds:**
+→ **Manual verification**: Confirm all READMEs updated with new version range
+  - Type **continue** to proceed
+  - Type **stop** to update READMEs
+
+**Commit the README changes:**
+```bash
+git add README.md mcp/README.md extras/README.md
+git commit -m "docs: update compatibility tables for v${VERSION}"
+```
+→ **Auto-check**: Continue if commit succeeds
+</UpdateReadmeCompatibility>
+
+<CheckWorkspaceDependency>
+## STEP 3: Check and Update Workspace Dependency
+
+**Check current workspace dependency for mcp_macros:**
+
+```bash
+grep "bevy_brp_mcp_macros" Cargo.toml
+```
+
+**If it shows a path dependency** (from macro development):
+```toml
+bevy_brp_mcp_macros = { path = "mcp_macros" }
+```
+
+**Or if it shows an old version**:
+```toml
+bevy_brp_mcp_macros = "0.17.0"  # Example old version
+```
+
+→ **I will update `Cargo.toml` (workspace root) to use the new release version:**
+```toml
+bevy_brp_mcp_macros = "${VERSION}"
+```
+
+**Verify the change builds:**
 ```bash
 cargo build --package bevy_brp_mcp
 ```
@@ -153,34 +206,99 @@ cargo build --package bevy_brp_mcp
 ```bash
 cargo nextest run --package bevy_brp_mcp
 ```
-→ **Auto-check**: Continue if tests pass, stop if any fail
+→ **Auto-check**: Continue if tests pass, stop if fails
 
+**Commit the dependency update:**
 ```bash
-git add mcp/Cargo.toml && git commit -m "chore: prepare for release - use crates.io version of mcp_macros"
+git add Cargo.toml Cargo.lock
+git commit -m "chore: update workspace dependency to bevy_brp_mcp_macros ${VERSION}"
 ```
 → **Auto-check**: Continue if commit succeeds
-</UpdateMcpDependency>
 
-<RunCargoRelease>
-## STEP 4: Run cargo-release for Version Bumping
+**Note**: This ensures that when we publish `mcp`, it will correctly depend on the version of `mcp_macros` we're about to publish.
+</CheckWorkspaceDependency>
 
-**Note**: cargo-release will bump versions in Cargo.toml files and create a git tag. We handle CHANGELOG updates manually due to known issues.
+<Phase1PublishMacros>
+## STEP 4: Phase 1 - Publish mcp_macros Only
+
+**First, run cargo-release for mcp_macros only:**
 
 ```bash
-cargo release ${VERSION} --workspace
+cargo release ${VERSION} --package bevy_brp_mcp_macros
 ```
-→ **Manual verification**: Review the dry run output - version bumps, git operations all look correct
-  - Type **continue** to proceed with release execution
-  - Type **stop** to halt process for manual review
+→ **Manual verification**: Review the dry run output
+  - Type **continue** to execute
+  - Type **stop** to halt
 
 ```bash
-cargo release ${VERSION} --workspace --execute
+echo "y" | cargo release ${VERSION} --package bevy_brp_mcp_macros --execute
 ```
 → **Auto-check**: Continue if release succeeds with tag created, stop if errors
-</RunCargoRelease>
+
+**Publish mcp_macros to crates.io:**
+
+```bash
+cargo publish --package bevy_brp_mcp_macros --dry-run
+```
+→ **Manual verification**: Review package contents
+  - Type **continue** to publish
+  - Type **stop** to fix issues
+
+```bash
+cargo publish --package bevy_brp_mcp_macros
+```
+→ **Auto-check**: Continue if publish succeeds, stop if fails
+
+**Wait for crates.io indexing:**
+```bash
+echo "⏳ Waiting 30 seconds for crates.io to index bevy_brp_mcp_macros ${VERSION}..."
+sleep 30
+```
+→ **Auto-check**: Continue after wait completes
+</Phase1PublishMacros>
+
+<Phase2PublishExtrasAndMcp>
+## STEP 5: Phase 2 - Publish extras and mcp
+
+**Run cargo-release for extras and mcp only:**
+
+```bash
+cargo release ${VERSION} --package bevy_brp_extras --package bevy_brp_mcp
+```
+→ **Manual verification**: Review the dry run output - version bumps for extras and mcp
+  - Type **continue** to execute
+  - Type **stop** to halt
+
+```bash
+echo "y" | cargo release ${VERSION} --package bevy_brp_extras --package bevy_brp_mcp --execute
+```
+→ **Auto-check**: Continue if release succeeds, stop if errors
+
+**Publish extras and mcp to crates.io:**
+
+```bash
+cargo publish --package bevy_brp_extras --dry-run
+```
+→ **Manual verification**: Review package contents
+  - Type **continue** to proceed
+  - Type **stop** to fix issues
+
+```bash
+cargo publish --package bevy_brp_mcp --dry-run
+```
+→ **Manual verification**: Review package contents
+  - Type **continue** to publish both
+  - Type **stop** to fix issues
+
+**Publish both crates (extras first, then mcp):**
+```bash
+cargo publish --package bevy_brp_extras && cargo publish --package bevy_brp_mcp
+```
+→ **Auto-check**: Continue if both publishes succeed, stop if any fail
+</Phase2PublishExtrasAndMcp>
 
 <FinalizeChangelogs>
-## STEP 5: Finalize CHANGELOG Headers
+## STEP 6: Finalize CHANGELOG Headers
 
 **Known Issue**: cargo-release doesn't automatically update `[Unreleased]` to versioned releases in our setup.
 
@@ -202,15 +320,8 @@ git commit -m "chore: finalize CHANGELOGs for v${VERSION} release"
 → **Auto-check**: Continue if commit succeeds, stop if fails
 </FinalizeChangelogs>
 
-<PushAndPublish>
-## STEP 6: Push and Publish All Crates
-
-Execute <PushToGit/>
-Execute <PublishAllCrates/>
-</PushAndPublish>
-
 <PushToGit>
-### Push to Git
+## STEP 7: Push to Git
 
 ```bash
 git push origin main
@@ -223,26 +334,8 @@ git push origin --tags
 → **Auto-check**: Continue if push succeeds, stop if fails
 </PushToGit>
 
-<PublishAllCrates>
-### Publish to crates.io
-
-**Note**: `cargo publish --workspace` (Rust 1.90.0+) automatically publishes in dependency order: mcp_macros → extras → mcp
-
-```bash
-cargo publish --workspace --dry-run
-```
-→ **Manual verification**: Review package contents for all three crates
-  - Type **continue** to proceed with publishing
-  - Type **stop** to halt and fix package issues
-
-```bash
-cargo publish --workspace
-```
-→ **Auto-check**: Continue if all publishes succeed, stop if any fail
-</PublishAllCrates>
-
 <CreateReleaseBranch>
-## STEP 6.5: Create Release Branch
+## STEP 8: Create Release Branch
 
 **Create a release branch to enable future patches:**
 
@@ -291,7 +384,7 @@ disturbing main development. This follows Bevy's proven workflow where:
 </CreateReleaseBranch>
 
 <CreateGitHubRelease>
-## STEP 7: Create GitHub Release
+## STEP 9: Create GitHub Release
 
 → **I will gather CHANGELOG entries from all three crates and create a combined release using GitHub CLI**
 
@@ -305,7 +398,7 @@ gh release create "v${VERSION}" \
 </CreateGitHubRelease>
 
 <PostReleaseVerification>
-## STEP 8: Post-Release Verification
+## STEP 10: Post-Release Verification
 
 ```bash
 for crate in bevy_brp_mcp_macros bevy_brp_extras bevy_brp_mcp; do
@@ -329,7 +422,7 @@ cargo install bevy_brp_mcp --version "${VERSION}"
 </PostReleaseVerification>
 
 <PrepareNextReleaseCycle>
-## STEP 9: Prepare for Next Release Cycle
+## STEP 11: Prepare for Next Release Cycle
 
 → **I will add [Unreleased] sections to all three CHANGELOG.md files**
 
@@ -353,56 +446,28 @@ git commit -m "chore: prepare CHANGELOGs for next release cycle"
 git push origin main
 ```
 → **Auto-check**: Continue if push succeeds, stop if fails
+
+**✅ Release complete!** All crates published with correct dependencies and release branch created.
 </PrepareNextReleaseCycle>
 
-<RestorePathDependency>
-## STEP 10: Restore Path Dependency for Development
+## Workspace Dependency Strategy
 
-**Restore mcp/Cargo.toml to use path dependency:**
+**Normal state (most development):**
+- Workspace dependency for `mcp_macros` points to the last published version (e.g., `"0.17.1"`)
+- Most development doesn't touch macros, so this keeps things simple
+- Users get correct dependency versions from crates.io
 
-**I will edit `mcp/Cargo.toml` to change:**
-```toml
-# FROM:
-bevy_brp_mcp_macros = "0.17.0"
-
-# TO:
-bevy_brp_mcp_macros = { path = "../mcp_macros" }
-```
-→ **I will make this edit using the actual ${VERSION} value**
-
-**Verify it still builds:**
-```bash
-cargo build --package bevy_brp_mcp
-```
-→ **Auto-check**: Continue if build succeeds, stop if fails
-
-```bash
-cargo nextest run --package bevy_brp_mcp
-```
-→ **Auto-check**: Continue if tests pass, stop if any fail
-
-```bash
-git add mcp/Cargo.toml && git commit -m "chore: restore path dependency for development"
-```
-→ **Auto-check**: Continue if commit succeeds
-
-```bash
-git push origin main
-```
-→ **Auto-check**: Continue if push succeeds, stop if fails
-</RestorePathDependency>
-
-## Why Path Dependencies for Development?
-
-Path dependencies are essential for development because they allow you to:
+**When developing macros:**
+- Temporarily switch to path dependency: `{ path = "mcp_macros" }`
 - Test changes to mcp_macros immediately in the mcp crate
-- Make coordinated changes across crates without publishing
-- Iterate quickly without crates.io round-trips
+- Iterate quickly without publishing to crates.io
+- Before releasing, switch back to version dependency with the new version number
 
-The release process temporarily switches to version dependencies so that:
-- cargo-release can properly version all crates together
-- crates.io publishing works correctly with proper dependency versions
-- Users installing from crates.io get the correct dependency versions
+**Why this approach?**
+- No artificial toggling during release process
+- Workspace dependency stays stable most of the time
+- Only macro developers need to temporarily use path dependencies
+- Release process is simpler: just bump version and publish
 
 ## Rollback Instructions
 
@@ -436,7 +501,7 @@ The workspace uses `release.toml` with:
 3. **"Not on main branch"**: Switch to main with `git checkout main`
 4. **Build failures**: Fix any compilation errors before releasing
 5. **Dependency chain**: `cargo publish --workspace` handles the order automatically (mcp_macros → extras → mcp)
-6. **Path dependency**: Must temporarily use crates.io version during release, restore path dependency after
+6. **Path dependency during release**: If workspace has path dependency for mcp_macros, switch to version dependency before publishing
 
 ## Release Branch Workflow
 
