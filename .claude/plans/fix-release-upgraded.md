@@ -190,7 +190,7 @@ git show v0.18-dev:mcp/CHANGELOG.md | grep -A 10 "## \[Unreleased\]"
 
 ---
 
-### STEP 3: Reset and Cherry-Pick (ATOMIC GROUP) ⏳ PENDING
+### STEP 3: Reset and Cherry-Pick (ATOMIC GROUP) ✅ COMPLETED
 
 **Objective**: Reset main to 1afc1bff (keeping non-breaking refactoring), cherry-pick commits after breaking changes, force push
 
@@ -294,7 +294,7 @@ cargo nextest run
 
 ---
 
-### STEP 4: Merge PR and Update CHANGELOG ⏳ PENDING
+### STEP 4: Merge PR and Update CHANGELOG ✅ COMPLETED
 
 **Objective**: Merge PR #1 and prepare CHANGELOG for v0.17.1 release
 
@@ -369,83 +369,72 @@ cargo nextest run
 
 ---
 
-### STEP 5: Release v0.17.1 ⏳ PENDING
+### STEP 5: Update Release Command to Include Release Branch Creation ⏳ PENDING
 
-**Objective**: Create release branch, tag, and publish v0.17.1 to crates.io
+**Objective**: Update `.claude/commands/release_version.md` to incorporate release branch creation as part of standard release workflow
 
-**Change Type**: SAFE - Release workflow
+**Change Type**: DOCUMENTATION - Update release process
 
 **Dependencies**: Requires Step 4
 
-**Changes**:
-1. Create `release-0.17.1` branch from current main
-2. Tag as v0.17.1
-3. Publish to crates.io
+**Why**: We want release branch creation to be part of our standard release process so that every release (patch, minor, or major) creates a release branch that can be used for future patches without disturbing main development. This follows Bevy's proven workflow.
 
-**Git Commands**:
-```bash
-# Create release branch from main
-git checkout -b release-0.17.1
-git push -u origin release-0.17.1
+**Changes Required**:
 
-# Tag the release
-git tag v0.17.1
-git push origin v0.17.1
+1. Add new **Step 6.5: Create Release Branch** to `release_version.md` (after Step 6: Push and Publish, before Step 7: Create GitHub Release)
+2. Update the `<ExecutionSteps>` section to include the new step
+3. Add documentation section explaining the release branch workflow
 
-# Publish to crates.io (requires authentication)
-cargo publish --workspace
+**Reference**: See the "## Updating release_version.md Command" section below in this plan (starting line 569) for the exact changes to make.
 
-# Return to main
-git checkout main
-```
+**Files to Modify**:
+- `.claude/commands/release_version.md`
 
 **Verification**:
 ```bash
-# Verify branch and tag exist
-git ls-remote --heads origin | grep release-0.17.1
-git ls-remote --tags origin | grep v0.17.1
+# Verify Step 6.5 was added
+grep -A 5 "STEP 6.5" .claude/commands/release_version.md
 
-# Check crates.io (may take a few minutes)
-for crate in bevy_brp_mcp_macros bevy_brp_extras bevy_brp_mcp; do
-  echo -n "$crate: "
-  curl -s "https://crates.io/api/v1/crates/$crate" | jq '.crate.max_version'
-done
+# Verify ExecutionSteps updated
+grep "STEP 6.5" .claude/commands/release_version.md | head -1
 ```
 
 **Success Criteria**:
-- `release-0.17.1` branch created and pushed
-- `v0.17.1` tag created and pushed
-- All three crates published to crates.io showing v0.17.1
-- Back on main branch
+- Step 6.5 (Create Release Branch) added to release_version.md
+- ExecutionSteps section updated to include Step 6.5
+- Release branch workflow documentation added
+- File committed to git
 
 ---
 
-### STEP 6: Review Documentation ⏳ PENDING
+### STEP 6: Release v0.17.1 ⏳ PENDING
 
-**Objective**: Review future workflow documentation
+**Objective**: Execute the `/release 0.17.1` command to finalize and publish the release
 
-**Change Type**: DOCUMENTATION - Reference material (no execution required)
+**Change Type**: SAFE - Release workflow
 
-**This step is informational only - review the following sections**:
+**Dependencies**: Requires Step 5 (release_version.md must include Step 6.5)
 
-1. **Future Workflow: Maintaining Release Branches**
-   - How to apply fixes to released versions
-   - How to accept PRs against release branches
-   - Branch lifecycle and naming conventions
+**Command**:
+```bash
+/release 0.17.1
+```
 
-2. **Updating release_version.md Command**
-   - Proposed changes to add Step 6.5 (Create Release Branch)
-   - New documentation section about release branch workflow
-   - Example scenarios for normal releases and patches
-
-3. **Step 9: Later - Merge v0.18 Breaking Changes**
-   - When ready for v0.18.0, merge v0.18-dev back to main
-
-**No action required** - these sections provide guidance for future work.
+**What it does**: The `/release` command (per `.claude/commands/release_version.md`) will execute all release steps including:
+- Version validation and pre-release checks
+- CHANGELOG finalization
+- Version bumping and git tagging
+- Publishing to crates.io
+- **Release branch creation** (via updated Step 6.5)
+- GitHub release creation
+- Post-release verification
 
 **Success Criteria**:
-- Documentation reviewed and understood
-- Ready to use release branch workflow going forward
+- All steps in `/release 0.17.1` complete successfully
+- `release-0.17.1` branch created and pushed (new behavior from Step 6.5)
+- `v0.17.1` tag created and pushed
+- All three crates published to crates.io
+- CHANGELOG finalized with correct date
 
 ---
 

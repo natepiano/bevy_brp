@@ -31,6 +31,7 @@ Before starting the release, verify:
     **STEP 4:** Execute <RunCargoRelease/>
     **STEP 5:** Execute <FinalizeChangelogs/>
     **STEP 6:** Execute <PushAndPublish/>
+    **STEP 6.5:** Execute <CreateReleaseBranch/>
     **STEP 7:** Execute <CreateGitHubRelease/>
     **STEP 8:** Execute <PostReleaseVerification/>
     **STEP 9:** Execute <PrepareNextReleaseCycle/>
@@ -230,6 +231,55 @@ cargo publish --workspace
 → **Auto-check**: Continue if all publishes succeed, stop if any fail
 </PublishAllCrates>
 
+<CreateReleaseBranch>
+## STEP 6.5: Create Release Branch
+
+**Create a release branch to enable future patches:**
+
+```bash
+# Check if branch already exists (prevents accidental overwrites)
+if git show-ref --verify --quiet refs/heads/release-${VERSION}; then
+  echo "ERROR: Branch release-${VERSION} already exists"
+  echo "If you need to recreate it, delete it first with:"
+  echo "  git branch -D release-${VERSION}"
+  echo "  git push origin --delete release-${VERSION}"
+  exit 1
+fi
+
+# Create release branch from current commit
+git checkout -b release-${VERSION}
+
+# Verify we're on the new branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT_BRANCH" != "release-${VERSION}" ]; then
+  echo "ERROR: Failed to create branch release-${VERSION}"
+  exit 1
+fi
+
+# Push to remote and set up tracking
+git push -u origin release-${VERSION}
+
+# Verify branch exists on remote
+if ! git ls-remote --heads origin release-${VERSION} | grep -q release-${VERSION}; then
+  echo "ERROR: Failed to push branch release-${VERSION} to remote"
+  exit 1
+fi
+
+echo "✅ Successfully created and pushed release-${VERSION} branch"
+
+# Return to main for continued development
+git checkout main
+```
+→ **Auto-check**: Continue if branch created and pushed successfully, stop if fails
+
+**Why**: Release branches allow patch releases (e.g., v0.17.1 → v0.17.2) without
+disturbing main development. This follows Bevy's proven workflow where:
+- `main` is for active development
+- `release-X.Y.Z` branches are stable points for patches
+- Both can be developed independently and fixes can be backported
+
+</CreateReleaseBranch>
+
 <CreateGitHubRelease>
 ## STEP 7: Create GitHub Release
 
@@ -377,3 +427,89 @@ The workspace uses `release.toml` with:
 4. **Build failures**: Fix any compilation errors before releasing
 5. **Dependency chain**: `cargo publish --workspace` handles the order automatically (mcp_macros → extras → mcp)
 6. **Path dependency**: Must temporarily use crates.io version during release, restore path dependency after
+
+## Release Branch Workflow
+
+### Philosophy
+
+This project follows Bevy's release branch strategy:
+- **main**: active development, bleeding edge
+- **release-X.Y.Z**: stable release points that can receive patches
+- **Tags**: `vX.Y.Z` tags on release branches mark actual releases
+
+### When to Use Release Branches
+
+**Every release creates a branch:**
+- Patch releases (0.17.1): Create `release-0.17.1` from main
+- Minor releases (0.18.0): Create `release-0.18.0` from main
+- Major releases (1.0.0): Create `release-1.0.0` from main
+
+### Patching a Released Version
+
+If a bug is found in v0.17.1 that needs a v0.17.2 patch:
+
+**Option A: Fix on release branch, backport to main**
+```bash
+# Switch to release branch
+git checkout release-0.17.1
+
+# Create fix or cherry-pick from main
+git cherry-pick <fix-commit>  # or make changes directly
+
+# Update CHANGELOG
+# Edit mcp/CHANGELOG.md to add [0.17.2] section
+
+# Commit changelog
+git add mcp/CHANGELOG.md
+git commit -m "chore: finalize CHANGELOG for v0.17.2"
+
+# Tag the patch release
+git tag v0.17.2
+git push origin release-0.17.1 --tags
+
+# Publish to crates.io (only mcp crate if that's what changed)
+cargo publish --package bevy_brp_mcp
+
+# Backport to main
+git checkout main
+git cherry-pick <fix-commit>
+git push origin main
+```
+
+**Option B: Fix on main, backport to release**
+```bash
+# Fix on main first
+git checkout main
+# Make changes, commit, push
+git commit -m "fix: critical bug"
+git push origin main
+
+# Backport to release branch
+git checkout release-0.17.1
+git cherry-pick <fix-commit-sha>
+
+# Update CHANGELOG, tag, publish (same as Option A)
+```
+
+### Accepting PRs Against Release Branches
+
+Contributors can target specific releases:
+1. In GitHub PR UI, change target branch from `main` to `release-0.17.1`
+2. Review and merge as normal
+3. Cherry-pick to main: `git checkout main && git cherry-pick <merge-commit>`
+
+### Branch Lifecycle
+
+```
+main: v0.17.0 → v0.17.1 → v0.18.0 → v0.19.0 (continuous development)
+         ↓         ↓         ↓
+release-0.17.0   release-0.17.1   release-0.18.0
+         ↓              ↓
+      v0.17.0       v0.17.1 → v0.17.2 (patches)
+```
+
+**Key Points:**
+- Release branches can outlive their creation point on main
+- Patches only affect the release branch + backport to main
+- Main continues forward without waiting for patch releases
+- Each release branch is independent and can be patched separately
