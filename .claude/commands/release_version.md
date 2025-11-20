@@ -197,26 +197,24 @@ bevy_brp_mcp_macros = { path = "mcp_macros" }
 bevy_brp_mcp_macros = "0.17.0"  # Example old version
 ```
 
-→ **I will update `Cargo.toml` (workspace root) to use the new release version:**
+→ **I will update `Cargo.toml` (workspace root) AND `mcp_macros/Cargo.toml` to use the new release version:**
+
+**Workspace Cargo.toml:**
 ```toml
 bevy_brp_mcp_macros = "${VERSION}"
 ```
 
-**Verify the change builds:**
-```bash
-cargo build --package bevy_brp_mcp
+**mcp_macros/Cargo.toml:**
+```toml
+version = "${VERSION}"
 ```
-→ **Auto-check**: Continue if build succeeds, stop if fails
 
-```bash
-cargo nextest run --package bevy_brp_mcp
-```
-→ **Auto-check**: Continue if tests pass, stop if fails
+**Note**: We update both together because after updating the workspace dependency, `cargo metadata` will fail until the new version exists on crates.io. By also bumping mcp_macros version now, we can publish it directly in Step 4.
 
-**Commit the dependency update:**
+**Commit both changes:**
 ```bash
-git add Cargo.toml Cargo.lock
-git commit -m "chore: update workspace dependency to bevy_brp_mcp_macros ${VERSION}"
+git add Cargo.toml mcp_macros/Cargo.toml
+git commit -m "chore: bump versions to ${VERSION} for release"
 ```
 → **Auto-check**: Continue if commit succeeds
 
@@ -226,19 +224,7 @@ git commit -m "chore: update workspace dependency to bevy_brp_mcp_macros ${VERSI
 <Phase1PublishMacros>
 ## STEP 4: Phase 1 - Publish mcp_macros Only
 
-**First, run cargo-release for mcp_macros only:**
-
-```bash
-cargo release ${VERSION} --package bevy_brp_mcp_macros
-```
-→ **Manual verification**: Review the dry run output
-  - Type **continue** to execute
-  - Type **stop** to halt
-
-```bash
-echo "y" | cargo release ${VERSION} --package bevy_brp_mcp_macros --execute
-```
-→ **Auto-check**: Continue if release succeeds with tag created, stop if errors
+**Note**: We skip `cargo-release` for mcp_macros because `cargo metadata` fails after updating the workspace dependency in Step 3. The version was already bumped in mcp_macros/Cargo.toml during Step 3.
 
 **Publish mcp_macros to crates.io:**
 
@@ -253,6 +239,18 @@ cargo publish --package bevy_brp_mcp_macros --dry-run
 cargo publish --package bevy_brp_mcp_macros
 ```
 → **Auto-check**: Continue if publish succeeds, stop if fails
+
+**Create and push git tag for mcp_macros:**
+
+```bash
+git tag "bevy_brp_mcp_macros-v${VERSION}" -m "Release bevy_brp_mcp_macros v${VERSION}"
+```
+→ **Auto-check**: Continue if tag created
+
+```bash
+git push origin "bevy_brp_mcp_macros-v${VERSION}"
+```
+→ **Auto-check**: Continue if push succeeds
 
 **Wait for crates.io indexing:**
 ```bash
