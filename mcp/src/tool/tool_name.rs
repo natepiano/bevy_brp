@@ -16,12 +16,12 @@ use strum::EnumIter;
 use strum::EnumString;
 use strum::IntoStaticStr;
 
+use super::ToolDef;
 use super::annotations::Annotation;
 use super::annotations::EnvironmentImpact;
 use super::annotations::ToolCategory;
 use super::parameters;
 use super::types::ErasedToolFn;
-use super::ToolDef;
 use crate::app_tools::LaunchBevyBinaryParams;
 use crate::app_tools::ListBevyApps;
 use crate::app_tools::ListBevyExamples;
