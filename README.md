@@ -1,18 +1,14 @@
-# bevy_brp Development Workspace
+# bevy_brp development workspace
 
 This is the development workspace for Bevy Remote Protocol (BRP) tools. The published crates are located in `mcp/` and `extras/`.
 
-## Workspace Structure
+## workspace structure
+- **`.claude/`** - claude code commands, scripts, and agentic tests for the mcp tool
+- **`extras/`** - optionalBevy plugin that adds extra BRP methods for enhanced functionality
+- **`mcp/`** - Model Context Protocol (mcp) server for AI coding assistants to control Bevy apps
+- **`mcp_macros/`** - boilerplate-reducing macros for implementing support for the BRP
+- **`test-*/`** - examples and applications for testing and development
 
-- **`mcp/`** - [bevy_brp_mcp](https://crates.io/crates/bevy_brp_mcp) - Model Context Protocol server for AI coding assistants to control Bevy apps
-- **`extras/`** - [bevy_brp_extras](https://crates.io/crates/bevy_brp_extras) - Bevy plugin that adds extra BRP methods for enhanced functionality
-- **`test-app/`** - Example application for testing and development
-
-## Links
-
+## links
 - [bevy_brp_mcp on crates.io](https://crates.io/crates/bevy_brp_mcp)
 - [bevy_brp_extras on crates.io](https://crates.io/crates/bevy_brp_extras)
-
-## License
-
-MIT OR Apache-2.0

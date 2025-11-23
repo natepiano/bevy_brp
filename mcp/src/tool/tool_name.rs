@@ -16,12 +16,12 @@ use strum::EnumIter;
 use strum::EnumString;
 use strum::IntoStaticStr;
 
-use super::ToolDef;
 use super::annotations::Annotation;
 use super::annotations::EnvironmentImpact;
 use super::annotations::ToolCategory;
 use super::parameters;
 use super::types::ErasedToolFn;
+use super::ToolDef;
 use crate::app_tools::LaunchBevyBinaryParams;
 use crate::app_tools::ListBevyApps;
 use crate::app_tools::ListBevyExamples;
@@ -330,194 +330,194 @@ impl ToolName {
     pub fn get_annotations(self) -> Annotation {
         match self {
             Self::WorldDespawnEntity => Annotation::new(
-                "Despawn Bevy Entity",
+                "despawn bevy entity",
                 ToolCategory::Entity,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             Self::WorldGetComponents => Annotation::new(
-                "Get Component Data",
+                "get component data",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::WorldGetResources => Annotation::new(
-                "Get Resource Data",
+                "get resource data",
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::WorldInsertComponents => Annotation::new(
-                "Insert Components",
+                "insert components",
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::WorldInsertResources => Annotation::new(
-                "Insert Resources",
+                "insert resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::WorldListComponents => Annotation::new(
-                "List Components",
+                "list components",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::WorldListResources => Annotation::new(
-                "List Resources",
+                "list resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::WorldMutateComponents => Annotation::new(
-                "Mutate Components",
+                "mutate components",
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::WorldMutateResources => Annotation::new(
-                "Mutate Resources",
+                "mutate resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::WorldQuery => Annotation::new(
-                "Query Entities/Components",
+                "query entities/components",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::RegistrySchema => Annotation::new(
-                "Get Type Schemas from Registry",
+                "get type schemas using 'registry.schema' method",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::WorldRemoveComponents => Annotation::new(
-                "Remove Components",
+                "remove components",
                 ToolCategory::Component,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             Self::WorldRemoveResources => Annotation::new(
-                "Remove Resources",
+                "remove resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             Self::WorldReparentEntities => Annotation::new(
-                "Reparent Entities",
+                "reparent entities",
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::RpcDiscover => Annotation::new(
-                "Discover BRP Methods",
+                "discover brp methods",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::WorldSpawnEntity => Annotation::new(
-                "Spawn Entity",
+                "spawn entity",
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             Self::BrpExecute => Annotation::new(
-                "Execute BRP Method",
+                "execute brp method",
                 ToolCategory::DynamicBrp,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::BrpExtrasScreenshot => Annotation::new(
-                "Take Screenshot",
+                "take screenshot",
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             Self::BrpExtrasSendKeys => Annotation::new(
-                "Send Keys",
+                "send keys",
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             Self::BrpExtrasSetWindowTitle => Annotation::new(
-                "Change Window Title",
+                "change window title",
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::WorldGetComponentsWatch => Annotation::new(
-                "Watch Component Changes",
+                "watch component changes",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             Self::WorldListComponentsWatch => Annotation::new(
-                "Watch Component List",
+                "watch component list",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             Self::BrpDeleteLogs => Annotation::new(
-                "Delete Log Files",
+                "delete log files",
                 ToolCategory::Logging,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             #[cfg(feature = "mcp-debug")]
             Self::BrpGetTraceLogPath => Annotation::new(
-                "Get Trace Log Path",
+                "get trace log path",
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::BrpLaunchBevyApp => Annotation::new(
-                "Launch Bevy App",
+                "launch bevy app",
                 ToolCategory::App,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             Self::BrpLaunchBevyExample => Annotation::new(
-                "Launch Bevy Example",
+                "launch bevy example",
                 ToolCategory::App,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             Self::BrpListBevyApps => Annotation::new(
-                "List Bevy Apps",
+                "list bevy apps",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::BrpListBevyExamples => Annotation::new(
-                "List Bevy Examples",
+                "list bevy examples",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::BrpListBrpApps => Annotation::new(
-                "List Bevy BRP-enabled Apps",
+                "list bevy brp-enabled apps",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::BrpListActiveWatches => Annotation::new(
-                "List Active Watches",
+                "list active watches",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::BrpStopWatch => Annotation::new(
-                "Stop Watch",
+                "stop watch",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             Self::BrpListLogs => Annotation::new(
-                "List Log Files",
+                "list log files",
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::BrpReadLog => Annotation::new(
-                "Read Log File",
+                "read log file",
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
             ),
             #[cfg(feature = "mcp-debug")]
             Self::BrpSetTracingLevel => Annotation::new(
-                "Set Tracing Level",
+                "set tracing level",
                 ToolCategory::Logging,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             Self::BrpStatus => Annotation::new(
-                "Check App Status",
+                "check app status",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::BrpShutdown => Annotation::new(
-                "Shutdown Bevy App",
+                "shutdown bevy app",
                 ToolCategory::App,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             Self::BrpTypeGuide => Annotation::new(
-                "Type guide for components and resources",
+                "type guide for components and resources",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
             Self::BrpAllTypeGuides => Annotation::new(
-                "Get type guides for all registered types",
+                "get type guides for all registered types",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),

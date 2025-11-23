@@ -39,7 +39,6 @@ The bevy_brp_mcp crate follows Bevy's version numbering and releases new version
 ### Enhanced BRP Integration
 requires `bevy_brp_extras`
 
-- **Type Discovery**: Get correct JSON formats for BRP operations using type schema introspection
 - **Screenshot Capture**: Take screenshots of running Bevy applications
 - **Keyboard Input**: Send keyboard input to Bevy applications for testing and automation
 - **Graceful Shutdown**: Clean application termination

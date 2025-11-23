@@ -1,14 +1,14 @@
 //! Plugin implementation for extra BRP methods
 
 use bevy::prelude::*;
-use bevy::remote::RemotePlugin;
 use bevy::remote::http::RemoteHttpPlugin;
+use bevy::remote::RemotePlugin;
 
-use crate::DEFAULT_REMOTE_PORT;
 use crate::keyboard;
 use crate::screenshot;
 use crate::shutdown;
 use crate::window_title;
+use crate::DEFAULT_REMOTE_PORT;
 
 /// Command prefix for `brp_extras` methods
 const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
@@ -74,12 +74,6 @@ impl Plugin for BrpExtrasPlugin {
     fn build(&self, app: &mut App) {
         // Get the effective port and source description
         let (effective_port, source_description) = self.get_effective_port();
-
-        // Add Bevy's remote plugins with our custom methods
-        info!(
-            "Registering BRP extras methods with prefix: {}",
-            EXTRAS_COMMAND_PREFIX
-        );
 
         let remote_plugin = RemotePlugin::default()
             .with_method(
