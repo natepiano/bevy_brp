@@ -20,28 +20,29 @@ The bevy_brp_mcp crate follows Bevy's version numbering and releases new version
 
 ### Core BRP Operations
 - **Entity Management**: Spawn, despawn, query
-- **Component Operations**: Get, insert, remove, and mutate components on entities
-- **Resource Management**: Access and modify global resources
-- **Query System**: Advanced entity querying with filters
-- **Hierarchy Operations**: Parent-child entity relationships
+- **Component Operations**: Get, insert, list, remove, and mutate components on entities
+- **Resource Management**: Get, insert, list, remove, and mutate resources
+- **Query System**: Entity querying with filters
+- **Hierarchy Operations**: Reparent entitities
+- **Type Guide**: 4. Get proper JSON formats for complex BRP operations using the `brp_type_guide` tool. The value returned from `registry.schema` does not tell you exactly what is expected by the brp spawn/insert/mutate calls. The `brp_type_guide` tool provides examples to your coding agent for each mutation path for a component or resource - making it easy for your coding agent to know how to use spawn/insert and mutate your components and resources. It's kind of a miracle to see your coding agent change running values on your components on the first try.
 
-### Application Discovery & Management
+### Application Discovery & Management for your Agent
 - **App Discovery**: Find and list Bevy applications in your workspace
 - **Build Status**: Check which apps are built and ready to run
-- **Launch Management**: Start apps with proper asset loading and logging
+- **Launch Management**: Start apps with proper asset loading and logging. 
 - **Example Support**: Discover and run Bevy examples from your projects
 
 ### Real-time Monitoring
 - **Component Watching**: Monitor component changes on specific entities
-- **Log Management**: Centralized logging for all launched applications
+- **Log Management**: Captures stdout to a temp file and provides a link to your agent for it to read your logs instead of blocking on running your app.
 - **Process Status**: Check if apps are running with BRP enabled
 
-### Enhanced BRP Integration
-requires `bevy_brp_extras`
-
-- **Screenshot Capture**: Take screenshots of running Bevy applications
-- **Keyboard Input**: Send keyboard input to Bevy applications for testing and automation
-- **Graceful Shutdown**: Clean application termination
+### Enhanced BRP Capabilities
+requires [bevy_brp_extras](https://crates.io/crates/bevy_brp_extras)  
+- `brp_extras/screenshot` - Capture screenshots of the primary window
+- `brp_extras/shutdown` - Gracefully shutdown the application
+- `brp_extras/send_keys` - Send keyboard input to the application
+- `brp_extras/set_window_title` - Change the primary window title
 
 ## Getting started
 first, install via cargo:
@@ -110,7 +111,6 @@ This crate is designed to work seamlessly with [bevy_brp_extras](https://github.
 1. Add `BrpExtrasPlugin` to your Bevy app for enhanced BRP features
 2. Use `bevy_brp_mcp` with your AI coding assistant
 3. Additional methods like screenshot, shutdown, and keyboard input will be automatically available
-4. Get proper JSON formats for complex BRP operations using the `brp_type_guide` tool. The value returned from `registry.schema` does not tell you exactly what is expected by the brp spawn/insert/mutate calls. The `brp_type_guide` tool provides enhanced format information that will make it easier for your coding agent to know how to use spawn/insert/mutate.
 
 ## Example Workflow
 
