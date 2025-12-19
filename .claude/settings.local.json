@@ -3,13 +3,11 @@
     "allow": [
       "Bash(/Applications/Zed.app/Contents/MacOS/cli:*)",
       "Bash(/dev/null)",
-      "Bash(/Users/natemccoy/.claude/scripts/bevy_migration_count_pattern.sh:*)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/get_type_guide.sh:*)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test/operation_manager.py --action get-next)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/mutation_test_subagent_log.sh: *)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/type_guide_test_extract.sh /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/mcp_response_brp_type_guide1758306170.json summary)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/type_guide_test_extract.sh:*)",
-      "Bash(\"/Users/natemccoy/rust/bevy_brp\" rust)",
+      "Bash(~/.claude/scripts/bevy_migration_count_pattern.sh:*)",
+      "Bash(./.claude/scripts/get_type_guide.sh:*)",
+      "Bash(./.claude/scripts/mutation_test/operation_manager.py --action get-next)",
+      "Bash(./.claude/scripts/mutation_test_subagent_log.sh:*)",
+      "Bash(./.claude/scripts/type_guide_test_extract.sh:*)",
       "Bash(./.claude/commands/mutation_test.sh:*)",
       "Bash(./.claude/scripts/get_mutation_path.sh:*)",
       "Bash(./.claude/scripts/get_type_guide.sh:*)",
@@ -169,7 +167,8 @@
       "Bash(/tmp/test_type_guide.json)",
       "Bash(~/.claude/scripts/integration_test_launch_retry.sh 1)",
       "Bash(VERSION=\"0.17.1\")",
-      "Bash(.claude/scripts/release_version_validate.sh:*)"
+      "Bash(.claude/scripts/release_version_validate.sh:*)",
+      "WebFetch(domain:crates.io)"
     ],
     "deny": [
       "Bash(sed:*)",
@@ -177,8 +176,8 @@
     ],
     "ask": [],
     "additionalDirectories": [
-      "/Users/natemccoy/rust/bevy",
-      "/Users/natemccoy/rust"
+      "~/rust/bevy",
+      "~/rust"
     ]
   },
   "hooks": {
