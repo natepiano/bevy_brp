@@ -171,7 +171,8 @@
       "WebFetch(domain:crates.io)",
       "Bash(mcp__brp__brp_extras_screenshot:*)",
       "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/type_guide_test_extract.sh:*)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh:*)"
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh:*)",
+      "Bash(bevy_brp_mcp --list-tools:*)"
     ],
     "deny": [
       "Bash(sed:*)",
