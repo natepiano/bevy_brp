@@ -357,48 +357,37 @@ git push origin --tags
 <CreateReleaseBranch>
 ## STEP 8: Create Release Branch
 
-**Create a release branch to enable future patches:**
+**CRITICAL: Every release MUST have its own release branch (e.g., `release-0.17.3`).**
+
+This applies to:
+- Initial releases from `main` (e.g., 0.17.0)
+- Patch releases from existing release branches (e.g., 0.17.3 from release-0.17.2)
+
+**Create the release branch:**
 
 ```bash
-# Check if branch already exists (prevents accidental overwrites)
-if git show-ref --verify --quiet refs/heads/release-${VERSION}; then
-  echo "ERROR: Branch release-${VERSION} already exists"
-  echo "If you need to recreate it, delete it first with:"
-  echo "  git branch -D release-${VERSION}"
-  echo "  git push origin --delete release-${VERSION}"
-  exit 1
-fi
+git checkout -b release-${VERSION} && git push -u origin release-${VERSION}
+```
+→ **Auto-check**: Continue if branch created and pushed successfully
 
-# Create release branch from current commit
-git checkout -b release-${VERSION}
+**Return to the original branch:**
 
-# Verify we're on the new branch
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT_BRANCH" != "release-${VERSION}" ]; then
-  echo "ERROR: Failed to create branch release-${VERSION}"
-  exit 1
-fi
-
-# Push to remote and set up tracking
-git push -u origin release-${VERSION}
-
-# Verify branch exists on remote
-if ! git ls-remote --heads origin release-${VERSION} | grep -q release-${VERSION}; then
-  echo "ERROR: Failed to push branch release-${VERSION} to remote"
-  exit 1
-fi
-
-echo "✅ Successfully created and pushed release-${VERSION} branch"
-
-# Return to main for continued development
+If releasing from `main`:
+```bash
 git checkout main
 ```
-→ **Auto-check**: Continue if branch created and pushed successfully, stop if fails
 
-**Why**: Release branches allow patch releases (e.g., v0.17.1 → v0.17.2) without
+If releasing from a release branch (patch release):
+```bash
+git checkout main
+```
+→ **Note**: For patch releases, we return to main (not the old release branch) since the new release branch is now the canonical location for future patches.
+
+**Why**: Release branches allow patch releases (e.g., v0.17.2 → v0.17.3) without
 disturbing main development. This follows Bevy's proven workflow where:
 - `main` is for active development
 - `release-X.Y.Z` branches are stable points for patches
+- Each release gets its own branch for potential future patches
 - Both can be developed independently and fixes can be backported
 
 </CreateReleaseBranch>
