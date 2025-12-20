@@ -250,15 +250,18 @@ impl ParameterBuilder {
         self
     }
 
-    /// Add a property that can be any type (object, array, null, etc.)
+    /// Add a property that can be any JSON type (object, array, string, number, boolean, null)
     pub fn add_any_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
-        // Multiple types require a JSON array value
+        // Include all JSON types for serde_json::Value compatibility
         prop.insert(
             "type".to_string(),
             vec![
                 JsonSchemaType::Object.as_ref(),
                 JsonSchemaType::Array.as_ref(),
+                JsonSchemaType::String.as_ref(),
+                JsonSchemaType::Number.as_ref(),
+                JsonSchemaType::Boolean.as_ref(),
                 JsonSchemaType::Null.as_ref(),
             ]
             .into(),
@@ -364,35 +367,28 @@ fn handle_one_of_schema(one_of: &[Value]) -> Option<ParameterType> {
 
 /// Handle anyOf schemas (typically Option<T> types)
 fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
-    let mut has_null = false;
-    let mut has_value_ref = false;
-
     for variant in any_of {
         if let Some(variant_obj) = variant.as_object() {
-            // Check for null variants
+            // Skip null variants (from Option<T>)
             if variant_obj
                 .get_field(SchemaField::Type)
                 .and_then(|t| t.as_str())
                 .is_some_and(|t| t == JsonSchemaType::Null.as_ref())
             {
-                has_null = true;
                 continue;
             }
 
-            // Check if this is a $ref to Value type (serde_json::Value)
+            // Check if this is a $ref type
             if let Some(ref_str) = variant_obj
                 .get_field(SchemaField::Ref)
                 .and_then(|r| r.as_str())
             {
-                // If we have a reference to Value type, it's an object parameter
+                // serde_json::Value refs should fall through to Any
                 if ref_str.contains("Value") {
-                    has_value_ref = true;
                     continue;
                 }
                 // For other $ref types (like BrpQueryFilter), treat as Object
                 // since they're references to custom structs
-                // This fixes Option<CustomStruct> being treated as "Any" which causes
-                // Claude Code to serialize it as ["object", "array", "null"]
                 return ParameterType::Object;
             }
 
@@ -405,12 +401,9 @@ fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
         }
     }
 
-    // Special case: Option<Value> should be treated as Object for BRP parameters
-    if has_null && has_value_ref {
-        ParameterType::Object
-    } else {
-        ParameterType::Any
-    }
+    // Default to Any - handles Option<Value> and other unrecognized patterns
+    // serde_json::Value can be any JSON type (object, array, string, number, boolean, null)
+    ParameterType::Any
 }
 
 fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
@@ -432,13 +425,14 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
         return ParameterType::Object;
     }
 
-    // Handle objects with only description (typically Option<Value> that has no type field)
+    // Handle objects with only description (typically serde_json::Value that has no type field)
+    // This should be Any since Value can hold any JSON type
     if obj.get_field(SchemaField::Description).is_some()
         && !obj.contains_key("type")
         && !obj.contains_key("anyOf")
         && !obj.contains_key("oneOf")
     {
-        return ParameterType::Object;
+        return ParameterType::Any;
     }
 
     // Handle "oneOf" schemas (enums like BrpMethod)
