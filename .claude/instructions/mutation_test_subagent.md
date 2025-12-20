@@ -9,93 +9,6 @@ These config values are provided:
 
 **Execute mutation test operations in an infinite loop until operation_manager.py returns `"status": "finished"`.**
 
-**CRITICAL: MCP TOOL PARAMETER FORMATTING**
-
-⚠️ **DO NOT JSON-SERIALIZE PARAMETERS** ⚠️
-
-When calling MCP tools, pass parameters as Python objects, NOT as JSON strings.
-
-**The WRONG patterns** (ALL cause "invalid type: string" errors):
-```python
-# Read operation from operation_manager.py
-response = # ... bash output from operation_manager.py
-# Parse the bash output to get the operation dict
-filter_param = operation["filter"]  # This is already a dict: {"with": ["Type"]}
-
-# ❌ WRONG - Do NOT serialize to string:
-filter_str = json.dumps(filter_param)
-mcp__brp__world_query(data={}, filter=filter_str, port=30001)
-
-# ❌ WRONG - Do NOT pretty-print:
-filter_str = json.dumps(filter_param, indent=2)  # This adds \n newlines!
-mcp__brp__world_query(data={}, filter=filter_str, port=30001)
-
-# ❌ WRONG - Do NOT wrap in quotes:
-mcp__brp__world_query(data={}, filter='{"with": ["Type"]}', port=30001)
-mcp__brp__world_query(data={}, filter="{\"with\": [\"Type\"]}", port=30001)
-
-# ❌ WRONG - Do NOT convert to string:
-filter_str = str(filter_param)
-mcp__brp__world_query(data={}, filter=filter_str, port=30001)
-```
-
-**The CORRECT pattern**:
-```python
-# Read operation from operation_manager.py
-operation = json.loads(response)
-filter_obj = operation["filter"]  # This is {"with": ["Type"]}
-
-# ✓ CORRECT - Pass the object directly:
-mcp__brp__world_query(data={}, filter=filter_obj, port=30001)  # CORRECT!
-
-# Or inline:
-mcp__brp__world_query(data={}, filter={"with": ["Type"]}, port=30001)  # CORRECT!
-```
-
-**Key rule**: The operation JSON is already properly formatted. Extract values and pass them AS-IS to MCP tools. Never call `json.dumps()`, never wrap in quotes, never convert objects to strings.
-
-**EXACT workflow for executing operations**:
-1. Call: `python3 .claude/scripts/mutation_test/operation_manager.py --port PORT --action get-next`
-2. The bash output contains JSON - this JSON is ALREADY CORRECTLY FORMATTED
-3. Extract parameters from the JSON response and pass DIRECTLY to MCP tool
-4. **DO NOT** call `json.dumps()`, `json.loads()`, `str()`, or any conversion function on the parameters
-5. **DO NOT** "pretty print", "format", or "clean up" the parameters in any way
-6. **DO NOT** create intermediate variables to "prepare" the parameters
-7. Just call the MCP tool with the parameters EXACTLY as they appear in the JSON
-
-**CRITICAL**: If you find yourself typing `json.dumps()`, `indent=`, or wrapping parameters in quotes, STOP. You're breaking the test.
-
-**Complete workflow example** (this is EXACTLY how to do it):
-```
-Step 1: Run bash command
-  → python3 .claude/scripts/mutation_test/operation_manager.py --port 30001 --action get-next
-
-Step 2: You see this bash output:
-  {
-    "status": "next_operation",
-    "operation": {
-      "tool": "mcp__brp__world_query",
-      "data": {},
-      "filter": {"with": ["bevy_camera::projection::Projection"]},
-      "port": 30001
-    }
-  }
-
-Step 3: Extract the parameters from the JSON output (the bash tool did this automatically)
-  tool = "mcp__brp__world_query"
-  data = {}
-  filter = {"with": ["bevy_camera::projection::Projection"]}  ← This is ALREADY a dict!
-  port = 30001
-
-Step 4: Call the MCP tool with those EXACT values:
-  mcp__brp__world_query(data={}, filter={"with": ["bevy_camera::projection::Projection"]}, port=30001)
-
-  OR use the extracted variables directly:
-  mcp__brp__world_query(data=data, filter=filter, port=port)
-
-NO OTHER STEPS. NO json.dumps(). NO formatting. Just extract and pass.
-```
-
 **CRITICAL CONSTRAINTS**:
 - The ONLY source of operations is operation_manager.py
 - The ONLY exit conditions are: receiving `"status": "finished"` OR encountering an unrecoverable error
@@ -111,46 +24,9 @@ NO OTHER STEPS. NO json.dumps(). NO formatting. Just extract and pass.
 <ExecutionSteps>
 **EXECUTE THESE STEPS IN ORDER:**
 
-**STEP 1:** Execute <PreExecutionCheck/>
-**STEP 2:** Execute <OperationLoop/>
-**STEP 3:** Execute <ReportCompletion/>
+**STEP 1:** Execute <OperationLoop/>
+**STEP 2:** Execute <ReportCompletion/>
 </ExecutionSteps>
-
-<PreExecutionCheck>
-**BEFORE YOU START THE OPERATION LOOP, COMMIT THIS TO MEMORY:**
-
-✅ **THE ONLY CORRECT WAY TO CALL MCP TOOLS:**
-```python
-# operation_manager.py gives you this JSON:
-response = {"status": "next_operation", "operation": {"tool": "mcp__brp__world_query", "filter": {"with": ["Type"]}, "data": {}, "port": 30001}}
-
-# Extract the filter object
-filter_obj = response["operation"]["filter"]  # This is {"with": ["Type"]}
-
-# Call the MCP tool with the object DIRECTLY
-mcp__brp__world_query(data={}, filter=filter_obj, port=30001)  # ✅ CORRECT!
-```
-
-❌ **NEVER DO THESE (ALL CAUSE TEST FAILURES):**
-```python
-# ❌ NEVER use json.dumps():
-filter_str = json.dumps(filter_obj)
-mcp__brp__world_query(data={}, filter=filter_str, port=30001)
-
-# ❌ NEVER use indent= (adds \n newlines):
-filter_str = json.dumps(filter_obj, indent=2)
-mcp__brp__world_query(data={}, filter=filter_str, port=30001)
-
-# ❌ NEVER wrap in quotes:
-mcp__brp__world_query(data={}, filter='{"with": ["Type"]}', port=30001)
-
-# ❌ NEVER convert to string:
-filter_str = str(filter_obj)
-mcp__brp__world_query(data={}, filter=filter_str, port=30001)
-```
-
-**If you see `\n` newlines in your filter parameter → YOU BROKE THE TEST. STOP IMMEDIATELY.**
-</PreExecutionCheck>
 
 <OperationLoop>
 **THIS IS AN INFINITE LOOP. DO NOT STOP UNTIL YOU RECEIVE `"status": "finished"` OR HIT AN UNRECOVERABLE ERROR.**
@@ -177,10 +53,6 @@ REPEAT these steps continuously:
 
 3. **Prepare operation parameters**:
    - Extract parameters from `operation` object
-   - **VERIFICATION CHECKPOINT**: Look at each parameter value:
-     - Is it an object like `{"with": ["Type"]}`? ✅ Good - use it AS-IS
-     - Is it a string containing JSON with `\n` newlines? ❌ STOP - you serialized it wrong
-     - Does it have escaped quotes like `\"with\"`? ❌ STOP - you serialized it wrong
    - If operation has `entity_id_substitution` field → Execute <EntityIdSubstitution/>
 
 4. **Execute the operation**:
@@ -192,9 +64,7 @@ REPEAT these steps continuously:
    - **RETURN TO STEP 1** (request next operation)
 
    If operation FAIL:
-   - Execute <MatchErrorPattern/> to determine if error is recoverable
-   - If recoverable → Apply fix and retry operation (step 3), then **RETURN TO STEP 1**
-   - If unrecoverable → **EXIT LOOP WITH ERROR**: "Unrecoverable error at operation ${operation_id}: ${error}"
+   - **EXIT LOOP WITH ERROR**: "Unrecoverable error at operation ${operation_id}: ${error}"
 
 **END OF LOOP ITERATION - RETURN TO STEP 1**
 </OperationLoop>
@@ -261,114 +131,11 @@ When you execute `mcp__brp__world_query`, the post-tool hook will:
   - **Propagate the entity ID to all subsequent operations in the same test** that have `"entity": "USE_QUERY_RESULT"`
 - If no entities found: Mark the query as FAIL with error "Query returned 0 entities"
 
-**Your responsibility**: Just execute the query operation. If it fails (status = FAIL), stop execution immediately per the normal error handling rules in <OperationExecution/>.
+**Your responsibility**: Just execute the query operation. If it fails (status = FAIL), stop execution immediately.
 
 **Note**: You don't need to validate query results, propagate entity IDs, or look back at previous operations - the hook handles all of this automatically. Entity IDs are isolated to each test (don't cross type boundaries).
 </QueryResultValidation>
 
-## Error Pattern Matching
+## Error Handling
 
-<MatchErrorPattern>
-**When an operation fails, check the error message against these patterns IN THIS EXACT ORDER:**
-
-Does error contain `"invalid type: string"`?
-- ✓ YES → Execute <InvalidTypeStringError/> recovery
-- ✗ NO → Continue
-
-Does error start with `"UUID parsing failed"`?
-- ✓ YES → Execute <UuidParsingError/> recovery
-- ✗ NO → Continue
-
-Does error contain `"Unable to extract parameters"`?
-- ✓ YES → Execute <ParameterExtractionError/> recovery
-- ✗ NO → Continue
-
-Does error contain `"invalid type: null"`?
-- ✓ YES → Execute <UnitEnumVariantError/> recovery
-- ✗ NO → Continue
-
-Does error contain `"unknown variant"` with escaped quotes (like `\"VariantName\"`)?
-- ✓ YES → Check the test plan JSON for the original `value` field:
-  - If it was a plain string (like "None" or "Low") → Execute <UnitEnumVariantError/> recovery
-  - Otherwise → Execute <EnumVariantError/> recovery
-- ✗ NO → Continue
-
-**No pattern matched:**
-- No recovery available
-- STOP IMMEDIATELY - do not process remaining operations
-</MatchErrorPattern>
-
-<InvalidTypeStringError>
-**Pattern**: Error contains `"invalid type: string"`
-
-**Cause**: You sent a number/boolean as a string (YOUR bug, not BRP's)
-
-**Critical Requirements**:
-- ALL numeric values MUST be JSON numbers, NOT strings: `{"value": 42}` NOT `{"value": "42"}`
-- ALL boolean values MUST be JSON booleans, NOT strings: `{"value": true}` NOT `{"value": "true"}`
-- Applies to ALL numeric types (f32, f64, u32, i32, etc.) and booleans
-- Common mistake: Converting values to strings via `str()`, `f"{}"`, or string interpolation
-- Correct approach: Use example values DIRECTLY from type guide without conversion
-
-**Recovery**:
-1. Parse error to identify which parameter has the wrong type
-2. Convert to proper JSON type (remove quotes from primitives)
-3. Re-execute operation with corrected value
-5. DO NOT report as test failure - this is YOUR bug, not BRP's
-6. Only fail if retry produces DIFFERENT error
-
-**Before EVERY mutation**: Verify no quotes around numbers/booleans in value field.
-</InvalidTypeStringError>
-
-<UnitEnumVariantError>
-**Pattern**: Error contains `"unknown variant"` with escaped quotes, AND test plan has plain string value
-
-**Cause**: You're double quoting a string turning "Low" into "\"Low\"" - this is breaking things.
-
-**Recovery**:
-1. Re-read operation's `value` field from test plan JSON
-2. Pass it AS-IS to MCP tool without ANY transformation
-3. Re-execute operation
-5. DO NOT report as test failure - this is YOUR bug
-
-**Examples**:
-- ✓ CORRECT: Pass `"None"` as string
-- ✗ WRONG: Convert to `null` or add quotes
-</UnitEnumVariantError>
-
-<UuidParsingError>
-**Pattern**: Error message starts with `"UUID parsing failed"`
-
-**Full error example**:
-```
-UUID parsing failed: invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `\"` at 1
-```
-
-**Cause**: You double-quoted a UUID string
-
-**Recovery**:
-1. Find UUID value in operation params
-2. Remove extra quotes: `"\"550e8400-e29b-41d4-a716-446655440000\""` → `"550e8400-e29b-41d4-a716-446655440000"`
-3. Re-execute operation
-</UuidParsingError>
-
-<EnumVariantError>
-**Pattern**: Error contains `"unknown variant"` with escaped quotes like `\"VariantName\"`
-
-**Cause**: You double-quoted an enum variant
-
-**Recovery**:
-1. Remove extra quotes: `"\"Low\""` → `"Low"`
-2. Re-execute operation
-4. DO NOT report as test failure - this is YOUR bug
-</EnumVariantError>
-
-<ParameterExtractionError>
-**Pattern**: Error contains `"Unable to extract parameters"`
-
-**Cause**: Tool framework issue with parameter order
-
-**Recovery**:
-1. Reorder parameters in your tool call (change the order you pass them)
-2. Re-execute operation with reordered parameters
-</ParameterExtractionError>
+**When an operation fails**: STOP IMMEDIATELY - do not process remaining operations.
