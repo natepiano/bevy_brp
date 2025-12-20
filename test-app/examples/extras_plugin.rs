@@ -554,6 +554,7 @@ fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) 
     );
 
     // Reinterpret as cube texture (height/width = 6)
+    #[allow(clippy::expect_used)]
     image
         .reinterpret_stacked_2d_as_array(image.height() / image.width())
         .expect("Failed to reinterpret image as cube texture array");
