@@ -64,17 +64,17 @@ pub struct TriggerEventParams {
 }
 
 /// Result for the `world.trigger_event` tool
+///
+/// Note: This follows the `DespawnEntityResult` pattern - the `{event}` placeholder
+/// in the message template is resolved from `TriggerEventParams.event` at response-building
+/// time, so we don't need an `event` field in this struct.
 #[derive(Serialize, ResultStruct)]
-#[brp_result(enhanced_errors = true)]
+#[brp_result]
 pub struct TriggerEventResult {
     /// The raw BRP response (null on success)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
     pub result: Option<Value>,
-
-    /// The event type that was triggered (for metadata)
-    #[to_metadata]
-    pub event: String,
 
     /// Message template for formatting responses
     #[to_message(message_template = "Triggered event {event}")]
@@ -159,11 +159,15 @@ Add case in the BRP tools section:
 Self::WorldTriggerEvent => Arc::new(WorldTriggerEvent),
 ```
 
+**Note for implementer:** The `WorldTriggerEvent` struct doesn't need to be manually created. The `BrpTools` derive macro on the `ToolName` enum automatically generates marker structs (like `pub struct WorldTriggerEvent;`) and their `ToolFn` implementations for any variant with a `#[brp_tool(params = "...", result = "...")]` attribute.
+
 ---
 
 ### Step 6: Create Help Text
 
-**File:** `mcp/help_text/world_trigger_event.md` (NEW)
+**File:** `mcp/help_text/world_trigger_event.txt` (NEW)
+
+**Note:** Help text files use `.txt` extension (not `.md`) to match the `#[tool_description(path = "../../help_text")]` macro expectations.
 
 ```markdown
 # world_trigger_event
@@ -253,12 +257,12 @@ Events can reference entities:
 
 ### Step 7: Update CHANGELOG
 
-**File:** `CHANGELOG.md`
+**File:** `mcp/CHANGELOG.md`
 
-Add entry under new features:
+Add entry under `[Unreleased]` section, in the `### Added` subsection (create if needed):
 
 ```markdown
-### New Features
+### Added
 
 - **`world_trigger_event` tool**: Trigger Bevy events remotely via the new `world.trigger_event` BRP method (Bevy 0.18+). Events must derive `Reflect` with `#[reflect(Event)]` to be triggerable.
 
@@ -272,6 +276,170 @@ Add entry under new features:
 
 ---
 
+### Step 8: Create Integration Test
+
+#### 8a. Create New Example
+
+**File:** `test-app/examples/event_test.rs` (NEW)
+
+```rust
+//! Minimal BRP event test example
+//!
+//! Tests `world.trigger_event` BRP method with triggerable events.
+
+use bevy::prelude::*;
+use bevy_brp_extras::BrpExtrasPlugin;
+
+/// Test event with no payload
+#[derive(Event, Reflect, Clone)]
+#[reflect(Event)]
+struct TestUnitEvent;
+
+/// Test event with payload
+#[derive(Event, Reflect, Clone)]
+#[reflect(Event)]
+struct TestPayloadEvent {
+    pub message: String,
+    pub value: i32,
+}
+
+/// Resource to verify events were triggered
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
+struct EventTriggerTracker {
+    pub unit_event_count: u32,
+    pub last_payload_message: String,
+    pub last_payload_value: i32,
+    pub payload_event_count: u32,
+}
+
+fn main() {
+    let brp_plugin = BrpExtrasPlugin::new();
+    let (port, _) = brp_plugin.get_effective_port();
+
+    App::new()
+        .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
+            primary_window: Some(bevy::window::Window {
+                title: format!("Event Test - Port {port}"),
+                resolution: (400, 300).into(),
+                ..default()
+            }),
+            ..default()
+        }))
+        .add_plugins(brp_plugin)
+        // Register types with BRP for discovery and triggering
+        .register_type::<TestUnitEvent>()
+        .register_type::<TestPayloadEvent>()
+        .register_type::<EventTriggerTracker>()
+        .init_resource::<EventTriggerTracker>()
+        .add_observer(on_unit_event)
+        .add_observer(on_payload_event)
+        .add_systems(Startup, minimize_window)
+        .run();
+}
+
+fn on_unit_event(_trigger: Trigger<TestUnitEvent>, mut tracker: ResMut<EventTriggerTracker>) {
+    tracker.unit_event_count += 1;
+}
+
+fn on_payload_event(trigger: Trigger<TestPayloadEvent>, mut tracker: ResMut<EventTriggerTracker>) {
+    tracker.last_payload_message = trigger.event().message.clone();
+    tracker.last_payload_value = trigger.event().value;
+    tracker.payload_event_count += 1;
+}
+
+fn minimize_window(mut windows: Query<&mut Window>) {
+    for mut window in &mut windows {
+        window.set_minimized(true);
+    }
+}
+```
+
+#### 8b. Register Example in Cargo.toml
+
+**File:** `test-app/Cargo.toml`
+
+Add:
+```toml
+[[example]]
+name = "event_test"
+path = "examples/event_test.rs"
+```
+
+#### 8c. Create Integration Test File
+
+**File:** `.claude/integration_tests/trigger_event.md` (NEW)
+
+```markdown
+# World Trigger Event Tests
+
+## Objective
+Validate the `world_trigger_event` tool for triggering Bevy events remotely.
+
+**NOTE**: The event_test app is already running on the specified port.
+
+## Test Steps
+
+### 1. Verify Initial State
+- Tool: `mcp__brp__world_get_resources`
+- Resource: `event_test::EventTriggerTracker`
+- Port: {{PORT}}
+- Verify: all counters = 0, strings empty
+
+### 2. Trigger Unit Event
+- Tool: `mcp__brp__world_trigger_event`
+- Params: `{"event": "event_test::TestUnitEvent", "port": {{PORT}}}`
+- Verify: succeeds
+
+### 3. Verify Unit Event Triggered
+- Tool: `mcp__brp__world_get_resources`
+- Resource: `event_test::EventTriggerTracker`
+- Verify: `unit_event_count` = 1
+
+### 4. Trigger Payload Event
+- Tool: `mcp__brp__world_trigger_event`
+- Params: `{"event": "event_test::TestPayloadEvent", "value": {"message": "Hello", "value": 42}, "port": {{PORT}}}`
+- Verify: succeeds
+
+### 5. Verify Payload Event Data
+- Tool: `mcp__brp__world_get_resources`
+- Resource: `event_test::EventTriggerTracker`
+- Verify: `payload_event_count` = 1, `last_payload_message` = "Hello", `last_payload_value` = 42
+
+### 6. Error Case - Unknown Event
+- Tool: `mcp__brp__world_trigger_event`
+- Params: `{"event": "event_test::NonExistentEvent", "port": {{PORT}}}`
+- Verify: error about unknown event type
+
+### 7. Error Case - Invalid Payload
+- Tool: `mcp__brp__world_trigger_event`
+- Params: `{"event": "event_test::TestPayloadEvent", "value": {"wrong": "fields"}, "port": {{PORT}}}`
+- Verify: error about invalid payload
+
+## Expected Results
+- ✅ Unit events trigger without payload
+- ✅ Payload events capture data correctly
+- ✅ Unknown events return clear error
+- ✅ Invalid payloads return clear error
+```
+
+#### 8d. Add Test Config Entry
+
+**File:** `.claude/config/integration_tests.json`
+
+Add entry:
+```json
+{
+  "test_name": "trigger_event",
+  "test_file": ".claude/integration_tests/trigger_event.md",
+  "app_name": "event_test",
+  "app_type": "example",
+  "test_objective": "Test world_trigger_event for unit events, payload events, and error handling"
+}
+```
+
+---
+
 ## File Summary
 
 | File | Action |
@@ -281,20 +449,18 @@ Add entry under new features:
 | `mcp/src/brp_tools/tools/mod.rs` | Add module declaration |
 | `mcp/src/brp_tools/mod.rs` | Export new types |
 | `mcp/src/tool/tool_name.rs` | Add enum variant, imports, annotation, params, handler |
-| `mcp/help_text/world_trigger_event.md` | **NEW** - Help documentation |
-| `CHANGELOG.md` | Document new feature |
+| `mcp/help_text/world_trigger_event.txt` | **NEW** - Help documentation |
+| `mcp/CHANGELOG.md` | Document new feature under [Unreleased] |
+| `test-app/examples/event_test.rs` | **NEW** - Minimal event test example |
+| `test-app/Cargo.toml` | Add example entry |
+| `.claude/integration_tests/trigger_event.md` | **NEW** - Test specification |
+| `.claude/config/integration_tests.json` | Add test config entry |
 
 ## Testing
 
 1. Build: `cargo build -p bevy_brp_mcp`
-2. Launch test app with an event registered
-3. Test via MCP tool call:
-   ```json
-   {
-     "event": "test_app::TestEvent",
-     "value": { "message": "Hello from MCP!" }
-   }
-   ```
+2. Build test example: `cargo build --example event_test`
+3. Run integration test: `/integration_tests trigger_event`
 
 ## Bevy Version Requirement
 
