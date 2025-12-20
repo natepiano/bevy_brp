@@ -61,6 +61,7 @@ impl McpService {
     /// List all MCP tools using pre-converted and sorted tools
     fn list_mcp_tools(&self) -> ListToolsResult {
         ListToolsResult {
+            meta:        None,
             next_cursor: None,
             tools:       self.tools.clone(),
         }
