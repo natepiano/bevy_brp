@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.3] - 2025-12-20
+
+### Fixed
+- Fixed scalar mutation values being stringified instead of passed as JSON numbers. The `value` parameter in `world_mutate_components` and `world_mutate_resources` now correctly accepts all JSON types (numbers, booleans, strings, arrays, objects, null) instead of only objects. This was caused by `serde_json::Value` schemas having no `type` field, which was incorrectly mapped to `ParameterType::Object`.
+
 ## [0.17.2] - 2025-11-20
 
 ### Fixed
