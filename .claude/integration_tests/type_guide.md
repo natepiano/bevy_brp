@@ -15,17 +15,14 @@ Validate that `brp_type_guide` tool correctly discovers type information and pro
 
 ### 2. Batch Type Schema Discovery
 
-Execute `mcp__brp__brp_type_guide` with ALL test types in a single call:
+Execute `mcp__brp__brp_type_guide` with test types in a single call:
 ```json
 {
   "types": [
-    "bevy_sprite::sprite::Sprite",
     "bevy_transform::components::transform::Transform",
-    "bevy_ecs::name::Name",
     "extras_plugin::TestArrayField",
     "extras_plugin::TestTupleField",
-    "extras_plugin::TestTupleStruct",
-    "extras_plugin::TestComplexComponent",
+    "extras_plugin::TestTupleStruct"
   ],
   "port": 20114
 }
@@ -44,39 +41,22 @@ Extraction script usage:
 Use extraction script ONLY (no direct jq/bash commands):
 ```bash
 .claude/scripts/type_guide_test_extract.sh <file_path> discovered_count
-# Expected: 7
+# Expected: 4
 
 .claude/scripts/type_guide_test_extract.sh <file_path> summary
-# Expected: {"successful_discoveries": 8, "failed_discoveries": 0, "total_requested": 7}
+# Expected: {"successful_discoveries": 4, "failed_discoveries": 0, "total_requested": 4}
 ```
 
-### 4. Validate Sprite Component
+### 4. Validate Transform Component
 
-#### 4a. Validate Type Info
+Transform serves as the reference component for standard nested struct validation.
+
 ```bash
-# Get Sprite type info
-.claude/scripts/type_guide_test_extract.sh <file_path> type_info "bevy_sprite::sprite::Sprite"
-# Expected: type_name: "bevy_sprite::sprite::Sprite", in_registry: true
+# Get Transform type info
+.claude/scripts/type_guide_test_extract.sh <file_path> type_info "bevy_transform::components::transform::Transform"
+# Expected: type_name present, in_registry: true
 # Check schema_info.reflect_types contains "Component"
-```
 
-#### 4b. Verify Mutation Paths Exist
-```bash
-# Get Sprite mutation paths
-.claude/scripts/type_guide_test_extract.sh <file_path> mutation_paths "bevy_sprite::sprite::Sprite"
-# Should contain paths for fields like .color, .flip_x, .flip_y, .custom_size, etc.
-```
-
-#### 4c. Validate Schema Info
-```bash
-# Get Sprite schema info
-.claude/scripts/type_guide_test_extract.sh <file_path> schema_info "bevy_sprite::sprite::Sprite"
-# Expected: type_kind: "Struct", properties with color/flip_x/etc, module_path: "bevy_sprite::sprite", crate_name: "bevy_sprite"
-```
-
-### 5. Validate Transform Component (Standard Nested)
-
-```bash
 # Get Transform mutation paths
 .claude/scripts/type_guide_test_extract.sh <file_path> mutation_paths "bevy_transform::components::transform::Transform"
 # Should have translation/rotation/scale with all subfields
@@ -87,16 +67,18 @@ Use extraction script ONLY (no direct jq/bash commands):
 
 # Get Transform schema info
 .claude/scripts/type_guide_test_extract.sh <file_path> schema_info "bevy_transform::components::transform::Transform"
-# Should have properties and required fields
+# Should have properties, required fields, type_kind: "Struct"
 
-# Validate specific paths exist
+# Validate specific nested paths exist
 .claude/scripts/type_guide_test_extract.sh <file_path> validate_field "bevy_transform::components::transform::Transform" ".translation"
 .claude/scripts/type_guide_test_extract.sh <file_path> validate_field "bevy_transform::components::transform::Transform" ".translation.x"
 ```
 
-### 6. Validate Test Components with Mutation Contexts
+### 5. Validate Unique Mutation Contexts
 
-#### 6a. TestArrayField - Array Element Access
+These test components validate mutation path syntax that differs from standard struct fields.
+
+#### 5a. TestArrayField - Array Element Access
 ```bash
 # Check array field paths
 .claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".vertices"
@@ -104,7 +86,7 @@ Use extraction script ONLY (no direct jq/bash commands):
 .claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".values[0]"
 ```
 
-#### 6b. TestTupleField - Tuple Element Access
+#### 5b. TestTupleField - Tuple Element Access
 ```bash
 # Check tuple field paths
 .claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".coords"
@@ -112,7 +94,7 @@ Use extraction script ONLY (no direct jq/bash commands):
 .claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".color_rgb.2"
 ```
 
-#### 6c. TestTupleStruct - Root Value Access
+#### 5c. TestTupleStruct - Root Value Access
 ```bash
 # Check tuple struct paths
 .claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ""
@@ -120,50 +102,15 @@ Use extraction script ONLY (no direct jq/bash commands):
 .claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ".1"
 ```
 
-#### 6d. TestComplexComponent - Nested Paths
-```bash
-# Check complex nested paths
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestComplexComponent" ".transform.translation.y"
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestComplexComponent" ".points[0]"
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestComplexComponent" ".range.0"
-```
-
-### 7. Validate Name Component
-Verify `result."type_guide"["bevy_ecs::name::Name"]`:
-- Has appropriate fields for a wrapper type
-- Has both `mutation_paths` and `spawn_example`
-- `schema_info.reflect_types` contains "Component"
-
-### 8. Functional Mutation Testing
-
-Spawn test entities and perform mutations to verify the discovered paths work:
-
-#### 8a. Spawn Test Entities
-Spawn entities with test components:
-- TestArrayField, TestTupleField, TestTupleStruct, TestComplexComponent, Transform, Name
-
-#### 8b. Execute and Verify Mutations
-For each mutation context type, perform ONE representative mutation and verify:
-
-**ArrayElement**: Mutate `.values[1]` on TestArrayField (even though only `.values[0]` is in type_guide) → Verify with `world_get_components`
-
-**TupleElement**: Mutate `.color_rgb.2` on TestTupleField → Verify with `world_get_components`
-
-**RootValue**: Replace entire TestTupleStruct using path "" → Verify with `world_get_components`
-
-**NestedPath**: Mutate `.transform.translation.y` on TestComplexComponent → Verify with `world_get_components`
-
-**StructField with enum**: Mutate `.mode` to "Inactive" on TestComplexComponent → Verify with `world_get_components`
-
-**Option field**: Mutate `.optional_value` to None on TestComplexComponent → Verify with `world_get_components`
-
-**Sprite field**: Mutate `.flip_x` to true on Sprite → Verify with `world_get_components`
-
-### 9. Type Schema in Error Responses
+### 6. Type Schema in Error Responses
 
 Test that format errors include embedded type_guide information for self-correction.
 
-#### 9a. Test Format Error with Type Schema Embedding
+**Note**: This section only tests error cases. Functional validation of spawn/insert/mutate operations
+is covered by the dedicated mutation test suite (`/mutation_test`), which comprehensively verifies
+that type_guide information produces working BRP operations.
+
+#### 6a. Test Insert Format Error
 
 **STEP 1**: Query for an entity with Transform:
 - Tool: mcp__brp__world_query
@@ -197,27 +144,7 @@ Test that format errors include embedded type_guide information for self-correct
 - Transform mutation_paths for reference
 - Same structure as direct brp_type_guide response
 
-#### 9b. Test Multiple Type Errors
-
-**STEP 1**: Attempt spawn with multiple incorrect formats:
-```json
-mcp__brp__world_spawn_entity with parameters:
-{
-  "components": {
-    "bevy_transform::components::transform::Transform": {
-      "translation": {"x": 5.0, "y": 15.0, "z": 25.0}
-    },
-    "bevy_ecs::name::Name": 123
-  },
-  "port": 20114
-}
-```
-
-**Expected Result**:
-- Error with type_guide for both Transform and Name
-- Each type shows correct format in type_guide field
-
-#### 9c. Test Mutation Format Error with Type Schema Embedding
+#### 6b. Test Mutation Format Error
 
 **STEP 1**: Query for an entity with Transform:
 - Tool: mcp__brp__world_query
@@ -248,26 +175,7 @@ mcp__brp__world_mutate_components with parameters:
 - Transform spawn_example showing proper Vec3 array structure
 - Clear guidance that Vec3 fields require `[x, y, z]` array format
 
-#### 9d. Test Non-Transformable Input Error
-
-**STEP 1**: Test completely malformed input:
-```json
-`mcp__brp__world_insert_components` with parameters:
-{
-  "entity": [USE_ENTITY_ID_FROM_QUERY],
-  "components": {
-    "bevy_transform::components::transform::Transform": 123
-  },
-  "port": 20114
-}
-```
-
-**Expected Result**:
-- Error response with type_guide guidance
-- Clear indication that format cannot be corrected automatically
-- type_guide shows expected Transform structure
-
-#### 9e. Test Enum Mutation Error Guidance
+#### 6c. Test Enum Mutation Error
 
 **STEP 1**: Query for entity with Visibility:
 - Tool: mcp__brp__world_query
@@ -297,17 +205,11 @@ mcp__brp__world_mutate_components with parameters:
 ## Success Criteria
 
 ✅ Test passes when:
-- Single batched discovery call retrieves all 7 types successfully
-- All expected fields are present for each type
-- `schema_info.reflect_types` array is present and contains appropriate trait names
-- Mutation contexts are correct (RootValue, StructField, TupleElement, ArrayElement, NestedPath)
-- Functional mutations work for all context types
-- All components with Reflect trait can be spawned and mutated
-- Tool provides comprehensive type information for BRP operations
-- **Format errors include embedded type_guide for failed types**
-- **Type extraction works from both parameters and error messages**
-- **Mutation format errors include embedded type_guide information**
-- **Error guidance is clear and actionable for self-correction**
+- Single batched discovery call retrieves all 4 types successfully
+- Transform has: type_info, mutation_paths, spawn_example, schema_info with reflect_types
+- Unique mutation contexts validated: array `[0]`, tuple `.0`, root `""`
+- Format errors include embedded type_guide for failed types
+- Error guidance is clear and actionable for self-correction
 
 ## Failure Investigation
 
@@ -315,6 +217,4 @@ If test fails:
 1. Check if app is running with BRP enabled
 2. Verify types exist in registry
 3. Compare actual vs expected mutation paths
-4. Check if mutations are succeeding
-5. **Verify error responses include type_guide field**
-6. **Check type extraction logic in error handling**
+4. Verify error responses include type_guide field

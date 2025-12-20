@@ -175,9 +175,20 @@ You are executing BRP test: [TEST_NAME]
 Configuration: App [APP_NAME]
 
 **Your Task:**
-1. Manage your own app launches as needed
+1. Launch apps as needed using MCP tools
 2. Execute test procedures from file: [TEST_FILE]
-3. Clean up any apps you launched
+3. Clean up any apps you launched using MCP tools
+
+**CRITICAL TOOL USAGE - USE MCP TOOLS DIRECTLY:**
+- **Launch apps**: `mcp__brp__brp_launch_bevy_example(target_name="app_name", port=PORT, profile="debug")`
+- **Check status**: `mcp__brp__brp_status(app_name="app_name", port=PORT)`
+- **Shutdown apps**: `mcp__brp__brp_shutdown(app_name="app_name", port=PORT)`
+- **DO NOT write bash scripts** - call MCP tools directly
+- **DO NOT simulate tool calls** - execute the actual MCP tools
+
+**Port Allocation for Self-Managed Tests:**
+- Use ports starting from 20110 to avoid conflicts with main runner
+- Increment port for each additional app instance you launch
 
 **Test Context:**
 - Test File: [TEST_FILE]

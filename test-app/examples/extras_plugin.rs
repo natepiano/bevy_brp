@@ -16,8 +16,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
+use bevy::animation::AnimatedBy;
 use bevy::animation::AnimationPlayer;
-use bevy::animation::AnimationTarget;
+use bevy::animation::AnimationTargetId;
 use bevy::animation::graph::AnimationGraph;
 use bevy::animation::graph::AnimationGraphHandle;
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
@@ -553,7 +554,9 @@ fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) 
     );
 
     // Reinterpret as cube texture (height/width = 6)
-    image.reinterpret_stacked_2d_as_array(image.height() / image.width());
+    image
+        .reinterpret_stacked_2d_as_array(image.height() / image.width())
+        .expect("Failed to reinterpret image as cube texture array");
     image.texture_view_descriptor = Some(TextureViewDescriptor {
         dimension: Some(TextureViewDimension::Cube),
         ..default()
@@ -689,7 +692,10 @@ fn spawn_sprite_and_ui_components(commands: &mut Commands) {
 
     // Entity with BorderRadius for testing mutations
     commands.spawn((
-        BorderRadius::all(Val::Px(10.0)),
+        Node {
+            border_radius: BorderRadius::all(Val::Px(10.0)),
+            ..default()
+        },
         Name::new("BorderRadiusTestEntity"),
     ));
 
@@ -1214,12 +1220,10 @@ fn spawn_animation_and_audio_entities(
         Name::new("AnimationGraphHandleAndPlayerAndTransitionsTestEntity"),
     ));
 
-    // Entity with AnimationTarget for testing mutations
+    // Entity with AnimationTargetId and AnimatedBy for testing mutations
     commands.spawn((
-        AnimationTarget {
-            id:     bevy::animation::AnimationTargetId::from_name(&Name::new("test_target")),
-            player: Entity::PLACEHOLDER,
-        },
+        AnimationTargetId::from_name(&Name::new("test_target")),
+        AnimatedBy(Entity::PLACEHOLDER),
         Name::new("AnimationTargetTestEntity"),
     ));
 
@@ -1316,10 +1320,7 @@ fn spawn_render_entities(commands: &mut Commands) {
 
     // Entity with ClusteredDecal for testing mutations
     commands.spawn((
-        ClusteredDecal {
-            image: Handle::default(),
-            tag:   1,
-        },
+        ClusteredDecal::default(),
         Name::new("ClusteredDecalTestEntity"),
     ));
 

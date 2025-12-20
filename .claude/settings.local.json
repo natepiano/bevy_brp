@@ -168,7 +168,10 @@
       "Bash(~/.claude/scripts/integration_test_launch_retry.sh 1)",
       "Bash(VERSION=\"0.17.1\")",
       "Bash(.claude/scripts/release_version_validate.sh:*)",
-      "WebFetch(domain:crates.io)"
+      "WebFetch(domain:crates.io)",
+      "Bash(mcp__brp__brp_extras_screenshot:*)",
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/type_guide_test_extract.sh:*)",
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/extras_test_poll_screenshot.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)",

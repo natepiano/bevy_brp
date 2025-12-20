@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Upgraded to Bevy 0.18.0-rc.1**: Updated bevy dependency from 0.17.x to 0.18.0-rc.1
+  - `BorderRadius` now set via `Node.border_radius` field instead of standalone component
+  - `AnimationTarget` split into `AnimationTargetId` + `AnimatedBy` components
+  - `Image::reinterpret_stacked_2d_as_array` now returns `Result`
+
 ## [0.17.2] - 2025-11-20
 
 ### Changed
