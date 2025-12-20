@@ -87,6 +87,14 @@
     {
       "type_name": "bevy_render::sync_world::RenderEntity",
       "reason": "Main-world-to-render-world entity mapping. TupleStruct containing entity ID that references render world entity. Mutating existing entities crashes render systems (bevy_ui_render::extract_ui_camera_view, bevy_anti_alias::taa::extract_taa_settings) with 'Camera entity wasn't synced: EntityDoesNotExistError' when the referenced entity doesn't exist in render world. Can only safely spawn new entities with arbitrary values (no immediate crash), but mutations on existing entities with active render dependencies cause app crash on next render frame. Not suitable for mutation testing since we can't mutate existing entities, only newly spawned ones - this doesn't test general mutation behavior."
+    },
+    {
+      "type_name": "bevy_camera::camera::RenderTarget",
+      "reason": "External resource reference type. RenderTarget::TextureView variant contains ManualTextureViewHandle (a u32 handle ID) that must reference a valid texture view registered in Bevy's render pipeline. Setting arbitrary values (e.g., 1) causes the render system to panic when it tries to use the non-existent texture view on the next frame. Similarly, RenderTarget::Window expects a valid window entity, and RenderTarget::Image requires a valid image handle. These resources cannot be created via BRP, making all mutable variants unsafe to test with arbitrary example values."
+    },
+    {
+      "type_name": "bevy_picking::hover::PickingInteraction",
+      "reason": "System-managed picking component. Automatically managed by Bevy's picking system based on pointer interaction state. Similar to already-excluded DirectlyHovered and Hovered components. Not spawned in extras_plugin.rs at startup, causing Part 2 queries to fail with 0 entities. Cannot be manually spawned as it requires active picking system interaction."
     }
   ]
 }
