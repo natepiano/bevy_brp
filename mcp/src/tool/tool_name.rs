@@ -45,7 +45,8 @@ use crate::brp_tools::{
     RemoveResourcesResult, ReparentEntitiesParams, ReparentEntitiesResult, RpcDiscoverParams,
     RpcDiscoverResult, ScreenshotParams, ScreenshotResult, SendKeysParams, SendKeysResult,
     SetWindowTitleParams, SetWindowTitleResult, SpawnEntityParams, SpawnEntityResult,
-    StopWatchParams, TypeGuideParams, WorldGetComponentsWatch,
+    StopWatchParams, TriggerEventParams, TriggerEventResult, TypeGuideParams,
+    WorldGetComponentsWatch,
 };
 use crate::log_tools::DeleteLogs;
 use crate::log_tools::DeleteLogsParams;
@@ -209,6 +210,13 @@ pub enum ToolName {
         result = "SpawnEntityResult"
     )]
     WorldSpawnEntity,
+    /// `world_trigger_event` - Trigger events in the Bevy world
+    #[brp_tool(
+        brp_method = "world.trigger_event",
+        params = "TriggerEventParams",
+        result = "TriggerEventResult"
+    )]
+    WorldTriggerEvent,
     /// `registry_schema` - Get type schemas
     #[brp_tool(
         brp_method = "registry.schema",
@@ -409,6 +417,11 @@ impl ToolName {
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
+            Self::WorldTriggerEvent => Annotation::new(
+                "trigger event",
+                ToolCategory::Event,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
             Self::BrpExecute => Annotation::new(
                 "execute brp method",
                 ToolCategory::DynamicBrp,
@@ -573,6 +586,9 @@ impl ToolName {
             },
             Self::RpcDiscover => Some(parameters::build_parameters_from::<RpcDiscoverParams>),
             Self::WorldSpawnEntity => Some(parameters::build_parameters_from::<SpawnEntityParams>),
+            Self::WorldTriggerEvent => {
+                Some(parameters::build_parameters_from::<TriggerEventParams>)
+            },
             Self::BrpExecute => Some(parameters::build_parameters_from::<ExecuteParams>),
             Self::BrpExtrasScreenshot => {
                 Some(parameters::build_parameters_from::<ScreenshotParams>)
@@ -638,6 +654,7 @@ impl ToolName {
             Self::WorldReparentEntities => Arc::new(WorldReparentEntities),
             Self::RpcDiscover => Arc::new(RpcDiscover),
             Self::WorldSpawnEntity => Arc::new(WorldSpawnEntity),
+            Self::WorldTriggerEvent => Arc::new(WorldTriggerEvent),
             Self::BrpExtrasScreenshot => Arc::new(BrpExtrasScreenshot),
             Self::BrpExtrasSendKeys => Arc::new(BrpExtrasSendKeys),
             Self::BrpExtrasSetWindowTitle => Arc::new(BrpExtrasSetWindowTitle),

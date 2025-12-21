@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`world_trigger_event` tool**: Trigger Bevy events remotely via the new `world.trigger_event` BRP method (Bevy 0.18+). Events must derive `Reflect` with `#[reflect(Event)]` to be triggerable. Example: "Trigger the SpawnEnemy event with enemy_type goblin at position 10, 0, 5"
+
 ### Changed
 - **Upgraded to Bevy 0.18.0-rc.1**: Updated bevy dependency from 0.17.x to 0.18.0-rc.1
 - **BREAKING**: `brp_type_guide` and `brp_all_type_guides` responses now return `spawn_example` (for Components) or `resource_example` (for Resources) instead of `spawn_format`. Each example now includes an `agent_guidance` field alongside the `example` value.

@@ -22,6 +22,10 @@ path = "examples/extras_plugin.rs"
 name = "no_extras_plugin"
 path = "examples/no_extras_plugin.rs"
 
+[[example]]
+name = "event_test"
+path = "examples/event_test.rs"
+
 
 [dependencies]
 bevy_brp_extras = { path = "../extras" }

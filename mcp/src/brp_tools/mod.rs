@@ -65,6 +65,8 @@ pub use tools::world_reparent_entities::ReparentEntitiesParams;
 pub use tools::world_reparent_entities::ReparentEntitiesResult;
 pub use tools::world_spawn_entity::SpawnEntityParams;
 pub use tools::world_spawn_entity::SpawnEntityResult;
+pub use tools::world_trigger_event::TriggerEventParams;
+pub use tools::world_trigger_event::TriggerEventResult;
 pub use watch_tools::GetComponentsWatchParams;
 pub use watch_tools::WorldGetComponentsWatch;
 //

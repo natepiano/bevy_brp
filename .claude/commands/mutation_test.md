@@ -126,7 +126,7 @@ For each assignment in assignments array, create Task:
 
 ```
 description: assignment.task_description
-subagent_type: "mutation-test-executor"
+subagent_type: "mutation-tester"
 prompt: |
   EXECUTE the mutation test workflow defined in @.claude/instructions/mutation_test_subagent.md
 

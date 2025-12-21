@@ -20,3 +20,4 @@ pub mod world_remove_components;
 pub mod world_remove_resources;
 pub mod world_reparent_entities;
 pub mod world_spawn_entity;
+pub mod world_trigger_event;

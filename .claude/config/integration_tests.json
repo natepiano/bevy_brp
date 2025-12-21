@@ -89,5 +89,12 @@
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test world.query with array syntax, \"all\" option, filters, and edge cases for Bevy 0.17.2 ComponentSelector"
+  },
+  {
+    "test_name": "trigger_event",
+    "test_file": ".claude/integration_tests/trigger_event.md",
+    "app_name": "event_test",
+    "app_type": "example",
+    "test_objective": "Test world_trigger_event for unit events, payload events, and error handling"
   }
 ]

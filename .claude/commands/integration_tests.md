@@ -1,7 +1,7 @@
 # BRP Test Suite Runner
 
 ## Configuration
-PARALLEL_TESTS = 12  # Number of tests to run concurrently
+PARALLEL_TESTS = 14  # Number of tests to run concurrently
 TEST_CONFIG_FILE = .claude/config/integration_tests.json  # Test configuration file location
 
 ## Overview
@@ -47,7 +47,7 @@ Use this exact count in your final summary. Do NOT manually count or assume any 
 Tests are categorized by app requirements:
 
 ### App-Managed Tests (Main Runner Handles)
-Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_app"):
+Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_app", "event_test"):
 - Each test needs an app instance on a dynamically assigned port
 - Main runner launches apps using instance_count for efficiency
 - Main runner manages port pools and assignments
@@ -227,9 +227,8 @@ Configuration: App [APP_NAME]
 **For tests where app_name is a specific app (not "various" or "N/A"):**
 1. **Clean up stale processes** from previous test runs:
    ```bash
-   pkill -9 extras_plugin || true
-   pkill -9 no_extras_plugin || true
-   pkill -9 test_app || true
+   # Get all unique app names that need cleanup (exclude N/A and various)
+   jq -r '[.[] | select(.app_name | IN("N/A", "various") | not) | .app_name] | unique | .[]' .claude/config/integration_tests.json | xargs -I {} sh -c 'pkill -9 {} || true'
    ```
 2. Execute <AllocatePortFromPool/> for single port
 3. Execute <LaunchDedicatedApp/> with instance_count=1
@@ -260,18 +259,17 @@ Example: /test extras
 
 1. **Clean up stale processes** from previous test runs:
    ```bash
-   pkill -9 extras_plugin || true
-   pkill -9 no_extras_plugin || true
-   pkill -9 test_app || true
+   # Get all unique app names that need cleanup (exclude N/A and various)
+   jq -r '[.[] | select(.app_name | IN("N/A", "various") | not) | .app_name] | unique | .[]' ${TEST_CONFIG_FILE} | xargs -I {} sh -c 'pkill -9 {} || true'
    ```
-   Note: The `|| true` ensures the command succeeds even if no processes are found
+   Note: This dynamically discovers all app names from the config
 
 2. **Analyze app requirements** using this command:
    ```bash
-   jq '[.[] | select(.app_name == "extras_plugin" or .app_name == "test_app")] | group_by(.app_name) | map({app_name: .[0].app_name, app_type: .[0].app_type, count: length})' ${TEST_CONFIG_FILE}
+   jq '[.[] | select(.app_name | IN("N/A", "various") | not)] | group_by(.app_name) | map({app_name: .[0].app_name, app_type: .[0].app_type, count: length})' ${TEST_CONFIG_FILE}
    ```
    Note: Replace ${TEST_CONFIG_FILE} with the actual path from the configuration section.
-   This will show you exactly how many instances of each app type you need.
+   This dynamically discovers ALL app types and their instance counts from the config.
 
 3. **Launch apps using instance_count** based on the counts from step 2:
    - Execute <LaunchDedicatedApp/> with appropriate instance_count for each app type
@@ -311,12 +309,14 @@ INCORRECT: 12 separate messages each with one Task tool use
    - Extract test_file field: this is the test specification path
    - Extract test_objective field: this describes what the test validates
 
-4. **Assign Ports Using This Algorithm**:
-   - Initialize: extras_plugin_next_port=20100, test_app_next_port=20108
+4. **Assign Ports Using Dynamic Algorithm**:
+   - From the app requirements analysis (step 2 of App Launch Phase), build port pools:
+     - Start at BASE_PORT=20100
+     - For each app group in order: assign a port range [current_port, current_port + count)
+     - Track next available port per app_name
    - For each test in order from step 2:
-     - If app_name=="extras_plugin": assign port=extras_plugin_next_port, then extras_plugin_next_port++
-     - If app_name=="test_app": assign port=test_app_next_port, then test_app_next_port++
-     - If app_name=="various" or "N/A": assign port=null (self-managed, no port needed)
+     - If app_name is "various" or "N/A": assign port=null (self-managed, no port needed)
+     - Otherwise: assign port from that app_name's pool, then increment the pool's next port
    - Store result: create mapping of test_name → {port, app_name, app_type, test_file, test_objective}
 
 5. **Set Window Titles**: For each test where port is not null, execute:
@@ -423,8 +423,7 @@ Execute <CleanupApps/> for all launched apps
 - **Reason**: Execution stopped due to failure
 
 ### Cleanup Status
-- **extras_plugin**: [Shutdown/Still Running]
-- **test_extras_plugin_app**: [Shutdown/Still Running]
+[For each launched app, report: app_name (port range): Shutdown/Still Running]
 
 **Recommendation**: Fix the failure in [test_name] before running remaining tests.
 ```

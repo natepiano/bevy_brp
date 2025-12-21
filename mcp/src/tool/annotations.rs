@@ -16,6 +16,8 @@ pub enum ToolCategory {
     DynamicBrp,
     #[strum(serialize = "Entity")]
     Entity,
+    #[strum(serialize = "Event")]
+    Event,
     #[strum(serialize = "Extras")]
     Extras,
     #[strum(serialize = "Logging")]

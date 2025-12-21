@@ -1,0 +1,79 @@
+Triggers an event in the Bevy world. This allows remote triggering of game events like spawning enemies, changing game state, or triggering cutscenes.
+
+## Requirements
+
+Events must be registered with reflection to be triggerable:
+
+```rust
+#[derive(Event, Reflect)]
+#[reflect(Event)]
+pub struct SpawnEnemy {
+    pub enemy_type: String,
+    pub position: Vec3,
+}
+
+// In your app setup:
+app.register_type::<SpawnEnemy>();
+```
+
+## Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `event` | string | Yes | Full type path of the event (e.g., "my_game::SpawnEnemy") |
+| `value` | object | No | Event payload as JSON. Omit for unit events (events with no data). |
+| `port` | number | No | BRP port (default: 15702) |
+
+## Examples
+
+### Unit Event (no payload)
+
+Trigger a simple event with no data:
+
+```json
+{
+  "event": "my_game::events::PauseGame"
+}
+```
+
+### Event with Payload
+
+Trigger an event with structured data:
+
+```json
+{
+  "event": "my_game::events::SpawnEnemy",
+  "value": {
+    "enemy_type": "goblin",
+    "position": [10.0, 0.0, 5.0]
+  }
+}
+```
+
+### Event with Entity Reference
+
+Events can reference entities:
+
+```json
+{
+  "event": "my_game::events::DamageEntity",
+  "value": {
+    "target": 4294967299,
+    "amount": 50
+  }
+}
+```
+
+## Error Handling
+
+| Error | Cause |
+|-------|-------|
+| "Unknown event type" | Event type not registered in the type registry |
+| "Event is not reflectable" | Event missing `#[reflect(Event)]` attribute |
+| "is invalid" | Payload doesn't match expected event structure |
+
+## Notes
+
+- Events are triggered globally via `World::trigger()`, not targeted at specific entities
+- The event must have `#[reflect(Event)]` to be discoverable and triggerable
+- Use `brp_type_guide` or `registry_schema` to discover available event types
