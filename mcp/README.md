@@ -9,10 +9,11 @@ A Model Context Protocol (MCP) server that enables AI coding assistants to contr
 
 ## Bevy Compatibility
 
-| bevy | bevy_brp_mcp    |
-|------|-----------------|
-| 0.17 | 0.17.0-0.17.2   |
-| 0.16 | 0.1             |
+| bevy        | bevy_brp_mcp    |
+|-------------|-----------------|
+| 0.18.0-rc.1 | 0.18.0-rc.1     |
+| 0.17        | 0.17.0-0.17.2   |
+| 0.16        | 0.1             |
 
 The bevy_brp_mcp crate follows Bevy's version numbering and releases new versions for each Bevy release.
 

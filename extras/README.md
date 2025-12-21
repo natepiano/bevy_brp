@@ -12,10 +12,11 @@ bevy_brp_extras does two things
 
 ## Supported Bevy Versions
 
-| bevy | bevy_brp_extras |
-|------|-----------------|
-| 0.17 | 0.17.0-0.17.2   |
-| 0.16 | 0.1 - 0.2       |
+| bevy        | bevy_brp_extras |
+|-------------|-----------------|
+| 0.18.0-rc.1 | 0.18.0-rc.1     |
+| 0.17        | 0.17.0-0.17.2   |
+| 0.16        | 0.1 - 0.2       |
 
 
 ## Features
@@ -32,7 +33,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy_brp_extras = "0.17.2"
+bevy_brp_extras = "0.18.0-rc.1"
 ```
 
 Add the plugin to your Bevy app
@@ -76,7 +77,7 @@ Port priority: `BRP_EXTRAS_PORT` environment variable > `with_port()` > default 
 **Important**: Your Bevy app must have the `png` feature enabled for screenshots to work:
 ```toml
 [dependencies]
-bevy = { version = "0.16", features = ["png"] }
+bevy = { version = "0.18.0-rc.1", features = ["png"] }
 ```
 Without this feature, screenshot files will be created but will be 0 bytes as Bevy cannot encode the image data.
 
