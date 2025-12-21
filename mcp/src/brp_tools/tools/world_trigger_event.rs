@@ -12,7 +12,7 @@ use crate::brp_tools::Port;
 /// Parameters for the `world.trigger_event` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct TriggerEventParams {
-    /// The full type path of the event to trigger (e.g., "my_game::events::SpawnEnemy")
+    /// The full type path of the event to trigger (e.g., "`my_game::events::SpawnEnemy`")
     pub event: String,
 
     /// The serialized value of the event payload, if any.

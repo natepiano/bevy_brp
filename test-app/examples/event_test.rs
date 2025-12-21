@@ -59,7 +59,7 @@ fn on_unit_event(_on: On<TestUnitEvent>, mut tracker: ResMut<EventTriggerTracker
 }
 
 fn on_payload_event(on: On<TestPayloadEvent>, mut tracker: ResMut<EventTriggerTracker>) {
-    tracker.last_payload_message = on.event().message.clone();
+    tracker.last_payload_message.clone_from(&on.event().message);
     tracker.last_payload_value = on.event().value;
     tracker.payload_event_count += 1;
 }
