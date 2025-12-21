@@ -46,17 +46,17 @@ Before starting the release, verify:
     **STEP 1:** Execute <PreReleaseChecks/>
     **STEP 2:** Execute <ChangelogVerification/>
     **STEP 2.5:** Execute <UpdateReadmeCompatibility/>
+    **STEP 2.6:** Execute <FinalizeChangelogs/>
     **STEP 3:** Execute <CheckWorkspaceDependency/>
     **STEP 3.5:** Execute <BumpMacrosVersion/>
     **STEP 4:** Execute <Phase1PublishMacros/>
     **STEP 4.5:** Execute <UpdateWorkspaceDependency/>
     **STEP 5:** Execute <Phase2PublishExtrasAndMcp/>
-    **STEP 6:** Execute <FinalizeChangelogs/>
-    **STEP 7:** Execute <PushToGit/>
-    **STEP 8:** Execute <CreateReleaseBranch/>
-    **STEP 9:** Execute <CreateGitHubRelease/>
-    **STEP 10:** Execute <PostReleaseVerification/>
-    **STEP 11:** Execute <PrepareNextReleaseCycle/>
+    **STEP 6:** Execute <PushToGit/>
+    **STEP 7:** Execute <CreateReleaseBranch/>
+    **STEP 8:** Execute <CreateGitHubRelease/>
+    **STEP 9:** Execute <PostReleaseVerification/>
+    **STEP 10:** Execute <PrepareNextReleaseCycle/>
 </ExecutionSteps>
 
 <ArgumentValidation>
@@ -179,6 +179,29 @@ git commit -m "docs: update compatibility tables for v${VERSION}"
 ```
 → **Auto-check**: Continue if commit succeeds
 </UpdateReadmeCompatibility>
+
+<FinalizeChangelogs>
+## STEP 2.6: Finalize CHANGELOG Headers
+
+**IMPORTANT**: This step happens BEFORE publishing so the published crates have correct version headers.
+
+→ **I will update all three CHANGELOG.md files:**
+
+Change `## [Unreleased]` to `## [${VERSION}] - $(date +%Y-%m-%d)` in:
+- `mcp_macros/CHANGELOG.md`
+- `extras/CHANGELOG.md`
+- `mcp/CHANGELOG.md`
+
+```bash
+git add mcp_macros/CHANGELOG.md extras/CHANGELOG.md mcp/CHANGELOG.md
+```
+→ **Auto-check**: Continue if successful
+
+```bash
+git commit -m "chore: finalize CHANGELOGs for v${VERSION} release"
+```
+→ **Auto-check**: Continue if commit succeeds, stop if fails
+</FinalizeChangelogs>
 
 <CheckWorkspaceDependency>
 ## STEP 3: Check Workspace Dependency
@@ -323,31 +346,8 @@ cargo publish --package bevy_brp_extras && cargo publish --package bevy_brp_mcp
 → **Auto-check**: Continue if both publishes succeed, stop if any fail
 </Phase2PublishExtrasAndMcp>
 
-<FinalizeChangelogs>
-## STEP 6: Finalize CHANGELOG Headers
-
-**Known Issue**: cargo-release doesn't automatically update `[Unreleased]` to versioned releases in our setup.
-
-→ **I will update all three CHANGELOG.md files:**
-
-Change `## [Unreleased]` to `## [${VERSION}] - $(date +%Y-%m-%d)` in:
-- `mcp_macros/CHANGELOG.md`
-- `extras/CHANGELOG.md`
-- `mcp/CHANGELOG.md`
-
-```bash
-git add mcp_macros/CHANGELOG.md extras/CHANGELOG.md mcp/CHANGELOG.md
-```
-→ **Auto-check**: Continue if successful
-
-```bash
-git commit -m "chore: finalize CHANGELOGs for v${VERSION} release"
-```
-→ **Auto-check**: Continue if commit succeeds, stop if fails
-</FinalizeChangelogs>
-
 <PushToGit>
-## STEP 7: Push to Git
+## STEP 6: Push to Git
 
 ```bash
 git push origin main
@@ -361,7 +361,7 @@ git push origin --tags
 </PushToGit>
 
 <CreateReleaseBranch>
-## STEP 8: Create Release Branch
+## STEP 7: Create Release Branch
 
 **CRITICAL: Every release MUST have its own release branch (e.g., `release-0.17.3`).**
 
@@ -399,7 +399,7 @@ disturbing main development. This follows Bevy's proven workflow where:
 </CreateReleaseBranch>
 
 <CreateGitHubRelease>
-## STEP 9: Create GitHub Release
+## STEP 8: Create GitHub Release
 
 → **I will gather CHANGELOG entries from all three crates and create a combined release using GitHub CLI**
 
@@ -413,7 +413,7 @@ gh release create "v${VERSION}" \
 </CreateGitHubRelease>
 
 <PostReleaseVerification>
-## STEP 10: Post-Release Verification
+## STEP 9: Post-Release Verification
 
 ```bash
 for crate in bevy_brp_mcp_macros bevy_brp_extras bevy_brp_mcp; do
@@ -437,7 +437,7 @@ cargo install bevy_brp_mcp --version "${VERSION}"
 </PostReleaseVerification>
 
 <PrepareNextReleaseCycle>
-## STEP 11: Prepare for Next Release Cycle
+## STEP 10: Prepare for Next Release Cycle
 
 → **I will add [Unreleased] sections to all three CHANGELOG.md files**
 
