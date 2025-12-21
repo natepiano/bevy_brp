@@ -294,6 +294,12 @@ echo "y" | cargo release ${VERSION} --package bevy_brp_extras --package bevy_brp
 ```
 → **Auto-check**: Continue if release succeeds, stop if errors
 
+**Verify version bumps:**
+```bash
+grep "^version" extras/Cargo.toml mcp/Cargo.toml
+```
+→ **Auto-check**: Both should show `version = "${VERSION}"`, stop if not
+
 **Publish extras and mcp to crates.io:**
 
 ```bash
