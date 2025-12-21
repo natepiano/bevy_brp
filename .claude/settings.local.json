@@ -175,7 +175,8 @@
       "Bash(bevy_brp_mcp --list-tools:*)",
       "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/integration_tests/query_validate.sh:*)",
       "mcp__brp__world_trigger_event",
-      "Bash(env)"
+      "Bash(env)",
+      "Bash(gh release create:*)"
     ],
     "deny": [
       "Bash(sed:*)",
