@@ -125,3 +125,5 @@ jobs:
           # Disable GPU/windowing for headless testing
           WGPU_BACKEND: "gl"
           WINIT_UNIX_BACKEND: "x11"
+          # Force mold linker to avoid rust-lld/LLVM crashes on CI runners
+          RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
