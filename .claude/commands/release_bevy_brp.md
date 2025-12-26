@@ -2,9 +2,18 @@
 
 Perform a coordinated release for bevy_brp workspace crates using a phased approach to ensure proper dependency versioning.
 
+## Versioning Strategy
+
+This workspace uses a **branch-first release model**:
+- **main branch**: Always has `-dev` versions (e.g., `0.18.0-dev`, `0.19.0-dev`)
+- **release branches**: Created BEFORE publishing, contain actual release versions
+- **Publishing**: Always happens from release branches, never from main
+
+This keeps main clean for development while isolating release work to dedicated branches.
+
 ## Usage
-- `/release X.Y.Z-rc.N` - Release all 3 crates as RC version (e.g., `0.17.0-rc.1`)
-- `/release X.Y.Z` - Release all 3 crates as final version (e.g., `0.17.0`)
+- `/release X.Y.Z-rc.N` - Release all 3 crates as RC version (e.g., `0.18.0-rc.1`)
+- `/release X.Y.Z` - Release all 3 crates as final version (e.g., `0.18.0`)
 
 ## Crate Dependency Chain
 1. `mcp_macros` (no dependencies) - **Published FIRST**
@@ -44,19 +53,20 @@ Before starting the release, verify:
 
     **STEP 0:** Execute <ArgumentValidation/>
     **STEP 1:** Execute <PreReleaseChecks/>
-    **STEP 2:** Execute <ChangelogVerification/>
-    **STEP 2.5:** Execute <UpdateReadmeCompatibility/>
-    **STEP 2.6:** Execute <FinalizeChangelogs/>
-    **STEP 3:** Execute <CheckWorkspaceDependency/>
-    **STEP 3.5:** Execute <BumpMacrosVersion/>
-    **STEP 4:** Execute <Phase1PublishMacros/>
-    **STEP 4.5:** Execute <UpdateWorkspaceDependency/>
-    **STEP 5:** Execute <Phase2PublishExtrasAndMcp/>
-    **STEP 6:** Execute <PushToGit/>
-    **STEP 7:** Execute <CreateReleaseBranch/>
-    **STEP 8:** Execute <CreateGitHubRelease/>
-    **STEP 9:** Execute <PostReleaseVerification/>
-    **STEP 10:** Execute <PrepareNextReleaseCycle/>
+    **STEP 2:** Execute <CreateReleaseBranch/>
+    **STEP 3:** Execute <BumpDevToRelease/>
+    **STEP 4:** Execute <ChangelogVerification/>
+    **STEP 5:** Execute <UpdateReadmeCompatibility/>
+    **STEP 6:** Execute <FinalizeChangelogs/>
+    **STEP 7:** Execute <CheckWorkspaceDependency/>
+    **STEP 8:** Execute <BumpMacrosVersion/>
+    **STEP 9:** Execute <Phase1PublishMacros/>
+    **STEP 10:** Execute <UpdateWorkspaceDependency/>
+    **STEP 11:** Execute <Phase2PublishExtrasAndMcp/>
+    **STEP 12:** Execute <PushReleaseBranch/>
+    **STEP 13:** Execute <CreateGitHubRelease/>
+    **STEP 14:** Execute <PostReleaseVerification/>
+    **STEP 15:** Execute <PrepareNextReleaseCycle/>
 </ExecutionSteps>
 
 <ArgumentValidation>
@@ -77,7 +87,7 @@ echo "Release version set to: $ARGUMENTS"
 </ArgumentValidation>
 
 <PreReleaseChecks>
-## STEP 1: Pre-Release Validation
+## STEP 1: Pre-Release Validation (on main)
 
 Execute <GitStatusCheck/>
 Execute <QualityChecks/>
@@ -87,9 +97,14 @@ Execute <QualityChecks/>
 ### Git Status Check
 
 ```bash
-git status
+git rev-parse --abbrev-ref HEAD
 ```
-→ **Auto-check**: Continue if clean, stop if uncommitted changes
+→ **Auto-check**: Must be on `main` branch, stop if not
+
+```bash
+git status --porcelain
+```
+→ **Auto-check**: Continue if clean (empty output), stop if uncommitted changes
 
 ```bash
 git fetch origin
@@ -119,10 +134,51 @@ cargo +nightly fmt --all
 ```
 </QualityChecks>
 
-<ChangelogVerification>
-## STEP 2: Verify CHANGELOG Entries
+<CreateReleaseBranch>
+## STEP 2: Create Release Branch
 
-**Note**: For coordinated workspace releases where some crates have no feature changes, add placeholder entries (without `## [Unreleased]` header - that gets added later in Step 9):
+**CRITICAL**: Create the release branch BEFORE any version changes. This keeps main at `-dev` versions.
+
+```bash
+git checkout -b release-${VERSION}
+```
+→ **Auto-check**: Continue if branch created successfully
+
+**Verify you're on the release branch:**
+```bash
+git rev-parse --abbrev-ref HEAD
+```
+→ **Auto-check**: Should show `release-${VERSION}`
+
+**Note**: All subsequent steps happen on this release branch. Main remains untouched with `-dev` versions.
+</CreateReleaseBranch>
+
+<BumpDevToRelease>
+## STEP 3: Bump Versions from -dev to Release
+
+**Check current versions (should be -dev):**
+```bash
+grep "^version" extras/Cargo.toml mcp/Cargo.toml
+```
+
+→ **I will update the version in these files** from `-dev` to the release version:
+- `extras/Cargo.toml`: Change `version = "X.Y.Z-dev"` to `version = "${VERSION}"`
+- `mcp/Cargo.toml`: Change `version = "X.Y.Z-dev"` to `version = "${VERSION}"`
+
+**Note**: `mcp_macros` version is handled separately in Step 8.
+
+**Commit the version bumps:**
+```bash
+git add extras/Cargo.toml mcp/Cargo.toml Cargo.lock
+git commit -m "chore: bump extras and mcp versions to ${VERSION}"
+```
+→ **Auto-check**: Continue if commit succeeds
+</BumpDevToRelease>
+
+<ChangelogVerification>
+## STEP 4: Verify CHANGELOG Entries
+
+**Note**: For coordinated workspace releases where some crates have no feature changes, add placeholder entries (without `## [Unreleased]` header - that gets added later in Step 15):
 
 ```markdown
 ### Changed
@@ -146,7 +202,7 @@ done
 </ChangelogVerification>
 
 <UpdateReadmeCompatibility>
-## STEP 2.5: Update README Compatibility Tables
+## STEP 5: Update README Compatibility Tables
 
 **Update the Bevy compatibility information in README files:**
 
@@ -181,7 +237,7 @@ git commit -m "docs: update compatibility tables for v${VERSION}"
 </UpdateReadmeCompatibility>
 
 <FinalizeChangelogs>
-## STEP 2.6: Finalize CHANGELOG Headers
+## STEP 6: Finalize CHANGELOG Headers
 
 **IMPORTANT**: This step happens BEFORE publishing so the published crates have correct version headers.
 
@@ -204,7 +260,7 @@ git commit -m "chore: finalize CHANGELOGs for v${VERSION} release"
 </FinalizeChangelogs>
 
 <CheckWorkspaceDependency>
-## STEP 3: Check Workspace Dependency
+## STEP 7: Check Workspace Dependency
 
 **Check current workspace dependency for mcp_macros:**
 
@@ -212,13 +268,13 @@ git commit -m "chore: finalize CHANGELOGs for v${VERSION} release"
 grep "bevy_brp_mcp_macros" Cargo.toml
 ```
 
-→ **Manual note**: Observe current dependency (path or version). We'll update this AFTER publishing mcp_macros in Step 4.5.
+→ **Manual note**: Observe current dependency (path or version). We'll update this AFTER publishing mcp_macros in Step 10.
 
 **Note**: We deliberately DON'T update the workspace dependency yet. If we update it now to `"${VERSION}"`, cargo metadata will fail for the whole workspace until that version exists on crates.io. We'll update it after publishing mcp_macros.
 </CheckWorkspaceDependency>
 
 <BumpMacrosVersion>
-## STEP 3.5: Bump mcp_macros Version
+## STEP 8: Bump mcp_macros Version
 
 → **I will update only `mcp_macros/Cargo.toml` version:**
 
@@ -241,9 +297,9 @@ git commit -m "chore: bump bevy_brp_mcp_macros to ${VERSION}"
 </BumpMacrosVersion>
 
 <Phase1PublishMacros>
-## STEP 4: Phase 1 - Publish mcp_macros Only
+## STEP 9: Phase 1 - Publish mcp_macros Only
 
-**Note**: The workspace dependency still points to the old version, so cargo metadata works. The mcp_macros version was bumped in Step 3.5.
+**Note**: The workspace dependency still points to the old version, so cargo metadata works. The mcp_macros version was bumped in Step 8.
 
 **Publish mcp_macros to crates.io:**
 
@@ -268,7 +324,7 @@ sleep 30
 </Phase1PublishMacros>
 
 <UpdateWorkspaceDependency>
-## STEP 4.5: Update Workspace Dependency
+## STEP 10: Update Workspace Dependency
 
 **Now that mcp_macros ${VERSION} exists on crates.io, update the workspace dependency:**
 
@@ -297,33 +353,13 @@ git commit -m "chore: update workspace dependency to bevy_brp_mcp_macros ${VERSI
 ```
 → **Auto-check**: Continue if commit succeeds
 
-**Note**: Now cargo-release will work for extras and mcp in Step 5 because the workspace dependency resolves correctly from crates.io.
+**Note**: Now cargo-release will work for extras and mcp in Step 11 because the workspace dependency resolves correctly from crates.io.
 </UpdateWorkspaceDependency>
 
 <Phase2PublishExtrasAndMcp>
-## STEP 5: Phase 2 - Publish extras and mcp
+## STEP 11: Phase 2 - Publish extras and mcp
 
-**Run cargo-release for extras and mcp only:**
-
-```bash
-cargo release ${VERSION} --package bevy_brp_extras --package bevy_brp_mcp
-```
-→ **Manual verification**: Review the dry run output - version bumps for extras and mcp
-  - Type **continue** to execute
-  - Type **stop** to halt
-
-```bash
-echo "y" | cargo release ${VERSION} --package bevy_brp_extras --package bevy_brp_mcp --execute
-```
-→ **Auto-check**: Continue if release succeeds, stop if errors
-
-**Verify version bumps:**
-```bash
-grep "^version" extras/Cargo.toml mcp/Cargo.toml
-```
-→ **Auto-check**: Both should show `version = "${VERSION}"`, stop if not
-
-**Publish extras and mcp to crates.io:**
+**Publish extras to crates.io:**
 
 ```bash
 cargo publish --package bevy_brp_extras --dry-run
@@ -346,60 +382,30 @@ cargo publish --package bevy_brp_extras && cargo publish --package bevy_brp_mcp
 → **Auto-check**: Continue if both publishes succeed, stop if any fail
 </Phase2PublishExtrasAndMcp>
 
-<PushToGit>
-## STEP 6: Push to Git
+<PushReleaseBranch>
+## STEP 12: Push Release Branch and Tags
 
+**Create tag on release branch:**
 ```bash
-git push origin main
+git tag "v${VERSION}"
+```
+→ **Auto-check**: Continue if tag created
+
+**Push the release branch:**
+```bash
+git push -u origin release-${VERSION}
 ```
 → **Auto-check**: Continue if push succeeds, stop if fails
 
+**Push the tag:**
 ```bash
-git push origin --tags
+git push origin "v${VERSION}"
 ```
 → **Auto-check**: Continue if push succeeds, stop if fails
-</PushToGit>
-
-<CreateReleaseBranch>
-## STEP 7: Create Release Branch
-
-**CRITICAL: Every release MUST have its own release branch (e.g., `release-0.17.3`).**
-
-This applies to:
-- Initial releases from `main` (e.g., 0.17.0)
-- Patch releases from existing release branches (e.g., 0.17.3 from release-0.17.2)
-
-**Create the release branch:**
-
-```bash
-git checkout -b release-${VERSION} && git push -u origin release-${VERSION}
-```
-→ **Auto-check**: Continue if branch created and pushed successfully
-
-**Return to the original branch:**
-
-If releasing from `main`:
-```bash
-git checkout main
-```
-
-If releasing from a release branch (patch release):
-```bash
-git checkout main
-```
-→ **Note**: For patch releases, we return to main (not the old release branch) since the new release branch is now the canonical location for future patches.
-
-**Why**: Release branches allow patch releases (e.g., v0.17.2 → v0.17.3) without
-disturbing main development. This follows Bevy's proven workflow where:
-- `main` is for active development
-- `release-X.Y.Z` branches are stable points for patches
-- Each release gets its own branch for potential future patches
-- Both can be developed independently and fixes can be backported
-
-</CreateReleaseBranch>
+</PushReleaseBranch>
 
 <CreateGitHubRelease>
-## STEP 8: Create GitHub Release
+## STEP 13: Create GitHub Release
 
 → **I will gather CHANGELOG entries from all three crates and create a combined release using GitHub CLI**
 
@@ -413,7 +419,7 @@ gh release create "v${VERSION}" \
 </CreateGitHubRelease>
 
 <PostReleaseVerification>
-## STEP 9: Post-Release Verification
+## STEP 14: Post-Release Verification
 
 ```bash
 for crate in bevy_brp_mcp_macros bevy_brp_extras bevy_brp_mcp; do
@@ -437,7 +443,24 @@ cargo install bevy_brp_mcp --version "${VERSION}"
 </PostReleaseVerification>
 
 <PrepareNextReleaseCycle>
-## STEP 10: Prepare for Next Release Cycle
+## STEP 15: Prepare for Next Release Cycle
+
+**Return to main branch:**
+```bash
+git checkout main
+```
+→ **Auto-check**: Continue if checkout succeeds
+
+**Determine next dev version:**
+- If released `0.18.0` or `0.18.0-rc.N`, next dev is `0.18.0-dev` (until final release)
+- If released final `0.18.0`, next dev is `0.19.0-dev`
+
+→ **I will ask**: What should the next dev version be?
+
+**Update versions on main to next -dev version** (if needed):
+- `extras/Cargo.toml`: `version = "${NEXT_DEV_VERSION}"`
+- `mcp/Cargo.toml`: `version = "${NEXT_DEV_VERSION}"`
+- `mcp_macros/Cargo.toml`: `version = "${NEXT_DEV_VERSION}"`
 
 → **I will add [Unreleased] sections to all three CHANGELOG.md files**
 
@@ -448,12 +471,12 @@ Add this after the version header in each CHANGELOG.md:
 ```
 
 ```bash
-git add mcp_macros/CHANGELOG.md extras/CHANGELOG.md mcp/CHANGELOG.md
+git add mcp_macros/CHANGELOG.md extras/CHANGELOG.md mcp/CHANGELOG.md mcp_macros/Cargo.toml extras/Cargo.toml mcp/Cargo.toml Cargo.lock
 ```
 → **Auto-check**: Continue if successful
 
 ```bash
-git commit -m "chore: prepare CHANGELOGs for next release cycle"
+git commit -m "chore: prepare for next release cycle (${NEXT_DEV_VERSION})"
 ```
 → **Auto-check**: Continue if commit succeeds, stop if fails
 
@@ -462,7 +485,7 @@ git push origin main
 ```
 → **Auto-check**: Continue if push succeeds, stop if fails
 
-**✅ Release complete!** All crates published with correct dependencies and release branch created.
+**✅ Release complete!** All crates published from release branch. Main stays at dev versions.
 </PrepareNextReleaseCycle>
 
 ## Workspace Dependency Strategy
@@ -495,10 +518,15 @@ git tag -d "v${VERSION}"
 # Delete remote tag
 git push origin ":refs/tags/v${VERSION}"
 
-# Revert the version bump commits (may be multiple commits)
-git revert HEAD~3..HEAD  # Adjust range as needed
-git push origin main
+# Delete release branch
+git branch -D release-${VERSION}
+git push origin :release-${VERSION}
+
+# Return to main (which is unchanged)
+git checkout main
 ```
+
+If already published to crates.io, you cannot unpublish. You'll need to release a new patch version.
 
 ## Configuration Notes
 
@@ -518,88 +546,19 @@ The workspace uses `release.toml` with:
 5. **Dependency chain**: `cargo publish --workspace` handles the order automatically (mcp_macros → extras → mcp)
 6. **Path dependency during release**: If workspace has path dependency for mcp_macros, switch to version dependency before publishing
 
-## Release Branch Workflow
-
-### Philosophy
-
-This project follows Bevy's release branch strategy:
-- **main**: active development, bleeding edge
-- **release-X.Y.Z**: stable release points that can receive patches
-- **Tags**: `vX.Y.Z` tags on release branches mark actual releases
-
-### When to Use Release Branches
-
-**Every release creates a branch:**
-- Patch releases (0.17.1): Create `release-0.17.1` from main
-- Minor releases (0.18.0): Create `release-0.18.0` from main
-- Major releases (1.0.0): Create `release-1.0.0` from main
-
-### Patching a Released Version
-
-If a bug is found in v0.17.1 that needs a v0.17.2 patch:
-
-**Option A: Fix on release branch, backport to main**
-```bash
-# Switch to release branch
-git checkout release-0.17.1
-
-# Create fix or cherry-pick from main
-git cherry-pick <fix-commit>  # or make changes directly
-
-# Update CHANGELOG
-# Edit mcp/CHANGELOG.md to add [0.17.2] section
-
-# Commit changelog
-git add mcp/CHANGELOG.md
-git commit -m "chore: finalize CHANGELOG for v0.17.2"
-
-# Tag the patch release
-git tag v0.17.2
-git push origin release-0.17.1 --tags
-
-# Publish to crates.io (only mcp crate if that's what changed)
-cargo publish --package bevy_brp_mcp
-
-# Backport to main
-git checkout main
-git cherry-pick <fix-commit>
-git push origin main
-```
-
-**Option B: Fix on main, backport to release**
-```bash
-# Fix on main first
-git checkout main
-# Make changes, commit, push
-git commit -m "fix: critical bug"
-git push origin main
-
-# Backport to release branch
-git checkout release-0.17.1
-git cherry-pick <fix-commit-sha>
-
-# Update CHANGELOG, tag, publish (same as Option A)
-```
-
-### Accepting PRs Against Release Branches
-
-Contributors can target specific releases:
-1. In GitHub PR UI, change target branch from `main` to `release-0.17.1`
-2. Review and merge as normal
-3. Cherry-pick to main: `git checkout main && git cherry-pick <merge-commit>`
-
-### Branch Lifecycle
+## Branch Workflow Summary
 
 ```
-main: v0.17.0 → v0.17.1 → v0.18.0 → v0.19.0 (continuous development)
-         ↓         ↓         ↓
-release-0.17.0   release-0.17.1   release-0.18.0
-         ↓              ↓
-      v0.17.0       v0.17.1 → v0.17.2 (patches)
+main (0.18.0-dev) ─────────────────────────────────────────→ (0.19.0-dev)
+         │                                                        ↑
+         └─→ release-0.18.0 (0.18.0) ─→ publish ─→ tag v0.18.0   │
+                                                                  │
+                                              bump main to next dev
 ```
 
 **Key Points:**
-- Release branches can outlive their creation point on main
-- Patches only affect the release branch + backport to main
-- Main continues forward without waiting for patch releases
-- Each release branch is independent and can be patched separately
+- Main ALWAYS has `-dev` versions
+- Release branches are created BEFORE any version changes
+- Publishing happens exclusively from release branches
+- After release, main bumps to next `-dev` version
+- Each release branch can receive patches independently
