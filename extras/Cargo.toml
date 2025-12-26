@@ -12,11 +12,11 @@ license = "MIT OR Apache-2.0"
 name = "bevy_brp_extras"
 readme = "README.md"
 repository.workspace = true
-version = "0.18.0-rc.1"
+version = "0.18.0-dev"
 
 [dependencies]
 # Extras needs many Bevy features
-bevy = { version = "0.18.0-rc.1", features = [
+bevy = { workspace = true, features = [
   "bevy_core_pipeline",
   "bevy_log",
   "bevy_remote",
@@ -27,6 +27,7 @@ bevy = { version = "0.18.0-rc.1", features = [
   "bevy_window",
   "bevy_winit",
   "default_font",
+  "gamepad",
   "png",
   "x11",
 ] }

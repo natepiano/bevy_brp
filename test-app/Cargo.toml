@@ -2,7 +2,7 @@
 edition = "2024"
 name    = "bevy_brp_test_apps"
 publish = false                # Never publish test apps
-version = "0.3.0"
+version = "0.18.0-dev"
 
 # Disable automatic discovery to ensure explicit control
 autobins     = false
@@ -34,21 +34,7 @@ bevy_winit      = { workspace = true }
 serde           = { workspace = true }
 
 # Test apps use same features as extras
-bevy = { workspace = true, features = [
-  "bevy_core_pipeline",
-  "bevy_gltf",
-  "bevy_log",
-  "bevy_remote",
-  "bevy_render",
-  "bevy_sprite",
-  "bevy_text",
-  "bevy_ui",
-  "bevy_window",
-  "bevy_winit",
-  "default_font",
-  "png",
-  "x11",
-] }
+bevy = { workspace = true, default-features = true }
 
 [lints]
 workspace = true
