@@ -176,7 +176,9 @@
       "Bash(/Users/natemccoy/rust/bevy_brp/.claude/scripts/integration_tests/query_validate.sh:*)",
       "mcp__brp__world_trigger_event",
       "Bash(env)",
-      "Bash(gh release create:*)"
+      "Bash(gh release create:*)",
+      "WebFetch(domain:www.aifreeapi.com)",
+      "WebFetch(domain:news.ycombinator.com)"
     ],
     "deny": [
       "Bash(sed:*)",
