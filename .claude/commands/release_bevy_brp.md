@@ -48,8 +48,41 @@ Before starting the release, verify:
 3. You're up to date with remote
 4. cargo-release is installed (`cargo install cargo-release`)
 
+<ProgressBehavior>
+**AT START**: Display full progress list (once only):
+```
+═══════════════════════════════════════════════════════════════
+                 RELEASE ${VERSION} - PROGRESS
+═══════════════════════════════════════════════════════════════
+[ ] STEP 0:  Validate version argument
+[ ] STEP 1:  Pre-release checks (clippy, build, tests)
+[ ] STEP 2:  Update README compatibility (on main)
+[ ] STEP 3:  Create release branch
+[ ] STEP 4:  Bump versions to release
+[ ] STEP 5:  Verify CHANGELOG entries
+[ ] STEP 6:  Finalize CHANGELOG headers
+[ ] STEP 7:  Check workspace dependency
+[ ] STEP 8:  Bump mcp_macros version
+[ ] STEP 9:  Publish mcp_macros (Phase 1)
+[ ] STEP 10: Update workspace dependency
+[ ] STEP 11: Publish extras and mcp (Phase 2)
+[ ] STEP 12: Push release branch and tags
+[ ] STEP 13: Create GitHub release
+[ ] STEP 14: Post-release verification
+[ ] STEP 15: Merge to main and prepare next cycle
+═══════════════════════════════════════════════════════════════
+```
+
+**BEFORE EACH STEP**: Output single progress line:
+```
+**[N/15] Step description...**
+```
+</ProgressBehavior>
+
 <ExecutionSteps>
     **EXECUTE THESE STEPS IN ORDER:**
+
+    Display <ProgressBehavior/> full list, then proceed:
 
     **STEP 0:** Execute <ArgumentValidation/>
     **STEP 1:** Execute <PreReleaseChecks/>
