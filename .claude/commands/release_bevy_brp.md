@@ -53,10 +53,10 @@ Before starting the release, verify:
 
     **STEP 0:** Execute <ArgumentValidation/>
     **STEP 1:** Execute <PreReleaseChecks/>
-    **STEP 2:** Execute <CreateReleaseBranch/>
-    **STEP 3:** Execute <BumpDevToRelease/>
-    **STEP 4:** Execute <ChangelogVerification/>
-    **STEP 5:** Execute <UpdateReadmeCompatibility/>
+    **STEP 2:** Execute <UpdateReadmeCompatibilityOnMain/>
+    **STEP 3:** Execute <CreateReleaseBranch/>
+    **STEP 4:** Execute <BumpDevToRelease/>
+    **STEP 5:** Execute <ChangelogVerification/>
     **STEP 6:** Execute <FinalizeChangelogs/>
     **STEP 7:** Execute <CheckWorkspaceDependency/>
     **STEP 8:** Execute <BumpMacrosVersion/>
@@ -66,7 +66,7 @@ Before starting the release, verify:
     **STEP 12:** Execute <PushReleaseBranch/>
     **STEP 13:** Execute <CreateGitHubRelease/>
     **STEP 14:** Execute <PostReleaseVerification/>
-    **STEP 15:** Execute <PrepareNextReleaseCycle/>
+    **STEP 15:** Execute <MergeAndPrepareNextCycle/>
 </ExecutionSteps>
 
 <ArgumentValidation>
@@ -129,75 +129,10 @@ cargo +nightly fmt --all
 ```
 </QualityChecks>
 
-<CreateReleaseBranch>
-## STEP 2: Create Release Branch
+<UpdateReadmeCompatibilityOnMain>
+## STEP 2: Update README Compatibility Tables (on main)
 
-**CRITICAL**: Create the release branch BEFORE any version changes. This keeps main at `-dev` versions.
-
-```bash
-git checkout -b release-${VERSION}
-```
-→ **Auto-check**: Continue if branch created successfully
-
-**Verify you're on the release branch:**
-```bash
-git rev-parse --abbrev-ref HEAD
-```
-→ **Auto-check**: Should show `release-${VERSION}`
-
-**Note**: All subsequent steps happen on this release branch. Main remains untouched with `-dev` versions.
-</CreateReleaseBranch>
-
-<BumpDevToRelease>
-## STEP 3: Bump Versions from -dev to Release
-
-**Check current versions (should be -dev):**
-```bash
-grep "^version" extras/Cargo.toml mcp/Cargo.toml
-```
-
-→ **I will update the version in these files** from `-dev` to the release version:
-- `extras/Cargo.toml`: Change `version = "X.Y.Z-dev"` to `version = "${VERSION}"`
-- `mcp/Cargo.toml`: Change `version = "X.Y.Z-dev"` to `version = "${VERSION}"`
-
-**Note**: `mcp_macros` version is handled separately in Step 8.
-
-**Commit the version bumps:**
-```bash
-git add extras/Cargo.toml mcp/Cargo.toml Cargo.lock
-git commit -m "chore: bump extras and mcp versions to ${VERSION}"
-```
-→ **Auto-check**: Continue if commit succeeds
-</BumpDevToRelease>
-
-<ChangelogVerification>
-## STEP 4: Verify CHANGELOG Entries
-
-**Note**: For coordinated workspace releases where some crates have no feature changes, add placeholder entries (without `## [Unreleased]` header - that gets added later in Step 15):
-
-```markdown
-### Changed
-- Version bump to X.Y.Z to maintain workspace version synchronization
-```
-
-```bash
-for crate in mcp_macros extras mcp; do
-  echo "Checking $crate CHANGELOG..."
-  # Look for either [Unreleased] section or placeholder entry at top
-  if ! (grep -q "## \[Unreleased\]" $crate/CHANGELOG.md || head -10 $crate/CHANGELOG.md | grep -q "### Changed"); then
-    echo "ERROR: Missing changelog entry in $crate/CHANGELOG.md"
-    exit 1
-  fi
-  head -15 $crate/CHANGELOG.md | grep -A 5 "###"
-done
-```
-→ **Manual verification**: Verify changelog entries exist for all crates (either `[Unreleased]` section or placeholder entry)
-  - Type **continue** to proceed
-  - Type **stop** to add missing entries
-</ChangelogVerification>
-
-<UpdateReadmeCompatibility>
-## STEP 5: Update README Compatibility Tables
+**IMPORTANT**: This step happens on main BEFORE creating the release branch. This ensures README updates are already on main and will be included in the release branch.
 
 **Update the Bevy compatibility information in README files:**
 
@@ -223,13 +158,80 @@ done
   - Type **continue** to proceed
   - Type **stop** to update READMEs
 
-**Commit the README changes:**
+**Commit the README changes on main:**
 ```bash
 git add README.md mcp/README.md extras/README.md
 git commit -m "docs: update compatibility tables for v${VERSION}"
 ```
 → **Auto-check**: Continue if commit succeeds
-</UpdateReadmeCompatibility>
+</UpdateReadmeCompatibilityOnMain>
+
+<CreateReleaseBranch>
+## STEP 3: Create Release Branch
+
+**CRITICAL**: Create the release branch AFTER README updates but BEFORE version changes. This ensures README updates are included in the release branch.
+
+```bash
+git checkout -b release-${VERSION}
+```
+→ **Auto-check**: Continue if branch created successfully
+
+**Verify you're on the release branch:**
+```bash
+git rev-parse --abbrev-ref HEAD
+```
+→ **Auto-check**: Should show `release-${VERSION}`
+
+**Note**: All subsequent steps happen on this release branch until Step 15.
+</CreateReleaseBranch>
+
+<BumpDevToRelease>
+## STEP 4: Bump Versions from -dev to Release
+
+**Check current versions (should be -dev):**
+```bash
+grep "^version" extras/Cargo.toml mcp/Cargo.toml
+```
+
+→ **I will update the version in these files** from `-dev` to the release version:
+- `extras/Cargo.toml`: Change `version = "X.Y.Z-dev"` to `version = "${VERSION}"`
+- `mcp/Cargo.toml`: Change `version = "X.Y.Z-dev"` to `version = "${VERSION}"`
+
+**Note**: `mcp_macros` version is handled separately in Step 8.
+
+**Commit the version bumps:**
+```bash
+git add extras/Cargo.toml mcp/Cargo.toml Cargo.lock
+git commit -m "chore: bump extras and mcp versions to ${VERSION}"
+```
+→ **Auto-check**: Continue if commit succeeds
+</BumpDevToRelease>
+
+<ChangelogVerification>
+## STEP 5: Verify CHANGELOG Entries
+
+**Note**: For coordinated workspace releases where some crates have no feature changes, add placeholder entries:
+
+```markdown
+### Changed
+- Version bump to X.Y.Z to maintain workspace version synchronization
+```
+
+```bash
+for crate in mcp_macros extras mcp; do
+  echo "Checking $crate CHANGELOG..."
+  # Look for either [Unreleased] section or placeholder entry at top
+  if ! (grep -q "## \[Unreleased\]" $crate/CHANGELOG.md || head -10 $crate/CHANGELOG.md | grep -q "### Changed"); then
+    echo "ERROR: Missing changelog entry in $crate/CHANGELOG.md"
+    exit 1
+  fi
+  head -15 $crate/CHANGELOG.md | grep -A 5 "###"
+done
+```
+→ **Manual verification**: Verify changelog entries exist for all crates (either `[Unreleased]` section or placeholder entry)
+  - Type **continue** to proceed
+  - Type **stop** to add missing entries
+</ChangelogVerification>
 
 <FinalizeChangelogs>
 ## STEP 6: Finalize CHANGELOG Headers
@@ -437,8 +439,8 @@ cargo install bevy_brp_mcp --version "${VERSION}"
 → **Manual**: Run your agentic test suite to verify RC/release functionality
 </PostReleaseVerification>
 
-<PrepareNextReleaseCycle>
-## STEP 15: Prepare for Next Release Cycle
+<MergeAndPrepareNextCycle>
+## STEP 15: Merge Release to Main and Prepare Next Cycle
 
 **Return to main branch:**
 ```bash
@@ -446,23 +448,32 @@ git checkout main
 ```
 → **Auto-check**: Continue if checkout succeeds
 
+**Merge release branch into main:**
+This brings all release changes (finalized CHANGELOGs, version bumps, any fixes made during release) back to main.
+
+```bash
+git merge release-${VERSION} -m "Merge release-${VERSION} into main"
+```
+→ **Auto-check**: Continue if merge succeeds (usually fast-forward)
+
 **Determine next dev version:**
-- If released `0.18.0` or `0.18.0-rc.N`, next dev is `0.18.0-dev` (until final release)
+- If released `0.18.0-rc.N`, next dev is `0.18.0-dev` (until final release)
 - If released final `0.18.0`, next dev is `0.19.0-dev`
 
 → **I will ask**: What should the next dev version be?
 
-**Update versions on main to next -dev version** (if needed):
+**Update versions on main to next -dev version:**
 - `extras/Cargo.toml`: `version = "${NEXT_DEV_VERSION}"`
 - `mcp/Cargo.toml`: `version = "${NEXT_DEV_VERSION}"`
 - `mcp_macros/Cargo.toml`: `version = "${NEXT_DEV_VERSION}"`
 
 → **I will add [Unreleased] sections to all three CHANGELOG.md files**
 
-Add this after the version header in each CHANGELOG.md:
+Add `## [Unreleased]` above the now-merged `## [${VERSION}]` header in each CHANGELOG.md:
 ```markdown
 ## [Unreleased]
 
+## [${VERSION}] - YYYY-MM-DD
 ```
 
 ```bash
@@ -480,8 +491,8 @@ git push origin main
 ```
 → **Auto-check**: Continue if push succeeds, stop if fails
 
-**✅ Release complete!** All crates published from release branch. Main stays at dev versions.
-</PrepareNextReleaseCycle>
+**✅ Release complete!** All crates published. Release branch merged to main. Main now at next dev version.
+</MergeAndPrepareNextCycle>
 
 ## Workspace Dependency Strategy
 
@@ -544,16 +555,21 @@ The workspace uses `release.toml` with:
 ## Branch Workflow Summary
 
 ```
-main (0.18.0-dev) ─────────────────────────────────────────→ (0.19.0-dev)
-         │                                                        ↑
-         └─→ release-0.18.0 (0.18.0) ─→ publish ─→ tag v0.18.0   │
-                                                                  │
-                                              bump main to next dev
+main (0.18.0-dev) ──[README updates]──┬────────────────────────→ (0.19.0-dev)
+                                      │                              ↑
+                                      └─→ release-0.18.0 (0.18.0)    │
+                                              │                      │
+                                              ├─→ publish            │
+                                              ├─→ tag v0.18.0        │
+                                              │                      │
+                                              └──────── merge ───────┘
 ```
 
 **Key Points:**
 - Main ALWAYS has `-dev` versions
-- Release branches are created BEFORE any version changes
+- README updates happen on main BEFORE creating release branch
+- Release branch is created AFTER README updates
 - Publishing happens exclusively from release branches
-- After release, main bumps to next `-dev` version
+- After release, merge release branch into main
+- Then bump main to next `-dev` version
 - Each release branch can receive patches independently
