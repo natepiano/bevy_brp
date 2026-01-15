@@ -5,7 +5,7 @@
 [![Crates.io](https://img.shields.io/crates/d/bevy_brp_mcp.svg)](https://crates.io/crates/bevy_brp_mcp)
 [![CI](https://github.com/natepiano/bevy_brp/workflows/CI/badge.svg)](https://github.com/natepiano/bevy_brp/actions)
 
-A Model Context Protocol (MCP) server that enables AI coding assistants to control launch, inspect and mutate Bevy applications via the Bevy Remote Protocol (BRP). This tool bridges the gap between coding agents and Bevy by providing comprehensive BRP integration as an MCP server.
+A Model Context Protocol (MCP) server that enables AI coding assistants to launch, inspect, and mutate Bevy applications via the Bevy Remote Protocol (BRP). This tool bridges the gap between coding agents and Bevy by providing comprehensive BRP integration as an MCP server.
 
 ## Bevy Compatibility
 
@@ -24,13 +24,13 @@ The bevy_brp_mcp crate follows Bevy's version numbering and releases new version
 - **Component Operations**: Get, insert, list, remove, and mutate components on entities
 - **Resource Management**: Get, insert, list, remove, and mutate resources
 - **Query System**: Entity querying with filters
-- **Hierarchy Operations**: Reparent entitities
-- **Type Guide**: 4. Get proper JSON formats for complex BRP operations using the `brp_type_guide` tool. The value returned from `registry.schema` does not tell you exactly what is expected by the brp spawn/insert/mutate calls. The `brp_type_guide` tool provides examples to your coding agent for each mutation path for a component or resource - making it easy for your coding agent to know how to use spawn/insert and mutate your components and resources. It's kind of a miracle to see your coding agent change running values on your components on the first try.
+- **Hierarchy Operations**: Reparent entities
+- **Type Guide**: Get proper JSON formats for BRP operations using the `brp_type_guide` tool, which provides spawn/insert examples and mutation paths for components and resources
 
 ### Application Discovery & Management for your Agent
 - **App Discovery**: Find and list Bevy applications in your workspace
 - **Build Status**: Check which apps are built and ready to run
-- **Launch Management**: Start apps with proper asset loading and logging. 
+- **Launch Management**: Start apps with proper asset loading and logging
 - **Example Support**: Discover and run Bevy examples from your projects
 
 ### Real-time Monitoring
@@ -45,11 +45,11 @@ requires [bevy_brp_extras](https://crates.io/crates/bevy_brp_extras)
 - `brp_extras/send_keys` - Send keyboard input to the application
 - `brp_extras/set_window_title` - Change the primary window title
 
-## Getting started
-first, install via cargo:
+## Getting Started
+First, install via cargo:
 `cargo install bevy_brp_mcp`
 
-configure your mcp server - for claude code this would be in the `~/.claude.json` file.
+Configure your MCP server. For Claude Code, add this to your `~/.claude.json` file:
 
 ```json
 "mcpServers": {
@@ -59,20 +59,20 @@ configure your mcp server - for claude code this would be in the `~/.claude.json
     "args": [],
     "env": {}
   }
-},
+}
 ```
-that's it!
+That's it!
 
 ## Usage
 
 ### With AI Coding Assistants
 
-bevy_brp_mcp is designed to be used with AI coding assistants that support MCP (like Claude). The MCP server provides tools that allow the AI to:
+bevy_brp_mcp is designed to be used with AI coding assistants that support MCP (e.g., Claude Code). The MCP server provides tools that allow the AI to:
 
 1. Discover and launch your Bevy applications - with logs stored in your temp dir so they can be accessed by the coding assistant.
 2. Inspect and modify entity components in real-time
 3. Monitor application state and debug issues
-4. Take screenshots and manage application lifecycle (requries `bevy_brp_extras`)
+4. Take screenshots and manage application lifecycle (requires `bevy_brp_extras`)
 
 ### Setting Up Your Bevy App
 
@@ -89,7 +89,7 @@ fn main() {
 }
 ```
 
-For enhanced features like screenshots and format discovery, also add [bevy_brp_extras](https://github.com/natepiano/bevy_brp/extras):
+For enhanced features such as asking the coding agent to take a screenshot or to send keyboard input to your running app, also add [bevy_brp_extras](https://crates.io/crates/bevy_brp_extras):
 
 ```rust
 use bevy::prelude::*;
@@ -105,24 +105,17 @@ fn main() {
 
 In either case you'll need to make sure to enable bevy's "bevy_remote" feature.
 
-## Integration with bevy_brp_extras
-
-This crate is designed to work seamlessly with [bevy_brp_extras](https://github.com/natepiano/bevy_brp/extras). When both are used together:
-
-1. Add `BrpExtrasPlugin` to your Bevy app for enhanced BRP features
-2. Use `bevy_brp_mcp` with your AI coding assistant
-3. Additional methods like screenshot, shutdown, and keyboard input will be automatically available
-
 ## Example Workflow
 
-1. **Discovery**: Use `list_bevy_apps` to find available applications
+1. **Discover**: Use `list_bevy_apps` to find available applications
 2. **Launch**: Use `launch_bevy_app` to start your game with proper logging
 3. **Inspect**: Use `world_query` to find entities of interest
 4. **Monitor**: Use `world_get_components_watch` to observe entity changes in real-time
 5. **Modify**: Use `world_mutate_components` to adjust entity properties
-6. **Debug**: Use `read_log` to examine application output
-7. **Capture**: Use `brp_extras_screenshot` to document current state
-8. **Interact**: Use `brp_extras_send_keys` to send keyboard input for testing
+6. **Trigger**: Use `world_trigger_event` to trigger events for your observers
+7. **Debug**: Use `read_log` to examine application output
+8. **Capture**: Use `brp_extras_screenshot` to document current state
+9. **Interact**: Use `brp_extras_send_keys` to send keyboard input for testing
 
 ## Logging
 
