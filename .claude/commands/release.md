@@ -35,8 +35,8 @@ This keeps main clean for development while isolating release work to dedicated 
 **Throughout this release process**, when you see `${VERSION}` in bash commands, you must substitute the actual version number directly (e.g., "0.17.2") instead of using shell variables. Shell variable assignments require user approval.
 
 **Example:**
-- Documentation shows: `cargo release ${VERSION} --package bevy_brp_mcp_macros`
-- You should run: `cargo release 0.17.2 --package bevy_brp_mcp_macros`
+- Documentation shows: `git checkout -b release-${VERSION}`
+- You should run: `git checkout -b release-0.17.2`
 
 This applies to ALL bash commands in this process.
 
@@ -46,36 +46,27 @@ Before starting the release, verify:
 1. You're on the `main` branch
 2. Working directory is clean (no uncommitted changes)
 3. You're up to date with remote
-4. cargo-release is installed (`cargo install cargo-release`)
 
 <ProgressBehavior>
-**AT START**: Display full progress list (once only):
+**AT START**: Dynamically generate and display the full progress list (once only):
+
+1. Scan this document for all `## STEP N:` headers
+2. Extract step number and description from each header
+3. Count total steps and display as:
+
 ```
 ═══════════════════════════════════════════════════════════════
                  RELEASE ${VERSION} - PROGRESS
 ═══════════════════════════════════════════════════════════════
-[ ] STEP 0:  Validate version argument
-[ ] STEP 1:  Pre-release checks (clippy, build, tests)
-[ ] STEP 2:  Update README compatibility (on main)
-[ ] STEP 3:  Create release branch
-[ ] STEP 4:  Bump versions to release
-[ ] STEP 5:  Verify CHANGELOG entries
-[ ] STEP 6:  Finalize CHANGELOG headers
-[ ] STEP 7:  Check workspace dependency
-[ ] STEP 8:  Bump mcp_macros version
-[ ] STEP 9:  Publish mcp_macros (Phase 1)
-[ ] STEP 10: Update workspace dependency
-[ ] STEP 11: Publish extras and mcp (Phase 2)
-[ ] STEP 12: Push release branch and tags
-[ ] STEP 13: Create GitHub release
-[ ] STEP 14: Post-release verification
-[ ] STEP 15: Merge to main and prepare next cycle
+[ ] STEP 0:  <description from "## STEP 0: ..." header>
+[ ] STEP 1:  <description from "## STEP 1: ..." header>
+... (continue for all steps found)
 ═══════════════════════════════════════════════════════════════
 ```
 
-**BEFORE EACH STEP**: Output single progress line:
+**BEFORE EACH STEP**: Output single progress line using the total step count:
 ```
-**[N/15] Step description...**
+**[N/total] Step description...**
 ```
 </ProgressBehavior>
 
@@ -383,7 +374,7 @@ git commit -m "chore: update workspace dependency to bevy_brp_mcp_macros ${VERSI
 ```
 → **Auto-check**: Continue if commit succeeds
 
-**Note**: Now cargo-release will work for extras and mcp in Step 11 because the workspace dependency resolves correctly from crates.io.
+**Note**: Now `cargo publish` will work for extras and mcp in Step 11 because the workspace dependency resolves correctly from crates.io.
 </UpdateWorkspaceDependency>
 
 <Phase2PublishExtrasAndMcp>
@@ -567,22 +558,13 @@ git checkout main
 
 If already published to crates.io, you cannot unpublish. You'll need to release a new patch version.
 
-## Configuration Notes
-
-The workspace uses `release.toml` with:
-- `shared-version = true` for synchronized releases
-- Tag format: `v{{version}}`
-- Pre-release hook runs `cargo build --all`
-- Manual push/publish for safety
-- Test apps excluded via `[package.metadata.release] release = false`
-
 ## Common Issues
 
 1. **"Version already exists"**: The version is already published on crates.io
 2. **"Uncommitted changes"**: Run `git status` and commit or stash changes
 3. **"Not on main branch"**: Switch to main with `git checkout main`
 4. **Build failures**: Fix any compilation errors before releasing
-5. **Dependency chain**: `cargo publish --workspace` handles the order automatically (mcp_macros → extras → mcp)
+5. **Dependency chain**: Must publish mcp_macros first, then extras and mcp
 6. **Path dependency during release**: If workspace has path dependency for mcp_macros, switch to version dependency before publishing
 
 ## Branch Workflow Summary
