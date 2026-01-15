@@ -178,7 +178,9 @@
       "Bash(env)",
       "Bash(gh release create:*)",
       "WebFetch(domain:www.aifreeapi.com)",
-      "WebFetch(domain:news.ycombinator.com)"
+      "WebFetch(domain:news.ycombinator.com)",
+      "Bash(comm -23:*)",
+      "Bash(comm:*)"
     ],
     "deny": [
       "Bash(sed:*)",

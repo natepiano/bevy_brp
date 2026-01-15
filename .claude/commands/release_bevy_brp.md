@@ -70,20 +70,15 @@ Before starting the release, verify:
 </ExecutionSteps>
 
 <ArgumentValidation>
-## STEP 0: Argument Validation and VERSION Setup
+## STEP 0: Argument Validation
 
-**Validate the version format (using the argument directly):**
-```bash
-bash .claude/scripts/release_version_validate.sh "$ARGUMENTS"
-```
-→ **Auto-check**: Continue if version is valid format, stop with clear error if invalid
+**Valid version formats:**
+- `X.Y.Z` - Final release (e.g., `0.18.0`)
+- `X.Y.Z-rc.N` - Release candidate (e.g., `0.18.0-rc.1`)
 
-**Confirm version:**
-```bash
-echo "Release version set to: $ARGUMENTS"
-```
+→ **Manual check**: Verify `$ARGUMENTS` matches one of these formats before proceeding. Stop with clear error if invalid.
 
-**Note**: Throughout this process, `$ARGUMENTS` will be used directly instead of a shell variable to avoid approval requirements. In documentation below, when you see `${VERSION}` or `$VERSION`, substitute the actual version number from `$ARGUMENTS`.
+**Note**: Throughout this process, substitute the actual version number from `$ARGUMENTS` wherever you see `${VERSION}` or `$VERSION` in commands. Do not use shell variables.
 </ArgumentValidation>
 
 <PreReleaseChecks>

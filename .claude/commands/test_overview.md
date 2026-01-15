@@ -4,7 +4,7 @@
 - **Primary**: `test-app/examples/extras_plugin.rs` - used for integration and mutation tests
 - **Additional**: `test-app/` apps/examples - used to validate listing and launching functionality
 
-## Integration Tests - `/test`
+## Integration Tests - `/integration_tests`
 Validates core BRP operations (spawn, insert, query, mutate, remove, watch, extras features).
 Runs 12 tests in parallel with port isolation and automatic cleanup.
 
