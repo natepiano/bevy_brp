@@ -12,7 +12,7 @@ use bevy_brp_extras::BrpExtrasPlugin;
 struct TestUnitEvent;
 
 /// Test event with payload
-#[derive(Event, Reflect, Clone)]
+#[derive(Event, Reflect, Clone, Default)]
 #[reflect(Event)]
 struct TestPayloadEvent {
     pub message: String,
