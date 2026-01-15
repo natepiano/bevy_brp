@@ -678,6 +678,25 @@ pub static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowledge>> =
             ),
         );
 
+        // ===== Time<Real> field-specific values =====
+        // wrap_period must be non-zero to prevent divide-by-zero in time wrapping calculations
+        // Default is 3600 seconds (1 hour) - setting to zero causes app crash
+        map.insert(
+            KnowledgeKey::struct_field(
+                "bevy_time::time::Time<bevy_time::real::Real>",
+                "wrap_period",
+            ),
+            TypeKnowledge::as_root_value(json!({"secs": 3600, "nanos": 0}), TYPE_CORE_DURATION),
+        );
+
+        // ===== Time<()> field-specific values =====
+        // wrap_period must be non-zero to prevent divide-by-zero in time wrapping calculations
+        // Default is 3600 seconds (1 hour) - setting to zero causes app crash
+        map.insert(
+            KnowledgeKey::struct_field("bevy_time::time::Time<()>", "wrap_period"),
+            TypeKnowledge::as_root_value(json!({"secs": 3600, "nanos": 0}), TYPE_CORE_DURATION),
+        );
+
         // ===== AlphaMode2d enum variant signatures =====
         // Mask(f32) variant requires alpha threshold in 0.0-1.0 range
         map.insert(
