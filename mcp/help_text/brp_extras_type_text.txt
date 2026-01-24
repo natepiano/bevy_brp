@@ -1,0 +1,20 @@
+Types text sequentially in Bevy apps via bevy_brp_extras. Characters are typed one per frame with proper key press/release cycles, simulating realistic human typing.
+
+Unlike `send_keys` which sends all keys simultaneously (for chords and shortcuts), `type_text` queues characters and types them sequentially. This is ideal for text input fields that need to process each character individually.
+
+Supported characters:
+- Letters (a-z, A-Z) - uppercase uses Shift
+- Digits (0-9)
+- Common symbols (!@#$%^&*()-=_+[]{}|;':",.<>/?\`~)
+- Whitespace (space, newline, tab)
+
+Characters that cannot be mapped will be skipped and reported in the response.
+
+Examples:
+```json
+{"text": "hello world"}           // Types 11 characters across 11 frames
+{"text": "Hello, World!\n"}       // Mixed case with punctuation and newline
+{"text": "test@example.com"}      // Email address with @ symbol
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.
