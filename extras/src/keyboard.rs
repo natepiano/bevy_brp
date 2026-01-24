@@ -26,8 +26,8 @@ const DEFAULT_KEY_DURATION_MS: u32 = 100;
 /// Component that tracks keys that need to be released after a duration
 #[derive(Component)]
 pub struct TimedKeyRelease {
-    /// The key codes to release
-    pub keys:  Vec<KeyCode>,
+    /// The key code wrappers to release (stores wrapper for text field generation)
+    pub keys:  Vec<KeyCodeWrapper>,
     /// Timer tracking the remaining duration
     pub timer: Timer,
 }
@@ -184,6 +184,88 @@ pub enum KeyCodeWrapper {
 }
 
 impl KeyCodeWrapper {
+    /// Convert the wrapper to a character for text input (lowercase, unshifted).
+    ///
+    /// Returns `None` for non-printable keys (modifiers, function keys, etc.)
+    #[must_use]
+    pub const fn to_char(self) -> Option<char> {
+        match self {
+            // Letters (lowercase)
+            Self::KeyA => Some('a'),
+            Self::KeyB => Some('b'),
+            Self::KeyC => Some('c'),
+            Self::KeyD => Some('d'),
+            Self::KeyE => Some('e'),
+            Self::KeyF => Some('f'),
+            Self::KeyG => Some('g'),
+            Self::KeyH => Some('h'),
+            Self::KeyI => Some('i'),
+            Self::KeyJ => Some('j'),
+            Self::KeyK => Some('k'),
+            Self::KeyL => Some('l'),
+            Self::KeyM => Some('m'),
+            Self::KeyN => Some('n'),
+            Self::KeyO => Some('o'),
+            Self::KeyP => Some('p'),
+            Self::KeyQ => Some('q'),
+            Self::KeyR => Some('r'),
+            Self::KeyS => Some('s'),
+            Self::KeyT => Some('t'),
+            Self::KeyU => Some('u'),
+            Self::KeyV => Some('v'),
+            Self::KeyW => Some('w'),
+            Self::KeyX => Some('x'),
+            Self::KeyY => Some('y'),
+            Self::KeyZ => Some('z'),
+            // Digits
+            Self::Digit0 => Some('0'),
+            Self::Digit1 => Some('1'),
+            Self::Digit2 => Some('2'),
+            Self::Digit3 => Some('3'),
+            Self::Digit4 => Some('4'),
+            Self::Digit5 => Some('5'),
+            Self::Digit6 => Some('6'),
+            Self::Digit7 => Some('7'),
+            Self::Digit8 => Some('8'),
+            Self::Digit9 => Some('9'),
+            // Special printable keys
+            Self::Space => Some(' '),
+            Self::Tab => Some('\t'),
+            Self::Enter => Some('\n'),
+            // Punctuation (US layout, unshifted)
+            Self::Backquote => Some('`'),
+            Self::Backslash => Some('\\'),
+            Self::BracketLeft => Some('['),
+            Self::BracketRight => Some(']'),
+            Self::Comma => Some(','),
+            Self::Equal => Some('='),
+            Self::Minus => Some('-'),
+            Self::Period => Some('.'),
+            Self::Quote => Some('\''),
+            Self::Semicolon => Some(';'),
+            Self::Slash => Some('/'),
+            // Numpad digits
+            Self::Numpad0 => Some('0'),
+            Self::Numpad1 => Some('1'),
+            Self::Numpad2 => Some('2'),
+            Self::Numpad3 => Some('3'),
+            Self::Numpad4 => Some('4'),
+            Self::Numpad5 => Some('5'),
+            Self::Numpad6 => Some('6'),
+            Self::Numpad7 => Some('7'),
+            Self::Numpad8 => Some('8'),
+            Self::Numpad9 => Some('9'),
+            Self::NumpadAdd => Some('+'),
+            Self::NumpadSubtract => Some('-'),
+            Self::NumpadMultiply => Some('*'),
+            Self::NumpadDivide => Some('/'),
+            Self::NumpadDecimal => Some('.'),
+            Self::NumpadEnter => Some('\n'),
+            // Non-printable keys
+            _ => None,
+        }
+    }
+
     /// Convert the wrapper to a Bevy `KeyCode`
     #[must_use]
     #[allow(clippy::too_many_lines)]
@@ -400,19 +482,19 @@ pub struct SendKeysResponse {
     pub duration_ms: u32,
 }
 
-/// Validate key codes and return the parsed key codes
-fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCode)>, BrpError> {
+/// Validate key codes and return the parsed key code wrappers
+fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCodeWrapper)>, BrpError> {
     let mut validated_keys = Vec::new();
 
     for key_str in keys {
-        match parse_key_code(key_str) {
-            Ok(key_code) => {
-                validated_keys.push((key_str.clone(), key_code));
+        match KeyCodeWrapper::from_str(key_str) {
+            Ok(wrapper) => {
+                validated_keys.push((key_str.clone(), wrapper));
             },
-            Err(e) => {
+            Err(_) => {
                 return Err(BrpError {
                     code:    INVALID_PARAMS,
-                    message: format!("Invalid key code '{key_str}': {e}"),
+                    message: format!("Invalid key code '{key_str}': Unknown key code"),
                     data:    None,
                 });
             },
@@ -422,28 +504,48 @@ fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCode)>, BrpError> {
     Ok(validated_keys)
 }
 
-/// Create keyboard events from validated key codes
+/// Create keyboard events from validated key code wrappers.
+///
+/// Populates `logical_key` and `text` fields for printable characters,
+/// enabling text input simulation that works with Bevy's text input systems.
 fn create_keyboard_events(
-    key_codes: &[KeyCode],
+    wrappers: &[KeyCodeWrapper],
     press: bool,
 ) -> Vec<bevy::input::keyboard::KeyboardInput> {
+    use bevy::input::keyboard::{Key, NativeKey};
+    use smol_str::SmolStr;
+
     let state = if press {
         ButtonState::Pressed
     } else {
         ButtonState::Released
     };
 
-    key_codes
+    wrappers
         .iter()
-        .map(|&key_code| bevy::input::keyboard::KeyboardInput {
-            state,
-            key_code,
-            logical_key: bevy::input::keyboard::Key::Unidentified(
-                bevy::input::keyboard::NativeKey::Unidentified,
-            ),
-            window: Entity::PLACEHOLDER,
-            repeat: false,
-            text: None,
+        .map(|&wrapper| {
+            let key_code = wrapper.to_key_code();
+            let char_opt = wrapper.to_char();
+
+            // Build logical_key and text based on whether this is a printable character
+            let (logical_key, text) = match char_opt {
+                Some(c) => {
+                    let s = SmolStr::new_inline(&c.to_string());
+                    // Only populate text on press events, not release
+                    let text = if press { Some(s.clone()) } else { None };
+                    (Key::Character(s), text)
+                },
+                None => (Key::Unidentified(NativeKey::Unidentified), None),
+            };
+
+            bevy::input::keyboard::KeyboardInput {
+                state,
+                key_code,
+                logical_key,
+                window: Entity::PLACEHOLDER,
+                repeat: false,
+                text,
+            }
         })
         .collect()
 }
@@ -477,7 +579,7 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     // Validate key codes
     let validated_keys = validate_keys(&request.keys)?;
     let valid_key_strings: Vec<String> = validated_keys.iter().map(|(s, _)| s.clone()).collect();
-    let key_codes: Vec<KeyCode> = validated_keys.iter().map(|(_, kc)| *kc).collect();
+    let wrappers: Vec<KeyCodeWrapper> = validated_keys.iter().map(|(_, w)| *w).collect();
 
     // Validate duration doesn't exceed maximum
     if request.duration_ms > MAX_KEY_DURATION_MS {
@@ -492,15 +594,15 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     }
 
     // Always send press events first
-    let press_events = create_keyboard_events(&key_codes, true);
+    let press_events = create_keyboard_events(&wrappers, true);
     for event in press_events {
         world.write_message(event);
     }
 
     // Always spawn an entity to handle the timed release
-    if !key_codes.is_empty() {
+    if !wrappers.is_empty() {
         world.spawn(TimedKeyRelease {
-            keys:  key_codes,
+            keys:  wrappers,
             timer: Timer::new(
                 Duration::from_millis(u64::from(request.duration_ms)),
                 TimerMode::Once,
@@ -524,13 +626,6 @@ pub struct KeyCodeInfo {
     pub category: String,
 }
 
-/// Parse a string into a `KeyCode`
-fn parse_key_code(s: &str) -> Result<KeyCode, String> {
-    KeyCodeWrapper::from_str(s)
-        .map(KeyCodeWrapper::to_key_code)
-        .map_err(|_| format!("Unknown key code: {s}"))
-}
-
 /// System that processes timed key releases
 pub fn process_timed_key_releases(
     mut commands: Commands,
@@ -542,18 +637,9 @@ pub fn process_timed_key_releases(
         timed_release.timer.tick(time.delta());
 
         if timed_release.timer.is_finished() {
-            // Send release events for all keys
-            for &key_code in &timed_release.keys {
-                let event = bevy::input::keyboard::KeyboardInput {
-                    state: ButtonState::Released,
-                    key_code,
-                    logical_key: bevy::input::keyboard::Key::Unidentified(
-                        bevy::input::keyboard::NativeKey::Unidentified,
-                    ),
-                    window: Entity::PLACEHOLDER,
-                    repeat: false,
-                    text: None,
-                };
+            // Send release events for all keys (text is None for release events)
+            let release_events = create_keyboard_events(&timed_release.keys, false);
+            for event in release_events {
                 keyboard_events.write(event);
             }
 
