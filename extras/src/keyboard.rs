@@ -40,6 +40,8 @@ pub struct TextTypingQueue {
     pub chars: std::collections::VecDeque<char>,
     /// Currently pressed keys (waiting for release next frame)
     pub current_keys: Vec<KeyCodeWrapper>,
+    /// The character we're currently typing (for proper text field on shifted chars)
+    pub current_char: Option<char>,
     /// Phase: true = need to release current keys, false = ready to press next
     pub releasing: bool,
 }
@@ -524,6 +526,19 @@ fn create_keyboard_events(
     wrappers: &[KeyCodeWrapper],
     press: bool,
 ) -> Vec<bevy::input::keyboard::KeyboardInput> {
+    create_keyboard_events_with_text(wrappers, press, None)
+}
+
+/// Create keyboard events with an optional target character override.
+///
+/// When `target_char` is provided, it will be used as the `text` field
+/// for the final non-modifier key in the sequence. This is essential for
+/// shifted characters (e.g., `!` requires Shift+1, but text should be `!`).
+fn create_keyboard_events_with_text(
+    wrappers: &[KeyCodeWrapper],
+    press: bool,
+    target_char: Option<char>,
+) -> Vec<bevy::input::keyboard::KeyboardInput> {
     use bevy::input::keyboard::{Key, NativeKey};
     use smol_str::SmolStr;
 
@@ -533,18 +548,45 @@ fn create_keyboard_events(
         ButtonState::Released
     };
 
+    // Find the last non-modifier key index (that's where we set the text)
+    let last_non_modifier_idx = wrappers.iter().rposition(|w| {
+        !matches!(
+            w,
+            KeyCodeWrapper::ShiftLeft
+                | KeyCodeWrapper::ShiftRight
+                | KeyCodeWrapper::ControlLeft
+                | KeyCodeWrapper::ControlRight
+                | KeyCodeWrapper::AltLeft
+                | KeyCodeWrapper::AltRight
+                | KeyCodeWrapper::SuperLeft
+                | KeyCodeWrapper::SuperRight
+        )
+    });
+
     wrappers
         .iter()
-        .map(|&wrapper| {
+        .enumerate()
+        .map(|(idx, &wrapper)| {
             let key_code = wrapper.to_key_code();
-            let char_opt = wrapper.to_char();
+            let is_target_key = Some(idx) == last_non_modifier_idx;
+
+            // Use target_char for the final non-modifier key, otherwise use to_char()
+            let char_opt = if is_target_key && target_char.is_some() {
+                target_char
+            } else {
+                wrapper.to_char()
+            };
 
             // Build logical_key and text based on whether this is a printable character
             let (logical_key, text) = match char_opt {
                 Some(c) => {
                     let s = SmolStr::new_inline(&c.to_string());
-                    // Only populate text on press events, not release
-                    let text = if press { Some(s.clone()) } else { None };
+                    // Only populate text on press events, not release, and only for the target key
+                    let text = if press && is_target_key {
+                        Some(s.clone())
+                    } else {
+                        None
+                    };
                     (Key::Character(s), text)
                 },
                 None => (Key::Unidentified(NativeKey::Unidentified), None),
@@ -789,6 +831,7 @@ pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
         world.spawn(TextTypingQueue {
             chars,
             current_keys: vec![],
+            current_char: None,
             releasing: false,
         });
     }
@@ -815,17 +858,20 @@ pub fn process_text_typing(
                     keyboard_events.write(event);
                 }
                 queue.current_keys.clear();
+                queue.current_char = None;
             }
             queue.releasing = false;
         } else {
             // Press the next character's keys
             if let Some(c) = queue.chars.pop_front() {
                 if let Some(keys) = char_to_keys(c) {
-                    let press_events = create_keyboard_events(&keys, true);
+                    // Pass the actual character so shifted chars get correct text field
+                    let press_events = create_keyboard_events_with_text(&keys, true, Some(c));
                     for event in press_events {
                         keyboard_events.write(event);
                     }
                     queue.current_keys = keys;
+                    queue.current_char = Some(c);
                     queue.releasing = true;
                 }
             } else {
