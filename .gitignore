@@ -2,4 +2,5 @@
 /test-app/tests/all_types.json
 /.ropeproject/
 /.claude/transient/
+/.claude/settings.local.json
 __pycache__/
