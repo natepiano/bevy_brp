@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`brp_extras_type_text` tool**: New MCP tool for typing text sequentially via `brp_extras/type_text` method. Returns number of characters queued and any skipped unmappable characters.
+
 ## [0.18.0] - 2026-01-15
 
 ### Changed
