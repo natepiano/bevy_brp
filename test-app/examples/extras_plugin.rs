@@ -44,6 +44,7 @@ use bevy::gizmos::light::ShowLightGizmo;
 use bevy::gizmos::retained::Gizmo;
 use bevy::input::gamepad::Gamepad;
 use bevy::input::gamepad::GamepadSettings;
+use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input_focus::InputFocus;
 use bevy::input_focus::tab_navigation::TabGroup;
@@ -135,6 +136,17 @@ struct KeyboardInputHistory {
 /// Marker component for the keyboard input display text
 #[derive(Component)]
 struct KeyboardDisplayText;
+
+/// Marker component for the text input display
+#[derive(Component)]
+struct TextInputDisplay;
+
+/// Resource to store accumulated text input content, queryable via BRP
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
+struct TextInputContent {
+    pub text: String,
+}
 
 /// Test resource for BRP operations
 #[derive(Resource, Default, Reflect)]
@@ -481,6 +493,7 @@ fn main() {
         .add_plugins(brp_plugin)
         .add_plugins(MeshPickingPlugin)
         .init_resource::<KeyboardInputHistory>()
+        .init_resource::<TextInputContent>()
         .init_resource::<GlobalsUniform>()
         .insert_resource(CurrentPort(port))
         .insert_resource(WireframeConfig {
@@ -515,7 +528,14 @@ fn main() {
             (setup_test_entities, setup_ui, minimize_window_on_start),
         )
         .add_systems(PostStartup, (setup_skybox_test, setup_scene_test))
-        .add_systems(Update, (track_keyboard_input, update_keyboard_display))
+        .add_systems(
+            Update,
+            (
+                track_keyboard_input,
+                update_keyboard_display,
+                handle_text_input,
+            ),
+        )
         .run();
 }
 
@@ -1504,6 +1524,7 @@ fn spawn_text_container(parent: &mut RelatedSpawnerCommands<ChildOf>, port: &Res
             spawn_keyboard_display_text(parent, port);
             spawn_button_test(parent);
             spawn_label_test(parent);
+            spawn_text_input_section(parent);
         });
 }
 
@@ -1611,6 +1632,63 @@ fn spawn_label_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
         ),
         Name::new("BoxShadowTestEntity"),
     ));
+}
+
+fn spawn_text_input_section(parent: &mut RelatedSpawnerCommands<ChildOf>) {
+    parent.spawn((
+        Text::new(""),
+        TextFont {
+            font_size: 18.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+        bevy::text::TextBackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
+        bevy::text::TextBounds {
+            width:  Some(400.0),
+            height: Some(100.0),
+        },
+        Outline::new(Val::Px(1.0), Val::Px(0.0), Color::srgb(0.5, 0.5, 0.5)),
+        TextInputDisplay,
+        Name::new("TextInputTestEntity"),
+    ));
+}
+
+/// Handle keyboard input for the text input field
+fn handle_text_input(
+    mut events: MessageReader<KeyboardInput>,
+    mut content: ResMut<TextInputContent>,
+    mut display: Query<&mut Text, With<TextInputDisplay>>,
+) {
+    for event in events.read() {
+        if !event.state.is_pressed() {
+            continue;
+        }
+
+        match (&event.logical_key, &event.text) {
+            (Key::Backspace, _) => {
+                content.text.pop();
+            },
+            (_, Some(inserted_text)) => {
+                if inserted_text.chars().all(is_printable_char) {
+                    content.text.push_str(inserted_text);
+                }
+            },
+            _ => {},
+        }
+    }
+
+    for mut text in &mut display {
+        (**text).clone_from(&content.text);
+    }
+}
+
+/// Filter out non-printable characters (from egui-winit)
+fn is_printable_char(chr: char) -> bool {
+    let is_in_private_use_area = ('\u{e000}'..='\u{f8ff}').contains(&chr)
+        || ('\u{f0000}'..='\u{ffffd}').contains(&chr)
+        || ('\u{100000}'..='\u{10fffd}').contains(&chr);
+
+    !is_in_private_use_area && !chr.is_ascii_control()
 }
 
 /// Track keyboard input events
