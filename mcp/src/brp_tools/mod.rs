@@ -32,6 +32,8 @@ pub use tools::brp_extras_send_keys::SendKeysParams;
 pub use tools::brp_extras_send_keys::SendKeysResult;
 pub use tools::brp_extras_set_window_title::SetWindowTitleParams;
 pub use tools::brp_extras_set_window_title::SetWindowTitleResult;
+pub use tools::brp_extras_type_text::TypeTextParams;
+pub use tools::brp_extras_type_text::TypeTextResult;
 //
 // Export all parameter and result structs by name
 pub use tools::registry_schema::{RegistrySchemaParams, RegistrySchemaResult};

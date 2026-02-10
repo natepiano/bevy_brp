@@ -576,6 +576,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "smol_str",
  "strum",
  "strum_macros",
  "thiserror 2.0.17",
@@ -588,7 +589,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bevy",
- "bevy_brp_mcp_macros 0.18.0",
+ "bevy_brp_mcp_macros",
  "cargo_metadata",
  "chrono",
  "either",
@@ -618,18 +619,6 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "uuid",
-]
-
-[[package]]
-name = "bevy_brp_mcp_macros"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3895ac1b9d85d3cbf574599f92acebd6dbd8adea21615a86e5f72d189a184497"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn 2.0.114",
 ]
 
 [[package]]

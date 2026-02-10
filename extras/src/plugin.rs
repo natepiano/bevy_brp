@@ -89,6 +89,10 @@ impl Plugin for BrpExtrasPlugin {
                 keyboard::send_keys_handler,
             )
             .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}type_text"),
+                keyboard::type_text_handler,
+            )
+            .with_method(
                 format!("{EXTRAS_COMMAND_PREFIX}set_window_title"),
                 window_title::handler,
             );
@@ -97,8 +101,9 @@ impl Plugin for BrpExtrasPlugin {
 
         app.add_plugins((remote_plugin, http_plugin));
 
-        // Add the system to process timed key releases
+        // Add systems for keyboard input simulation
         app.add_systems(Update, keyboard::process_timed_key_releases);
+        app.add_systems(Update, keyboard::process_text_typing);
 
         // Add the system to handle deferred shutdown
         app.add_systems(Update, shutdown::deferred_shutdown_system);

@@ -274,6 +274,8 @@ fn generate_message_template_provider(
                 "extract_duration_ms" => quote! { 100 },
                 "extract_keys_sent" => quote! { Vec::new() },
                 "count_keys_sent" => quote! { 0 },
+                "extract_chars_queued" => quote! { 0 },
+                "extract_skipped" => quote! { Vec::new() },
                 "extract_debug_enabled" => quote! { false },
                 "extract_message" => quote! { String::new() },
                 "extract_status" => quote! { String::new() },
@@ -350,6 +352,8 @@ fn generate_message_template_provider(
                     "extract_duration_ms" => quote! { 100 },
                     "extract_keys_sent" => quote! { Vec::new() },
                     "count_keys_sent" => quote! { 0 },
+                    "extract_chars_queued" => quote! { 0 },
+                    "extract_skipped" => quote! { Vec::new() },
                     "extract_debug_enabled" => quote! { false },
                     "extract_message" => quote! { String::new() },
                     "extract_status" => quote! { String::new() },
@@ -682,6 +686,32 @@ fn generate_from_brp_client_response(
                         .and_then(|v| v.as_str())
                         .map(String::from)
                         .unwrap_or_else(|| String::new())
+                }
+            },
+            "extract_chars_queued" => {
+                // For type_text result - count of characters queued
+                quote! {
+                    #source.as_ref()
+                        .and_then(|v| v.as_object())
+                        .and_then(|obj| obj.get("chars_queued"))
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as usize)
+                        .unwrap_or(0)
+                }
+            },
+            "extract_skipped" => {
+                // For type_text result - characters that couldn't be mapped
+                quote! {
+                    #source.as_ref()
+                        .and_then(|v| v.as_object())
+                        .and_then(|obj| obj.get("skipped"))
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().and_then(|s| s.chars().next()))
+                                .collect()
+                        })
+                        .unwrap_or_else(Vec::new)
                 }
             },
             _ => panic!("Unknown computed operation: {operation}"),

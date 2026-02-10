@@ -45,8 +45,8 @@ use crate::brp_tools::{
     RemoveResourcesResult, ReparentEntitiesParams, ReparentEntitiesResult, RpcDiscoverParams,
     RpcDiscoverResult, ScreenshotParams, ScreenshotResult, SendKeysParams, SendKeysResult,
     SetWindowTitleParams, SetWindowTitleResult, SpawnEntityParams, SpawnEntityResult,
-    StopWatchParams, TriggerEventParams, TriggerEventResult, TypeGuideParams,
-    WorldGetComponentsWatch,
+    StopWatchParams, TriggerEventParams, TriggerEventResult, TypeGuideParams, TypeTextParams,
+    TypeTextResult, WorldGetComponentsWatch,
 };
 use crate::log_tools::DeleteLogs;
 use crate::log_tools::DeleteLogsParams;
@@ -258,6 +258,13 @@ pub enum ToolName {
         result = "SendKeysResult"
     )]
     BrpExtrasSendKeys,
+    /// `brp_extras_type_text` - Type text sequentially (one char per frame)
+    #[brp_tool(
+        brp_method = "brp_extras/type_text",
+        params = "TypeTextParams",
+        result = "TypeTextResult"
+    )]
+    BrpExtrasTypeText,
     /// `brp_extras_set_window_title` - Change window title
     #[brp_tool(
         brp_method = "brp_extras/set_window_title",
@@ -442,6 +449,11 @@ impl ToolName {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
+            Self::BrpExtrasTypeText => Annotation::new(
+                "type text sequentially",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
             Self::WorldGetComponentsWatch => Annotation::new(
                 "watch component changes",
                 ToolCategory::WatchMonitoring,
@@ -594,6 +606,7 @@ impl ToolName {
                 Some(parameters::build_parameters_from::<ScreenshotParams>)
             },
             Self::BrpExtrasSendKeys => Some(parameters::build_parameters_from::<SendKeysParams>),
+            Self::BrpExtrasTypeText => Some(parameters::build_parameters_from::<TypeTextParams>),
             Self::BrpExtrasSetWindowTitle => {
                 Some(parameters::build_parameters_from::<SetWindowTitleParams>)
             },
@@ -657,6 +670,7 @@ impl ToolName {
             Self::WorldTriggerEvent => Arc::new(WorldTriggerEvent),
             Self::BrpExtrasScreenshot => Arc::new(BrpExtrasScreenshot),
             Self::BrpExtrasSendKeys => Arc::new(BrpExtrasSendKeys),
+            Self::BrpExtrasTypeText => Arc::new(BrpExtrasTypeText),
             Self::BrpExtrasSetWindowTitle => Arc::new(BrpExtrasSetWindowTitle),
 
             // Special tools with their own implementations

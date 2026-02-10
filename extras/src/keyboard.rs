@@ -26,10 +26,24 @@ const DEFAULT_KEY_DURATION_MS: u32 = 100;
 /// Component that tracks keys that need to be released after a duration
 #[derive(Component)]
 pub struct TimedKeyRelease {
-    /// The key codes to release
-    pub keys:  Vec<KeyCode>,
+    /// The key code wrappers to release (stores wrapper for text field generation)
+    pub keys:  Vec<KeyCodeWrapper>,
     /// Timer tracking the remaining duration
     pub timer: Timer,
+}
+
+/// Component for sequential text typing (one character per frame).
+/// Used by `type_text` RPC to simulate realistic typing.
+#[derive(Component)]
+pub struct TextTypingQueue {
+    /// Characters remaining to type
+    pub chars:        std::collections::VecDeque<char>,
+    /// Currently pressed keys (waiting for release next frame)
+    pub current_keys: Vec<KeyCodeWrapper>,
+    /// The character we're currently typing (for proper text field on shifted chars)
+    pub current_char: Option<char>,
+    /// Phase: true = need to release current keys, false = ready to press next
+    pub releasing:    bool,
 }
 
 /// Wrapper enum for Bevy's `KeyCode` with strum derives for string conversion
@@ -184,6 +198,74 @@ pub enum KeyCodeWrapper {
 }
 
 impl KeyCodeWrapper {
+    /// Convert the wrapper to a character for text input (lowercase, unshifted).
+    ///
+    /// Returns `None` for non-printable keys (modifiers, function keys, etc.)
+    #[must_use]
+    pub const fn to_char(self) -> Option<char> {
+        match self {
+            // Letters (lowercase)
+            Self::KeyA => Some('a'),
+            Self::KeyB => Some('b'),
+            Self::KeyC => Some('c'),
+            Self::KeyD => Some('d'),
+            Self::KeyE => Some('e'),
+            Self::KeyF => Some('f'),
+            Self::KeyG => Some('g'),
+            Self::KeyH => Some('h'),
+            Self::KeyI => Some('i'),
+            Self::KeyJ => Some('j'),
+            Self::KeyK => Some('k'),
+            Self::KeyL => Some('l'),
+            Self::KeyM => Some('m'),
+            Self::KeyN => Some('n'),
+            Self::KeyO => Some('o'),
+            Self::KeyP => Some('p'),
+            Self::KeyQ => Some('q'),
+            Self::KeyR => Some('r'),
+            Self::KeyS => Some('s'),
+            Self::KeyT => Some('t'),
+            Self::KeyU => Some('u'),
+            Self::KeyV => Some('v'),
+            Self::KeyW => Some('w'),
+            Self::KeyX => Some('x'),
+            Self::KeyY => Some('y'),
+            Self::KeyZ => Some('z'),
+            // Digits and numpad digits
+            Self::Digit0 | Self::Numpad0 => Some('0'),
+            Self::Digit1 | Self::Numpad1 => Some('1'),
+            Self::Digit2 | Self::Numpad2 => Some('2'),
+            Self::Digit3 | Self::Numpad3 => Some('3'),
+            Self::Digit4 | Self::Numpad4 => Some('4'),
+            Self::Digit5 | Self::Numpad5 => Some('5'),
+            Self::Digit6 | Self::Numpad6 => Some('6'),
+            Self::Digit7 | Self::Numpad7 => Some('7'),
+            Self::Digit8 | Self::Numpad8 => Some('8'),
+            Self::Digit9 | Self::Numpad9 => Some('9'),
+            // Special printable keys
+            Self::Space => Some(' '),
+            Self::Tab => Some('\t'),
+            Self::Enter | Self::NumpadEnter => Some('\n'),
+            // Punctuation (US layout, unshifted)
+            Self::Backquote => Some('`'),
+            Self::Backslash => Some('\\'),
+            Self::BracketLeft => Some('['),
+            Self::BracketRight => Some(']'),
+            Self::Comma => Some(','),
+            Self::Equal => Some('='),
+            Self::Minus | Self::NumpadSubtract => Some('-'),
+            Self::Period | Self::NumpadDecimal => Some('.'),
+            Self::Quote => Some('\''),
+            Self::Semicolon => Some(';'),
+            Self::Slash | Self::NumpadDivide => Some('/'),
+            // Numpad-only keys
+            Self::NumpadAdd => Some('+'),
+            Self::NumpadMultiply => Some('*'),
+            // Non-printable keys
+            _ => None,
+        }
+    }
+
     /// Convert the wrapper to a Bevy `KeyCode`
     #[must_use]
     #[allow(clippy::too_many_lines)]
@@ -400,19 +482,19 @@ pub struct SendKeysResponse {
     pub duration_ms: u32,
 }
 
-/// Validate key codes and return the parsed key codes
-fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCode)>, BrpError> {
+/// Validate key codes and return the parsed key code wrappers
+fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCodeWrapper)>, BrpError> {
     let mut validated_keys = Vec::new();
 
     for key_str in keys {
-        match parse_key_code(key_str) {
-            Ok(key_code) => {
-                validated_keys.push((key_str.clone(), key_code));
+        match KeyCodeWrapper::from_str(key_str) {
+            Ok(wrapper) => {
+                validated_keys.push((key_str.clone(), wrapper));
             },
-            Err(e) => {
+            Err(_) => {
                 return Err(BrpError {
                     code:    INVALID_PARAMS,
-                    message: format!("Invalid key code '{key_str}': {e}"),
+                    message: format!("Invalid key code '{key_str}': Unknown key code"),
                     data:    None,
                 });
             },
@@ -422,28 +504,87 @@ fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCode)>, BrpError> {
     Ok(validated_keys)
 }
 
-/// Create keyboard events from validated key codes
+/// Create keyboard events from validated key code wrappers.
+///
+/// Populates `logical_key` and `text` fields for printable characters,
+/// enabling text input simulation that works with Bevy's text input systems.
 fn create_keyboard_events(
-    key_codes: &[KeyCode],
+    wrappers: &[KeyCodeWrapper],
     press: bool,
 ) -> Vec<bevy::input::keyboard::KeyboardInput> {
+    create_keyboard_events_with_text(wrappers, press, None)
+}
+
+/// Create keyboard events with an optional target character override.
+///
+/// When `target_char` is provided, it will be used as the `text` field
+/// for the final non-modifier key in the sequence. This is essential for
+/// shifted characters (e.g., `!` requires Shift+1, but text should be `!`).
+fn create_keyboard_events_with_text(
+    wrappers: &[KeyCodeWrapper],
+    press: bool,
+    target_char: Option<char>,
+) -> Vec<bevy::input::keyboard::KeyboardInput> {
+    use bevy::input::keyboard::Key;
+    use bevy::input::keyboard::NativeKey;
+    use smol_str::SmolStr;
+
     let state = if press {
         ButtonState::Pressed
     } else {
         ButtonState::Released
     };
 
-    key_codes
+    // Find the last non-modifier key index (that's where we set the text)
+    let last_non_modifier_idx = wrappers.iter().rposition(|w| {
+        !matches!(
+            w,
+            KeyCodeWrapper::ShiftLeft
+                | KeyCodeWrapper::ShiftRight
+                | KeyCodeWrapper::ControlLeft
+                | KeyCodeWrapper::ControlRight
+                | KeyCodeWrapper::AltLeft
+                | KeyCodeWrapper::AltRight
+                | KeyCodeWrapper::SuperLeft
+                | KeyCodeWrapper::SuperRight
+        )
+    });
+
+    wrappers
         .iter()
-        .map(|&key_code| bevy::input::keyboard::KeyboardInput {
-            state,
-            key_code,
-            logical_key: bevy::input::keyboard::Key::Unidentified(
-                bevy::input::keyboard::NativeKey::Unidentified,
-            ),
-            window: Entity::PLACEHOLDER,
-            repeat: false,
-            text: None,
+        .enumerate()
+        .map(|(idx, &wrapper)| {
+            let key_code = wrapper.to_key_code();
+            let is_target_key = Some(idx) == last_non_modifier_idx;
+
+            // Use target_char for the final non-modifier key, otherwise use to_char()
+            let char_opt = if is_target_key && target_char.is_some() {
+                target_char
+            } else {
+                wrapper.to_char()
+            };
+
+            // Build logical_key and text based on whether this is a printable character
+            let (logical_key, text) =
+                char_opt.map_or((Key::Unidentified(NativeKey::Unidentified), None), |c| {
+                    let s = SmolStr::new_inline(&c.to_string());
+                    // Only populate text on press events, not release, and only for the target key
+                    let text = if press && is_target_key {
+                        Some(s.clone())
+                    } else {
+                        None
+                    };
+                    (Key::Character(s), text)
+                });
+
+            bevy::input::keyboard::KeyboardInput {
+                state,
+                key_code,
+                logical_key,
+                window: Entity::PLACEHOLDER,
+                repeat: false,
+                text,
+            }
         })
         .collect()
 }
@@ -477,7 +618,7 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     // Validate key codes
     let validated_keys = validate_keys(&request.keys)?;
     let valid_key_strings: Vec<String> = validated_keys.iter().map(|(s, _)| s.clone()).collect();
-    let key_codes: Vec<KeyCode> = validated_keys.iter().map(|(_, kc)| *kc).collect();
+    let wrappers: Vec<KeyCodeWrapper> = validated_keys.iter().map(|(_, w)| *w).collect();
 
     // Validate duration doesn't exceed maximum
     if request.duration_ms > MAX_KEY_DURATION_MS {
@@ -492,15 +633,15 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     }
 
     // Always send press events first
-    let press_events = create_keyboard_events(&key_codes, true);
+    let press_events = create_keyboard_events(&wrappers, true);
     for event in press_events {
         world.write_message(event);
     }
 
     // Always spawn an entity to handle the timed release
-    if !key_codes.is_empty() {
+    if !wrappers.is_empty() {
         world.spawn(TimedKeyRelease {
-            keys:  key_codes,
+            keys:  wrappers,
             timer: Timer::new(
                 Duration::from_millis(u64::from(request.duration_ms)),
                 TimerMode::Once,
@@ -524,13 +665,6 @@ pub struct KeyCodeInfo {
     pub category: String,
 }
 
-/// Parse a string into a `KeyCode`
-fn parse_key_code(s: &str) -> Result<KeyCode, String> {
-    KeyCodeWrapper::from_str(s)
-        .map(KeyCodeWrapper::to_key_code)
-        .map_err(|_| format!("Unknown key code: {s}"))
-}
-
 /// System that processes timed key releases
 pub fn process_timed_key_releases(
     mut commands: Commands,
@@ -542,23 +676,198 @@ pub fn process_timed_key_releases(
         timed_release.timer.tick(time.delta());
 
         if timed_release.timer.is_finished() {
-            // Send release events for all keys
-            for &key_code in &timed_release.keys {
-                let event = bevy::input::keyboard::KeyboardInput {
-                    state: ButtonState::Released,
-                    key_code,
-                    logical_key: bevy::input::keyboard::Key::Unidentified(
-                        bevy::input::keyboard::NativeKey::Unidentified,
-                    ),
-                    window: Entity::PLACEHOLDER,
-                    repeat: false,
-                    text: None,
-                };
+            // Send release events for all keys (text is None for release events)
+            let release_events = create_keyboard_events(&timed_release.keys, false);
+            for event in release_events {
                 keyboard_events.write(event);
             }
 
             // Remove the component after releasing
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+// ============================================================================
+// TYPE TEXT - Sequential character typing
+// ============================================================================
+
+/// Request structure for `type_text`
+#[derive(Debug, Deserialize)]
+pub struct TypeTextRequest {
+    /// Text to type (supports letters, numbers, symbols, newlines, tabs)
+    pub text: String,
+}
+
+/// Response structure for `type_text`
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TypeTextResponse {
+    /// Whether the operation was initiated successfully
+    pub success:      bool,
+    /// Number of characters queued for typing
+    pub chars_queued: usize,
+    /// Characters that couldn't be mapped to keys (skipped)
+    pub skipped:      Vec<char>,
+}
+
+/// Convert a character to the key(s) needed to type it.
+/// Returns None for unmappable characters.
+fn char_to_keys(c: char) -> Option<Vec<KeyCodeWrapper>> {
+    match c {
+        // Lowercase letters
+        'a'..='z' => {
+            let key_name = format!("Key{}", c.to_ascii_uppercase());
+            KeyCodeWrapper::from_str(&key_name).ok().map(|k| vec![k])
+        },
+        // Uppercase letters (need Shift)
+        'A'..='Z' => {
+            let key_name = format!("Key{c}");
+            KeyCodeWrapper::from_str(&key_name)
+                .ok()
+                .map(|k| vec![KeyCodeWrapper::ShiftLeft, k])
+        },
+        // Numbers
+        '0'..='9' => {
+            let key_name = format!("Digit{c}");
+            KeyCodeWrapper::from_str(&key_name).ok().map(|k| vec![k])
+        },
+        // Symbols - unshifted
+        ' ' => Some(vec![KeyCodeWrapper::Space]),
+        '-' => Some(vec![KeyCodeWrapper::Minus]),
+        '=' => Some(vec![KeyCodeWrapper::Equal]),
+        '[' => Some(vec![KeyCodeWrapper::BracketLeft]),
+        ']' => Some(vec![KeyCodeWrapper::BracketRight]),
+        '\\' => Some(vec![KeyCodeWrapper::Backslash]),
+        ';' => Some(vec![KeyCodeWrapper::Semicolon]),
+        '\'' => Some(vec![KeyCodeWrapper::Quote]),
+        '`' => Some(vec![KeyCodeWrapper::Backquote]),
+        ',' => Some(vec![KeyCodeWrapper::Comma]),
+        '.' => Some(vec![KeyCodeWrapper::Period]),
+        '/' => Some(vec![KeyCodeWrapper::Slash]),
+        // Symbols - shifted
+        '!' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit1]),
+        '@' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit2]),
+        '#' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit3]),
+        '$' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit4]),
+        '%' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit5]),
+        '^' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit6]),
+        '&' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit7]),
+        '*' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit8]),
+        '(' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit9]),
+        ')' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Digit0]),
+        '_' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Minus]),
+        '+' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Equal]),
+        '{' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::BracketLeft]),
+        '}' => Some(vec![
+            KeyCodeWrapper::ShiftLeft,
+            KeyCodeWrapper::BracketRight,
+        ]),
+        '|' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Backslash]),
+        ':' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Semicolon]),
+        '"' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Quote]),
+        '~' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Backquote]),
+        '<' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Comma]),
+        '>' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Period]),
+        '?' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Slash]),
+        // Control characters
+        '\n' => Some(vec![KeyCodeWrapper::Enter]),
+        '\t' => Some(vec![KeyCodeWrapper::Tab]),
+        // Unmappable
+        _ => None,
+    }
+}
+
+/// Handler for the `type_text` BRP method.
+/// Types text one character per frame, simulating realistic keyboard input.
+pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: TypeTextRequest = if let Some(params) = params {
+        serde_json::from_value(params).map_err(|e| BrpError {
+            code:    INVALID_PARAMS,
+            message: format!("Invalid request format: {e}"),
+            data:    None,
+        })?
+    } else {
+        return Err(BrpError {
+            code:    INVALID_PARAMS,
+            message: "Missing request parameters".to_string(),
+            data:    None,
+        });
+    };
+
+    if request.text.is_empty() {
+        return Ok(json!(TypeTextResponse {
+            success:      true,
+            chars_queued: 0,
+            skipped:      vec![],
+        }));
+    }
+
+    // Convert text to character queue, tracking unmappable chars
+    let mut chars = std::collections::VecDeque::new();
+    let mut skipped = Vec::new();
+
+    for c in request.text.chars() {
+        if char_to_keys(c).is_some() {
+            chars.push_back(c);
+        } else {
+            skipped.push(c);
+        }
+    }
+
+    let chars_queued = chars.len();
+
+    // Spawn the typing queue component
+    if !chars.is_empty() {
+        world.spawn(TextTypingQueue {
+            chars,
+            current_keys: vec![],
+            current_char: None,
+            releasing: false,
+        });
+    }
+
+    Ok(json!(TypeTextResponse {
+        success: true,
+        chars_queued,
+        skipped,
+    }))
+}
+
+/// System that processes text typing queues (one character per frame).
+pub fn process_text_typing(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut TextTypingQueue)>,
+    mut keyboard_events: MessageWriter<bevy::input::keyboard::KeyboardInput>,
+) {
+    for (entity, mut queue) in &mut query {
+        if queue.releasing {
+            // Release the current keys
+            if !queue.current_keys.is_empty() {
+                let release_events = create_keyboard_events(&queue.current_keys, false);
+                for event in release_events {
+                    keyboard_events.write(event);
+                }
+                queue.current_keys.clear();
+                queue.current_char = None;
+            }
+            queue.releasing = false;
+        } else {
+            // Press the next character's keys
+            if let Some(c) = queue.chars.pop_front() {
+                if let Some(keys) = char_to_keys(c) {
+                    // Pass the actual character so shifted chars get correct text field
+                    let press_events = create_keyboard_events_with_text(&keys, true, Some(c));
+                    for event in press_events {
+                        keyboard_events.write(event);
+                    }
+                    queue.current_keys = keys;
+                    queue.current_char = Some(c);
+                    queue.releasing = true;
+                }
+            } else {
+                // All done, despawn
+                commands.entity(entity).despawn();
+            }
         }
     }
 }
