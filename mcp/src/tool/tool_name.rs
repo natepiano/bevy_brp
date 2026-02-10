@@ -45,8 +45,8 @@ use crate::brp_tools::{
     RemoveResourcesResult, ReparentEntitiesParams, ReparentEntitiesResult, RpcDiscoverParams,
     RpcDiscoverResult, ScreenshotParams, ScreenshotResult, SendKeysParams, SendKeysResult,
     SetWindowTitleParams, SetWindowTitleResult, SpawnEntityParams, SpawnEntityResult,
-    StopWatchParams, TriggerEventParams, TriggerEventResult, TypeGuideParams,
-    TypeTextParams, TypeTextResult, WorldGetComponentsWatch,
+    StopWatchParams, TriggerEventParams, TriggerEventResult, TypeGuideParams, TypeTextParams,
+    TypeTextResult, WorldGetComponentsWatch,
 };
 use crate::log_tools::DeleteLogs;
 use crate::log_tools::DeleteLogsParams;

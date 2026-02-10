@@ -37,13 +37,13 @@ pub struct TimedKeyRelease {
 #[derive(Component)]
 pub struct TextTypingQueue {
     /// Characters remaining to type
-    pub chars: std::collections::VecDeque<char>,
+    pub chars:        std::collections::VecDeque<char>,
     /// Currently pressed keys (waiting for release next frame)
     pub current_keys: Vec<KeyCodeWrapper>,
     /// The character we're currently typing (for proper text field on shifted chars)
     pub current_char: Option<char>,
     /// Phase: true = need to release current keys, false = ready to press next
-    pub releasing: bool,
+    pub releasing:    bool,
 }
 
 /// Wrapper enum for Bevy's `KeyCode` with strum derives for string conversion
@@ -231,21 +231,21 @@ impl KeyCodeWrapper {
             Self::KeyX => Some('x'),
             Self::KeyY => Some('y'),
             Self::KeyZ => Some('z'),
-            // Digits
-            Self::Digit0 => Some('0'),
-            Self::Digit1 => Some('1'),
-            Self::Digit2 => Some('2'),
-            Self::Digit3 => Some('3'),
-            Self::Digit4 => Some('4'),
-            Self::Digit5 => Some('5'),
-            Self::Digit6 => Some('6'),
-            Self::Digit7 => Some('7'),
-            Self::Digit8 => Some('8'),
-            Self::Digit9 => Some('9'),
+            // Digits and numpad digits
+            Self::Digit0 | Self::Numpad0 => Some('0'),
+            Self::Digit1 | Self::Numpad1 => Some('1'),
+            Self::Digit2 | Self::Numpad2 => Some('2'),
+            Self::Digit3 | Self::Numpad3 => Some('3'),
+            Self::Digit4 | Self::Numpad4 => Some('4'),
+            Self::Digit5 | Self::Numpad5 => Some('5'),
+            Self::Digit6 | Self::Numpad6 => Some('6'),
+            Self::Digit7 | Self::Numpad7 => Some('7'),
+            Self::Digit8 | Self::Numpad8 => Some('8'),
+            Self::Digit9 | Self::Numpad9 => Some('9'),
             // Special printable keys
             Self::Space => Some(' '),
             Self::Tab => Some('\t'),
-            Self::Enter => Some('\n'),
+            Self::Enter | Self::NumpadEnter => Some('\n'),
             // Punctuation (US layout, unshifted)
             Self::Backquote => Some('`'),
             Self::Backslash => Some('\\'),
@@ -253,28 +253,14 @@ impl KeyCodeWrapper {
             Self::BracketRight => Some(']'),
             Self::Comma => Some(','),
             Self::Equal => Some('='),
-            Self::Minus => Some('-'),
-            Self::Period => Some('.'),
+            Self::Minus | Self::NumpadSubtract => Some('-'),
+            Self::Period | Self::NumpadDecimal => Some('.'),
             Self::Quote => Some('\''),
             Self::Semicolon => Some(';'),
-            Self::Slash => Some('/'),
-            // Numpad digits
-            Self::Numpad0 => Some('0'),
-            Self::Numpad1 => Some('1'),
-            Self::Numpad2 => Some('2'),
-            Self::Numpad3 => Some('3'),
-            Self::Numpad4 => Some('4'),
-            Self::Numpad5 => Some('5'),
-            Self::Numpad6 => Some('6'),
-            Self::Numpad7 => Some('7'),
-            Self::Numpad8 => Some('8'),
-            Self::Numpad9 => Some('9'),
+            Self::Slash | Self::NumpadDivide => Some('/'),
+            // Numpad-only keys
             Self::NumpadAdd => Some('+'),
-            Self::NumpadSubtract => Some('-'),
             Self::NumpadMultiply => Some('*'),
-            Self::NumpadDivide => Some('/'),
-            Self::NumpadDecimal => Some('.'),
-            Self::NumpadEnter => Some('\n'),
             // Non-printable keys
             _ => None,
         }
@@ -539,7 +525,8 @@ fn create_keyboard_events_with_text(
     press: bool,
     target_char: Option<char>,
 ) -> Vec<bevy::input::keyboard::KeyboardInput> {
-    use bevy::input::keyboard::{Key, NativeKey};
+    use bevy::input::keyboard::Key;
+    use bevy::input::keyboard::NativeKey;
     use smol_str::SmolStr;
 
     let state = if press {
@@ -578,8 +565,8 @@ fn create_keyboard_events_with_text(
             };
 
             // Build logical_key and text based on whether this is a printable character
-            let (logical_key, text) = match char_opt {
-                Some(c) => {
+            let (logical_key, text) =
+                char_opt.map_or((Key::Unidentified(NativeKey::Unidentified), None), |c| {
                     let s = SmolStr::new_inline(&c.to_string());
                     // Only populate text on press events, not release, and only for the target key
                     let text = if press && is_target_key {
@@ -588,9 +575,7 @@ fn create_keyboard_events_with_text(
                         None
                     };
                     (Key::Character(s), text)
-                },
-                None => (Key::Unidentified(NativeKey::Unidentified), None),
-            };
+                });
 
             bevy::input::keyboard::KeyboardInput {
                 state,
@@ -718,11 +703,11 @@ pub struct TypeTextRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TypeTextResponse {
     /// Whether the operation was initiated successfully
-    pub success: bool,
+    pub success:      bool,
     /// Number of characters queued for typing
     pub chars_queued: usize,
     /// Characters that couldn't be mapped to keys (skipped)
-    pub skipped: Vec<char>,
+    pub skipped:      Vec<char>,
 }
 
 /// Convert a character to the key(s) needed to type it.
@@ -733,17 +718,19 @@ fn char_to_keys(c: char) -> Option<Vec<KeyCodeWrapper>> {
         'a'..='z' => {
             let key_name = format!("Key{}", c.to_ascii_uppercase());
             KeyCodeWrapper::from_str(&key_name).ok().map(|k| vec![k])
-        }
+        },
         // Uppercase letters (need Shift)
         'A'..='Z' => {
-            let key_name = format!("Key{}", c);
-            KeyCodeWrapper::from_str(&key_name).ok().map(|k| vec![KeyCodeWrapper::ShiftLeft, k])
-        }
+            let key_name = format!("Key{c}");
+            KeyCodeWrapper::from_str(&key_name)
+                .ok()
+                .map(|k| vec![KeyCodeWrapper::ShiftLeft, k])
+        },
         // Numbers
         '0'..='9' => {
-            let key_name = format!("Digit{}", c);
+            let key_name = format!("Digit{c}");
             KeyCodeWrapper::from_str(&key_name).ok().map(|k| vec![k])
-        }
+        },
         // Symbols - unshifted
         ' ' => Some(vec![KeyCodeWrapper::Space]),
         '-' => Some(vec![KeyCodeWrapper::Minus]),
@@ -771,7 +758,10 @@ fn char_to_keys(c: char) -> Option<Vec<KeyCodeWrapper>> {
         '_' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Minus]),
         '+' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Equal]),
         '{' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::BracketLeft]),
-        '}' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::BracketRight]),
+        '}' => Some(vec![
+            KeyCodeWrapper::ShiftLeft,
+            KeyCodeWrapper::BracketRight,
+        ]),
         '|' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Backslash]),
         ':' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Semicolon]),
         '"' => Some(vec![KeyCodeWrapper::ShiftLeft, KeyCodeWrapper::Quote]),
@@ -806,9 +796,9 @@ pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
 
     if request.text.is_empty() {
         return Ok(json!(TypeTextResponse {
-            success: true,
+            success:      true,
             chars_queued: 0,
-            skipped: vec![],
+            skipped:      vec![],
         }));
     }
 
