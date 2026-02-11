@@ -3,98 +3,84 @@
     "test_name": "large_response",
     "test_file": ".claude/integration_tests/large_response.md",
     "app_name": "extras_plugin",
-    "app_type": "example",
-    "test_objective": "Test registry_schema file output for large responses"
+    "app_type": "example"
   },
   {
     "test_name": "type_guide",
     "test_file": ".claude/integration_tests/type_guide.md",
     "app_name": "extras_plugin",
-    "app_type": "example",
-    "test_objective": "Test brp_type_guide discovery, metadata validation, and type_guide embedding in format errors"
+    "app_type": "example"
   },
   {
     "test_name": "list",
     "test_file": ".claude/integration_tests/list.md",
     "app_name": "N/A",
-    "app_type": null,
-    "test_objective": "Test brp_list_bevy_apps, brp_list_bevy_examples, brp_list_brp_apps"
+    "app_type": null
   },
   {
     "test_name": "apps",
     "test_file": ".claude/integration_tests/apps.md",
     "app_name": "test_app",
-    "app_type": "app",
-    "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app"
+    "app_type": "app"
   },
   {
     "test_name": "introspection",
     "test_file": ".claude/integration_tests/introspection.md",
     "app_name": "extras_plugin",
-    "app_type": "example",
-    "test_objective": "Test rpc_discover, registry_schema, list operations"
+    "app_type": "example"
   },
   {
     "test_name": "data_operations",
     "test_file": ".claude/integration_tests/data_operations.md",
     "app_name": "extras_plugin",
-    "app_type": "example",
-    "test_objective": "Test spawn, insert, get, remove, mutate operations"
+    "app_type": "example"
   },
   {
     "test_name": "watch",
     "test_file": ".claude/integration_tests/watch.md",
     "app_name": "extras_plugin",
-    "app_type": "example",
-    "test_objective": "Test get_componentswatch, list_components_watch, active_watches, stop_watch"
+    "app_type": "example"
   },
   {
     "test_name": "resource",
     "test_file": ".claude/integration_tests/resource.md",
     "app_name": "extras_plugin",
-    "app_type": "example",
-    "test_objective": "Test insert_resource"
+    "app_type": "example"
   },
   {
     "test_name": "shutdown",
     "test_file": ".claude/integration_tests/shutdown.md",
     "app_name": "various",
-    "app_type": null,
-    "test_objective": "Test all success and error cases for brp_status and brp_shutdown"
+    "app_type": null
   },
   {
     "test_name": "extras",
     "test_file": ".claude/integration_tests/extras.md",
     "app_name": "extras_plugin",
-    "app_type": "example",
-    "test_objective": "Test screenshot, send_keys"
+    "app_type": "example"
   },
   {
     "test_name": "path",
     "test_file": ".claude/integration_tests/path.md",
     "app_name": "various",
-    "app_type": null,
-    "test_objective": "Test path parameter handling for duplicate names"
+    "app_type": null
   },
   {
     "test_name": "get",
     "test_file": ".claude/integration_tests/get.md",
     "app_name": "extras_plugin",
-    "app_type": "example",
-    "test_objective": "Test bevy_get strict parameter behavior with valid and invalid components"
+    "app_type": "example"
   },
   {
     "test_name": "query",
     "test_file": ".claude/integration_tests/query.md",
     "app_name": "extras_plugin",
-    "app_type": "example",
-    "test_objective": "Test world.query with array syntax, \"all\" option, filters, and edge cases for Bevy 0.17.2 ComponentSelector"
+    "app_type": "example"
   },
   {
     "test_name": "trigger_event",
     "test_file": ".claude/integration_tests/trigger_event.md",
     "app_name": "event_test",
-    "app_type": "example",
-    "test_objective": "Test world_trigger_event for unit events, payload events, and error handling"
+    "app_type": "example"
   }
 ]

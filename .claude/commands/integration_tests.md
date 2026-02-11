@@ -1,8 +1,9 @@
 # BRP Test Suite Runner
 
 ## Configuration
-PARALLEL_TESTS = 14  # Number of tests to run concurrently
+PARALLEL_TESTS = 7  # Number of tests to run concurrently
 TEST_CONFIG_FILE = .claude/config/integration_tests.json  # Test configuration file location
+AGENT_MODEL = sonnet  # Model for test runner agents (sonnet is concise and fast for execution tasks)
 
 ## Overview
 
@@ -26,7 +27,8 @@ This file contains an array of test configurations with the following structure:
 - `test_file`: Test file path (relative to project root)
 - `app_name`: App/example to launch (or "N/A" or "various")
 - `app_type`: Type of app - "example" or "app" (null for "various" or "N/A")
-- `test_objective`: What the test validates
+
+**Note**: Test objectives are extracted from each test file's `## Objective` section, not stored in this config.
 
 **Dynamic Port Allocation**:
 - BASE_PORT = 20100
@@ -109,7 +111,8 @@ Configuration: Port [ASSIGNED_PORT], App [APP_NAME]
 
 **Your Task:**
 A [APP_NAME] app is running on port [ASSIGNED_PORT] with BRP enabled.
-Execute test procedures from file: [TEST_FILE]
+Read [TEST_FILE] and execute each numbered test step exactly as written.
+Use only the exact types, values, and tool parameters specified in the test file.
 
 **CRITICAL PORT REQUIREMENT:**
 - **ALL BRP operations MUST use port [ASSIGNED_PORT]**
@@ -176,7 +179,7 @@ Configuration: App [APP_NAME]
 
 **Your Task:**
 1. Launch apps as needed using MCP tools
-2. Execute test procedures from file: [TEST_FILE]
+2. Read [TEST_FILE] and execute each numbered test step exactly as written. Use only the exact types, values, and tool parameters specified in the test file.
 3. Clean up any apps you launched using MCP tools
 
 **CRITICAL TOOL USAGE - USE MCP TOOLS DIRECTLY:**
@@ -233,11 +236,11 @@ Configuration: App [APP_NAME]
 2. Execute <AllocatePortFromPool/> for single port
 3. Execute <LaunchDedicatedApp/> with instance_count=1
 4. Execute <VerifyBrpConnectivity/> for assigned port
-5. **Execute Test**: Use DedicatedAppPrompt template with assigned port
+5. **Execute Test**: Use DedicatedAppPrompt template with assigned port, model=${AGENT_MODEL}
 6. Execute <CleanupApps/> for single app
 
 **For self-managed tests (app_name is "various" or "N/A"):**
-1. **Execute Test**: Use SelfManagedPrompt template directly
+1. **Execute Test**: Use SelfManagedPrompt template directly, model=${AGENT_MODEL}
 
 ### Error Handling
 
@@ -296,20 +299,20 @@ INCORRECT: 12 separate messages each with one Task tool use
 
 1. **Load Configuration**: Read ${TEST_CONFIG_FILE}
 
-2. **Extract Test List**: Execute this EXACT command:
+2. **Extract Test List and Objectives**: Execute this EXACT command:
    ```bash
-   jq -c '.[] | {test_name, test_file, app_name, app_type, test_objective}' ${TEST_CONFIG_FILE}
+   jq -c '.[] | {test_name, test_file, app_name, app_type}' ${TEST_CONFIG_FILE}
    ```
-   This produces one JSON object per line, in config order, with all fields needed.
+   This produces one JSON object per line, in config order.
 
 3. **Process Each Test in Order**: For each line of output from step 2:
    - Extract test_name field: this is the test identifier
    - Extract app_name field: this determines port assignment
    - Extract app_type field: this determines launch tool
    - Extract test_file field: this is the test specification path
-   - Extract test_objective field: this describes what the test validates
+   - Extract test objective: Read the test_file and extract the first line after `## Objective` (use: `grep -A 1 "^## Objective" "$test_file" | tail -1`)
 
-4. **Assign Ports Using Dynamic Algorithm**:
+4. **Assign Ports and Extract Objectives**:
    - From the app requirements analysis (step 2 of App Launch Phase), build port pools:
      - Start at BASE_PORT=20100
      - For each app group in order: assign a port range [current_port, current_port + count)
@@ -317,6 +320,7 @@ INCORRECT: 12 separate messages each with one Task tool use
    - For each test in order from step 2:
      - If app_name is "various" or "N/A": assign port=null (self-managed, no port needed)
      - Otherwise: assign port from that app_name's pool, then increment the pool's next port
+     - Extract objective from test_file: `grep -A 1 "^## Objective" "$test_file" | tail -1`
    - Store result: create mapping of test_name → {port, app_name, app_type, test_file, test_objective}
 
 5. **Set Window Titles**: For each test where port is not null, execute:
@@ -335,12 +339,12 @@ INCORRECT: 12 separate messages each with one Task tool use
      - Set [ASSIGNED_PORT] to port from step 4 mapping
      - Set [APP_NAME] to app_name from config
      - Set [TEST_FILE] to test_file from config
-     - Set [TEST_OBJECTIVE] to test_objective from config
+     - Set [TEST_OBJECTIVE] to test_objective from step 4 mapping (extracted from markdown)
    - If test has no port (null): use SelfManagedPrompt template
      - Set [TEST_NAME] to test_name from config
      - Set [APP_NAME] to app_name from config
      - Set [TEST_FILE] to test_file from config
-     - Set [TEST_OBJECTIVE] to test_objective from config
+     - Set [TEST_OBJECTIVE] to test_objective from step 4 mapping (extracted from markdown)
 
 7. **Execute All Tests in Parallel**:
    - Build batches of tests to run in parallel using prompts from step 6
@@ -350,9 +354,9 @@ INCORRECT: 12 separate messages each with one Task tool use
      - Example structure for parallel execution:
        ```
        <single_message>
-       Task(description="Execute test1", prompt=DedicatedAppPrompt_for_test1)
-       Task(description="Execute test2", prompt=DedicatedAppPrompt_for_test2)
-       Task(description="Execute test3", prompt=SelfManagedPrompt_for_test3)
+       Task(description="Execute test1", prompt=DedicatedAppPrompt_for_test1, model=AGENT_MODEL)
+       Task(description="Execute test2", prompt=DedicatedAppPrompt_for_test2, model=AGENT_MODEL)
+       Task(description="Execute test3", prompt=SelfManagedPrompt_for_test3, model=AGENT_MODEL)
        ... up to PARALLEL_TESTS tasks in ONE message
        </single_message>
        ```
