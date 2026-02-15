@@ -109,11 +109,22 @@ impl McpService {
                 Ok(paths)
             },
             Err(e) => {
-                tracing::error!("Failed to send roots/list request: {}", e);
-                Err(McpError::internal_error(
-                    format!("Failed to list roots: {e}"),
-                    None,
-                ))
+                tracing::warn!(
+                    "Client does not support roots/list: {e}. Falling back to current directory."
+                );
+                match std::env::current_dir() {
+                    Ok(cwd) => {
+                        tracing::debug!("Using current directory as root: {}", cwd.display());
+                        Ok(vec![cwd])
+                    },
+                    Err(cwd_err) => {
+                        tracing::error!("Failed to get current directory: {cwd_err}");
+                        Err(McpError::internal_error(
+                            format!("Failed to list roots and no current directory available: {e}"),
+                            None,
+                        ))
+                    },
+                }
             },
         }
     }
