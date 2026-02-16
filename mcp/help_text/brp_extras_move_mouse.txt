@@ -1,0 +1,14 @@
+Moves the mouse cursor in Bevy apps via bevy_brp_extras. Supports both delta (relative) and absolute position movement with optional window targeting.
+
+Movement modes:
+- Delta: Relative movement from current position
+- Absolute: Move to specific coordinates
+
+Examples:
+```json
+{"delta": [50.0, 30.0]}                    // Move right 50px, down 30px
+{"position": [200.0, 150.0]}               // Move to absolute position
+{"position": [100.0, 100.0], "window": 42} // Target specific window
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

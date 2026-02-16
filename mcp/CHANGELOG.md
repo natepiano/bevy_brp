@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Mouse input tools**: Nine new MCP tools for mouse control via `bevy_brp_extras`
+  - `brp_extras_click_mouse` - Click mouse button (Left, Right, Middle, Back, Forward)
+  - `brp_extras_double_click_mouse` - Double click with configurable delay
+  - `brp_extras_send_mouse_button` - Press and hold mouse button for duration
+  - `brp_extras_move_mouse` - Move cursor (delta or absolute positioning)
+  - `brp_extras_drag_mouse` - Drag with smooth interpolated movement
+  - `brp_extras_scroll_mouse` - Scroll wheel (line/pixel, horizontal/vertical)
+  - `brp_extras_double_tap_gesture` - Trackpad double tap (macOS)
+  - `brp_extras_pinch_gesture` - Trackpad pinch-to-zoom (macOS)
+  - `brp_extras_rotation_gesture` - Trackpad rotation (macOS)
+
 ## [0.18.1] - 2026-02-10
 
 ### Added

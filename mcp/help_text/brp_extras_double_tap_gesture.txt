@@ -1,0 +1,10 @@
+Sends double tap gesture events to Bevy apps via bevy_brp_extras. Simulates trackpad double tap gestures.
+
+Platform: macOS trackpad gestures (may not be supported on all platforms)
+
+Example:
+```json
+{}  // No parameters required - sends double tap gesture
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

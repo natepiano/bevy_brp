@@ -1,0 +1,11 @@
+Sends rotation gesture events to Bevy apps via bevy_brp_extras. Simulates trackpad rotation gestures.
+
+Platform: macOS trackpad gestures (may not be supported on all platforms)
+
+Examples:
+```json
+{"delta": 0.5}   // Rotate clockwise (radians)
+{"delta": -0.3}  // Rotate counter-clockwise (radians)
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

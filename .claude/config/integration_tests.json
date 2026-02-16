@@ -82,5 +82,11 @@
     "test_file": ".claude/integration_tests/trigger_event.md",
     "app_name": "event_test",
     "app_type": "example"
+  },
+  {
+    "test_name": "mouse_input",
+    "test_file": ".claude/integration_tests/mouse_input.md",
+    "app_name": "mouse_test",
+    "app_type": "example"
   }
 ]

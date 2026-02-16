@@ -409,54 +409,6 @@ impl KeyCodeWrapper {
             Self::Slash => KeyCode::Slash,
         }
     }
-
-    /// Get the category for this key code
-    #[allow(clippy::enum_glob_use)]
-    #[must_use]
-    pub const fn category(&self) -> &'static str {
-        use KeyCodeWrapper::*;
-        match self {
-            // Letters
-            KeyA | KeyB | KeyC | KeyD | KeyE | KeyF | KeyG | KeyH | KeyI | KeyJ | KeyK | KeyL
-            | KeyM | KeyN | KeyO | KeyP | KeyQ | KeyR | KeyS | KeyT | KeyU | KeyV | KeyW | KeyX
-            | KeyY | KeyZ => "Letters",
-
-            // Digits
-            Digit0 | Digit1 | Digit2 | Digit3 | Digit4 | Digit5 | Digit6 | Digit7 | Digit8
-            | Digit9 => "Digits",
-
-            // Function keys
-            F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 | F9 | F10 | F11 | F12 | F13 | F14 | F15
-            | F16 | F17 | F18 | F19 | F20 | F21 | F22 | F23 | F24 => "Function",
-
-            // Modifiers
-            AltLeft | AltRight | ControlLeft | ControlRight | ShiftLeft | ShiftRight
-            | SuperLeft | SuperRight => "Modifiers",
-
-            // Navigation
-            ArrowDown | ArrowLeft | ArrowRight | ArrowUp | End | Home | PageDown | PageUp => {
-                "Navigation"
-            },
-
-            // Editing
-            Backspace | Delete | Enter | Escape | Insert | Space | Tab => "Editing",
-
-            // Numpad
-            Numpad0 | Numpad1 | Numpad2 | Numpad3 | Numpad4 | Numpad5 | Numpad6 | Numpad7
-            | Numpad8 | Numpad9 | NumpadAdd | NumpadDivide | NumpadMultiply | NumpadSubtract
-            | NumpadDecimal | NumpadEnter => "Numpad",
-
-            // Media and special
-            AudioVolumeDown | AudioVolumeMute | AudioVolumeUp | BrowserBack | BrowserForward
-            | BrowserHome | BrowserRefresh | BrowserSearch | CapsLock | NumLock | ScrollLock
-            | PrintScreen | Pause | MediaPlayPause | MediaStop | MediaTrackNext
-            | MediaTrackPrevious => "Special",
-
-            // Punctuation and symbols
-            Backquote | Backslash | BracketLeft | BracketRight | Comma | Equal | Minus | Period
-            | Quote | Semicolon | Slash => "Punctuation",
-        }
-    }
 }
 
 /// Request structure for `send_keys`
@@ -654,15 +606,6 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
         keys_sent:   valid_key_strings,
         duration_ms: request.duration_ms,
     }))
-}
-
-/// Information about a key code
-#[derive(Debug, Serialize, Deserialize)]
-pub struct KeyCodeInfo {
-    /// The name of the key code (e.g., "`KeyA`", "`Space`")
-    pub name:     String,
-    /// The category of the key (e.g., "Letters", "Modifiers")
-    pub category: String,
 }
 
 /// System that processes timed key releases

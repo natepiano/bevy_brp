@@ -1,0 +1,12 @@
+Performs a double click with specified mouse button via bevy_brp_extras. Executes two rapid clicks with configurable delay between them.
+
+Button options: Left, Right, Middle, Back, Forward
+
+Examples:
+```json
+{"button": "Left"}                     // Standard double click (250ms delay)
+{"button": "Left", "delay_ms": 50}     // Fast double click (50ms delay)
+{"button": "Right", "delay_ms": 200}   // Slow double click (200ms delay)
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

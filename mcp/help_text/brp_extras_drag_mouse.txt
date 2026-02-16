@@ -1,0 +1,15 @@
+Performs a smooth drag operation from start to end position via bevy_brp_extras. Interpolates cursor movement over specified number of frames while holding button pressed.
+
+Button options: Left, Right, Middle, Back, Forward
+
+Examples:
+```json
+{
+  "button": "Left",
+  "start": [100.0, 100.0],
+  "end": [300.0, 200.0],
+  "frames": 30
+}  // Drag over 30 frames for smooth animation
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

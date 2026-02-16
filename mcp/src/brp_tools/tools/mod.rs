@@ -1,8 +1,17 @@
 //! Individual tool modules containing parameter and result structs for each BRP tool
 
 pub mod brp_execute;
+pub mod brp_extras_click_mouse;
+pub mod brp_extras_double_click_mouse;
+pub mod brp_extras_double_tap_gesture;
+pub mod brp_extras_drag_mouse;
+pub mod brp_extras_move_mouse;
+pub mod brp_extras_pinch_gesture;
+pub mod brp_extras_rotation_gesture;
 pub mod brp_extras_screenshot;
+pub mod brp_extras_scroll_mouse;
 pub mod brp_extras_send_keys;
+pub mod brp_extras_send_mouse_button;
 pub mod brp_extras_set_window_title;
 pub mod brp_extras_type_text;
 pub mod registry_schema;

@@ -1,0 +1,12 @@
+Sends mouse wheel scroll events to Bevy apps via bevy_brp_extras. Supports both line-based and pixel-based scrolling in horizontal and vertical directions.
+
+Scroll units: Line (default text line scrolling), Pixel (precise pixel-based scrolling)
+
+Examples:
+```json
+{"x": 0.0, "y": 5.0, "unit": "Line"}      // Scroll down 5 lines
+{"x": 3.0, "y": 0.0, "unit": "Line"}      // Scroll right 3 lines
+{"x": 0.0, "y": -100.0, "unit": "Pixel"}  // Scroll up 100 pixels
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

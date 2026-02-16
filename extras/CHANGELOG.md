@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Mouse input methods**: Nine new BRP methods for comprehensive mouse control
+  - `click_mouse` - Simple click with configurable button (Left, Right, Middle, Back, Forward)
+  - `double_click_mouse` - Double click with configurable delay between clicks
+  - `send_mouse_button` - Press and hold mouse button for specified duration
+  - `move_mouse` - Move cursor with delta (relative) or absolute positioning
+  - `drag_mouse` - Smooth drag operation with interpolated movement over frames
+  - `scroll_mouse` - Mouse wheel scrolling (line-based or pixel-based, horizontal/vertical)
+  - `double_tap_gesture` - Trackpad double tap gesture (macOS)
+  - `pinch_gesture` - Trackpad pinch-to-zoom gesture (macOS)
+  - `rotation_gesture` - Trackpad rotation gesture (macOS)
+
 ## [0.18.1] - 2026-02-10
 
 ### Added

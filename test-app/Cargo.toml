@@ -26,6 +26,10 @@ path = "examples/no_extras_plugin.rs"
 name = "event_test"
 path = "examples/event_test.rs"
 
+[[example]]
+name = "mouse_test"
+path = "examples/mouse_test.rs"
+
 
 [dependencies]
 bevy_brp_extras = { path = "../extras" }

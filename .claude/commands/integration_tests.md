@@ -1,21 +1,23 @@
 # BRP Test Suite Runner
 
 ## Configuration
-PARALLEL_TESTS = 7  # Number of tests to run concurrently
+PARALLEL_TESTS = 8  # Number of tests to run concurrently
 TEST_CONFIG_FILE = .claude/config/integration_tests.json  # Test configuration file location
 AGENT_MODEL = sonnet  # Model for test runner agents (sonnet is concise and fast for execution tasks)
 
 ## Overview
 
-This command runs BRP tests in two modes:
-- **Without arguments**: Runs tests ${PARALLEL_TESTS} at a time with continuous execution, stops immediately on any failure
-- **With argument**: Runs a single test by name
+This command runs BRP tests in three modes:
+- **Without arguments**: Runs all tests ${PARALLEL_TESTS} at a time with continuous execution, stops immediately on any failure
+- **With single test name**: Runs one test by name
+- **With comma-delimited list**: Runs specified tests ${PARALLEL_TESTS} at a time, stops on any failure
 
 ## Usage Examples
 ```
-/test                    # Run all tests ${PARALLEL_TESTS} at a time, stop on first failure
-/test extras             # Run only the extras test
-/test data_operations    # Run only the data_operations test
+/test                           # Run all tests ${PARALLEL_TESTS} at a time, stop on first failure
+/test extras                    # Run only the extras test
+/test extras,mouse_input        # Run extras and mouse_input tests
+/test data_operations,events    # Run data_operations and events tests
 ```
 
 ## Test Configuration
@@ -85,7 +87,7 @@ Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_app", "ev
 <VerifyBrpConnectivity>
 1. **Status Check with Retry**: For each app, retry up to 5 times with exponential backoff:
    - Attempt 1: Check `brp_status(app_name=[APP_NAME], port=[ASSIGNED_PORT])` immediately
-   - If fails: Wait using `.claude/scripts/integration_test_launch_retry.sh [attempt_number]`
+   - If fails: Wait using `.claude/scripts/integration_tests/launch_retry.sh [attempt_number]`
    - Attempt 2-5: Retry with increasing delays (0.5s, 1s, 2s, 4s)
    - This handles Cargo lock contention during concurrent launches
 2. **Validation**: Confirm status is "running_with_brp"
@@ -212,16 +214,23 @@ Configuration: App [APP_NAME]
 
 ## Execution Mode Selection
 
-**First, check if `$ARGUMENTS` is provided:**
-- If `$ARGUMENTS` exists and is not empty: Execute **Single Test Mode**
-- If `$ARGUMENTS` is empty or not provided: Execute **Continuous Parallel Test Mode**
+**Parse `$ARGUMENTS` to determine mode:**
 
-## Single Test Mode (when $ARGUMENTS provided)
+1. **Split on commas**: Parse `$ARGUMENTS` by splitting on commas
+   - Use: `echo "$ARGUMENTS" | tr ',' '\n'` to get test names (one per line)
+   - Trim whitespace from each name
+
+2. **Select mode based on count**:
+   - If `$ARGUMENTS` is empty or not provided: Execute **All Tests Mode**
+   - If split produces 1 test name: Execute **Single Test Mode**
+   - If split produces 2+ test names: Execute **Multiple Tests Mode**
+
+## Single Test Mode (1 test name in $ARGUMENTS)
 
 ### Execution Instructions
 
 1. **Load Configuration**: Read test configuration from ${TEST_CONFIG_FILE}
-2. **Find Test**: Search for test configuration where `test_name` matches `$ARGUMENTS`
+2. **Find Test**: Search for test configuration where `test_name` matches the test name
 3. **Validate**: If test not found, report error and list available test names
 4. **Execute Test**: If found, run the single test using appropriate strategy
 
@@ -244,19 +253,51 @@ Configuration: App [APP_NAME]
 
 ### Error Handling
 
-If no test configuration matches `$ARGUMENTS`:
+If no test configuration matches the test name:
 ```
 # Error: Test Not Found
 
-The test "$ARGUMENTS" was not found in ${TEST_CONFIG_FILE}.
+The test "{test_name}" was not found in ${TEST_CONFIG_FILE}.
 
-Usage: /test <test_name>
-Example: /test extras
+Usage: /test [test_name[,test_name...]]
+Examples:
+  /test extras
+  /test extras,mouse_input
 ```
 
-## Continuous Parallel Test Mode (when no $ARGUMENTS)
+## Multiple Tests Mode (2+ test names in $ARGUMENTS)
 
-### App Launch Phase
+### Execution Instructions
+
+1. **Load Configuration**: Read test configuration from ${TEST_CONFIG_FILE}
+2. **Parse Test Names**: Split `$ARGUMENTS` on commas and trim whitespace from each name
+3. **Validate All Tests**: For each test name, search for matching test configuration
+   - If ANY test not found, report error listing all missing tests and available test names
+   - If all found, continue to execution
+4. **Filter Test List**: Build test list containing only the specified tests (preserve config order)
+5. **Execute Tests**: Use the same batched parallel execution as "All Tests Mode" (see below), but with filtered test list
+
+### Error Handling
+
+If any test configuration is not found:
+```
+# Error: Tests Not Found
+
+The following tests were not found in ${TEST_CONFIG_FILE}:
+- {test_name1}
+- {test_name2}
+
+Available tests: {list of all available test names}
+
+Usage: /test [test_name[,test_name...]]
+Examples:
+  /test extras
+  /test extras,mouse_input,data_operations
+```
+
+## All Tests Mode (when no $ARGUMENTS)
+
+### Setup Phase
 
 **Before running tests:**
 
@@ -265,123 +306,108 @@ Example: /test extras
    # Get all unique app names that need cleanup (exclude N/A and various)
    jq -r '[.[] | select(.app_name | IN("N/A", "various") | not) | .app_name] | unique | .[]' ${TEST_CONFIG_FILE} | xargs -I {} sh -c 'pkill -9 {} || true'
    ```
-   Note: This dynamically discovers all app names from the config
 
-2. **Analyze app requirements** using this command:
-   ```bash
-   jq '[.[] | select(.app_name | IN("N/A", "various") | not)] | group_by(.app_name) | map({app_name: .[0].app_name, app_type: .[0].app_type, count: length})' ${TEST_CONFIG_FILE}
-   ```
-   Note: Replace ${TEST_CONFIG_FILE} with the actual path from the configuration section.
-   This dynamically discovers ALL app types and their instance counts from the config.
+2. **Load Configuration**: Read ${TEST_CONFIG_FILE}
 
-3. **Launch apps using instance_count** based on the counts from step 2:
-   - Execute <LaunchDedicatedApp/> with appropriate instance_count for each app type
-   - Start at BASE_PORT=20100 and increment by the count for each app group
-
-4. **Track port assignments**:
-   - Execute <AllocatePortFromPool/> to manage port pools for test assignment
-
-5. **Verify all apps**: Execute <VerifyBrpConnectivity/> on each port in PARALLEL (single message, multiple tool uses)
-
-6. **Track launched apps** for cleanup
-
-**If any app launch fails, STOP immediately and report failure.**
-
-### Test Execution Phase
-
-**Execute tests PARALLEL_TESTS at a time with continuous execution:**
-
-**CRITICAL PARALLEL EXECUTION REQUIREMENT:**
-You MUST execute tests in parallel by creating a SINGLE message with multiple Task tool invocations.
-DO NOT execute tests sequentially (one Task, wait for result, then next Task).
-CORRECT: One message containing 12 Task tool uses for 12 tests
-INCORRECT: 12 separate messages each with one Task tool use
-
-1. **Load Configuration**: Read ${TEST_CONFIG_FILE}
-
-2. **Extract Test List and Objectives**: Execute this EXACT command:
+3. **Extract Test List**: Execute this EXACT command:
    ```bash
    jq -c '.[] | {test_name, test_file, app_name, app_type}' ${TEST_CONFIG_FILE}
    ```
    This produces one JSON object per line, in config order.
 
-3. **Process Each Test in Order**: For each line of output from step 2:
-   - Extract test_name field: this is the test identifier
-   - Extract app_name field: this determines port assignment
-   - Extract app_type field: this determines launch tool
-   - Extract test_file field: this is the test specification path
-   - Extract test objective: Read the test_file and extract the first line after `## Objective` (use: `grep -A 1 "^## Objective" "$test_file" | tail -1`)
+4. **Extract Objectives and Build Test List**:
+   - Collect all test_file paths from step 3 into a space-separated list
+   - Extract all objectives in one call: `.claude/scripts/integration_tests/extract_test_objectives.sh file1.md file2.md ...`
+   - This returns one objective per line, matching the order of input files
+   - Combine with test data from step 3 (line-by-line pairing)
+   - Store in test list: {test_name, test_file, app_name, app_type, test_objective}
 
-4. **Assign Ports and Extract Objectives**:
-   - From the app requirements analysis (step 2 of App Launch Phase), build port pools:
-     - Start at BASE_PORT=20100
-     - For each app group in order: assign a port range [current_port, current_port + count)
-     - Track next available port per app_name
-   - For each test in order from step 2:
-     - If app_name is "various" or "N/A": assign port=null (self-managed, no port needed)
-     - Otherwise: assign port from that app_name's pool, then increment the pool's next port
-     - Extract objective from test_file: `grep -A 1 "^## Objective" "$test_file" | tail -1`
-   - Store result: create mapping of test_name → {port, app_name, app_type, test_file, test_objective}
+### Batched Execution with Just-In-Time App Launching
 
-5. **Set Window Titles**: For each test where port is not null, execute:
-   ```
-   mcp__brp__brp_extras_set_window_title(
-     title="{test_name} test - {app_name} - port {port}",
-     port={port}
-   )
-   ```
-   Where {test_name}, {app_name}, {port} come from the mapping in step 4.
-   Use the EXACT test_name from the config - do not modify or substitute it.
+**CRITICAL PARALLEL EXECUTION REQUIREMENT:**
+You MUST execute tests in parallel by creating a SINGLE message with multiple Task tool invocations.
+DO NOT execute tests sequentially (one Task, wait for result, then next Task).
 
-6. **Create Task Prompts**: For each test in config order from step 2:
-   - If test has a port (not null): use DedicatedAppPrompt template
-     - Set [TEST_NAME] to test_name from config
-     - Set [ASSIGNED_PORT] to port from step 4 mapping
-     - Set [APP_NAME] to app_name from config
-     - Set [TEST_FILE] to test_file from config
-     - Set [TEST_OBJECTIVE] to test_objective from step 4 mapping (extracted from markdown)
-   - If test has no port (null): use SelfManagedPrompt template
-     - Set [TEST_NAME] to test_name from config
-     - Set [APP_NAME] to app_name from config
-     - Set [TEST_FILE] to test_file from config
-     - Set [TEST_OBJECTIVE] to test_objective from step 4 mapping (extracted from markdown)
+**For each batch of up to PARALLEL_TESTS tests:**
 
-7. **Execute All Tests in Parallel**:
-   - Build batches of tests to run in parallel using prompts from step 6
-   - **CRITICAL PARALLEL EXECUTION**:
-     - Create a SINGLE message with multiple Task tool invocations
-     - Each Task call represents one test to run in parallel
-     - Example structure for parallel execution:
-       ```
-       <single_message>
-       Task(description="Execute test1", prompt=DedicatedAppPrompt_for_test1, model=AGENT_MODEL)
-       Task(description="Execute test2", prompt=DedicatedAppPrompt_for_test2, model=AGENT_MODEL)
-       Task(description="Execute test3", prompt=SelfManagedPrompt_for_test3, model=AGENT_MODEL)
-       ... up to PARALLEL_TESTS tasks in ONE message
-       </single_message>
-       ```
-   - Monitor completed results for failures
-   - Return ports to pool as tests complete
-   - Stop immediately on first failure detected
-   - Continue batching until all tests complete or failure detected
+1. **Select Next Batch**: Take next PARALLEL_TESTS tests from the test list
 
-### Cleanup Phase
+2. **Analyze Batch App Requirements**:
+   - Identify unique app_name values in this batch (excluding "N/A" and "various")
+   - Count instances needed per app_name
+   - Example: If batch has 3 tests using "mouse_test" and 2 tests using "extras_plugin", need mouse_test×3 and extras_plugin×2
 
-**After all tests complete (success or failure):**
-Execute <CleanupApps/> for all launched apps
+3. **Allocate Ports for Batch**:
+   - Start at BASE_PORT=20100
+   - For each unique app in batch:
+     - Assign sequential ports starting from current_port
+     - Track: app_name → [port1, port2, ...]
+     - Increment current_port by instance count
+   - For each test in batch:
+     - If app_name is "N/A" or "various": assign port=null
+     - Otherwise: assign next available port from that app's pool
+
+4. **Launch Apps for This Batch Only**:
+   - Group tests by app_name (excluding "N/A" and "various")
+   - For each unique app_name:
+     - Count how many tests need this app
+     - Execute <LaunchDedicatedApp/> with instance_count=count, starting at assigned port
+   - Track launched apps for cleanup
+
+5. **Verify App Connectivity**:
+   - Execute <VerifyBrpConnectivity/> on each launched port in PARALLEL
+   - If any verification fails, cleanup and STOP
+
+6. **Set Window Titles**:
+   - For each test with assigned port, execute in PARALLEL:
+     ```
+     mcp__brp__brp_extras_set_window_title(
+       title="{test_name} test - {app_name} - port {port}",
+       port={port}
+     )
+     ```
+
+7. **Create Task Prompts for Batch**:
+   - For each test in batch:
+     - If has port: use DedicatedAppPrompt with [TEST_NAME], [ASSIGNED_PORT], [APP_NAME], [TEST_FILE], [TEST_OBJECTIVE]
+     - If no port: use SelfManagedPrompt with [TEST_NAME], [APP_NAME], [TEST_FILE], [TEST_OBJECTIVE]
+
+8. **Execute Batch Tests in Parallel**:
+   - Create SINGLE message with multiple Task invocations (one per test in batch)
+   - Example:
+     ```
+     <single_message>
+     Task(description="Execute test1", prompt=DedicatedAppPrompt_for_test1, model=AGENT_MODEL)
+     Task(description="Execute test2", prompt=DedicatedAppPrompt_for_test2, model=AGENT_MODEL)
+     ... up to PARALLEL_TESTS tasks
+     </single_message>
+     ```
+   - Wait for ALL tasks in batch to complete
+
+9. **Check Batch Results**:
+   - Monitor for failure indicators in any test result
+   - If ANY test failed: Execute <CleanupApps/> for batch apps and STOP
+   - If all passed: Continue to step 10
+
+10. **Cleanup Batch Apps**:
+    - Execute <CleanupApps/> for all apps launched in this batch
+    - Clear batch tracking data
+
+11. **Continue or Complete**:
+    - If more tests remain: Return to step 1 for next batch
+    - If all tests complete: Proceed to final summary
 
 ### Error Detection and Immediate Stopping
 
-**CRITICAL**: Monitor each completed test result for failure indicators:
+**CRITICAL**: After each batch completes, check ALL test results for failure indicators:
 - Check for `### ❌ FAILED` sections with content
 - Check for `**Critical Issues**: Yes` in summary
 - Check for any `CRITICAL FAILURE` mentions in results
 
 **On Error Detection**:
-1. **STOP immediately** - do not start any new tests
-2. **Collect results** from any currently running tests
-3. **Cleanup apps** immediately
-4. **Report failure immediately** with details from failed test
+1. **Cleanup batch apps** - shutdown all apps from current batch
+2. **STOP immediately** - do not start any new batches
+3. **Report failure** with details from failed test and batch summary
 
 ### Results Formats
 
@@ -396,14 +422,19 @@ Execute <CleanupApps/> for all launched apps
 - **Failed**: 0 (execution stops on first failure)
 - **Skipped**: Y
 - **Critical Issues**: 0 (execution stops on critical issues)
-- **Total Execution Time**: ~X minutes (continuous parallel)
-- **Execution Strategy**: ${PARALLEL_TESTS} tests at a time with continuous execution
+- **Total Batches**: Z
+- **Total Execution Time**: ~X minutes
+- **Execution Strategy**: Just-in-time batch execution (${PARALLEL_TESTS} tests per batch)
 
 ## Test Results Summary
 [List each test by name with its result count, avoiding duplication]
 
 ## ⚠️ SKIPPED TESTS
 [List of skipped tests with reasons]
+
+## Execution Notes
+- Apps launched just-in-time per batch for efficiency
+- All batch apps cleaned up successfully after each batch
 ```
 
 **Failure Path**: When error detected:
@@ -413,21 +444,26 @@ Execute <CleanupApps/> for all launched apps
 ## ❌ CRITICAL FAILURE DETECTED
 
 **Failed Test**: [test_name]
+**Failed Batch**: Batch X (tests Y-Z)
 **Failure Type**: [Critical Issues/Failed Tests/etc.]
 
 ### Failure Details
 [Include full failure details from the failed test]
 
+### Batch Information
+- **Batch Apps Launched**: [app_name on port X, ...]
+- **Batch Apps Cleaned Up**: Yes/No
+- **Tests in Failed Batch**: [test names]
+- **Results**: [passed count] passed, [failed count] failed
+
 ### Tests Completed Before Failure
-- **Completed**: X tests
-- **Results**: [Brief summary of completed tests]
+- **Completed Batches**: X batches
+- **Completed Tests**: Y tests
+- **Results**: [Brief summary of completed tests from previous batches]
 
 ### Tests Not Executed
-- **Remaining**: Y tests
-- **Reason**: Execution stopped due to failure
-
-### Cleanup Status
-[For each launched app, report: app_name (port range): Shutdown/Still Running]
+- **Remaining Tests**: Z tests
+- **Reason**: Execution stopped due to failure in batch X
 
 **Recommendation**: Fix the failure in [test_name] before running remaining tests.
 ```

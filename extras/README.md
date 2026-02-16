@@ -25,7 +25,17 @@ Adds the following Bevvy Remote Protocol methods:
 - `brp_extras/screenshot` - Capture screenshots of the primary window
 - `brp_extras/shutdown` - Gracefully shutdown the application
 - `brp_extras/send_keys` - Send keyboard input to the application
+- `brp_extras/type_text` - Type text sequentially (one character per frame)
 - `brp_extras/set_window_title` - Change the primary window title
+- `brp_extras/click_mouse` - Click mouse button
+- `brp_extras/double_click_mouse` - Double click mouse button
+- `brp_extras/send_mouse_button` - Press and hold mouse button
+- `brp_extras/move_mouse` - Move mouse cursor (delta or absolute)
+- `brp_extras/drag_mouse` - Drag mouse with smooth interpolation
+- `brp_extras/scroll_mouse` - Mouse wheel scrolling
+- `brp_extras/double_tap_gesture` - Trackpad double tap gesture (macOS)
+- `brp_extras/pinch_gesture` - Trackpad pinch gesture (macOS)
+- `brp_extras/rotation_gesture` - Trackpad rotation gesture (macOS)
 
 ## Usage
 
@@ -124,6 +134,57 @@ curl -X POST http://localhost:15702/brp_extras/set_window_title \
   -H "Content-Type: application/json" \
   -d '{"title": "My Game - Level 2"}'
 ```
+
+### Mouse Input Methods
+
+#### Click Mouse
+- **Method**: `brp_extras/click_mouse`
+- **Parameters**:
+  - `button` (string, required): Mouse button - "Left", "Right", "Middle", "Back", or "Forward"
+  - `window` (number, optional): Window entity ID (defaults to primary window)
+
+#### Double Click Mouse
+- **Method**: `brp_extras/double_click_mouse`
+- **Parameters**:
+  - `button` (string, required): Mouse button
+  - `delay_ms` (number, optional): Delay between clicks in milliseconds (default: 250)
+  - `window` (number, optional): Window entity ID
+
+#### Send Mouse Button
+- **Method**: `brp_extras/send_mouse_button`
+- **Parameters**:
+  - `button` (string, required): Mouse button
+  - `duration_ms` (number, optional): Hold duration in milliseconds (default: 100, max: 60000)
+  - `window` (number, optional): Window entity ID
+
+#### Move Mouse
+- **Method**: `brp_extras/move_mouse`
+- **Parameters** (provide either `delta` or `position`, not both):
+  - `delta` (array, optional): Relative movement [x, y]
+  - `position` (array, optional): Absolute position [x, y]
+  - `window` (number, optional): Window entity ID
+
+#### Drag Mouse
+- **Method**: `brp_extras/drag_mouse`
+- **Parameters**:
+  - `button` (string, required): Mouse button
+  - `start` (array, required): Starting position [x, y]
+  - `end` (array, required): Ending position [x, y]
+  - `frames` (number, required): Number of frames to interpolate over
+  - `window` (number, optional): Window entity ID
+
+#### Scroll Mouse
+- **Method**: `brp_extras/scroll_mouse`
+- **Parameters**:
+  - `x` (number, required): Horizontal scroll amount
+  - `y` (number, required): Vertical scroll amount
+  - `unit` (string, required): "Line" or "Pixel"
+  - `window` (number, optional): Window entity ID
+
+#### Trackpad Gestures (macOS)
+- **Method**: `brp_extras/double_tap_gesture` - No parameters
+- **Method**: `brp_extras/pinch_gesture` - `delta` (number, required): Pinch amount
+- **Method**: `brp_extras/rotation_gesture` - `delta` (number, required): Rotation in radians
 
 ## Integration with bevy_brp_mcp
 

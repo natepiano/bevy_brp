@@ -1,0 +1,12 @@
+Sends mouse button input to Bevy apps via bevy_brp_extras. Performs complete press-hold-release cycles for testing, remote control, and automation.
+
+Button options: Left, Right, Middle, Back, Forward
+
+Examples:
+```json
+{"button": "Left", "duration_ms": 100}     // Click left button
+{"button": "Right", "duration_ms": 500}    // Hold right button 0.5 sec
+{"button": "Middle"}                       // Quick middle click (default 100ms)
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

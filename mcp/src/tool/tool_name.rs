@@ -35,18 +35,22 @@ use crate::app_tools::{self};
 // Import parameter and result types so they're in scope for the macro
 use crate::brp_tools::{
     AllTypeGuidesParams, BevyListWatch, BrpAllTypeGuides, BrpExecute, BrpListActiveWatches,
-    BrpStopWatch, BrpTypeGuide, DespawnEntityParams, DespawnEntityResult, ExecuteParams,
-    GetComponentsParams, GetComponentsResult, GetComponentsWatchParams, GetResourcesParams,
-    GetResourcesResult, InsertComponentsParams, InsertComponentsResult, InsertResourcesParams,
-    InsertResourcesResult, ListComponentsParams, ListComponentsResult, ListComponentsWatchParams,
-    ListResourcesParams, ListResourcesResult, MutateComponentsParams, MutateComponentsResult,
-    MutateResourcesParams, MutateResourcesResult, QueryParams, QueryResult, RegistrySchemaParams,
-    RegistrySchemaResult, RemoveComponentsParams, RemoveComponentsResult, RemoveResourcesParams,
-    RemoveResourcesResult, ReparentEntitiesParams, ReparentEntitiesResult, RpcDiscoverParams,
-    RpcDiscoverResult, ScreenshotParams, ScreenshotResult, SendKeysParams, SendKeysResult,
-    SetWindowTitleParams, SetWindowTitleResult, SpawnEntityParams, SpawnEntityResult,
-    StopWatchParams, TriggerEventParams, TriggerEventResult, TypeGuideParams, TypeTextParams,
-    TypeTextResult, WorldGetComponentsWatch,
+    BrpStopWatch, BrpTypeGuide, ClickMouseParams, ClickMouseResult, DespawnEntityParams,
+    DespawnEntityResult, DoubleClickMouseParams, DoubleClickMouseResult, DoubleTapGestureParams,
+    DoubleTapGestureResult, DragMouseParams, DragMouseResult, ExecuteParams, GetComponentsParams,
+    GetComponentsResult, GetComponentsWatchParams, GetResourcesParams, GetResourcesResult,
+    InsertComponentsParams, InsertComponentsResult, InsertResourcesParams, InsertResourcesResult,
+    ListComponentsParams, ListComponentsResult, ListComponentsWatchParams, ListResourcesParams,
+    ListResourcesResult, MoveMouseParams, MoveMouseResult, MutateComponentsParams,
+    MutateComponentsResult, MutateResourcesParams, MutateResourcesResult, PinchGestureParams,
+    PinchGestureResult, QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult,
+    RemoveComponentsParams, RemoveComponentsResult, RemoveResourcesParams, RemoveResourcesResult,
+    ReparentEntitiesParams, ReparentEntitiesResult, RotationGestureParams, RotationGestureResult,
+    RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams, ScreenshotResult, ScrollMouseParams,
+    ScrollMouseResult, SendKeysParams, SendKeysResult, SendMouseButtonParams,
+    SendMouseButtonResult, SetWindowTitleParams, SetWindowTitleResult, SpawnEntityParams,
+    SpawnEntityResult, StopWatchParams, TriggerEventParams, TriggerEventResult, TypeGuideParams,
+    TypeTextParams, TypeTextResult, WorldGetComponentsWatch,
 };
 use crate::log_tools::DeleteLogs;
 use crate::log_tools::DeleteLogsParams;
@@ -272,6 +276,69 @@ pub enum ToolName {
         result = "SetWindowTitleResult"
     )]
     BrpExtrasSetWindowTitle,
+    /// `brp_extras_move_mouse` - Move mouse cursor
+    #[brp_tool(
+        brp_method = "brp_extras/move_mouse",
+        params = "MoveMouseParams",
+        result = "MoveMouseResult"
+    )]
+    BrpExtrasMoveMouse,
+    /// `brp_extras_send_mouse_button` - Send mouse button input
+    #[brp_tool(
+        brp_method = "brp_extras/send_mouse_button",
+        params = "SendMouseButtonParams",
+        result = "SendMouseButtonResult"
+    )]
+    BrpExtrasSendMouseButton,
+    /// `brp_extras_click_mouse` - Click mouse button
+    #[brp_tool(
+        brp_method = "brp_extras/click_mouse",
+        params = "ClickMouseParams",
+        result = "ClickMouseResult"
+    )]
+    BrpExtrasClickMouse,
+    /// `brp_extras_double_click_mouse` - Perform double click
+    #[brp_tool(
+        brp_method = "brp_extras/double_click_mouse",
+        params = "DoubleClickMouseParams",
+        result = "DoubleClickMouseResult"
+    )]
+    BrpExtrasDoubleClickMouse,
+    /// `brp_extras_drag_mouse` - Drag mouse from start to end position
+    #[brp_tool(
+        brp_method = "brp_extras/drag_mouse",
+        params = "DragMouseParams",
+        result = "DragMouseResult"
+    )]
+    BrpExtrasDragMouse,
+    /// `brp_extras_scroll_mouse` - Send mouse wheel scroll events
+    #[brp_tool(
+        brp_method = "brp_extras/scroll_mouse",
+        params = "ScrollMouseParams",
+        result = "ScrollMouseResult"
+    )]
+    BrpExtrasScrollMouse,
+    /// `brp_extras_pinch_gesture` - Send pinch gesture events
+    #[brp_tool(
+        brp_method = "brp_extras/pinch_gesture",
+        params = "PinchGestureParams",
+        result = "PinchGestureResult"
+    )]
+    BrpExtrasPinchGesture,
+    /// `brp_extras_rotation_gesture` - Send rotation gesture events
+    #[brp_tool(
+        brp_method = "brp_extras/rotation_gesture",
+        params = "RotationGestureParams",
+        result = "RotationGestureResult"
+    )]
+    BrpExtrasRotationGesture,
+    /// `brp_extras_double_tap_gesture` - Send double tap gesture events
+    #[brp_tool(
+        brp_method = "brp_extras/double_tap_gesture",
+        params = "DoubleTapGestureParams",
+        result = "DoubleTapGestureResult"
+    )]
+    BrpExtrasDoubleTapGesture,
 
     // BRP Watch Assist Tools
     /// `brp_stop_watch` - Stop active watch subscriptions
@@ -454,6 +521,51 @@ impl ToolName {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
+            Self::BrpExtrasMoveMouse => Annotation::new(
+                "move mouse cursor",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasSendMouseButton => Annotation::new(
+                "send mouse button",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasClickMouse => Annotation::new(
+                "click mouse button",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasDoubleClickMouse => Annotation::new(
+                "double click mouse",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasDragMouse => Annotation::new(
+                "drag mouse",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasScrollMouse => Annotation::new(
+                "scroll mouse wheel",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasPinchGesture => Annotation::new(
+                "pinch gesture",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasRotationGesture => Annotation::new(
+                "rotation gesture",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasDoubleTapGesture => Annotation::new(
+                "double tap gesture",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
             Self::WorldGetComponentsWatch => Annotation::new(
                 "watch component changes",
                 ToolCategory::WatchMonitoring,
@@ -610,6 +722,29 @@ impl ToolName {
             Self::BrpExtrasSetWindowTitle => {
                 Some(parameters::build_parameters_from::<SetWindowTitleParams>)
             },
+            Self::BrpExtrasMoveMouse => Some(parameters::build_parameters_from::<MoveMouseParams>),
+            Self::BrpExtrasSendMouseButton => {
+                Some(parameters::build_parameters_from::<SendMouseButtonParams>)
+            },
+            Self::BrpExtrasClickMouse => {
+                Some(parameters::build_parameters_from::<ClickMouseParams>)
+            },
+            Self::BrpExtrasDoubleClickMouse => {
+                Some(parameters::build_parameters_from::<DoubleClickMouseParams>)
+            },
+            Self::BrpExtrasDragMouse => Some(parameters::build_parameters_from::<DragMouseParams>),
+            Self::BrpExtrasScrollMouse => {
+                Some(parameters::build_parameters_from::<ScrollMouseParams>)
+            },
+            Self::BrpExtrasPinchGesture => {
+                Some(parameters::build_parameters_from::<PinchGestureParams>)
+            },
+            Self::BrpExtrasRotationGesture => {
+                Some(parameters::build_parameters_from::<RotationGestureParams>)
+            },
+            Self::BrpExtrasDoubleTapGesture => {
+                Some(parameters::build_parameters_from::<DoubleTapGestureParams>)
+            },
             Self::WorldGetComponentsWatch => {
                 Some(parameters::build_parameters_from::<GetComponentsWatchParams>)
             },
@@ -672,6 +807,15 @@ impl ToolName {
             Self::BrpExtrasSendKeys => Arc::new(BrpExtrasSendKeys),
             Self::BrpExtrasTypeText => Arc::new(BrpExtrasTypeText),
             Self::BrpExtrasSetWindowTitle => Arc::new(BrpExtrasSetWindowTitle),
+            Self::BrpExtrasMoveMouse => Arc::new(BrpExtrasMoveMouse),
+            Self::BrpExtrasSendMouseButton => Arc::new(BrpExtrasSendMouseButton),
+            Self::BrpExtrasClickMouse => Arc::new(BrpExtrasClickMouse),
+            Self::BrpExtrasDoubleClickMouse => Arc::new(BrpExtrasDoubleClickMouse),
+            Self::BrpExtrasDragMouse => Arc::new(BrpExtrasDragMouse),
+            Self::BrpExtrasScrollMouse => Arc::new(BrpExtrasScrollMouse),
+            Self::BrpExtrasPinchGesture => Arc::new(BrpExtrasPinchGesture),
+            Self::BrpExtrasRotationGesture => Arc::new(BrpExtrasRotationGesture),
+            Self::BrpExtrasDoubleTapGesture => Arc::new(BrpExtrasDoubleTapGesture),
 
             // Special tools with their own implementations
             Self::BrpExecute => Arc::new(BrpExecute),

@@ -1,0 +1,11 @@
+Sends pinch gesture events to Bevy apps via bevy_brp_extras. Simulates trackpad pinch gestures for zoom operations.
+
+Platform: macOS trackpad gestures (may not be supported on all platforms)
+
+Examples:
+```json
+{"delta": 2.5}   // Pinch to zoom in
+{"delta": -1.5}  // Pinch to zoom out
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

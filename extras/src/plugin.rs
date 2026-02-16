@@ -6,6 +6,7 @@ use bevy::remote::http::RemoteHttpPlugin;
 
 use crate::DEFAULT_REMOTE_PORT;
 use crate::keyboard;
+use crate::mouse;
 use crate::screenshot;
 use crate::shutdown;
 use crate::window_title;
@@ -77,33 +78,78 @@ impl Plugin for BrpExtrasPlugin {
 
         let remote_plugin = RemotePlugin::default()
             .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}click_mouse"),
+                mouse::click_mouse_handler,
+            )
+            .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}double_click_mouse"),
+                mouse::double_click_mouse_handler,
+            )
+            .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}double_tap_gesture"),
+                mouse::double_tap_gesture_handler,
+            )
+            .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}drag_mouse"),
+                mouse::drag_mouse_handler,
+            )
+            .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}move_mouse"),
+                mouse::move_mouse_handler,
+            )
+            .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}pinch_gesture"),
+                mouse::pinch_gesture_handler,
+            )
+            .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}rotation_gesture"),
+                mouse::rotation_gesture_handler,
+            )
+            .with_method(
                 format!("{EXTRAS_COMMAND_PREFIX}screenshot"),
                 screenshot::handler,
             )
             .with_method(
-                format!("{EXTRAS_COMMAND_PREFIX}shutdown"),
-                shutdown::handler,
+                format!("{EXTRAS_COMMAND_PREFIX}scroll_mouse"),
+                mouse::scroll_mouse_handler,
             )
             .with_method(
                 format!("{EXTRAS_COMMAND_PREFIX}send_keys"),
                 keyboard::send_keys_handler,
             )
             .with_method(
-                format!("{EXTRAS_COMMAND_PREFIX}type_text"),
-                keyboard::type_text_handler,
+                format!("{EXTRAS_COMMAND_PREFIX}send_mouse_button"),
+                mouse::send_mouse_button_handler,
             )
             .with_method(
                 format!("{EXTRAS_COMMAND_PREFIX}set_window_title"),
                 window_title::handler,
+            )
+            .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}shutdown"),
+                shutdown::handler,
+            )
+            .with_method(
+                format!("{EXTRAS_COMMAND_PREFIX}type_text"),
+                keyboard::type_text_handler,
             );
 
         let http_plugin = RemoteHttpPlugin::default().with_port(effective_port);
 
         app.add_plugins((remote_plugin, http_plugin));
 
+        // Initialize mouse resources
+        app.init_resource::<mouse::SimulatedCursorPosition>();
+
         // Add systems for keyboard input simulation
         app.add_systems(Update, keyboard::process_timed_key_releases);
         app.add_systems(Update, keyboard::process_text_typing);
+
+        // Add systems for mouse input simulation
+        app.add_systems(Update, mouse::sync_cursor_position); // Sync real mouse with SimulatedCursorPosition
+        app.add_systems(Update, mouse::process_timed_button_releases);
+        app.add_systems(Update, mouse::process_scheduled_clicks);
+        app.add_systems(Update, mouse::process_drag_operations);
 
         // Add the system to handle deferred shutdown
         app.add_systems(Update, shutdown::deferred_shutdown_system);
@@ -116,9 +162,4 @@ impl Plugin for BrpExtrasPlugin {
 
 fn log_initialization(port: u16, source_description: &str) {
     info!("BRP extras enabled on http://localhost:{port} ({source_description})");
-    trace!("Additional BRP methods available:");
-    trace!("  - brp_extras/screenshot - Take a screenshot");
-    trace!("  - brp_extras/shutdown - Shutdown the app");
-    trace!("  - brp_extras/send_keys - Send keyboard input");
-    trace!("  - brp_extras/set_window_title - Change the window title");
 }

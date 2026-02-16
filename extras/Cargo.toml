@@ -24,6 +24,7 @@ bevy = { workspace = true, features = [
   "bevy_sprite",
   "bevy_text",
   "bevy_ui",
+  "serialize",
   "bevy_window",
   "bevy_winit",
   "default_font",

@@ -17,6 +17,9 @@ mcp-debug = []
 # MCP only needs bevy_remote feature, no defaults
 bevy = { workspace = true, default-features = false, features = [
   "bevy_remote",
+  "keyboard",
+  "mouse",
+  "serialize",
 ] }
 
 # All other dependencies use workspace

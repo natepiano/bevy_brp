@@ -3,6 +3,7 @@ mod brp_type_guide;
 mod constants;
 mod port;
 mod tools;
+mod types;
 mod watch_tools;
 
 // Public exports
@@ -26,10 +27,28 @@ pub use port::Port;
 //
 // Export special case tools that don't follow the standard pattern
 pub use tools::brp_execute::{BrpExecute, ExecuteParams};
+pub use tools::brp_extras_click_mouse::ClickMouseParams;
+pub use tools::brp_extras_click_mouse::ClickMouseResult;
+pub use tools::brp_extras_double_click_mouse::DoubleClickMouseParams;
+pub use tools::brp_extras_double_click_mouse::DoubleClickMouseResult;
+pub use tools::brp_extras_double_tap_gesture::DoubleTapGestureParams;
+pub use tools::brp_extras_double_tap_gesture::DoubleTapGestureResult;
+pub use tools::brp_extras_drag_mouse::DragMouseParams;
+pub use tools::brp_extras_drag_mouse::DragMouseResult;
+pub use tools::brp_extras_move_mouse::MoveMouseParams;
+pub use tools::brp_extras_move_mouse::MoveMouseResult;
+pub use tools::brp_extras_pinch_gesture::PinchGestureParams;
+pub use tools::brp_extras_pinch_gesture::PinchGestureResult;
+pub use tools::brp_extras_rotation_gesture::RotationGestureParams;
+pub use tools::brp_extras_rotation_gesture::RotationGestureResult;
 pub use tools::brp_extras_screenshot::ScreenshotParams;
 pub use tools::brp_extras_screenshot::ScreenshotResult;
+pub use tools::brp_extras_scroll_mouse::ScrollMouseParams;
+pub use tools::brp_extras_scroll_mouse::ScrollMouseResult;
 pub use tools::brp_extras_send_keys::SendKeysParams;
 pub use tools::brp_extras_send_keys::SendKeysResult;
+pub use tools::brp_extras_send_mouse_button::SendMouseButtonParams;
+pub use tools::brp_extras_send_mouse_button::SendMouseButtonResult;
 pub use tools::brp_extras_set_window_title::SetWindowTitleParams;
 pub use tools::brp_extras_set_window_title::SetWindowTitleResult;
 pub use tools::brp_extras_type_text::TypeTextParams;

@@ -1,0 +1,12 @@
+Clicks a mouse button in Bevy apps via bevy_brp_extras. Performs a simple click (press and immediate release) with default 100ms timing.
+
+Button options: Left, Right, Middle, Back, Forward
+
+Examples:
+```json
+{"button": "Left"}              // Click left button
+{"button": "Right"}             // Click right button
+{"button": "Middle"}            // Click middle button (wheel)
+```
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

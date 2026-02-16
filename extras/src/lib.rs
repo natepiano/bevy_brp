@@ -23,16 +23,12 @@
 //! - `brp_extras/set_window_title`: Change the window title
 
 mod keyboard;
+mod mouse;
 mod plugin;
 mod screenshot;
 mod shutdown;
 mod window_title;
 
-pub use keyboard::KeyCodeInfo;
-pub use keyboard::KeyCodeWrapper;
-pub use keyboard::SendKeysRequest;
-pub use keyboard::SendKeysResponse;
-pub use keyboard::TimedKeyRelease;
 pub use plugin::BrpExtrasPlugin;
 
 /// Default port for remote control connections
