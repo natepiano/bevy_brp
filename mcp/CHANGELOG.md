@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `brp_extras_pinch_gesture` - Trackpad pinch-to-zoom (macOS)
   - `brp_extras_rotation_gesture` - Trackpad rotation (macOS)
 
+### Fixed
+- `world_trigger_event` now correctly sends struct payloads as JSON objects instead of stringified JSON
+- Parameter handling for MCP clients that stringify JSON objects/arrays for `Any`-typed parameters (affects `world_insert_resources`, `world_mutate_resources`, `world_mutate_components`, `registry_schema`)
+
 ## [0.18.1] - 2026-02-10
 
 ### Added

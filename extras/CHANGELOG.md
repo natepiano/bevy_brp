@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `pinch_gesture` - Trackpad pinch-to-zoom gesture (macOS)
   - `rotation_gesture` - Trackpad rotation gesture (macOS)
 
+### Changed
+- Mouse operations now default to the last window the cursor was moved to instead of always defaulting to the primary window when no explicit `window` parameter is provided
+
 ## [0.18.1] - 2026-02-10
 
 ### Added
