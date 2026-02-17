@@ -319,8 +319,8 @@ fn handle_string_type(type_str: &str, obj: &Map<String, Value>) -> ParameterType
     }
 }
 
-/// Handle array type values from schema type field (for Option<T> types)
-fn handle_type_array(types: &[Value]) -> ParameterType {
+/// Handle array type values from schema type field (for `Option<T>` types)
+fn handle_type_array(types: &[Value], obj: &Map<String, Value>) -> ParameterType {
     let non_null_types: Vec<&str> = types
         .iter()
         .filter_map(|v| v.as_str())
@@ -337,6 +337,8 @@ fn handle_type_array(types: &[Value]) -> ParameterType {
                 ParameterType::Number
             },
             Some(&s) if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
+            Some(&s) if s == JsonSchemaType::Object.as_ref() => ParameterType::Object,
+            Some(&s) if s == JsonSchemaType::Array.as_ref() => handle_array_type(obj),
             _ => ParameterType::Any,
         }
     } else {
@@ -415,7 +417,7 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
     if let Some(type_value) = obj.get_field(SchemaField::Type) {
         return match type_value {
             Value::String(type_str) => handle_string_type(type_str, obj),
-            Value::Array(types) => handle_type_array(types),
+            Value::Array(types) => handle_type_array(types, obj),
             _ => ParameterType::Any,
         };
     }

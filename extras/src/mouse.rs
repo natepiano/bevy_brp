@@ -229,7 +229,9 @@ pub struct MoveMouseResponse {
 #[derive(Resource, Default)]
 pub struct SimulatedCursorPosition {
     /// Per-window cursor positions
-    pub positions: std::collections::HashMap<Entity, Vec2>,
+    pub positions:   std::collections::HashMap<Entity, Vec2>,
+    /// The last window the cursor was moved to (used as default for click/scroll operations)
+    pub last_window: Option<Entity>,
 }
 
 impl SimulatedCursorPosition {
@@ -506,7 +508,11 @@ pub struct DoubleTapGestureResponse {
 // Helper Functions
 // ============================================================================
 
-/// Resolve window entity from optional u64 ID, defaulting to primary window
+/// Resolve window entity from optional u64 ID
+///
+/// Resolution order when `window_id` is None:
+/// 1. Last window the cursor was moved to (from `SimulatedCursorPosition`)
+/// 2. Primary window (fallback)
 fn resolve_window(world: &mut World, window_id: Option<u64>) -> Result<Entity, BrpError> {
     if let Some(id) = window_id {
         let entity = Entity::from_bits(id);
@@ -521,7 +527,14 @@ fn resolve_window(world: &mut World, window_id: Option<u64>) -> Result<Entity, B
         return Ok(entity);
     }
 
-    // Find primary window using query
+    // Default to the last window the cursor was moved to
+    if let Some(cursor_pos) = world.get_resource::<SimulatedCursorPosition>()
+        && let Some(last_window) = cursor_pos.last_window
+    {
+        return Ok(last_window);
+    }
+
+    // Fall back to primary window
     let entity = {
         let mut query = world.query_filtered::<Entity, With<PrimaryWindow>>();
         let mut iter = query.iter(world);
@@ -591,6 +604,7 @@ pub fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
 
     // Update resource and send motion events
     cursor_res.positions.insert(window, new_position);
+    cursor_res.last_window = Some(window);
     send_motion_events(world, window, new_position, delta);
 
     serialize_response(
@@ -964,5 +978,6 @@ pub fn sync_cursor_position(
 ) {
     for event in cursor_events.read() {
         cursor_res.positions.insert(event.window, event.position);
+        cursor_res.last_window = Some(event.window);
     }
 }

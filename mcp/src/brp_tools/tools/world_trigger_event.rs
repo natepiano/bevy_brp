@@ -1,5 +1,7 @@
 //! `world.trigger_event` tool - Trigger events in the Bevy world
 
+use std::collections::HashMap;
+
 use bevy_brp_mcp_macros::ParamStruct;
 use bevy_brp_mcp_macros::ResultStruct;
 use schemars::JsonSchema;
@@ -15,10 +17,9 @@ pub struct TriggerEventParams {
     /// The full type path of the event to trigger (e.g., "`my_game::events::SpawnEnemy`")
     pub event: String,
 
-    /// The serialized value of the event payload, if any.
-    /// For unit events (no data), omit this field.
+    /// The event payload as JSON. Omit for unit events (events with no data).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<Value>,
+    pub value: Option<HashMap<String, Value>>,
 
     /// The BRP port (default: 15702)
     #[serde(default)]
