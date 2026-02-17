@@ -44,10 +44,10 @@ fn main() {
         .add_systems(
             Update,
             (
+                track_cursor_position,
                 track_mouse_buttons,
                 track_click_events,
                 update_button_durations,
-                track_cursor_position,
                 track_mouse_wheel,
                 track_mouse_motion,
                 track_gestures,

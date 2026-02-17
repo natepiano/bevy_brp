@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use rmcp::ErrorData;
-use rmcp::model::CallToolRequestParam;
+use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
 use schemars::generate::SchemaSettings;
 
@@ -33,7 +33,7 @@ impl ToolDef {
 
     pub async fn call_tool(
         &self,
-        request: CallToolRequestParam,
+        request: CallToolRequestParams,
         roots: Vec<PathBuf>,
     ) -> std::result::Result<CallToolResult, ErrorData> {
         // Create HandlerContext - all tools use the same context
@@ -93,6 +93,7 @@ impl ToolDef {
             annotations:   Some(enhanced_annotations.into()),
             icons:         None,
             meta:          None,
+            execution:     None,
         }
     }
 }

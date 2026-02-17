@@ -6,10 +6,10 @@ use rmcp::ErrorData as McpError;
 use rmcp::Peer;
 use rmcp::RoleServer;
 use rmcp::ServerHandler;
-use rmcp::model::CallToolRequestParam;
+use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
 use rmcp::model::ListToolsResult;
-use rmcp::model::PaginatedRequestParam;
+use rmcp::model::PaginatedRequestParams;
 use rmcp::model::ServerCapabilities;
 use rmcp::model::Tool;
 use rmcp::service::RequestContext;
@@ -129,7 +129,7 @@ impl ServerHandler for McpService {
 
     async fn list_tools(
         &self,
-        _request: Option<PaginatedRequestParam>,
+        _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
         Ok(self.list_mcp_tools())
@@ -137,7 +137,7 @@ impl ServerHandler for McpService {
 
     async fn call_tool(
         &self,
-        request: CallToolRequestParam,
+        request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         // Fetch roots and get paths

@@ -4,7 +4,7 @@ use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 use error_stack::ResultExt;
-use rmcp::model::CallToolRequestParam;
+use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
 use serde_json::Value;
 use serde_json::json;
@@ -25,7 +25,7 @@ use crate::tool::response_builder::Response;
 #[derive(Clone)]
 pub struct HandlerContext {
     pub(super) tool_def: ToolDef,
-    pub request:         CallToolRequestParam,
+    pub request:         CallToolRequestParams,
     pub roots:           Vec<PathBuf>,
 }
 
@@ -33,7 +33,7 @@ impl HandlerContext {
     /// Create a new `HandlerContext`
     pub(crate) const fn new(
         tool_def: ToolDef,
-        request: CallToolRequestParam,
+        request: CallToolRequestParams,
         roots: Vec<PathBuf>,
     ) -> Self {
         Self {
