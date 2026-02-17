@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed simulated mouse and keyboard input not triggering Bevy's picking system by dual-writing events to the `WindowEvent` message channel
+
 ## [0.18.2] - 2026-02-17
 
 ### Added

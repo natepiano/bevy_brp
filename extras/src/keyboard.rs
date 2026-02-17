@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use bevy::remote::BrpError;
 use bevy::remote::BrpResult;
 use bevy::remote::error_codes::INVALID_PARAMS;
+use bevy::window::WindowEvent;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -16,6 +17,8 @@ use serde_json::json;
 use strum_macros::Display;
 use strum_macros::EnumIter;
 use strum_macros::EnumString;
+
+use crate::window_event::write_input_event;
 
 /// Maximum duration for holding keys in milliseconds (1 minute)
 const MAX_KEY_DURATION_MS: u32 = 60_000;
@@ -587,7 +590,7 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     // Always send press events first
     let press_events = create_keyboard_events(&wrappers, true);
     for event in press_events {
-        world.write_message(event);
+        write_input_event(world, event);
     }
 
     // Always spawn an entity to handle the timed release
@@ -614,6 +617,7 @@ pub fn process_timed_key_releases(
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedKeyRelease)>,
     mut keyboard_events: MessageWriter<bevy::input::keyboard::KeyboardInput>,
+    mut window_events: MessageWriter<WindowEvent>,
 ) {
     for (entity, mut timed_release) in &mut query {
         timed_release.timer.tick(time.delta());
@@ -622,6 +626,7 @@ pub fn process_timed_key_releases(
             // Send release events for all keys (text is None for release events)
             let release_events = create_keyboard_events(&timed_release.keys, false);
             for event in release_events {
+                window_events.write(WindowEvent::from(event.clone()));
                 keyboard_events.write(event);
             }
 
@@ -781,6 +786,7 @@ pub fn process_text_typing(
     mut commands: Commands,
     mut query: Query<(Entity, &mut TextTypingQueue)>,
     mut keyboard_events: MessageWriter<bevy::input::keyboard::KeyboardInput>,
+    mut window_events: MessageWriter<WindowEvent>,
 ) {
     for (entity, mut queue) in &mut query {
         if queue.releasing {
@@ -788,6 +794,7 @@ pub fn process_text_typing(
             if !queue.current_keys.is_empty() {
                 let release_events = create_keyboard_events(&queue.current_keys, false);
                 for event in release_events {
+                    window_events.write(WindowEvent::from(event.clone()));
                     keyboard_events.write(event);
                 }
                 queue.current_keys.clear();
@@ -801,6 +808,7 @@ pub fn process_text_typing(
                     // Pass the actual character so shifted chars get correct text field
                     let press_events = create_keyboard_events_with_text(&keys, true, Some(c));
                     for event in press_events {
+                        window_events.write(WindowEvent::from(event.clone()));
                         keyboard_events.write(event);
                     }
                     queue.current_keys = keys;

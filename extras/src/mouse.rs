@@ -26,10 +26,13 @@ use bevy::remote::error_codes::INTERNAL_ERROR;
 use bevy::remote::error_codes::INVALID_PARAMS;
 use bevy::window::CursorMoved;
 use bevy::window::PrimaryWindow;
+use bevy::window::WindowEvent;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Map;
 use serde_json::Value;
+
+use crate::window_event::write_input_event;
 
 // ============================================================================
 // Constants
@@ -133,12 +136,15 @@ fn send_timed_button_press(
     window: Entity,
     duration_ms: u32,
 ) {
-    // Send button press event
-    world.write_message(MouseButtonInput {
-        button,
-        state: ButtonState::Pressed,
-        window,
-    });
+    // Send button press event to both individual and `WindowEvent` channels
+    write_input_event(
+        world,
+        MouseButtonInput {
+            button,
+            state: ButtonState::Pressed,
+            window,
+        },
+    );
 
     // Spawn timed release component
     world.spawn(TimedButtonRelease {
@@ -159,12 +165,15 @@ fn send_timed_button_press(
 /// * `position` - New cursor position in window coordinates
 /// * `delta` - Delta movement from previous position
 fn send_motion_events(world: &mut World, window: Entity, position: Vec2, delta: Vec2) {
-    world.write_message(MouseMotion { delta });
-    world.write_message(CursorMoved {
-        window,
-        position,
-        delta: Some(delta),
-    });
+    write_input_event(world, MouseMotion { delta });
+    write_input_event(
+        world,
+        CursorMoved {
+            window,
+            position,
+            delta: Some(delta),
+        },
+    );
 }
 
 // ============================================================================
@@ -616,7 +625,6 @@ pub fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
     )
 }
 
-/// Handler for `send_mouse_button` BRP method
 /// Handler for `click_mouse` BRP method
 ///
 /// Performs a simple click (press and release) with default timing
@@ -634,6 +642,9 @@ pub fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> 
     )
 }
 
+/// Handler for `send_mouse_button` BRP method
+///
+/// Sends a mouse button press with configurable hold duration before automatic release
 pub fn send_mouse_button_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: SendMouseButtonRequest = parse_request(params, false)?;
 
@@ -668,16 +679,22 @@ pub fn double_click_mouse_handler(In(params): In<Option<Value>>, world: &mut Wor
     let window = resolve_window(world, request.window)?;
 
     // First click: press + immediate release
-    world.write_message(MouseButtonInput {
-        button: request.button,
-        state: ButtonState::Pressed,
-        window,
-    });
-    world.write_message(MouseButtonInput {
-        button: request.button,
-        state: ButtonState::Released,
-        window,
-    });
+    write_input_event(
+        world,
+        MouseButtonInput {
+            button: request.button,
+            state: ButtonState::Pressed,
+            window,
+        },
+    );
+    write_input_event(
+        world,
+        MouseButtonInput {
+            button: request.button,
+            state: ButtonState::Released,
+            window,
+        },
+    );
 
     // Schedule second click to happen after delay
     world.spawn(ScheduledClick {
@@ -701,12 +718,15 @@ pub fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut World) ->
     let request: ScrollMouseRequest = parse_request(params, false)?;
     let window = resolve_window(world, request.window)?;
 
-    world.write_message(MouseWheel {
-        unit: request.unit,
-        x: request.x,
-        y: request.y,
-        window,
-    });
+    write_input_event(
+        world,
+        MouseWheel {
+            unit: request.unit,
+            x: request.x,
+            y: request.y,
+            window,
+        },
+    );
 
     serialize_response(
         ScrollMouseResponse {
@@ -759,7 +779,7 @@ pub fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
 pub fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: PinchGestureRequest = parse_request(params, false)?;
 
-    world.write_message(bevy::input::gestures::PinchGesture(request.delta));
+    write_input_event(world, bevy::input::gestures::PinchGesture(request.delta));
 
     serialize_response(
         PinchGestureResponse {
@@ -773,7 +793,7 @@ pub fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -
 pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: RotationGestureRequest = parse_request(params, false)?;
 
-    world.write_message(bevy::input::gestures::RotationGesture(request.delta));
+    write_input_event(world, bevy::input::gestures::RotationGesture(request.delta));
 
     serialize_response(
         RotationGestureResponse {
@@ -787,7 +807,7 @@ pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World
 pub fn double_tap_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let _request: DoubleTapGestureRequest = parse_request(params, true)?;
 
-    world.write_message(bevy::input::gestures::DoubleTapGesture);
+    write_input_event(world, bevy::input::gestures::DoubleTapGesture);
 
     serialize_response(DoubleTapGestureResponse {}, "double_tap_gesture")
 }
@@ -805,17 +825,19 @@ pub fn process_timed_button_releases(
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedButtonRelease)>,
     mut button_events: MessageWriter<MouseButtonInput>,
+    mut window_events: MessageWriter<WindowEvent>,
 ) {
     for (entity, mut release) in &mut query {
         release.timer.tick(time.delta());
 
         if release.timer.is_finished() {
-            // Send button release event
-            button_events.write(MouseButtonInput {
+            let event = MouseButtonInput {
                 button: release.button,
                 state:  ButtonState::Released,
                 window: resolve_window_entity(release.window),
-            });
+            };
+            window_events.write(WindowEvent::from(event));
+            button_events.write(event);
 
             // Despawn the entity
             commands.entity(entity).despawn();
@@ -834,16 +856,19 @@ pub fn process_scheduled_clicks(
     time: Res<Time>,
     mut query: Query<(Entity, &mut ScheduledClick)>,
     mut button_events: MessageWriter<MouseButtonInput>,
+    mut window_events: MessageWriter<WindowEvent>,
 ) {
     for (entity, mut scheduled) in &mut query {
         scheduled.delay_timer.tick(time.delta());
         if scheduled.delay_timer.is_finished() {
             // Send press event
-            button_events.write(MouseButtonInput {
+            let event = MouseButtonInput {
                 button: scheduled.button,
                 state:  ButtonState::Pressed,
                 window: resolve_window_entity(scheduled.window),
-            });
+            };
+            window_events.write(WindowEvent::from(event));
+            button_events.write(event);
 
             // Spawn timed release
             commands.spawn(TimedButtonRelease {
@@ -873,6 +898,7 @@ pub fn process_drag_operations(
     mut motion_events: MessageWriter<MouseMotion>,
     mut cursor_events: MessageWriter<CursorMoved>,
     mut button_events: MessageWriter<MouseButtonInput>,
+    mut window_events: MessageWriter<WindowEvent>,
 ) {
     for (entity, mut drag) in &mut query {
         let window = resolve_window_entity(drag.window);
@@ -880,22 +906,28 @@ pub fn process_drag_operations(
         match drag.state {
             DragState::Pressed => {
                 // Send button press
-                button_events.write(MouseButtonInput {
+                let btn_event = MouseButtonInput {
                     button: drag.button,
                     state: ButtonState::Pressed,
                     window,
-                });
+                };
+                window_events.write(WindowEvent::from(btn_event));
+                button_events.write(btn_event);
 
                 // Move cursor to start position
                 let delta = cursor_res.update_position(window, drag.start);
 
                 // Send motion events
-                motion_events.write(MouseMotion { delta });
-                cursor_events.write(CursorMoved {
+                let motion = MouseMotion { delta };
+                window_events.write(WindowEvent::from(motion));
+                motion_events.write(motion);
+                let cursor = CursorMoved {
                     window,
                     position: drag.start,
                     delta: Some(delta),
-                });
+                };
+                window_events.write(WindowEvent::from(cursor.clone()));
+                cursor_events.write(cursor);
 
                 // Transition to dragging
                 drag.state = DragState::Dragging;
@@ -910,12 +942,16 @@ pub fn process_drag_operations(
                 let delta = cursor_res.update_position(window, new_position);
 
                 // Send motion events
-                motion_events.write(MouseMotion { delta });
-                cursor_events.write(CursorMoved {
+                let motion = MouseMotion { delta };
+                window_events.write(WindowEvent::from(motion));
+                motion_events.write(motion);
+                let cursor = CursorMoved {
                     window,
                     position: new_position,
                     delta: Some(delta),
-                });
+                };
+                window_events.write(WindowEvent::from(cursor.clone()));
+                cursor_events.write(cursor);
 
                 // Advance frame
                 drag.current_frame += 1;
@@ -927,11 +963,13 @@ pub fn process_drag_operations(
             },
             DragState::Released => {
                 // Send button release
-                button_events.write(MouseButtonInput {
+                let btn_event = MouseButtonInput {
                     button: drag.button,
                     state: ButtonState::Released,
                     window,
-                });
+                };
+                window_events.write(WindowEvent::from(btn_event));
+                button_events.write(btn_event);
 
                 // Despawn entity
                 commands.entity(entity).despawn();

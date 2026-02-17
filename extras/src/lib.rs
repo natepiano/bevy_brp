@@ -27,6 +27,7 @@ mod mouse;
 mod plugin;
 mod screenshot;
 mod shutdown;
+mod window_event;
 mod window_title;
 
 pub use plugin::BrpExtrasPlugin;

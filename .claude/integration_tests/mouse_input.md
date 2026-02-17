@@ -189,7 +189,58 @@ All mouse operations must be tested on **both windows** to verify:
 - Each window maintains independent cursor position
 - Final positions match drag endpoints
 
-### 8. Complete State Verification
+### 8. Picking Validation - Both Windows
+
+**Description**: Verify simulated mouse events flow through Bevy's picking system via the `WindowEvent` channel, triggering observers on pickable 3D cuboid meshes
+
+**Steps**:
+1. Move cursor to primary window center (300, 200) — over the cuboid
+2. Use `click_mouse` with left button
+3. Wait 150ms for release
+4. Query `MouseStateTracker` to verify:
+   - `primary_picking_click_count` = 1
+   - `primary_picking_gizmo_active` = true
+5. Wait 600ms (age out double-click window so next click starts fresh)
+6. Move cursor to primary window center (300, 200) again
+7. Use `double_click_mouse` with left button and 100ms delay
+8. Wait 250ms for completion
+9. Query `MouseStateTracker` to verify:
+   - `primary_picking_doubleclick_count` >= 1
+   - `primary_picking_gizmo_active` = true (yellow gizmo now)
+10. Move cursor away from cuboid on primary window (50, 50) — hits background plane
+11. Use `click_mouse` with left button
+12. Wait 150ms
+13. Query `MouseStateTracker` to verify:
+    - `primary_picking_gizmo_active` = false (deselected via background click)
+14. Move cursor to secondary window center (300, 200) — over the cuboid
+15. Use `click_mouse` with left button
+16. Wait 150ms
+17. Query `MouseStateTracker` to verify:
+    - `secondary_picking_click_count` = 1
+    - `secondary_picking_gizmo_active` = true
+18. Wait 600ms (age out double-click window)
+19. Move cursor to secondary window center (300, 200) again
+20. Use `double_click_mouse` with left button and 100ms delay
+21. Wait 250ms
+22. Query `MouseStateTracker` to verify:
+    - `secondary_picking_doubleclick_count` >= 1
+    - `secondary_picking_gizmo_active` = true
+23. Move cursor away from cuboid on secondary window (50, 50) — hits background
+24. Use `click_mouse` with left button
+25. Wait 150ms
+26. Query `MouseStateTracker` to verify:
+    - `secondary_picking_gizmo_active` = false
+
+**Expected**:
+- Simulated mouse events propagate through `WindowEvent` channel to picking system
+- Observer-based click detection works on cuboid meshes
+- Single click produces green gizmo outline
+- Double click produces yellow gizmo outline
+- Clicking background plane removes gizmo (deselection)
+- Both windows have independent picking state
+- `primary_picking_click_count` and `secondary_picking_click_count` update independently
+
+### 9. Complete State Verification
 
 **Description**: Final comprehensive state check
 
@@ -203,10 +254,18 @@ All mouse operations must be tested on **both windows** to verify:
    - Timestamps (f32) are recent for recent operations
    - Button states (bool) all false (released)
    - `cursor_window` matches last moved window
+   - Picking fields (both windows):
+     - `primary_picking_click_count` (u32) > 0
+     - `primary_picking_doubleclick_count` (u32) > 0
+     - `primary_picking_gizmo_active` (bool) = false (deselected in test)
+     - `secondary_picking_click_count` (u32) > 0
+     - `secondary_picking_doubleclick_count` (u32) > 0
+     - `secondary_picking_gizmo_active` (bool) = false (deselected in test)
 
 **Expected**:
 - All fields present and correctly typed
 - Values reflect all operations performed
+- Picking state reflects final deselected state on both windows
 - No unexpected state changes
 
 ## Success Criteria
@@ -217,6 +276,8 @@ All mouse operations must be tested on **both windows** to verify:
 - Button states are global but work from either window
 - No cross-contamination between windows
 - Drag operations work on both windows independently
+- Picking system responds to simulated input on both windows
+- Gizmo outlines appear/disappear correctly based on cuboid/background clicks
 - Gesture tests pass on macOS (may skip on other platforms)
 - No app crashes or hangs
 
@@ -224,7 +285,7 @@ All mouse operations must be tested on **both windows** to verify:
 
 **Tool Call Reduction**:
 - Original test: ~109 tool calls
-- Optimized test: ~35-40 tool calls (64% reduction)
+- Optimized test: ~50-55 tool calls (including picking validation)
 
 **Key Optimizations**:
 1. **Batched operations**: Group related operations before verifying
