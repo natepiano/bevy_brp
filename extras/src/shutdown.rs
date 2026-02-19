@@ -1,7 +1,7 @@
 //! Shutdown handler for BRP extras
 
 use bevy::prelude::*;
-use bevy::remote::BrpResult;
+use bevy_remote::BrpResult;
 use serde_json::Value;
 use serde_json::json;
 
