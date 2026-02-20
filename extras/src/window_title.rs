@@ -1,11 +1,11 @@
 //! Window title handler for BRP extras
 
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
 use bevy_remote::error_codes::INTERNAL_ERROR;
 use bevy_remote::error_codes::INVALID_PARAMS;
-use bevy::window::PrimaryWindow;
 use serde_json::Value;
 use serde_json::json;
 

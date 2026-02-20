@@ -46,7 +46,7 @@ impl BrpExtrasPlugin {
     pub const fn new() -> Self {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
-            port: None,
+            port:                                     None,
         }
     }
 
