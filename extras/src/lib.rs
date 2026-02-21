@@ -107,6 +107,7 @@
 //! Sends a pinch gesture for zoom operations.
 //! - `delta` (f32, required): positive = zoom in, negative = zoom out
 //!
+//!
 //! ### `brp_extras/rotation_gesture`
 //! Sends a rotation gesture.
 //! - `delta` (f32, required): rotation in radians

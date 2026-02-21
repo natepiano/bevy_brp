@@ -90,8 +90,8 @@
     "app_type": "example"
   },
   {
-    "test_name": "wasm_build",
-    "test_file": ".claude/integration_tests/wasm_build.md",
+    "test_name": "wasm",
+    "test_file": ".claude/integration_tests/wasm.md",
     "app_name": "various",
     "app_type": null
   }

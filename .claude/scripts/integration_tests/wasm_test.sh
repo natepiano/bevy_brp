@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # WASM BRP integration test script
-# Usage: bash .claude/scripts/integration_tests/wasm_build_test.sh
+# Usage: bash .claude/scripts/integration_tests/wasm_test.sh
 #
 # Validates that bevy_brp_extras compiles to WASM, runs in a browser via
 # wasm-server-runner (with BRP relay), and responds to BRP requests.

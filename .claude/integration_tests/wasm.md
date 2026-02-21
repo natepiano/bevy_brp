@@ -10,7 +10,7 @@ This test does NOT use MCP tools to launch/query a Bevy app. It runs a single sh
 
 Run the test script from the project root:
 ```bash
-bash .claude/scripts/integration_tests/wasm_build_test.sh
+bash .claude/scripts/integration_tests/wasm_test.sh
 ```
 
 The script handles all steps internally and exits 0 on success, 1 on failure.
