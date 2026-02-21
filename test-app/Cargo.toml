@@ -34,6 +34,7 @@ path = "examples/mouse_test.rs"
 [dependencies]
 bevy_brp_extras = { path = "../extras" }
 bevy_mesh       = { workspace = true }
+bevy_remote     = { workspace = true }
 bevy_winit      = { workspace = true }
 serde           = { workspace = true }
 

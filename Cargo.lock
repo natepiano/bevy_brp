@@ -651,6 +651,7 @@ dependencies = [
  "bevy",
  "bevy_brp_extras",
  "bevy_mesh",
+ "bevy_remote",
  "bevy_winit",
  "serde",
 ]

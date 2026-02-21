@@ -6,9 +6,9 @@
 //! Run with: cargo run --example `no_extras_plugin`
 
 use bevy::prelude::*;
-use bevy::remote::RemotePlugin;
-use bevy::remote::http::RemoteHttpPlugin;
 use bevy::window::PrimaryWindow;
+use bevy_remote::RemotePlugin;
+use bevy_remote::http::RemoteHttpPlugin;
 
 /// Hard-coded port for this example (to avoid conflicts)
 const FIXED_PORT: u16 = 25000;

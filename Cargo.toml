@@ -15,7 +15,8 @@ repository = "https://github.com/natepiano/bevy_brp"
 [workspace.dependencies]
 # Bevy with no default features - each crate specifies what it needs
 bevy       = { version = "0.18.0", default-features = false }
-bevy_mesh  = { version = "0.18.0" }
+bevy_mesh   = { version = "0.18.0" }
+bevy_remote = { version = "0.18.0" }
 bevy_winit = { version = "0.18.0" }
 
 # Core dependencies (shared between extras and mcp)
