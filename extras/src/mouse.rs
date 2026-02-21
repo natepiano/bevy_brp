@@ -157,12 +157,18 @@ fn send_timed_button_press(
 /// Send coordinated mouse motion events
 ///
 /// Sends both device-level `MouseMotion` (delta) and window-level `CursorMoved` (position)
-/// events together. These events must be paired for correct mouse behavior in Bevy.
+/// events together, and updates the `Window` component's internal cursor position.
+///
+/// The `Window` component update is critical because `window.cursor_position()` reads from
+/// `Window.physical_cursor_position`, which is normally only set by winit's OS-level cursor
+/// handler. Without this update, systems that check `window.cursor_position()` (e.g.,
+/// `PanOrbitCamera`, UI hit-testing) would see `None` when the app is unfocused and ignore
+/// all BRP-injected input.
 ///
 /// # Arguments
 /// * `world` - Mutable world reference
 /// * `window` - Target window entity
-/// * `position` - New cursor position in window coordinates
+/// * `position` - New cursor position in window coordinates (logical pixels)
 /// * `delta` - Delta movement from previous position
 fn send_motion_events(world: &mut World, window: Entity, position: Vec2, delta: Vec2) {
     write_input_event(world, MouseMotion { delta });
@@ -174,6 +180,12 @@ fn send_motion_events(world: &mut World, window: Entity, position: Vec2, delta: 
             delta: Some(delta),
         },
     );
+
+    // Update the `Window` component's cursor position so that
+    // `window.cursor_position()` returns the correct value even when unfocused
+    if let Some(mut window_component) = world.get_mut::<Window>(window) {
+        window_component.set_cursor_position(Some(position));
+    }
 }
 
 // ============================================================================
@@ -899,6 +911,7 @@ pub fn process_drag_operations(
     mut cursor_events: MessageWriter<CursorMoved>,
     mut button_events: MessageWriter<MouseButtonInput>,
     mut window_events: MessageWriter<WindowEvent>,
+    mut windows: Query<&mut Window>,
 ) {
     for (entity, mut drag) in &mut query {
         let window = resolve_window_entity(drag.window);
@@ -929,6 +942,11 @@ pub fn process_drag_operations(
                 window_events.write(WindowEvent::from(cursor.clone()));
                 cursor_events.write(cursor);
 
+                // Update `Window` component so `cursor_position()` works when unfocused
+                if let Ok(mut win) = windows.get_mut(window) {
+                    win.set_cursor_position(Some(drag.start));
+                }
+
                 // Transition to dragging
                 drag.state = DragState::Dragging;
             },
@@ -952,6 +970,11 @@ pub fn process_drag_operations(
                 };
                 window_events.write(WindowEvent::from(cursor.clone()));
                 cursor_events.write(cursor);
+
+                // Update `Window` component so `cursor_position()` works when unfocused
+                if let Ok(mut win) = windows.get_mut(window) {
+                    win.set_cursor_position(Some(new_position));
+                }
 
                 // Advance frame
                 drag.current_frame += 1;

@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`get_diagnostics` method**: New BRP method for querying FPS and frame time diagnostics from Bevy's `DiagnosticsStore`. Returns current, average, and smoothed FPS values, frame time in milliseconds, total frame count, and history buffer metadata. Defensively installs `FrameTimeDiagnosticsPlugin` if not already present.
 - **`diagnostics` feature**: New feature flag (enabled by default) that controls FPS diagnostics support. Disable with `default-features = false` to exclude the diagnostics system and `FrameTimeDiagnosticsPlugin`.
 
+### Fixed
+- Fixed BRP-injected mouse input (move, scroll, drag, click) not working when the Bevy app window is unfocused. The `Window` component's internal cursor position is now updated alongside message writes, so `window.cursor_position()` returns the correct value even without OS-level cursor events.
+
 ## [0.18.3] - 2026-02-17
 
 ### Fixed
