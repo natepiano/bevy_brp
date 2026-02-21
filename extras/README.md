@@ -21,7 +21,7 @@ bevy_brp_extras does two things
 
 ## Features
 
-Adds the following Bevvy Remote Protocol methods:
+Adds the following Bevy Remote Protocol methods:
 - `brp_extras/screenshot` - Capture screenshots of the primary window
 - `brp_extras/shutdown` - Gracefully shutdown the application
 - `brp_extras/send_keys` - Send keyboard input to the application
@@ -36,6 +36,32 @@ Adds the following Bevvy Remote Protocol methods:
 - `brp_extras/double_tap_gesture` - Trackpad double tap gesture (macOS)
 - `brp_extras/pinch_gesture` - Trackpad pinch gesture (macOS)
 - `brp_extras/rotation_gesture` - Trackpad rotation gesture (macOS)
+- `brp_extras/get_diagnostics` - Query FPS and frame time diagnostics
+
+## Cargo Features
+
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `diagnostics` | Yes | Enables the `brp_extras/get_diagnostics` method and installs Bevy's `FrameTimeDiagnosticsPlugin` |
+
+When enabled, `BrpExtrasPlugin` will install Bevy's `FrameTimeDiagnosticsPlugin` if it hasn't been added already. However, the reverse is not safe -- if you add `FrameTimeDiagnosticsPlugin` after `BrpExtrasPlugin` has already installed it, Bevy will panic due to the duplicate plugin. Either add it before `BrpExtrasPlugin`, or let `BrpExtrasPlugin` handle it.
+
+To disable diagnostics entirely (e.g., if you don't want `FrameTimeDiagnosticsPlugin` added to your app):
+
+```toml
+[dependencies]
+bevy_brp_extras = { version = "0.18.3", default-features = false }
+```
+
+## WASM Support
+
+`bevy_brp_extras` compiles on `wasm32` targets. On native platforms, HTTP transport (`RemoteHttpPlugin`) is added automatically. On WASM, only the BRP methods are registered -- you need to provide your own transport (e.g., a WebSocket relay).
+
+```toml
+# Works on both native and wasm32
+[dependencies]
+bevy_brp_extras = "0.18.3"
+```
 
 ## Usage
 
@@ -185,6 +211,29 @@ curl -X POST http://localhost:15702/brp_extras/set_window_title \
 - **Method**: `brp_extras/double_tap_gesture` - No parameters
 - **Method**: `brp_extras/pinch_gesture` - `delta` (number, required): Pinch amount
 - **Method**: `brp_extras/rotation_gesture` - `delta` (number, required): Rotation in radians
+
+### Get Diagnostics
+- **Method**: `brp_extras/get_diagnostics`
+- **Parameters**: None
+- **Returns**: FPS and frame time diagnostics from Bevy's `DiagnosticsStore`
+- **Requires**: `diagnostics` feature (enabled by default)
+
+Returns current, average, and smoothed values for both FPS and frame time:
+
+```json
+{
+  "fps": { "current": 60.0, "average": 59.8, "smoothed": 59.9, "history_len": 120, "max_history_len": 120, "history_duration_secs": 2.0 },
+  "frame_time_ms": { "current": 16.6, "average": 16.7, "smoothed": 16.7 },
+  "frame_count": 3600
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:15702/brp_extras/get_diagnostics \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
 
 ## Integration with bevy_brp_mcp
 
