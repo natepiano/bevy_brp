@@ -60,28 +60,39 @@ fail_() {
 }
 
 cleanup() {
+    echo "  Cleaning up..."
+
+    # Kill Chrome and ALL its child processes (GPU, renderer, utility, etc.)
+    # First try by PID, then fallback to pattern match on user-data-dir
     if [[ -n "${CHROME_PID}" ]]; then
-        echo "  Killing Chrome (PID ${CHROME_PID})..."
+        echo "  Killing Chrome process tree (PID ${CHROME_PID})..."
+        pkill -P "${CHROME_PID}" 2>/dev/null || true
         kill "${CHROME_PID}" 2>/dev/null || true
         wait "${CHROME_PID}" 2>/dev/null || true
         CHROME_PID=""
     fi
+    # Fallback: kill any Chrome processes using our unique profile directory
+    # This catches orphaned children even if the parent PID was lost
+    pkill -f "bevy_brp_wasm_test_chrome" 2>/dev/null || true
+
     if [[ -n "${RUNNER_PID}" ]]; then
         echo "  Killing wasm-server-runner (PID ${RUNNER_PID})..."
         kill "${RUNNER_PID}" 2>/dev/null || true
         wait "${RUNNER_PID}" 2>/dev/null || true
         RUNNER_PID=""
     fi
+
     # Also kill any stray processes on the BRP and web ports
     lsof -ti :"${BRP_PORT}" 2>/dev/null | xargs kill 2>/dev/null || true
     lsof -ti :"${WEB_PORT}" 2>/dev/null | xargs kill 2>/dev/null || true
+
     # Clean up temporary Chrome profile
     if [[ -n "${CHROME_PROFILE:-}" && -d "${CHROME_PROFILE:-}" ]]; then
         rm -rf "${CHROME_PROFILE}" 2>/dev/null || true
     fi
 }
 
-trap cleanup EXIT
+trap cleanup EXIT INT TERM HUP
 
 # JSON-RPC request ID counter
 RPC_ID=1
