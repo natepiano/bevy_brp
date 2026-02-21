@@ -1,14 +1,13 @@
 //! Screenshot handler for BRP extras
 
 use bevy::prelude::*;
-use bevy::remote;
-use bevy::remote::BrpError;
-use bevy::remote::BrpResult;
-use bevy::remote::error_codes::INTERNAL_ERROR;
-use bevy::remote::error_codes::INVALID_PARAMS;
 use bevy::render::view::screenshot::Screenshot;
 use bevy::render::view::screenshot::ScreenshotCaptured;
 use bevy::tasks::IoTaskPool;
+use bevy_remote::BrpError;
+use bevy_remote::BrpResult;
+use bevy_remote::error_codes::INTERNAL_ERROR;
+use bevy_remote::error_codes::INVALID_PARAMS;
 use serde_json::Value;
 use serde_json::json;
 
@@ -21,7 +20,7 @@ pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Check if PNG support is available at runtime
     if bevy::image::ImageFormat::from_extension("png").is_none() {
         return Err(BrpError {
-            code:    remote::error_codes::INTERNAL_ERROR,
+            code:    INTERNAL_ERROR,
             message: "PNG support not available. Enable the 'png' feature in your Bevy dependency"
                 .to_string(),
             data:    None,

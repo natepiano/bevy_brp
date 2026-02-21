@@ -19,7 +19,6 @@ version = "0.19.0-dev"
 bevy = { workspace = true, features = [
   "bevy_core_pipeline",
   "bevy_log",
-  "bevy_remote",
   "bevy_render",
   "bevy_sprite",
   "bevy_text",
@@ -30,8 +29,11 @@ bevy = { workspace = true, features = [
   "default_font",
   "gamepad",
   "png",
-  "x11",
 ] }
+
+# Direct dependency to control default features (bevy/bevy_remote pulls in HTTP transport
+# which requires async-io and doesn't compile on wasm32)
+bevy_remote = { version = "0.18", default-features = false }
 
 serde.workspace        = true
 serde_json.workspace   = true
@@ -39,6 +41,11 @@ smol_str.workspace     = true
 strum.workspace        = true
 strum_macros.workspace = true
 thiserror.workspace    = true
+
+# On native, enable HTTP transport and x11 platform backend
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+bevy = { workspace = true, features = ["x11"] }
+bevy_remote = { version = "0.18" }
 
 [features]
 default     = ["diagnostics"]
