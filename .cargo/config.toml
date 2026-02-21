@@ -3,3 +3,7 @@
 
 [target.'cfg(all())']
 rustflags = ["--cfg", "feature=\"mcp-debug\""]
+
+# Use johanhelsing's wasm-server-runner fork with BRP relay support for WASM testing
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"

@@ -1,0 +1,30 @@
+[package]
+edition = "2024"
+name    = "bevy_brp_test_wasm"
+publish = false
+version = "0.18.0-dev"
+
+[dependencies]
+bevy_brp_extras = { path = "../extras" }
+
+# WebSocket relay for BRP on WASM — connects outbound to wasm-server-runner's relay
+bevy_brp_websocket_relay = { git = "https://github.com/johanhelsing/bevy_brp_websocket_relay", branch = "main" }
+
+# Minimal Bevy features for WASM — no x11, no native file dialog, etc.
+bevy = { workspace = true, features = [
+  "bevy_core_pipeline",
+  "bevy_log",
+  "bevy_render",
+  "bevy_text",
+  "bevy_ui",
+  "bevy_winit",
+  "default_font",
+  "webgpu",
+] }
+
+[lints]
+workspace = true
+
+# Exclude from cargo-release
+[package.metadata.release]
+release = false

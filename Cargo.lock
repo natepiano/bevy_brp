@@ -657,6 +657,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_brp_test_wasm"
+version = "0.18.0-dev"
+dependencies = [
+ "bevy",
+ "bevy_brp_extras",
+ "bevy_brp_websocket_relay",
+]
+
+[[package]]
+name = "bevy_brp_websocket_relay"
+version = "0.1.0"
+source = "git+https://github.com/johanhelsing/bevy_brp_websocket_relay?branch=main#089dc8a1b3c54a7d6d57d5fefd6e326f637b0bcf"
+dependencies = [
+ "async-channel",
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_log",
+ "bevy_remote",
+ "js-sys",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "bevy_camera"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6552,6 +6578,7 @@ dependencies = [
  "smallvec",
  "static_assertions",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "wgpu-core",
  "wgpu-hal",

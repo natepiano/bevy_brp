@@ -16,7 +16,7 @@ Validate brp_extras specific methods: screenshot, send_keys, and type_text.
 - Verify screenshot file exists and has non-zero size
 - Read screenshot file to confirm it's valid
 - Check window content is captured correctly
-- **IMPORTANT**: Clean up screenshot file at end of test
+- **IMPORTANT**: Clean up screenshot files by running: `bash .claude/scripts/integration_tests/cleanup_screenshots.sh`
 
 ### 2. Keyboard Input Tests
 - Test default duration: `mcp__brp__brp_extras_send_keys` with `["KeyA", "Space"]`
@@ -55,7 +55,7 @@ Validate brp_extras specific methods: screenshot, send_keys, and type_text.
 - Take screenshot to verify UI reflects key input (use absolute path)
 - **IMPORTANT**: Poll for file completion using `.claude/scripts/extras_test_poll_screenshot.sh <absolute_path_to_screenshot>`
 - Read screenshot to confirm key display updated
-- Clean up this screenshot file as well
+- Clean up is handled by the cleanup script above (it removes both screenshot files)
 
 ## Expected Results
 - ✅ FPS diagnostics returns valid fps, frame_time_ms, and frame_count data

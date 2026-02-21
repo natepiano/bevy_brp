@@ -6,6 +6,7 @@ members = [
   "test-app",
   "test-duplicate-a",
   "test-duplicate-b",
+  "test-wasm",
 ]
 resolver = "2"
 

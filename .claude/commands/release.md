@@ -255,6 +255,8 @@ done
 → **Manual verification**: Verify changelog entries exist for all crates (either `[Unreleased]` section or placeholder entry)
   - Type **continue** to proceed
   - Type **stop** to add missing entries
+
+**Extras API docs check**: If `extras/CHANGELOG.md` has entries beyond a version bump placeholder (e.g., new methods, changed parameters, removed methods), verify that the crate-level docs in `extras/src/lib.rs` reflect those changes. The "Available BRP Methods" section in `lib.rs` is the primary API reference on docs.rs and must stay in sync with the actual methods.
 </ChangelogVerification>
 
 <FinalizeChangelogs>

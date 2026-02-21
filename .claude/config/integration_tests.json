@@ -88,5 +88,11 @@
     "test_file": ".claude/integration_tests/mouse_input.md",
     "app_name": "mouse_test",
     "app_type": "example"
+  },
+  {
+    "test_name": "wasm_build",
+    "test_file": ".claude/integration_tests/wasm_build.md",
+    "app_name": "various",
+    "app_type": null
   }
 ]
