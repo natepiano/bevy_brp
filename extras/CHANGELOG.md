@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **WASM support**: Decoupled HTTP transport from the core plugin, enabling compilation on `wasm32` targets. On native, `RemoteHttpPlugin` is added automatically as before. On WASM, only BRP methods are registered — users supply their own transport (e.g., a WebSocket relay). Thanks @johanhelsing!
 - **`get_diagnostics` method**: New BRP method for querying FPS and frame time diagnostics from Bevy's `DiagnosticsStore`. Returns current, average, and smoothed FPS values, frame time in milliseconds, total frame count, and history buffer metadata. Defensively installs `FrameTimeDiagnosticsPlugin` if not already present.
 - **`diagnostics` feature**: New feature flag (enabled by default) that controls FPS diagnostics support. Disable with `default-features = false` to exclude the diagnostics system and `FrameTimeDiagnosticsPlugin`.
 
