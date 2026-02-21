@@ -13,9 +13,9 @@ mod watch_tools;
 pub use brp_client::BrpClient;
 pub use brp_client::BrpToolConfig;
 pub use brp_client::FormatCorrectionStatus;
+pub use brp_client::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 pub use brp_client::ResponseStatus;
 pub use brp_client::ResultStructBrpExt;
-pub use brp_client::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 //
 // Export brp_type_guide tools
 pub use brp_type_guide::{

@@ -3,9 +3,10 @@
 #[cfg(feature = "diagnostics")]
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
-use bevy::remote::http::RemoteHttpPlugin;
 use bevy::remote::RemotePlugin;
+use bevy::remote::http::RemoteHttpPlugin;
 
+use crate::DEFAULT_REMOTE_PORT;
 #[cfg(feature = "diagnostics")]
 use crate::diagnostics;
 use crate::keyboard;
@@ -13,7 +14,6 @@ use crate::mouse;
 use crate::screenshot;
 use crate::shutdown;
 use crate::window_title;
-use crate::DEFAULT_REMOTE_PORT;
 
 /// Command prefix for `brp_extras` methods
 const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";

@@ -3,11 +3,11 @@
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
-use bevy::remote::error_codes::INTERNAL_ERROR;
 use bevy::remote::BrpError;
 use bevy::remote::BrpResult;
-use serde_json::json;
+use bevy::remote::error_codes::INTERNAL_ERROR;
 use serde_json::Value;
+use serde_json::json;
 
 /// Handler for `get_diagnostics` requests
 ///
