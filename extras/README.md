@@ -14,7 +14,7 @@ bevy_brp_extras does two things
 
 | bevy        | bevy_brp_extras |
 |-------------|-----------------|
-| 0.18        | 0.18.0-0.18.3   |
+| 0.18        | 0.18.0-0.18.4   |
 | 0.17        | 0.17.0-0.17.2   |
 | 0.16        | 0.1 - 0.2       |
 
@@ -50,7 +50,7 @@ To disable diagnostics entirely (e.g., if you don't want `FrameTimeDiagnosticsPl
 
 ```toml
 [dependencies]
-bevy_brp_extras = { version = "0.18.3", default-features = false }
+bevy_brp_extras = { version = "0.18.4", default-features = false }
 ```
 
 ## WASM Support
@@ -60,7 +60,7 @@ bevy_brp_extras = { version = "0.18.3", default-features = false }
 ```toml
 # Works on both native and wasm32
 [dependencies]
-bevy_brp_extras = "0.18.3"
+bevy_brp_extras = "0.18.4"
 ```
 
 ## Usage
@@ -69,7 +69,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy_brp_extras = "0.18.3"
+bevy_brp_extras = "0.18.4"
 ```
 
 Add the plugin to your Bevy app
