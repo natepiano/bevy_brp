@@ -570,7 +570,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_brp_extras"
-version = "0.19.0-dev"
+version = "0.18.4"
 dependencies = [
  "bevy",
  "bevy_remote",
@@ -585,7 +585,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_brp_mcp"
-version = "0.19.0-dev"
+version = "0.18.4"
 dependencies = [
  "anyhow",
  "async-trait",
