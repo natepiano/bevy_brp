@@ -903,6 +903,7 @@ pub fn process_scheduled_clicks(
 /// - Pressed: Send button press, move to start, transition to Dragging
 /// - Dragging: Interpolate position, send motion events, advance frame
 /// - Released: Send button release, despawn entity
+#[allow(clippy::too_many_arguments)]
 pub fn process_drag_operations(
     mut commands: Commands,
     mut query: Query<(Entity, &mut DragOperation)>,
