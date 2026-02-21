@@ -39,11 +39,22 @@ The bevy_brp_mcp crate follows Bevy's version numbering and releases new version
 - **Process Status**: Check if apps are running with BRP enabled
 
 ### Enhanced BRP Capabilities
-requires [bevy_brp_extras](https://crates.io/crates/bevy_brp_extras)  
+requires [bevy_brp_extras](https://crates.io/crates/bevy_brp_extras)
 - `brp_extras/screenshot` - Capture screenshots of the primary window
 - `brp_extras/shutdown` - Gracefully shutdown the application
 - `brp_extras/send_keys` - Send keyboard input to the application
+- `brp_extras/type_text` - Type text sequentially (one character per frame)
 - `brp_extras/set_window_title` - Change the primary window title
+- `brp_extras/click_mouse` - Click mouse button
+- `brp_extras/double_click_mouse` - Double click mouse button
+- `brp_extras/send_mouse_button` - Press and hold mouse button
+- `brp_extras/move_mouse` - Move mouse cursor (delta or absolute)
+- `brp_extras/drag_mouse` - Drag mouse with smooth interpolation
+- `brp_extras/scroll_mouse` - Mouse wheel scrolling
+- `brp_extras/double_tap_gesture` - Trackpad double tap gesture (macOS)
+- `brp_extras/pinch_gesture` - Trackpad pinch gesture (macOS)
+- `brp_extras/rotation_gesture` - Trackpad rotation gesture (macOS)
+- `brp_extras/get_diagnostics` - Query FPS and frame time diagnostics
 
 ## Getting Started
 First, install via cargo:
@@ -72,7 +83,7 @@ bevy_brp_mcp is designed to be used with AI coding assistants that support MCP (
 1. Discover and launch your Bevy applications - with logs stored in your temp dir so they can be accessed by the coding assistant.
 2. Inspect and modify entity components in real-time
 3. Monitor application state and debug issues
-4. Take screenshots and manage application lifecycle (requires `bevy_brp_extras`)
+4. Take screenshots, send keyboard/mouse input, query diagnostics, and manage application lifecycle (requires `bevy_brp_extras`)
 
 ### Setting Up Your Bevy App
 
@@ -116,6 +127,7 @@ In either case you'll need to make sure to enable bevy's "bevy_remote" feature.
 7. **Debug**: Use `read_log` to examine application output
 8. **Capture**: Use `brp_extras_screenshot` to document current state
 9. **Interact**: Use `brp_extras_send_keys` to send keyboard input for testing
+10. **Diagnose**: Use `brp_extras_get_diagnostics` to check FPS and frame time
 
 ## Logging
 

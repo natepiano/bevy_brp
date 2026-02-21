@@ -106,8 +106,7 @@ Port priority: `BRP_EXTRAS_PORT` environment variable > `with_port()` > default 
 
 ### Screenshot
 - **Method**: `brp_extras/screenshot`
-- **Parameters**:
-  - `path` (string, required): File path where the screenshot should be saved
+- **Parameters**: `path` (string, required) - file path where the screenshot should be saved
 - **Returns**: Success status with the absolute path where the screenshot will be saved
 
 **Important**: Your Bevy app must have the `png` feature enabled for screenshots to work:
@@ -116,8 +115,6 @@ Port priority: `BRP_EXTRAS_PORT` environment variable > `with_port()` > default 
 bevy = { version = "0.18", features = ["png"] }
 ```
 Without this feature, screenshot files will be created but will be 0 bytes as Bevy cannot encode the image data.
-
-**Note**: If you're not using this with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp/mcp), you'll need to tell your AI agent that this method requires a `path` parameter, or let it discover this by trying the method and getting an error message.
 
 ### Shutdown
 - **Method**: `brp_extras/shutdown`
@@ -129,93 +126,38 @@ Without this feature, screenshot files will be created but will be 0 bytes as Be
 - **Parameters**:
   - `keys` (array of strings, required): Key codes to send (e.g., `["KeyA", "Space", "Enter"]`)
   - `duration_ms` (number, optional): How long to hold keys before releasing in milliseconds (default: 100, max: 60000)
-- **Returns**: Success status with the keys sent and duration used
 
 Simulates keyboard input by sending press and release events for the specified keys. Keys are pressed simultaneously and held for the specified duration before being released.
 
-**Example:**
-```bash
-# Send "hi" by pressing H and I keys
-curl -X POST http://localhost:15702/brp_extras/send_keys \
-  -H "Content-Type: application/json" \
-  -d '{"keys": ["KeyH", "KeyI"]}'
+### Type Text
+- **Method**: `brp_extras/type_text`
+- **Parameters**: `text` (string, required) - text to type sequentially
 
-# Hold space key for 2 seconds
-curl -X POST http://localhost:15702/brp_extras/send_keys \
-  -H "Content-Type: application/json" \
-  -d '{"keys": ["Space"], "duration_ms": 2000}'
-```
+Types characters one per frame with proper key press/release cycles. Unlike `send_keys` which sends all keys simultaneously (for chords and shortcuts), `type_text` queues characters for sequential input.
 
 ### Set Window Title
 - **Method**: `brp_extras/set_window_title`
-- **Parameters**:
-  - `title` (string, required): The new title for the primary window
-- **Returns**: Success status with the old and new window titles
-
-Changes the title of the primary window.
-
-**Example:**
-```bash
-curl -X POST http://localhost:15702/brp_extras/set_window_title \
-  -H "Content-Type: application/json" \
-  -d '{"title": "My Game - Level 2"}'
-```
+- **Parameters**: `title` (string, required) - the new title for the primary window
 
 ### Mouse Input Methods
 
-#### Click Mouse
-- **Method**: `brp_extras/click_mouse`
-- **Parameters**:
-  - `button` (string, required): Mouse button - "Left", "Right", "Middle", "Back", or "Forward"
-  - `window` (number, optional): Window entity ID (defaults to primary window)
+All mouse methods accept an optional `window` (number) parameter to target a specific window (defaults to primary window).
 
-#### Double Click Mouse
-- **Method**: `brp_extras/double_click_mouse`
-- **Parameters**:
-  - `button` (string, required): Mouse button
-  - `delay_ms` (number, optional): Delay between clicks in milliseconds (default: 250)
-  - `window` (number, optional): Window entity ID
+- **`click_mouse`** - `button` (string, required): "Left", "Right", "Middle", "Back", or "Forward"
+- **`double_click_mouse`** - `button` (string, required), `delay_ms` (number, optional, default: 250)
+- **`send_mouse_button`** - `button` (string, required), `duration_ms` (number, optional, default: 100, max: 60000)
+- **`move_mouse`** - provide either `delta` [x, y] or `position` [x, y], not both
+- **`drag_mouse`** - `button` (string, required), `start` [x, y], `end` [x, y], `frames` (number)
+- **`scroll_mouse`** - `x` (number), `y` (number), `unit` ("Line" or "Pixel")
 
-#### Send Mouse Button
-- **Method**: `brp_extras/send_mouse_button`
-- **Parameters**:
-  - `button` (string, required): Mouse button
-  - `duration_ms` (number, optional): Hold duration in milliseconds (default: 100, max: 60000)
-  - `window` (number, optional): Window entity ID
-
-#### Move Mouse
-- **Method**: `brp_extras/move_mouse`
-- **Parameters** (provide either `delta` or `position`, not both):
-  - `delta` (array, optional): Relative movement [x, y]
-  - `position` (array, optional): Absolute position [x, y]
-  - `window` (number, optional): Window entity ID
-
-#### Drag Mouse
-- **Method**: `brp_extras/drag_mouse`
-- **Parameters**:
-  - `button` (string, required): Mouse button
-  - `start` (array, required): Starting position [x, y]
-  - `end` (array, required): Ending position [x, y]
-  - `frames` (number, required): Number of frames to interpolate over
-  - `window` (number, optional): Window entity ID
-
-#### Scroll Mouse
-- **Method**: `brp_extras/scroll_mouse`
-- **Parameters**:
-  - `x` (number, required): Horizontal scroll amount
-  - `y` (number, required): Vertical scroll amount
-  - `unit` (string, required): "Line" or "Pixel"
-  - `window` (number, optional): Window entity ID
-
-#### Trackpad Gestures (macOS)
-- **Method**: `brp_extras/double_tap_gesture` - No parameters
-- **Method**: `brp_extras/pinch_gesture` - `delta` (number, required): Pinch amount
-- **Method**: `brp_extras/rotation_gesture` - `delta` (number, required): Rotation in radians
+### Trackpad Gestures (macOS)
+- **`double_tap_gesture`** - No parameters
+- **`pinch_gesture`** - `delta` (number): positive = zoom in, negative = zoom out
+- **`rotation_gesture`** - `delta` (number): rotation in radians
 
 ### Get Diagnostics
 - **Method**: `brp_extras/get_diagnostics`
 - **Parameters**: None
-- **Returns**: FPS and frame time diagnostics from Bevy's `DiagnosticsStore`
 - **Requires**: `diagnostics` feature (enabled by default)
 
 Returns current, average, and smoothed values for both FPS and frame time:
@@ -228,20 +170,13 @@ Returns current, average, and smoothed values for both FPS and frame time:
 }
 ```
 
-**Example:**
-```bash
-curl -X POST http://localhost:15702/brp_extras/get_diagnostics \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
-
 ## Integration with bevy_brp_mcp
 
-This crate is designed to work seamlessly with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp/mcp), which provides a Model Context Protocol (MCP) server for controlling Bevy apps. When both are used together:
+This crate is designed to work with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp/mcp), which provides a Model Context Protocol (MCP) server for controlling Bevy apps. When both are used together:
 
 1. Add `BrpExtrasPlugin` to your Bevy app
 2. Use `bevy_brp_mcp` with your AI coding assistant
-3. The additional methods will be automatically discovered and made available in the MCP server so you won't have to manually implement or execute (as with the curl examples above)
+3. All methods are automatically discovered and made available as MCP tools
 
 ## License
 
