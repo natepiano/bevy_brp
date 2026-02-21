@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`brp_extras_get_diagnostics` tool**: New MCP tool for querying FPS and frame time diagnostics from a running Bevy app. Returns current, average, and smoothed FPS/frame time values, total frame count, and history buffer metadata via `brp_extras/get_diagnostics`.
+
 ## [0.18.3] - 2026-02-17
 
 ### Changed

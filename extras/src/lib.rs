@@ -22,6 +22,8 @@
 //! - `brp_extras/send_keys`: Send keyboard input
 //! - `brp_extras/set_window_title`: Change the window title
 
+#[cfg(feature = "diagnostics")]
+mod diagnostics;
 mod keyboard;
 mod mouse;
 mod plugin;

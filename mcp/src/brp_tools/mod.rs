@@ -13,9 +13,9 @@ mod watch_tools;
 pub use brp_client::BrpClient;
 pub use brp_client::BrpToolConfig;
 pub use brp_client::FormatCorrectionStatus;
-pub use brp_client::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 pub use brp_client::ResponseStatus;
 pub use brp_client::ResultStructBrpExt;
+pub use brp_client::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 //
 // Export brp_type_guide tools
 pub use brp_type_guide::{
@@ -35,6 +35,8 @@ pub use tools::brp_extras_double_tap_gesture::DoubleTapGestureParams;
 pub use tools::brp_extras_double_tap_gesture::DoubleTapGestureResult;
 pub use tools::brp_extras_drag_mouse::DragMouseParams;
 pub use tools::brp_extras_drag_mouse::DragMouseResult;
+pub use tools::brp_extras_get_diagnostics::GetDiagnosticsParams;
+pub use tools::brp_extras_get_diagnostics::GetDiagnosticsResult;
 pub use tools::brp_extras_move_mouse::MoveMouseParams;
 pub use tools::brp_extras_move_mouse::MoveMouseResult;
 pub use tools::brp_extras_pinch_gesture::PinchGestureParams;

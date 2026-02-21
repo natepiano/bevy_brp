@@ -40,6 +40,10 @@ strum.workspace        = true
 strum_macros.workspace = true
 thiserror.workspace    = true
 
+[features]
+default     = ["diagnostics"]
+diagnostics = []
+
 [dev-dependencies]
 reqwest.workspace = true
 

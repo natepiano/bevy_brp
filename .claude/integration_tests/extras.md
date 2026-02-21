@@ -38,11 +38,19 @@ Validate brp_extras specific methods: screenshot, send_keys, and type_text.
 - Test unmappable characters: `mcp__brp__brp_extras_type_text` with text containing unmappable chars
 - Verify skipped array is populated in response
 
-### 4. Invalid Key Code Test
+### 4. FPS Diagnostics Test
+- Execute `mcp__brp__brp_execute` with method `brp_extras/get_diagnostics` and no params
+- Verify response contains `fps` object with keys: `current`, `average`, `smoothed`, `history_len`, `max_history_len`, `history_duration_secs`
+- Verify response contains `frame_time_ms` object with keys: `current`, `average`, `smoothed`
+- Verify response contains `frame_count` as a number
+- Verify `fps.max_history_len` equals 120 (Bevy default)
+- Verify `fps.current` is a positive number (app is running)
+
+### 5. Invalid Key Code Test
 - Execute send_keys with invalid key code
 - Verify appropriate error response
 
-### 5. Screenshot After Key Input
+### 6. Screenshot After Key Input
 - Send some keys to the app
 - Take screenshot to verify UI reflects key input (use absolute path)
 - **IMPORTANT**: Poll for file completion using `.claude/scripts/extras_test_poll_screenshot.sh <absolute_path_to_screenshot>`
@@ -50,6 +58,7 @@ Validate brp_extras specific methods: screenshot, send_keys, and type_text.
 - Clean up this screenshot file as well
 
 ## Expected Results
+- ✅ FPS diagnostics returns valid fps, frame_time_ms, and frame_count data
 - ✅ Screenshot capture succeeds and creates valid files
 - ✅ Keyboard input works with various durations
 - ✅ Modifier key combinations function correctly

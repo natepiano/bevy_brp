@@ -1,15 +1,19 @@
 //! Plugin implementation for extra BRP methods
 
+#[cfg(feature = "diagnostics")]
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
-use bevy::remote::RemotePlugin;
 use bevy::remote::http::RemoteHttpPlugin;
+use bevy::remote::RemotePlugin;
 
-use crate::DEFAULT_REMOTE_PORT;
+#[cfg(feature = "diagnostics")]
+use crate::diagnostics;
 use crate::keyboard;
 use crate::mouse;
 use crate::screenshot;
 use crate::shutdown;
 use crate::window_title;
+use crate::DEFAULT_REMOTE_PORT;
 
 /// Command prefix for `brp_extras` methods
 const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
@@ -134,9 +138,21 @@ impl Plugin for BrpExtrasPlugin {
                 keyboard::type_text_handler,
             );
 
+        #[cfg(feature = "diagnostics")]
+        let remote_plugin = remote_plugin.with_method(
+            format!("{EXTRAS_COMMAND_PREFIX}get_diagnostics"),
+            diagnostics::handler,
+        );
+
         let http_plugin = RemoteHttpPlugin::default().with_port(effective_port);
 
         app.add_plugins((remote_plugin, http_plugin));
+
+        // Defensively add FrameTimeDiagnosticsPlugin if not already installed
+        #[cfg(feature = "diagnostics")]
+        if !app.is_plugin_added::<FrameTimeDiagnosticsPlugin>() {
+            app.add_plugins(FrameTimeDiagnosticsPlugin::default());
+        }
 
         // Initialize mouse resources
         app.init_resource::<mouse::SimulatedCursorPosition>();

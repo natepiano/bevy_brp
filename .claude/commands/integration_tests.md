@@ -95,6 +95,20 @@ Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_app", "ev
 4. **Window Title**: Set title using `brp_extras_set_window_title` with format "{test_name} test - {app_name} - port {port}"
 </VerifyBrpConnectivity>
 
+<PrebuildWorkspace>
+**Purpose**: Pre-compile all workspace targets to eliminate Cargo lock contention when multiple tests launch apps concurrently.
+
+Run the following command and wait for it to complete:
+```bash
+cargo build --workspace --examples --profile dev 2>&1 | tail -5
+```
+
+- `--workspace` builds all library and binary targets, `--examples` additionally builds all examples
+- Subsequent `cargo run` calls skip compilation and launch immediately
+- **CRITICAL**: Must complete before ANY app launches
+- If the build fails, STOP and report the build error
+</PrebuildWorkspace>
+
 <CleanupApps>
 1. **For each launched app**:
    - Shutdown using `mcp__brp__brp_shutdown(app_name=app_name, port=port)`
@@ -236,6 +250,8 @@ Configuration: App [APP_NAME]
 
 ### Single Test Execution
 
+0. Execute <PrebuildWorkspace/>
+
 **For tests where app_name is a specific app (not "various" or "N/A"):**
 1. **Clean up stale processes** from previous test runs:
    ```bash
@@ -301,21 +317,23 @@ Examples:
 
 **Before running tests:**
 
-1. **Clean up stale processes** from previous test runs:
+1. Execute <PrebuildWorkspace/>
+
+2. **Clean up stale processes** from previous test runs:
    ```bash
    # Get all unique app names that need cleanup (exclude N/A and various)
    jq -r '[.[] | select(.app_name | IN("N/A", "various") | not) | .app_name] | unique | .[]' ${TEST_CONFIG_FILE} | xargs -I {} sh -c 'pkill -9 {} || true'
    ```
 
-2. **Load Configuration**: Read ${TEST_CONFIG_FILE}
+3. **Load Configuration**: Read ${TEST_CONFIG_FILE}
 
-3. **Extract Test List**: Execute this EXACT command:
+4. **Extract Test List**: Execute this EXACT command:
    ```bash
    jq -c '.[] | {test_name, test_file, app_name, app_type}' ${TEST_CONFIG_FILE}
    ```
    This produces one JSON object per line, in config order.
 
-4. **Extract Objectives and Build Test List**:
+5. **Extract Objectives and Build Test List**:
    - Collect all test_file paths from step 3 into a space-separated list
    - Extract all objectives in one call: `.claude/scripts/integration_tests/extract_test_objectives.sh file1.md file2.md ...`
    - This returns one objective per line, matching the order of input files

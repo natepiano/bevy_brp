@@ -5,6 +5,7 @@ pub mod brp_extras_click_mouse;
 pub mod brp_extras_double_click_mouse;
 pub mod brp_extras_double_tap_gesture;
 pub mod brp_extras_drag_mouse;
+pub mod brp_extras_get_diagnostics;
 pub mod brp_extras_move_mouse;
 pub mod brp_extras_pinch_gesture;
 pub mod brp_extras_rotation_gesture;

@@ -16,12 +16,12 @@ use strum::EnumIter;
 use strum::EnumString;
 use strum::IntoStaticStr;
 
-use super::ToolDef;
 use super::annotations::Annotation;
 use super::annotations::EnvironmentImpact;
 use super::annotations::ToolCategory;
 use super::parameters;
 use super::types::ErasedToolFn;
+use super::ToolDef;
 use crate::app_tools::LaunchBevyBinaryParams;
 use crate::app_tools::ListBevyApps;
 use crate::app_tools::ListBevyExamples;
@@ -38,19 +38,20 @@ use crate::brp_tools::{
     BrpStopWatch, BrpTypeGuide, ClickMouseParams, ClickMouseResult, DespawnEntityParams,
     DespawnEntityResult, DoubleClickMouseParams, DoubleClickMouseResult, DoubleTapGestureParams,
     DoubleTapGestureResult, DragMouseParams, DragMouseResult, ExecuteParams, GetComponentsParams,
-    GetComponentsResult, GetComponentsWatchParams, GetResourcesParams, GetResourcesResult,
-    InsertComponentsParams, InsertComponentsResult, InsertResourcesParams, InsertResourcesResult,
-    ListComponentsParams, ListComponentsResult, ListComponentsWatchParams, ListResourcesParams,
-    ListResourcesResult, MoveMouseParams, MoveMouseResult, MutateComponentsParams,
-    MutateComponentsResult, MutateResourcesParams, MutateResourcesResult, PinchGestureParams,
-    PinchGestureResult, QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult,
-    RemoveComponentsParams, RemoveComponentsResult, RemoveResourcesParams, RemoveResourcesResult,
-    ReparentEntitiesParams, ReparentEntitiesResult, RotationGestureParams, RotationGestureResult,
-    RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams, ScreenshotResult, ScrollMouseParams,
-    ScrollMouseResult, SendKeysParams, SendKeysResult, SendMouseButtonParams,
-    SendMouseButtonResult, SetWindowTitleParams, SetWindowTitleResult, SpawnEntityParams,
-    SpawnEntityResult, StopWatchParams, TriggerEventParams, TriggerEventResult, TypeGuideParams,
-    TypeTextParams, TypeTextResult, WorldGetComponentsWatch,
+    GetComponentsResult, GetComponentsWatchParams, GetDiagnosticsParams, GetDiagnosticsResult,
+    GetResourcesParams, GetResourcesResult, InsertComponentsParams, InsertComponentsResult,
+    InsertResourcesParams, InsertResourcesResult, ListComponentsParams, ListComponentsResult,
+    ListComponentsWatchParams, ListResourcesParams, ListResourcesResult, MoveMouseParams,
+    MoveMouseResult, MutateComponentsParams, MutateComponentsResult, MutateResourcesParams,
+    MutateResourcesResult, PinchGestureParams, PinchGestureResult, QueryParams, QueryResult,
+    RegistrySchemaParams, RegistrySchemaResult, RemoveComponentsParams, RemoveComponentsResult,
+    RemoveResourcesParams, RemoveResourcesResult, ReparentEntitiesParams, ReparentEntitiesResult,
+    RotationGestureParams, RotationGestureResult, RpcDiscoverParams, RpcDiscoverResult,
+    ScreenshotParams, ScreenshotResult, ScrollMouseParams, ScrollMouseResult, SendKeysParams,
+    SendKeysResult, SendMouseButtonParams, SendMouseButtonResult, SetWindowTitleParams,
+    SetWindowTitleResult, SpawnEntityParams, SpawnEntityResult, StopWatchParams,
+    TriggerEventParams, TriggerEventResult, TypeGuideParams, TypeTextParams, TypeTextResult,
+    WorldGetComponentsWatch,
 };
 use crate::log_tools::DeleteLogs;
 use crate::log_tools::DeleteLogsParams;
@@ -339,6 +340,13 @@ pub enum ToolName {
         result = "DoubleTapGestureResult"
     )]
     BrpExtrasDoubleTapGesture,
+    /// `brp_extras_get_diagnostics` - Get FPS diagnostics
+    #[brp_tool(
+        brp_method = "brp_extras/get_diagnostics",
+        params = "GetDiagnosticsParams",
+        result = "GetDiagnosticsResult"
+    )]
+    BrpExtrasGetDiagnostics,
 
     // BRP Watch Assist Tools
     /// `brp_stop_watch` - Stop active watch subscriptions
@@ -566,6 +574,11 @@ impl ToolName {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
+            Self::BrpExtrasGetDiagnostics => Annotation::new(
+                "get FPS diagnostics",
+                ToolCategory::Extras,
+                EnvironmentImpact::ReadOnly,
+            ),
             Self::WorldGetComponentsWatch => Annotation::new(
                 "watch component changes",
                 ToolCategory::WatchMonitoring,
@@ -745,6 +758,9 @@ impl ToolName {
             Self::BrpExtrasDoubleTapGesture => {
                 Some(parameters::build_parameters_from::<DoubleTapGestureParams>)
             },
+            Self::BrpExtrasGetDiagnostics => {
+                Some(parameters::build_parameters_from::<GetDiagnosticsParams>)
+            },
             Self::WorldGetComponentsWatch => {
                 Some(parameters::build_parameters_from::<GetComponentsWatchParams>)
             },
@@ -816,6 +832,7 @@ impl ToolName {
             Self::BrpExtrasPinchGesture => Arc::new(BrpExtrasPinchGesture),
             Self::BrpExtrasRotationGesture => Arc::new(BrpExtrasRotationGesture),
             Self::BrpExtrasDoubleTapGesture => Arc::new(BrpExtrasDoubleTapGesture),
+            Self::BrpExtrasGetDiagnostics => Arc::new(BrpExtrasGetDiagnostics),
 
             // Special tools with their own implementations
             Self::BrpExecute => Arc::new(BrpExecute),

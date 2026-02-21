@@ -1,0 +1,20 @@
+Get FPS and frame time diagnostics from a running Bevy application. Returns current, average, and smoothed values from Bevy's built-in diagnostics system.
+
+Response includes:
+- fps.current: Most recent FPS measurement
+- fps.average: Simple moving average over the history buffer
+- fps.smoothed: Exponentially smoothed FPS value
+- fps.history_len: Number of samples currently in the buffer
+- fps.max_history_len: Maximum buffer capacity (default: 120 frames)
+- fps.history_duration_secs: Time span covered by the history buffer
+- frame_time_ms.current: Most recent frame time in milliseconds
+- frame_time_ms.average: Average frame time over the history buffer
+- frame_time_ms.smoothed: Exponentially smoothed frame time
+- frame_count: Total frames since application start
+
+Example:
+```json
+{}
+```
+
+Prerequisites: bevy_brp_extras dependency with `diagnostics` feature enabled (on by default) and BrpExtrasPlugin registered.
