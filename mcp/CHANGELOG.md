@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.18.5] - 2026-02-22
 
 ### Fixed
 - `list_bevy_apps`, `list_bevy_examples`, and `list_brp_apps` now work in clients that don't provide file roots (e.g., OpenAI Codex). Previously, workspace discovery failed silently when the client returned empty roots; it now falls back to the current working directory.
