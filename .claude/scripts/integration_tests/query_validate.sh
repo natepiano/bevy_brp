@@ -7,7 +7,6 @@
 #   has_component <entity_id> <component>     - Check entity has component
 #   no_component <entity_id> <component>      - Check entity lacks component
 #   count_entities                             - Print entity count
-#   entity_ids_only                            - Check results are entity IDs only (no component data)
 #   has_camera_excluded                        - Check no Camera entities in results
 #   validate_all_query                         - Verify "all" query returns entities with multiple components
 #   validate_name_filter                       - Verify all entities have Name component and multiple components
@@ -60,20 +59,9 @@ case "${command}" in
         exit 0
         ;;
 
-    entity_ids_only)
-        # Check if any entity has component data (should be empty/null)
-        if jq -e '.[] | select(.components != null and (.components | length) > 0)' "${result_file}" > /dev/null 2>&1; then
-            echo "❌ Found component data (expected entity IDs only)"
-            exit 1
-        else
-            echo "✅ Results contain entity IDs only"
-            exit 0
-        fi
-        ;;
-
     has_camera_excluded)
         # Check if any entity has Camera component
-        if jq -e '.[] | select(.components."bevy_render::camera::camera::Camera")' "${result_file}" > /dev/null 2>&1; then
+        if jq -e '.[] | select(.components."bevy_camera::camera::Camera")' "${result_file}" > /dev/null 2>&1; then
             echo "❌ Found Camera entity (should be excluded)"
             exit 1
         else
@@ -122,7 +110,7 @@ case "${command}" in
 
     *)
         echo "Unknown command: ${command}"
-        echo "Available commands: has_entity, has_component, no_component, count_entities, entity_ids_only, has_camera_excluded, validate_all_query, validate_name_filter"
+        echo "Available commands: has_entity, has_component, no_component, count_entities, has_camera_excluded, validate_all_query, validate_name_filter"
         exit 1
         ;;
 esac

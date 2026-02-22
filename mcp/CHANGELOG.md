@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `list_bevy_apps`, `list_bevy_examples`, and `list_brp_apps` now work in clients that don't provide file roots (e.g., OpenAI Codex). Previously, workspace discovery failed silently when the client returned empty roots; it now falls back to the current working directory.
+
 ## [0.18.4] - 2026-02-20
 
 ### Added

@@ -105,28 +105,34 @@ impl McpService {
                     })
                     .collect();
 
-                tracing::debug!("Processed roots: {:?}", paths);
-                Ok(paths)
+                if !paths.is_empty() {
+                    tracing::debug!("Processed roots: {paths:?}");
+                    return Ok(paths);
+                }
+                tracing::warn!(
+                    "Client returned no usable file roots. Falling back to current directory."
+                );
             },
             Err(e) => {
                 tracing::warn!(
                     "Client does not support roots/list: {e}. Falling back to current directory."
                 );
-                match std::env::current_dir() {
-                    Ok(cwd) => {
-                        tracing::debug!("Using current directory as root: {}", cwd.display());
-                        Ok(vec![cwd])
-                    },
-                    Err(cwd_err) => {
-                        tracing::error!("Failed to get current directory: {cwd_err}");
-                        Err(McpError::internal_error(
-                            format!("Failed to list roots and no current directory available: {e}"),
-                            None,
-                        ))
-                    },
-                }
             },
         }
+
+        // Common fallback: use current directory
+        std::env::current_dir()
+            .map(|cwd| {
+                tracing::debug!("Using current directory as root: {}", cwd.display());
+                vec![cwd]
+            })
+            .map_err(|cwd_err| {
+                tracing::error!("Failed to get current directory: {cwd_err}");
+                McpError::internal_error(
+                    "Failed to list roots and no current directory available".to_string(),
+                    None,
+                )
+            })
     }
 }
 

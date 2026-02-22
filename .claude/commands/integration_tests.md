@@ -107,6 +107,15 @@ cargo build --workspace --examples --profile dev 2>&1 | tail -5
 - Subsequent `cargo run` calls skip compilation and launch immediately
 - **CRITICAL**: Must complete before ANY app launches
 - If the build fails, STOP and report the build error
+
+**WASM Prebuild** (conditional):
+- Check if "wasm" is in the current test list (either running all tests or explicitly specified)
+- If yes, additionally run:
+```bash
+cargo build --target wasm32-unknown-unknown -p bevy_brp_test_wasm --profile dev 2>&1 | tail -5
+```
+- This MUST complete before the wasm test starts to avoid Cargo lock contention
+- If the WASM build fails, STOP and report the build error
 </PrebuildWorkspace>
 
 <CleanupApps>

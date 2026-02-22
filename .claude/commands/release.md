@@ -103,6 +103,20 @@ Before starting the release, verify:
 → **Manual check**: Verify `$ARGUMENTS` matches one of these formats before proceeding. Stop with clear error if invalid.
 
 **Note**: Throughout this process, substitute the actual version number from `$ARGUMENTS` wherever you see `${VERSION}` or `$VERSION` in commands. Do not use shell variables.
+
+**Verify version is not already published and is a valid next version:**
+
+```bash
+for crate in bevy_brp_mcp_macros bevy_brp_extras bevy_brp_mcp; do
+  max=$(curl -s "https://crates.io/api/v1/crates/$crate" | jq -r '.crate.max_version')
+  echo "$crate: current max = $max"
+done
+```
+
+→ **Auto-check**: For each crate:
+  1. The requested version `${VERSION}` must NOT already be published (stop with error if it matches any `max_version`)
+  2. The requested version must be **greater than** the current `max_version` according to semver (stop with error if not)
+  3. If crates.io is unreachable or returns an error, stop and ask the user before proceeding
 </ArgumentValidation>
 
 <PreReleaseChecks>

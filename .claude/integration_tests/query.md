@@ -13,7 +13,6 @@ All validation MUST use the pre-approved script: `.claude/scripts/integration_te
 
 Available validation commands:
 - `count_entities` - Count entities in result
-- `entity_ids_only` - Verify entity IDs only (no component data)
 - `validate_all_query` - Verify "all" query returns entities with multiple components
 - `has_camera_excluded` - Verify no Camera entities present
 - `validate_name_filter` - Verify all entities have Name and multiple components
@@ -76,19 +75,25 @@ Test default behavior when `option` is omitted:
 - Check: Only Transform component data is returned (no optional components)
 - **Do NOT use jq or bash commands** - the response is returned directly in the tool output
 
-### 4. Query with Empty Data Object (Entity IDs Only)
-Test the special case documented in help text:
+### 4. Query with "all" Option on Small Entity Set
+Test the "all" option with a filter that produces a small inline response:
 
 - Execute `mcp__brp__world_query`:
   ```json
   {
-    "data": {}
+    "data": {
+      "option": "all"
+    },
+    "filter": {
+      "with": ["bevy_camera::camera::Camera"]
+    }
   }
   ```
-- Validate using script: `.claude/scripts/integration_tests/query_validate.sh entity_ids_only <result_file>`
-- Verify: Returns entity IDs only
-- Verify: No component data included in response
-- Verify: Entity count matches expected total entities in app
+- Verify by reading the JSON response directly (Camera entities are few, fits in context)
+- Check: Returns 1-2 Camera entities with all their components
+- Check: Each entity includes many components (Transform, Camera, Visibility, etc.)
+- Check: Component data is present (not empty `{}`)
+- **Do NOT use jq or bash commands** - the response is returned directly in the tool output
 
 ### 5. Query with Filter: with + without
 Test filter combinations:
@@ -198,7 +203,7 @@ Test error handling for invalid `option` values:
 - ✅ Array syntax for `option` works (backward compatibility)
 - ✅ "all" syntax for `option` returns all components
 - ✅ Empty option defaults correctly
-- ✅ Empty data object returns entity IDs only
+- ✅ "all" option with Camera filter returns small inline response with full component data
 - ✅ Filter with `with` and `without` works correctly
 - ✅ Mixed usage of components, option, and has fields succeeds
 - ✅ Filter omission and empty object are equivalent
