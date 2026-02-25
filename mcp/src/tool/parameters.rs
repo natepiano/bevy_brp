@@ -546,8 +546,9 @@ impl From<ParameterName> for String {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::error::Error;
+
+    use super::*;
 
     /// Regression test: `add_any_property` must emit anyOf where the array branch
     /// includes an "items" key. Without this, Copilot rejects the schema with:
