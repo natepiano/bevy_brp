@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix JSON schema output to use `anyOf` with `items` on array branches for Copilot compatibility. Thanks [darkautism](https://github.com/darkautism)!
+
 ## [0.18.5] - 2026-02-22
 
 ### Fixed
@@ -39,12 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `world_trigger_event` now correctly sends struct payloads as JSON objects instead of stringified JSON
 - Parameter handling for MCP clients that stringify JSON objects/arrays for `Any`-typed parameters (affects `world_insert_resources`, `world_mutate_resources`, `world_mutate_components`, `registry_schema`)
-- Gracefully fall back to current directory when MCP client doesn't support `roots/list` instead of returning a hard error. Thanks kasbah!
+- Gracefully fall back to current directory when MCP client doesn't support `roots/list` instead of returning a hard error. Thanks [kasbah](https://github.com/kasbah)!
 
 ## [0.18.1] - 2026-02-10
 
 ### Added
-- **`brp_extras_type_text` tool**: New MCP tool for typing text sequentially via `brp_extras/type_text` method. Returns number of characters queued and any skipped unmappable characters. Thanks @tobert!
+- **`brp_extras_type_text` tool**: New MCP tool for typing text sequentially via `brp_extras/type_text` method. Returns number of characters queued and any skipped unmappable characters. Thanks [tobert](https://github.com/tobert)!
 
 ## [0.18.0] - 2026-01-15
 
@@ -77,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Upgrading `rmcp` to 0.9.0 to support structured content responses via `CallToolResult::structured()` instead of text-wrapped JSON
     - Correcting JSON Schema generation for optional response fields (`metadata`, `result`, etc.) to properly signal optionality and use compatible schema definitions
     - **Note**: This changes the response structure returned to coding agents from `{tool_response: [{text: "..."}]}` to `{tool_response: [{...}]}` (structured data). While coding agents handle both formats transparently, custom code that inspects the raw agent response structure (e.g., hooks, testing infrastructure) may require updates. The actual response content remains identical.
-    - Thanks to @tobert for identifying and fixing this issue!
+    - Thanks to [tobert](https://github.com/tobert) for identifying and fixing this issue!
 
 ## [0.17.0] - 2025-10-31
 

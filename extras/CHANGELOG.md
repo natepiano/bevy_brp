@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.18.4] - 2026-02-20
 
 ### Added
-- **WASM support**: Decoupled HTTP transport from the core plugin, enabling compilation on `wasm32` targets. On native, `RemoteHttpPlugin` is added automatically as before. On WASM, only BRP methods are registered — users supply their own transport (e.g., a WebSocket relay). Thanks @johanhelsing!
+- **WASM support**: Decoupled HTTP transport from the core plugin, enabling compilation on `wasm32` targets. On native, `RemoteHttpPlugin` is added automatically as before. On WASM, only BRP methods are registered — users supply their own transport (e.g., a WebSocket relay). Thanks [johanhelsing](https://github.com/johanhelsing)!
 - **`get_diagnostics` method**: New BRP method for querying FPS and frame time diagnostics from Bevy's `DiagnosticsStore`. Returns current, average, and smoothed FPS values, frame time in milliseconds, total frame count, and history buffer metadata. Defensively installs `FrameTimeDiagnosticsPlugin` if not already present.
 - **`diagnostics` feature**: New feature flag (enabled by default) that controls FPS diagnostics support. Disable with `default-features = false` to exclude the diagnostics system and `FrameTimeDiagnosticsPlugin`.
 
@@ -47,10 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.18.1] - 2026-02-10
 
 ### Added
-- **`type_text` method**: New BRP method for sequential character typing. Types text one character per frame, handling shift for uppercase/symbols and mapping unmappable characters as skipped. Thanks @tobert!
+- **`type_text` method**: New BRP method for sequential character typing. Types text one character per frame, handling shift for uppercase/symbols and mapping unmappable characters as skipped. Thanks [tobert](https://github.com/tobert)!
 
 ### Fixed
-- **`send_keys` text field population**: Fixed `send_keys` to populate the `text` field on `KeyboardInput` events, enabling proper text input in Bevy UI text fields. Thanks @tobert!
+- **`send_keys` text field population**: Fixed `send_keys` to populate the `text` field on `KeyboardInput` events, enabling proper text input in Bevy UI text fields. Thanks [tobert](https://github.com/tobert)!
 
 ## [0.18.0] - 2026-01-15
 
