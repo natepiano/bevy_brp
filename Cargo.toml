@@ -15,10 +15,10 @@ repository = "https://github.com/natepiano/bevy_brp"
 
 [workspace.dependencies]
 # Bevy with no default features - each crate specifies what it needs
-bevy       = { version = "0.18.0", default-features = false }
+bevy        = { version = "0.18.0", default-features = false }
 bevy_mesh   = { version = "0.18.0" }
 bevy_remote = { version = "0.18.0" }
-bevy_winit = { version = "0.18.0" }
+bevy_winit  = { version = "0.18.0" }
 
 # Core dependencies (shared between extras and mcp)
 anyhow              = "1.0"
@@ -46,11 +46,11 @@ serde               = { version = "1.0", features = ["derive"] }
 serde_json          = { version = "1.0.149", features = ["preserve_order"] }
 # Must match bevy_input's smol_str version - do not upgrade until Bevy does
 smol_str = "0.2.2"
-strum = "0.27.2"
-strum_macros = "0.27.2"
+strum = "0.28.0"
+strum_macros = "0.28.0"
 syn = { version = "2.0.117", features = ["extra-traits", "full"] }
 sysinfo = "0.38.2"
-tempfile = "3.25.0"
+tempfile = "3.26.0"
 thiserror = "2.0"
 tokio = { version = "1.49.0", features = ["full", "signal"] }
 tokio-stream = "0.1.18"

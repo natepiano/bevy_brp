@@ -97,6 +97,45 @@ pub fn launch_detached_process(
     }
 }
 
+/// Normalize a process name or binary path for robust matching.
+///
+/// Strips directory paths, removes common executable extensions (.exe, .app, .bin),
+/// and lowercases the result to enable case-insensitive comparison.
+pub fn normalize_process_name(name: &str) -> String {
+    let name = name.to_lowercase();
+
+    // Remove path components - get just the base name
+    let base_name = name.split(['/', '\\']).next_back().unwrap_or(&name);
+
+    // Remove common executable extensions
+    base_name
+        .strip_suffix(".exe")
+        .or_else(|| base_name.strip_suffix(".app"))
+        .or_else(|| base_name.strip_suffix(".bin"))
+        .unwrap_or(base_name)
+        .to_string()
+}
+
+/// Check if a process exactly matches a target app name.
+///
+/// Checks `cmd[0]` (the full binary path) first since it is not subject to
+/// OS-level process name truncation (macOS truncates to 16 chars, Linux to 15).
+/// Falls back to the kernel-reported process name when `cmd` is unavailable.
+pub fn process_matches_name_exact(process: &sysinfo::Process, target: &str) -> bool {
+    let normalized_target = normalize_process_name(target);
+
+    // Prefer cmd[0] — full binary path, not subject to kernel truncation
+    if let Some(cmd) = process.cmd().first()
+        && normalize_process_name(&cmd.to_string_lossy()) == normalized_target
+    {
+        return true;
+    }
+
+    // Fall back to process name (may be truncated on macOS/Linux)
+    let process_name = process.name().to_string_lossy();
+    normalize_process_name(&process_name) == normalized_target
+}
+
 /// Get the PID for a process listening on the specified port
 pub fn get_pid_for_port(port: Port) -> Option<u32> {
     let af_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;

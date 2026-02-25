@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fix JSON schema output to use `anyOf` with `items` on array branches for Copilot compatibility. Thanks [darkautism](https://github.com/darkautism)!
+- Fix `brp_status` failing to detect running processes on macOS when the process name exceeds 16 characters (macOS kernel truncation). Now falls back to checking the full binary path from command arguments.
 
 ## [0.18.5] - 2026-02-22
 

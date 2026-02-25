@@ -4,14 +4,15 @@
 Validate that `brp_type_guide` tool correctly discovers type information and produces the expected output structure for Bevy components.
 
 ## Prerequisites
-- Launch extras_plugin example on port 20114
+- The app is managed externally by the integration test runner
+- Use the assigned `{{PORT}}` for all BRP tool calls
 - Tool `brp_type_guide` must be available in the MCP environment
 
 ## Test Steps
 
-### 1. Launch Test Application
-- Execute `mcp__brp__brp_launch_bevy_example` with `extras_plugin` on port 20114
-- Verify app is running with `mcp__brp__brp_status`
+### 1. Runner-Managed App Context
+- The `extras_plugin` app is already running on the assigned `{{PORT}}`
+- Do not launch or shutdown the app in this test
 
 ### 2. Batch Type Schema Discovery
 
@@ -24,7 +25,7 @@ Execute `mcp__brp__brp_type_guide` with test types in a single call:
     "extras_plugin::TestTupleField",
     "extras_plugin::TestTupleStruct"
   ],
-  "port": 20114
+  "port": {{PORT}}
 }
 ```
 Store the response as `schema_response`.
@@ -128,7 +129,7 @@ that type_guide information produces working BRP operations.
       "scale": {"x": 2.0, "y": 2.0, "z": 2.0}
     }
   },
-  "port": 20114
+  "port": {{PORT}}
 }
 ```
 
@@ -158,7 +159,7 @@ mcp__brp__world_mutate_components with parameters:
   "component": "bevy_transform::components::transform::Transform",
   "path": ".translation",
   "value": {"x": 100.0, "y": 200.0, "z": 300.0},
-  "port": 20114
+  "port": {{PORT}}
 }
 ```
 
@@ -189,7 +190,7 @@ mcp__brp__world_mutate_components with parameters:
   "component": "bevy_render::view::visibility::Visibility",
   "path": ".Visible",
   "value": {},
-  "port": 20114
+  "port": {{PORT}}
 }
 ```
 

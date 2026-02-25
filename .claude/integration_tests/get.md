@@ -27,7 +27,7 @@ Validate the `strict` parameter behavior in `world_get_components` operations, t
   - entity: [saved entity ID]
   - components: `["NonExistentComponent"]`
   - strict: `false` (or omit for default)
-  - port: 20115
+  - port: {{PORT}}
 - **Expected**: Success response with errors object containing the invalid component
 - **Verify**:
   - Response has `errors` field with entry for "NonExistentComponent"
@@ -38,7 +38,7 @@ Validate the `strict` parameter behavior in `world_get_components` operations, t
   - entity: [saved entity ID]
   - components: `["bevy_transform::components::transform::Transform", "InvalidComponent::DoesNotExist"]`
   - strict: `false`
-  - port: 20115
+  - port: {{PORT}}
 - **Expected**: Success response with Transform data and error for invalid component
 - **Verify**:
   - Response contains Transform component data
@@ -50,7 +50,7 @@ Validate the `strict` parameter behavior in `world_get_components` operations, t
   - entity: [saved entity ID]
   - components: `["ThisComponent::DoesNotExist"]`
   - strict: `true`
-  - port: 20115
+  - port: {{PORT}}
 - **Expected**: Error response (not success)
 - **Verify**: Operation fails with error about invalid component
 
@@ -59,7 +59,7 @@ Validate the `strict` parameter behavior in `world_get_components` operations, t
   - entity: [saved entity ID]
   - components: `["bevy_ecs::name::Name", "AnotherInvalid::Component"]`
   - strict: `true`
-  - port: 20115
+  - port: {{PORT}}
 - **Expected**: Error response (not success)
 - **Verify**: Operation fails even though Name component exists, because of the invalid component
 
@@ -68,7 +68,7 @@ Validate the `strict` parameter behavior in `world_get_components` operations, t
   - entity: [saved entity ID]
   - components: `["bevy_transform::components::transform::Transform", "bevy_ecs::name::Name"]`
   - strict: `true`
-  - port: 20115
+  - port: {{PORT}}
 - **Expected**: Success response with both components
 - **Verify**:
   - Response contains Transform component data matching spawned values

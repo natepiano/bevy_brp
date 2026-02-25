@@ -3,60 +3,51 @@
 ## Objective
 Validate all error variants for `brp_status` and `brp_shutdown` commands, ensuring proper StructuredError responses with appropriate error_info fields.
 
+## App Instance Configuration
+This test uses pre-launched app instances referenced by label:
+- **status_check_app**: extras_plugin (survives entire test)
+- **shutdown_test_app**: extras_plugin (consumed by clean shutdown test)
+- **no_brp_app**: no_extras_plugin on fixed port 25000 (consumed by process kill test)
+
+**CRITICAL**: Do NOT launch or shutdown apps yourself. All instances are pre-launched and managed externally. Use the port assigned to each label as provided in the test configuration.
+
 ## Test Steps
 
 ### 1. ProcessNotFoundError - Status with Non-Existent App
-- Execute `mcp__brp__brp_status` with app_name: "definitely_not_running_app", port: 20113
+- Execute `mcp__brp__brp_status` with app_name: "definitely_not_running_app", port: 29999
+  - **NOTE**: Uses port 29999 where nothing is running, to get a clean "not found" with no BRP responder
 - Verify response has status: "error"
 - Verify error_info contains:
   - app_name: "definitely_not_running_app"
   - brp_responding_on_port: false
-  - port: 20113
+  - port: 29999
   - similar_app_name: null (or absent)
 - Verify message indicates process not found
 
 ### 2. ProcessNotFoundError with BRP on Different App
-- Launch extras_plugin example on port 20113
-- Wait for app to be ready: Execute `mcp__brp__brp_status` with app_name: "extras_plugin", port: 20113
-  - Retry up to 5 times with 1-second delays if needed (app may take time to start under load)
-  - Verify status: "success" before proceeding
-- Execute `mcp__brp__brp_status` with app_name: "wrong_app_name", port: 20113
+- Execute `mcp__brp__brp_status` with app_name: "wrong_app_name", port: [status_check_app port]
 - Verify response has status: "error"
 - Verify error_info contains:
   - app_name: "wrong_app_name"
   - brp_responding_on_port: true
-  - port: 20113
+  - port: [status_check_app port]
   - similar_app_name: possibly "extras_plugin" (if detected)
 - Verify message mentions BRP is responding on the port (another process may be using it)
-- Shutdown the extras_plugin app
 
 ### 3. BrpNotRespondingError - App Running Without BRP
-**CRITICAL**: no_extras_plugin has a HARD-CODED port of 25000 in its source code!
-- Launch no_extras_plugin example with port: 25000
-  - **IMPORTANT**: Pass port: 25000 to avoid confusion in metadata (app ignores other ports but uses 25000 internally)
-  - This ensures the launch metadata correctly shows port 25000
-- Execute `mcp__brp__brp_status` with app_name: "no_extras_plugin", port: 20113
+- Execute `mcp__brp__brp_status` with app_name: "no_extras_plugin", port: 29998
+  - **NOTE**: Uses port 29998 where nothing is listening. The tool finds the no_extras_plugin process by name (it's running on port 25000) but BRP doesn't respond on 29998, triggering BrpNotRespondingError.
 - Verify response has status: "error"
 - Verify error_info contains:
   - app_name: "no_extras_plugin"
   - pid: (should be present)
-  - port: 20113
+  - port: 29998
 - Verify message indicates process is running but not responding to BRP on specified port
 - Verify message suggests adding RemotePlugin to Bevy app
 
-### 4. ProcessNotRunningError - Shutdown Non-Existent App
-- Execute `mcp__brp__brp_shutdown` with app_name: "not_running_app", port: 20113
-- Verify response has status: "error"
-- Verify error_info contains:
-  - app_name: "not_running_app"
-- Verify message indicates process is not currently running
-
-### 5. Successful Shutdown with Process Kill (Degraded Success)
-**CRITICAL PORT NOTE**: no_extras_plugin ALWAYS runs on hard-coded port 25000, NOT the test's configured port!
-- Ensure no_extras_plugin is still running from step 3
+### 4. Process Kill Shutdown (Degraded Success)
 - Execute `mcp__brp__brp_shutdown` with app_name: "no_extras_plugin", port: 25000
-  - **IMPORTANT**: Use port 25000 here, NOT port 20113!
-  - **REASON**: no_extras_plugin has a hard-coded port of 25000 in its source code
+  - **IMPORTANT**: Use port 25000 (the no_brp_app's fixed port)
 - Verify response has status: "success" (not error!)
 - Verify metadata contains:
   - app_name: "no_extras_plugin"
@@ -65,34 +56,36 @@ Validate all error variants for `brp_status` and `brp_shutdown` commands, ensuri
   - port: 25000
   - warning: "Consider adding bevy_brp_extras for clean shutdown" (or similar)
 - Verify message indicates process was terminated using kill
-- **CLEANUP**: The no_extras_plugin should now be terminated (no additional cleanup needed)
+- **NOTE**: The no_brp_app instance is now consumed
 
-### 6. Clean Shutdown Success (for comparison)
-- Launch extras_plugin example on port 20113
-- Wait for app to be ready: Execute `mcp__brp__brp_status` with app_name: "extras_plugin", port: 20113
-  - Retry up to 5 times with 1-second delays if needed (app may take time to start under load)
-  - Verify status: "success" before proceeding
-- Execute `mcp__brp__brp_shutdown` with app_name: "extras_plugin", port: 20113
+### 5. Clean Shutdown Success
+- Execute `mcp__brp__brp_shutdown` with app_name: "extras_plugin", port: [shutdown_test_app port]
 - Verify response has status: "success"
 - Verify metadata contains:
   - app_name: "extras_plugin"
   - pid: (should be present)
   - shutdown_method: "clean_shutdown"
-  - port: 20113
+  - port: [shutdown_test_app port]
   - warning: null (or absent)
 - Verify message indicates graceful shutdown via bevy_brp_extras
+- **NOTE**: The shutdown_test_app instance is now consumed
 
-### 7. Status Success (for comparison)
-- Launch extras_plugin example on port 20113
-- Wait for app to be ready: Execute `mcp__brp__brp_status` with app_name: "extras_plugin", port: 20113
-  - Retry up to 5 times with 1-second delays if needed (app may take time to start under load)
+### 6. Status Success
+- Execute `mcp__brp__brp_status` with app_name: "extras_plugin", port: [status_check_app port]
 - Verify response has status: "success"
 - Verify metadata contains:
   - app_name: "extras_plugin"
   - pid: (should be present)
-  - port: 20113
+  - port: [status_check_app port]
 - Verify message indicates process is running with BRP enabled
-- Shutdown the app
+
+### 7. ProcessNotRunningError - Shutdown Non-Existent App
+- Execute `mcp__brp__brp_shutdown` with app_name: "not_running_app", port: 29997
+  - **NOTE**: Uses port 29997 where nothing is running, to get a clean "not running" error
+- Verify response has status: "error"
+- Verify error_info contains:
+  - app_name: "not_running_app"
+- Verify message indicates process is not currently running
 
 ## Expected Results
 - ✅ ProcessNotFoundError includes all expected fields in error_info

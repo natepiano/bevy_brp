@@ -19,3 +19,5 @@ pub use launch_common::LaunchParams;
 pub use launch_common::ToLaunchParams;
 pub use list_common::collect_all_items;
 pub use process::get_pid_for_port;
+pub use process::normalize_process_name;
+pub use process::process_matches_name_exact;

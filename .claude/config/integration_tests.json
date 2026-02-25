@@ -50,8 +50,11 @@
   {
     "test_name": "shutdown",
     "test_file": ".claude/integration_tests/shutdown.md",
-    "app_name": "various",
-    "app_type": null
+    "apps": [
+      {"app_name": "extras_plugin", "app_type": "example", "label": "status_check_app"},
+      {"app_name": "extras_plugin", "app_type": "example", "label": "shutdown_test_app", "consumed_by_test": true},
+      {"app_name": "no_extras_plugin", "app_type": "example", "label": "no_brp_app", "fixed_port": 25000, "consumed_by_test": true}
+    ]
   },
   {
     "test_name": "extras",

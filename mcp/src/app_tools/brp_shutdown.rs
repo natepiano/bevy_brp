@@ -9,6 +9,7 @@ use sysinfo::System;
 use tracing::debug;
 
 use crate::app_tools::support::get_pid_for_port;
+use crate::app_tools::support::process_matches_name_exact;
 use crate::brp_tools::BrpClient;
 use crate::brp_tools::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use crate::brp_tools::Port;
@@ -235,17 +236,13 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
             debug!("PID {pid} not found in process list");
             None
         }, |process| {
-            let process_name = process.name().to_string_lossy();
-            if process_name == app_name
-                || process_name == format!("{app_name}.exe")
-                || process_name.strip_suffix(".exe").unwrap_or(&process_name) == app_name
-            {
-                debug!("Verified process name matches: {process_name}");
+            if process_matches_name_exact(process, app_name) {
+                debug!("Verified process name matches: {}", process.name().to_string_lossy());
                 Some(pid)
             } else {
                 debug!(
-                    "Process name mismatch: expected '{app_name}', found '{process_name}' for PID \
-                     {pid}"
+                    "Process name mismatch: expected '{app_name}', found '{}' for PID {pid}",
+                    process.name().to_string_lossy()
                 );
                 None
             }

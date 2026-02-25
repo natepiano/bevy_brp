@@ -8,10 +8,11 @@ This test does NOT use MCP tools to launch/query a Bevy app. It runs a single sh
 
 ## Execution
 
-Run the test script from the project root:
+Run the test script from the project root with sandbox disabled (the script binds to localhost ports which the sandbox blocks):
 ```bash
 bash .claude/scripts/integration_tests/wasm_test.sh
 ```
+**IMPORTANT**: This command MUST be run with `dangerouslyDisableSandbox: true` because `wasm-server-runner` binds to localhost ports (1334 for the web server, 20200 for the BRP relay) and the sandbox blocks this.
 
 The script handles all steps internally and exits 0 on success, 1 on failure.
 
