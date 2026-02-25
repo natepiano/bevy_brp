@@ -544,45 +544,48 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
 impl From<ParameterName> for String {
     fn from(param: ParameterName) -> Self { param.as_ref().to_string() }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::error::Error;
 
-    /// Regression test: add_any_property must emit anyOf where the array branch
+    /// Regression test: `add_any_property` must emit anyOf where the array branch
     /// includes an "items" key. Without this, Copilot rejects the schema with:
     ///   "400 Invalid schema: array schema missing items"
     #[test]
-    fn add_any_property_array_branch_has_items() {
+    fn add_any_property_array_branch_has_items() -> Result<(), Box<dyn Error>> {
         let schema = ParameterBuilder::new()
             .add_any_property("value", "Any JSON value", true)
             .build();
 
+        // 使用 .ok_or(...)? 代替 .expect(...)
         let any_of = schema["properties"]["value"]["anyOf"]
             .as_array()
-            .expect("anyOf must be an array");
+            .ok_or("anyOf must be an array")?;
 
         let array_branch = any_of
             .iter()
             .find(|v| v.get("type").and_then(|t| t.as_str()) == Some("array"))
-            .expect("anyOf must contain an array branch");
+            .ok_or("anyOf must contain an array branch")?;
 
         assert!(
             array_branch.get("items").is_some(),
             "array branch in anyOf must have an 'items' key (Copilot schema validation requirement)"
         );
+
+        Ok(())
     }
 
-    /// Verify add_any_property covers all six JSON primitive types in anyOf.
+    /// Verify `add_any_property` covers all six JSON primitive types in anyOf.
     #[test]
-    fn add_any_property_covers_all_json_types() {
+    fn add_any_property_covers_all_json_types() -> Result<(), Box<dyn Error>> {
         let schema = ParameterBuilder::new()
             .add_any_property("value", "Any JSON value", true)
             .build();
 
         let any_of = schema["properties"]["value"]["anyOf"]
             .as_array()
-            .expect("anyOf must be an array");
+            .ok_or("anyOf must be an array")?;
 
         let types: Vec<&str> = any_of
             .iter()
@@ -595,5 +598,7 @@ mod tests {
                 "anyOf must include type '{expected}'"
             );
         }
+
+        Ok(())
     }
 }
