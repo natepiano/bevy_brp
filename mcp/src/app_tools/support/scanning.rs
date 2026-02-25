@@ -820,6 +820,7 @@ path = "src/main.rs"
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_recursive_scan_cycle_detection() {
         use std::fs;
         use std::os::unix::fs::symlink;

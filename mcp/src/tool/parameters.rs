@@ -253,19 +253,17 @@ impl ParameterBuilder {
     /// Add a property that can be any JSON type (object, array, string, number, boolean, null)
     pub fn add_any_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
-        // Include all JSON types for serde_json::Value compatibility
-        prop.insert(
-            "type".to_string(),
-            vec![
-                JsonSchemaType::Object.as_ref(),
-                JsonSchemaType::Array.as_ref(),
-                JsonSchemaType::String.as_ref(),
-                JsonSchemaType::Number.as_ref(),
-                JsonSchemaType::Boolean.as_ref(),
-                JsonSchemaType::Null.as_ref(),
-            ]
-            .into(),
-        );
+        // Use anyOf instead of type array to satisfy validators that require
+        // array schemas to have an "items" field (e.g., Copilot).
+        let any_of: Vec<Value> = vec![
+            serde_json::json!({"type": "object"}),
+            serde_json::json!({"type": "array", "items": {}}),
+            serde_json::json!({"type": "string"}),
+            serde_json::json!({"type": "number"}),
+            serde_json::json!({"type": "boolean"}),
+            serde_json::json!({"type": "null"}),
+        ];
+        prop.insert("anyOf".to_string(), Value::Array(any_of));
         prop.insert_field("description", description);
         self.properties.insert_field(name, prop);
 
@@ -545,4 +543,63 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
 
 impl From<ParameterName> for String {
     fn from(param: ParameterName) -> Self { param.as_ref().to_string() }
+}
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+
+    use super::*;
+
+    /// Regression test: `add_any_property` must emit anyOf where the array branch
+    /// includes an "items" key. Without this, Copilot rejects the schema with:
+    ///   "400 Invalid schema: array schema missing items"
+    #[test]
+    fn add_any_property_array_branch_has_items() -> Result<(), Box<dyn Error>> {
+        let schema = ParameterBuilder::new()
+            .add_any_property("value", "Any JSON value", true)
+            .build();
+
+        // 使用 .ok_or(...)? 代替 .expect(...)
+        let any_of = schema["properties"]["value"]["anyOf"]
+            .as_array()
+            .ok_or("anyOf must be an array")?;
+
+        let array_branch = any_of
+            .iter()
+            .find(|v| v.get("type").and_then(|t| t.as_str()) == Some("array"))
+            .ok_or("anyOf must contain an array branch")?;
+
+        assert!(
+            array_branch.get("items").is_some(),
+            "array branch in anyOf must have an 'items' key (Copilot schema validation requirement)"
+        );
+
+        Ok(())
+    }
+
+    /// Verify `add_any_property` covers all six JSON primitive types in anyOf.
+    #[test]
+    fn add_any_property_covers_all_json_types() -> Result<(), Box<dyn Error>> {
+        let schema = ParameterBuilder::new()
+            .add_any_property("value", "Any JSON value", true)
+            .build();
+
+        let any_of = schema["properties"]["value"]["anyOf"]
+            .as_array()
+            .ok_or("anyOf must be an array")?;
+
+        let types: Vec<&str> = any_of
+            .iter()
+            .filter_map(|v| v.get("type")?.as_str())
+            .collect();
+
+        for expected in &["object", "array", "string", "number", "boolean", "null"] {
+            assert!(
+                types.contains(expected),
+                "anyOf must include type '{expected}'"
+            );
+        }
+
+        Ok(())
+    }
 }
