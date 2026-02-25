@@ -2,7 +2,6 @@
 edition = "2024"
 name    = "bevy_brp_test_apps"
 publish = false                # Never publish test apps
-version = "0.18.0-dev"
 
 # Disable automatic discovery to ensure explicit control
 autobins     = false

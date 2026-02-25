@@ -7,7 +7,6 @@ license              = "MIT OR Apache-2.0"
 name                 = "test-app-b"
 publish              = false
 repository.workspace = true
-version              = "0.17.1"
 
 # TEST INFRASTRUCTURE - Path Disambiguation Testing
 #

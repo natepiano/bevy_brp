@@ -2,7 +2,6 @@
 edition = "2024"
 name    = "bevy_brp_test_wasm"
 publish = false
-version = "0.18.0-dev"
 
 [dependencies]
 bevy_brp_extras = { path = "../extras" }
