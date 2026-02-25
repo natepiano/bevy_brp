@@ -253,19 +253,17 @@ impl ParameterBuilder {
     /// Add a property that can be any JSON type (object, array, string, number, boolean, null)
     pub fn add_any_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
-        // Include all JSON types for serde_json::Value compatibility
-        prop.insert(
-            "type".to_string(),
-            vec![
-                JsonSchemaType::Object.as_ref(),
-                JsonSchemaType::Array.as_ref(),
-                JsonSchemaType::String.as_ref(),
-                JsonSchemaType::Number.as_ref(),
-                JsonSchemaType::Boolean.as_ref(),
-                JsonSchemaType::Null.as_ref(),
-            ]
-            .into(),
-        );
+        // Use anyOf instead of type array to satisfy validators that require
+        // array schemas to have an "items" field (e.g., Copilot).
+        let any_of: Vec<Value> = vec![
+            serde_json::json!({"type": "object"}),
+            serde_json::json!({"type": "array", "items": {}}),
+            serde_json::json!({"type": "string"}),
+            serde_json::json!({"type": "number"}),
+            serde_json::json!({"type": "boolean"}),
+            serde_json::json!({"type": "null"}),
+        ];
+        prop.insert("anyOf".to_string(), Value::Array(any_of));
         prop.insert_field("description", description);
         self.properties.insert_field(name, prop);
 
