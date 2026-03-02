@@ -1,0 +1,15 @@
+install_verify = "mcp"
+
+[[publish_phases]]
+name = "Publish macros"
+crates = ["mcp_macros"]
+post_script = ".claude/scripts/release/update_workspace_dep.sh"
+
+[[publish_phases]]
+name = "Publish extras and mcp"
+crates = ["extras", "mcp"]
+
+[[judgment_checks]]
+name = "API docs sync"
+checkpoint = "pre_publish"
+instructions = "Verify that extras/src/lib.rs API docs match changelog entries. The 'Available BRP Methods' section in lib.rs is the primary API reference on docs.rs and must stay in sync with the actual methods. Check if extras/CHANGELOG.md has entries beyond a version bump placeholder (e.g., new methods, changed parameters, removed methods) — if so, confirm lib.rs reflects those changes."
