@@ -36,15 +36,15 @@ Store the response as `schema_response`.
 **DO NOT use jq, cat, or any other bash commands directly on the file.**
 
 Extraction script usage:
-`.claude/scripts/type_guide_test_extract.sh <file_path> <operation> [type_name] [field_path]`
+`.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> <operation> [type_name] [field_path]`
 
 #### 3a. Check Top-Level Fields
 Use extraction script ONLY (no direct jq/bash commands):
 ```bash
-.claude/scripts/type_guide_test_extract.sh <file_path> discovered_count
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> discovered_count
 # Expected: 4
 
-.claude/scripts/type_guide_test_extract.sh <file_path> summary
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> summary
 # Expected: {"successful_discoveries": 4, "failed_discoveries": 0, "total_requested": 4}
 ```
 
@@ -54,25 +54,25 @@ Transform serves as the reference component for standard nested struct validatio
 
 ```bash
 # Get Transform type info
-.claude/scripts/type_guide_test_extract.sh <file_path> type_info "bevy_transform::components::transform::Transform"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> type_info "bevy_transform::components::transform::Transform"
 # Expected: type_name present, in_registry: true
 # Check schema_info.reflect_types contains "Component"
 
 # Get Transform mutation paths
-.claude/scripts/type_guide_test_extract.sh <file_path> mutation_paths "bevy_transform::components::transform::Transform"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> mutation_paths "bevy_transform::components::transform::Transform"
 # Should have translation/rotation/scale with all subfields
 
 # Get Transform spawn format
-.claude/scripts/type_guide_test_extract.sh <file_path> spawn_example "bevy_transform::components::transform::Transform"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> spawn_example "bevy_transform::components::transform::Transform"
 # Should have example values
 
 # Get Transform schema info
-.claude/scripts/type_guide_test_extract.sh <file_path> schema_info "bevy_transform::components::transform::Transform"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> schema_info "bevy_transform::components::transform::Transform"
 # Should have properties, required fields, type_kind: "Struct"
 
 # Validate specific nested paths exist
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "bevy_transform::components::transform::Transform" ".translation"
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "bevy_transform::components::transform::Transform" ".translation.x"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "bevy_transform::components::transform::Transform" ".translation"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "bevy_transform::components::transform::Transform" ".translation.x"
 ```
 
 ### 5. Validate Unique Mutation Contexts
@@ -82,25 +82,25 @@ These test components validate mutation path syntax that differs from standard s
 #### 5a. TestArrayField - Array Element Access
 ```bash
 # Check array field paths
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".vertices"
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".vertices[0]"
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".values[0]"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".vertices"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".vertices[0]"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".values[0]"
 ```
 
 #### 5b. TestTupleField - Tuple Element Access
 ```bash
 # Check tuple field paths
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".coords"
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".coords.0"
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".color_rgb.2"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".coords"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".coords.0"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".color_rgb.2"
 ```
 
 #### 5c. TestTupleStruct - Root Value Access
 ```bash
 # Check tuple struct paths
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ""
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ".0"
-.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ".1"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ""
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ".0"
+.claude/scripts/integration_tests/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ".1"
 ```
 
 ### 6. Type Schema in Error Responses

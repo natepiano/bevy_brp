@@ -9,7 +9,7 @@ Validate brp_extras specific methods: screenshot, send_keys, and type_text.
 
 ### 1. Screenshot Capture
 - Execute `mcp__brp__brp_extras_screenshot` with absolute path (use current working directory + filename)
-- **IMPORTANT**: Poll for file completion using `.claude/scripts/extras_test_poll_screenshot.sh <absolute_path_to_screenshot>`
+- **IMPORTANT**: Poll for file completion using `.claude/scripts/integration_tests/extras_test_poll_screenshot.sh <absolute_path_to_screenshot>`
   - Screenshot I/O is asynchronous, this script waits up to 5 seconds for file to be ready
   - Script exits with success (0) if file exists and has non-zero size
   - Script exits with failure (1) if timeout or file not ready
@@ -53,7 +53,7 @@ Validate brp_extras specific methods: screenshot, send_keys, and type_text.
 ### 6. Screenshot After Key Input
 - Send some keys to the app
 - Take screenshot to verify UI reflects key input (use absolute path)
-- **IMPORTANT**: Poll for file completion using `.claude/scripts/extras_test_poll_screenshot.sh <absolute_path_to_screenshot>`
+- **IMPORTANT**: Poll for file completion using `.claude/scripts/integration_tests/extras_test_poll_screenshot.sh <absolute_path_to_screenshot>`
 - Read screenshot to confirm key display updated
 - Clean up is handled by the cleanup script above (it removes both screenshot files)
 

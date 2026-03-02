@@ -10,7 +10,7 @@ Gets the current type guide for a specified type by launching the ${EXAMPLE_NAME
 Process the provided arguments:
 
 ```bash
-.claude/scripts/get_guide_current_validate_args.sh $ARGUMENTS
+.claude/scripts/mutation_test/get_guide_current_validate_args.sh $ARGUMENTS
 ```
 
 This script will:

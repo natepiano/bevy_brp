@@ -17,8 +17,8 @@ if $ARGUMENTS contains more than one argument: display error "Too many arguments
 </ArgumentProcessing>
 
 <ScriptExecution>
-if MODE="summary": Use Bash tool to execute ".claude/scripts/get_type_kind.sh"
-if MODE="query": Use Bash tool to execute ".claude/scripts/get_type_kind.sh "$TYPE_KIND""
+if MODE="summary": Use Bash tool to execute ".claude/scripts/mutation_test/get_type_kind.sh"
+if MODE="query": Use Bash tool to execute ".claude/scripts/mutation_test/get_type_kind.sh "$TYPE_KIND""
 Capture and display the script output
 </ScriptExecution>
 

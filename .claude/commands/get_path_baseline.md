@@ -18,8 +18,8 @@ if $ARGUMENTS contains more than two arguments: display error "Too many argument
 </ArgumentProcessing>
 
 <PathRetrieval>
-if MODE="list_all": Use Bash tool to execute ".claude/scripts/get_mutation_path_list.sh "$TYPE_ARG""
-if MODE="specific_path": Use Bash tool to execute ".claude/scripts/get_mutation_path.sh "$TYPE_ARG" "$PATH_ARG""
+if MODE="list_all": Use Bash tool to execute ".claude/scripts/mutation_test/get_mutation_path_list.sh "$TYPE_ARG""
+if MODE="specific_path": Use Bash tool to execute ".claude/scripts/mutation_test/get_mutation_path.sh "$TYPE_ARG" "$PATH_ARG""
 Capture the script output for processing
 </PathRetrieval>
 
@@ -112,10 +112,10 @@ The JSON will be properly formatted with:
 
 ```bash
 # For listing all paths:
-.claude/scripts/get_mutation_path_list.sh
+.claude/scripts/mutation_test/get_mutation_path_list.sh
 
 # For getting specific path:
-.claude/scripts/get_mutation_path.sh
+.claude/scripts/mutation_test/get_mutation_path.sh
 ```
 
 ## Prerequisites

@@ -14,7 +14,7 @@ Parse the type name from ${ARGUMENTS}:
 </ParseArguments>
 
 <ExecuteScript>
-Inform the user "Loading type guide from baseline..." then run the script at .claude/scripts/get_type_guide.sh or .claude/scripts/get_mutation_path.sh with --file .claude/transient/all_types_baseline.json to retrieve the type guide data from the baseline file
+Inform the user "Loading type guide from baseline..." then run the script at .claude/scripts/mutation_test/get_type_guide.sh or .claude/scripts/mutation_test/get_mutation_path.sh with --file .claude/transient/all_types_baseline.json to retrieve the type guide data from the baseline file
 </ExecuteScript>
 
 <FormatOutput>
@@ -113,10 +113,10 @@ Displays only the requested mutation path:
 
 ```bash
 # For getting full type guide:
-.claude/scripts/get_type_guide.sh
+.claude/scripts/mutation_test/get_type_guide.sh
 
 # For getting specific mutation path:
-.claude/scripts/get_mutation_path.sh
+.claude/scripts/mutation_test/get_mutation_path.sh
 ```
 
 ## Examples
