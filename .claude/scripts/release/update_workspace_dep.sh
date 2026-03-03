@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "$(dirname "$0")/unsandbox.sh"
 
 # Usage: update_workspace_dep.sh <version> [--dry-run]
 # Updates the workspace root Cargo.toml dependency for bevy_brp_mcp_macros
