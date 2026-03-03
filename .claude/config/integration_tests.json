@@ -20,8 +20,10 @@
   {
     "test_name": "apps",
     "test_file": ".claude/integration_tests/apps.md",
-    "app_name": "test_app",
-    "app_type": "app"
+    "apps": [
+      {"app_name": "test_app", "app_type": "app", "label": "main_app"},
+      {"app_name": "test_app", "app_type": "app", "label": "env_app", "env": {"RUST_LOG": "test_app=debug"}}
+    ]
   },
   {
     "test_name": "introspection",

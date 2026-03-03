@@ -1,5 +1,6 @@
 //! Test app with `BrpExtrasPlugin` for testing app launch and extras functionality
 
+use bevy::log::debug;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
@@ -24,7 +25,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(BrpExtrasPlugin)
-        .add_systems(Startup, (setup, minimize_window_on_start))
+        .add_systems(Startup, (setup, minimize_window_on_start, log_startup))
         .add_systems(Update, rotate_sprite)
         .run();
 }
@@ -66,6 +67,11 @@ fn setup(mut commands: Commands) {
         TextColor(Color::WHITE),
         Transform::from_xyz(-100.0, 120.0, 0.0),
     ));
+}
+
+fn log_startup() {
+    let port = std::env::var("BRP_EXTRAS_PORT").unwrap_or_else(|_| "15702".to_string());
+    debug!("test_app starting on port {port}");
 }
 
 fn rotate_sprite(time: Res<Time>, mut query: Query<(&mut Transform, &Rotator)>) {

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::path::Path;
 use std::path::PathBuf;
@@ -37,6 +38,7 @@ pub struct LaunchConfig<T> {
     pub path:           Option<String>,
     pub port:           Port,
     pub instance_count: InstanceCount,
+    pub env:            Option<HashMap<String, String>>,
     _phantom:           PhantomData<T>,
 }
 
@@ -48,6 +50,7 @@ impl<T> LaunchConfig<T> {
         path: Option<String>,
         port: Port,
         instance_count: InstanceCount,
+        env: Option<HashMap<String, String>>,
     ) -> Self {
         Self {
             target_name,
@@ -55,6 +58,7 @@ impl<T> LaunchConfig<T> {
             path,
             port,
             instance_count,
+            env,
             _phantom: PhantomData,
         }
     }
@@ -118,6 +122,7 @@ pub struct LaunchParams {
     pub path:           Option<String>,
     pub port:           Port,
     pub instance_count: InstanceCount,
+    pub env:            Option<HashMap<String, String>>,
 }
 
 /// Generic launch handler that can work with any `LaunchConfig` type
@@ -250,6 +255,15 @@ pub fn set_brp_env_vars(cmd: &mut Command, port: Option<Port>) {
     }
 }
 
+/// Sets user-specified environment variables on a command
+pub fn set_user_env_vars(cmd: &mut Command, env: Option<&HashMap<String, String>>) {
+    if let Some(env_vars) = env {
+        for (key, value) in env_vars {
+            cmd.env(key, value);
+        }
+    }
+}
+
 /// Setup logging for launch operations and return log file handles
 pub fn setup_launch_logging(
     name: &str,
@@ -287,6 +301,7 @@ pub fn build_cargo_example_command(
     example_name: &str,
     profile: &str,
     port: Option<Port>,
+    env: Option<&HashMap<String, String>>,
 ) -> Command {
     let mut cmd = Command::new("cargo");
     cmd.arg("run").arg("--example").arg(example_name);
@@ -299,13 +314,21 @@ pub fn build_cargo_example_command(
     // Set BRP-related environment variables
     set_brp_env_vars(&mut cmd, port);
 
+    // Set user-specified environment variables
+    set_user_env_vars(&mut cmd, env);
+
     cmd
 }
 
 /// Build command for running app binaries
-pub fn build_app_command(binary_path: &Path, port: Option<Port>) -> Command {
+pub fn build_app_command(
+    binary_path: &Path,
+    port: Option<Port>,
+    env: Option<&HashMap<String, String>>,
+) -> Command {
     let mut cmd = Command::new(binary_path);
     set_brp_env_vars(&mut cmd, port);
+    set_user_env_vars(&mut cmd, env);
     cmd
 }
 
@@ -793,6 +816,7 @@ impl FromLaunchParams for LaunchConfig<App> {
             params.path.clone(),
             params.port,
             params.instance_count,
+            params.env.clone(),
         )
     }
 }
@@ -813,7 +837,11 @@ impl LaunchConfigTrait for LaunchConfig<App> {
     fn set_port(&mut self, port: Port) { self.port = port; }
 
     fn build_command(&self, target: &BevyTarget) -> Command {
-        build_app_command(&target.get_binary_path(self.profile()), Some(self.port))
+        build_app_command(
+            &target.get_binary_path(self.profile()),
+            Some(self.port),
+            self.env.as_ref(),
+        )
     }
 
     fn extra_log_info(&self, _target: &BevyTarget) -> Option<String> { None }
@@ -827,6 +855,7 @@ impl FromLaunchParams for LaunchConfig<Example> {
             params.path.clone(),
             params.port,
             params.instance_count,
+            params.env.clone(),
         )
     }
 }
@@ -847,7 +876,12 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
     fn set_port(&mut self, port: Port) { self.port = port; }
 
     fn build_command(&self, _target: &BevyTarget) -> Command {
-        build_cargo_example_command(&self.target_name, self.profile(), Some(self.port))
+        build_cargo_example_command(
+            &self.target_name,
+            self.profile(),
+            Some(self.port),
+            self.env.as_ref(),
+        )
     }
 
     fn extra_log_info(&self, target: &BevyTarget) -> Option<String> {

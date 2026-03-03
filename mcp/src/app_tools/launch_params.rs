@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bevy_brp_mcp_macros::ParamStruct;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -25,6 +27,10 @@ pub struct LaunchBevyBinaryParams {
     /// Number of instances to launch (default: 1)
     #[serde(default)]
     pub instance_count: InstanceCount,
+    /// Optional environment variables to set on the launched process
+    #[serde(default)]
+    #[to_metadata(skip_if_none)]
+    pub env:            Option<HashMap<String, String>>,
 }
 
 impl ToLaunchParams for LaunchBevyBinaryParams {
@@ -38,6 +44,7 @@ impl ToLaunchParams for LaunchBevyBinaryParams {
             path:           self.path.clone(),
             port:           self.port,
             instance_count: self.instance_count,
+            env:            self.env.clone(),
         }
     }
 }

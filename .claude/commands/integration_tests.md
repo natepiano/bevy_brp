@@ -94,7 +94,7 @@ Tests with an `apps` array instead of `app_name`:
 1. **Determine Launch Tool**: Based on app_type:
    - If app_type is "example": use `mcp__brp__brp_launch_bevy_example`
    - If app_type is "app": use `mcp__brp__brp_launch_bevy_app`
-2. **Launch**: Execute with target_name=[APP_NAME], port=[ASSIGNED_PORT], instance_count=[COUNT]
+2. **Launch**: Execute with target_name=[APP_NAME], port=[ASSIGNED_PORT], instance_count=[COUNT], env=[ENV] (if env field exists on config entry)
 3. **Track**: Record launched app for cleanup
 </LaunchDedicatedApp>
 
@@ -165,8 +165,8 @@ For tests with an `apps` array, allocate ports for each app instance:
 
 <LaunchMultiAppInstances>
 For tests with an `apps` array, launch all app instances:
-1. **Group** apps by `(app_name, app_type)`, separating fixed-port from dynamic-port entries
-2. **Dynamic-port batch launch**: For each group of dynamic-port apps with the same `(app_name, app_type)`:
+1. **Group** apps by `(app_name, app_type, env)`, separating fixed-port from dynamic-port entries. Apps with different `env` configs get separate groups.
+2. **Dynamic-port batch launch**: For each group of dynamic-port apps with the same `(app_name, app_type, env)`. Include env parameter when present:
    - Execute <LaunchDedicatedApp/> with instance_count=count, starting at the first allocated port
    - This launches multiple instances in a single call for efficiency
 3. **Fixed-port individual launch**: For each fixed-port app:
