@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add environment variable passthrough for launched Bevy processes via optional `env` parameter
+
 ### Changed
 - Update `rmcp` dependency from 0.16.0 to 0.17.0
 

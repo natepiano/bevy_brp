@@ -15,7 +15,7 @@ set -euo pipefail
 
 BRP_PORT=20200
 WEB_PORT=1334
-WASM_DIR="test-wasm"
+WASM_BINARY="target/wasm32-unknown-unknown/debug/bevy_brp_test_wasm.wasm"
 MAX_POLL_SECONDS=90
 POLL_INTERVAL=2
 FORKED_RUNNER_REPO="https://github.com/johanhelsing/wasm-server-runner"
@@ -177,15 +177,25 @@ fi
 # ---------------------------------------------------------------------------
 
 echo ""
-echo "--- Step 2: Build and Run WASM App ---"
+echo "--- Step 2: Run WASM App ---"
 
 # Kill anything already on the BRP and web ports
 lsof -ti :"${BRP_PORT}" 2>/dev/null | xargs kill 2>/dev/null || true
 lsof -ti :"${WEB_PORT}" 2>/dev/null | xargs kill 2>/dev/null || true
 sleep 0.5
 
-# Run the WASM app in background (wasm-server-runner serves it and relays BRP)
-(cd "${WASM_DIR}" && WASM_SERVER_RUNNER_BRP_PORT="${BRP_PORT}" cargo run --target wasm32-unknown-unknown 2>&1) &
+# Verify the prebuilt WASM binary exists (built by prebuild_workspace.sh --include-wasm)
+if [[ ! -f "${WASM_BINARY}" ]]; then
+    fail_ "WASM binary not found at ${WASM_BINARY} (run: cargo build --target wasm32-unknown-unknown -p bevy_brp_test_wasm)"
+    echo ""
+    echo "RESULTS: ${PASS_COUNT} passed, ${FAIL_COUNT} failed"
+    echo "STATUS: FAILED"
+    exit 1
+fi
+pass_ "prebuilt WASM binary found"
+
+# Run wasm-server-runner directly with the prebuilt binary (avoids cargo lock contention)
+WASM_SERVER_RUNNER_BRP_PORT="${BRP_PORT}" wasm-server-runner "${WASM_BINARY}" 2>&1 &
 RUNNER_PID=$!
 echo "  Started wasm-server-runner (PID ${RUNNER_PID})"
 

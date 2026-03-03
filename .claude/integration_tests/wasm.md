@@ -22,8 +22,9 @@ The script handles all steps internally and exits 0 on success, 1 on failure.
 - `wasm32-unknown-unknown` target is installed
 - `wasm-server-runner` (johanhelsing's fork with BRP relay) is installed; auto-installs from git if missing
 
-### 2. Build and Run WASM App
-- `cargo run --target wasm32-unknown-unknown` from `test-wasm/` in background
+### 2. Run WASM App
+- Verifies the prebuilt WASM binary exists (built by `prebuild_workspace.sh --include-wasm`)
+- Runs `wasm-server-runner` directly with the prebuilt binary (no `cargo run`, avoids cargo lock contention)
 - `wasm-server-runner` (johanhelsing's fork) serves the WASM app and relays BRP on port 20200
 - Waits for web server at port 1334, then launches headless Chrome with WebGPU to load the app
 - Chrome loads the WASM app, which connects via WebSocket back to the relay
