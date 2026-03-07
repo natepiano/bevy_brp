@@ -3,7 +3,7 @@
 ## Configuration
 PARALLEL_TESTS = 8  # Number of tests to run concurrently
 TEST_CONFIG_FILE = .claude/config/integration_tests.json  # Test configuration file location
-AGENT_MODEL = sonnet  # Model for test runner agents (sonnet is concise and fast for execution tasks)
+AGENT_MODEL = opus  # Model for test runner agents
 
 ## Overview
 

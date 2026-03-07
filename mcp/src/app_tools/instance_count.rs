@@ -12,11 +12,11 @@ use serde::Deserializer;
 use serde::Serialize;
 
 /// Minimum number of instances (1)
-pub const MIN_INSTANCE_COUNT: usize = 1;
+const MIN_INSTANCE_COUNT: usize = 1;
 /// Maximum number of instances (100)
-pub const MAX_INSTANCE_COUNT: usize = 100;
+const MAX_INSTANCE_COUNT: usize = 100;
 /// Valid range for instance count
-pub const VALID_INSTANCE_RANGE: RangeInclusive<usize> = MIN_INSTANCE_COUNT..=MAX_INSTANCE_COUNT;
+const VALID_INSTANCE_RANGE: RangeInclusive<usize> = MIN_INSTANCE_COUNT..=MAX_INSTANCE_COUNT;
 
 /// Count of instances to launch in sequence
 /// Validates count is within 1-100 - defaults to 1
@@ -51,7 +51,7 @@ impl Deref for InstanceCount {
 ///
 /// Ensures the count is within the valid range (1-100)
 /// Accepts both number and string inputs for compatibility
-pub fn deserialize_instance_count<'de, D>(deserializer: D) -> Result<usize, D::Error>
+fn deserialize_instance_count<'de, D>(deserializer: D) -> Result<usize, D::Error>
 where
     D: Deserializer<'de>,
 {

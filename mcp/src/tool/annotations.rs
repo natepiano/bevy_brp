@@ -64,7 +64,7 @@ pub enum DomainOfInteraction {
 }
 
 impl Annotation {
-    pub fn new(
+    pub(super) fn new(
         title: impl Into<String>,
         category: ToolCategory,
         environment_impact: EnvironmentImpact,

@@ -144,10 +144,10 @@ pub struct ParameterBuilder {
 }
 
 impl ParameterBuilder {
-    pub fn new() -> Self { Self::default() }
+    pub(super) fn new() -> Self { Self::default() }
 
     /// Add a string property to the schema
-    pub fn add_string_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_string_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::String);
         prop.insert_field("description", description);
@@ -161,7 +161,7 @@ impl ParameterBuilder {
     }
 
     /// Add a string array property to the schema
-    pub fn add_string_array_property(
+    fn add_string_array_property(
         mut self,
         name: &str,
         description: &str,
@@ -185,7 +185,7 @@ impl ParameterBuilder {
     }
 
     /// Add a number array property to the schema
-    pub fn add_number_array_property(
+    fn add_number_array_property(
         mut self,
         name: &str,
         description: &str,
@@ -209,7 +209,7 @@ impl ParameterBuilder {
     }
 
     /// Add a number property to the schema
-    pub fn add_number_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_number_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::Number);
         prop.insert_field("description", description);
@@ -223,7 +223,7 @@ impl ParameterBuilder {
     }
 
     /// Add a boolean property to the schema
-    pub fn add_boolean_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_boolean_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::Boolean);
         prop.insert_field("description", description);
@@ -237,7 +237,7 @@ impl ParameterBuilder {
     }
 
     /// Add an object property to the schema
-    pub fn add_object_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_object_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
         prop.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Object);
         prop.insert_field(SchemaField::Description.as_ref(), description);
@@ -251,7 +251,7 @@ impl ParameterBuilder {
     }
 
     /// Add a property that can be any JSON type (object, array, string, number, boolean, null)
-    pub fn add_any_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_any_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
         // Use anyOf instead of type array to satisfy validators that require
         // array schemas to have an "items" field (e.g., Copilot).
@@ -275,7 +275,7 @@ impl ParameterBuilder {
     }
 
     /// Build the final schema
-    pub fn build(self) -> Arc<Map<String, Value>> {
+    pub(super) fn build(self) -> Arc<Map<String, Value>> {
         let mut schema = Map::new();
         schema.insert_field("type", JsonSchemaType::Object);
         schema.insert_field("properties", self.properties);
@@ -453,7 +453,7 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
 /// Build parameters from a `JsonSchema` type directly into a `ParameterBuilder`
 /// All tools with parameters derive `JsonSchema` making it possible for us
 /// to build the parameters from the schema
-pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
+pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
     let schema = schemars::schema_for!(T);
     let mut builder = ParameterBuilder::new();
 

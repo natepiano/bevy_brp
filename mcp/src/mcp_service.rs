@@ -56,7 +56,7 @@ impl McpService {
     }
 
     /// Get tool definition by name with O(1) lookup
-    pub fn get_tool_def(&self, name: &str) -> Option<&ToolDef> { self.tool_defs.get(name) }
+    fn get_tool_def(&self, name: &str) -> Option<&ToolDef> { self.tool_defs.get(name) }
 
     /// List all MCP tools using pre-converted and sorted tools
     fn list_mcp_tools(&self) -> ListToolsResult {
@@ -71,7 +71,7 @@ impl McpService {
     ///
     /// # Errors
     /// Returns an error if the MCP client cannot be contacted or if the `list_roots` call fails.
-    pub async fn fetch_roots_and_get_paths(
+    async fn fetch_roots_and_get_paths(
         &self,
         peer: Peer<RoleServer>,
     ) -> Result<Vec<PathBuf>, McpError> {
