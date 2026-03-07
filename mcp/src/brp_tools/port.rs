@@ -10,8 +10,8 @@ use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
-use crate::brp_tools::constants::DEFAULT_BRP_EXTRAS_PORT;
-use crate::brp_tools::constants::VALID_PORT_RANGE;
+use super::constants::DEFAULT_BRP_EXTRAS_PORT;
+use super::constants::VALID_PORT_RANGE;
 use crate::serde_helpers::deserialize_number_or_string;
 
 /// Port number for BRP - defaults to 15702

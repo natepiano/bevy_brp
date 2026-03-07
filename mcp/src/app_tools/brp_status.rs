@@ -6,9 +6,9 @@ use serde::Deserialize;
 use serde::Serialize;
 use sysinfo::System;
 
-use crate::app_tools::support::get_pid_for_port;
-use crate::app_tools::support::normalize_process_name;
-use crate::app_tools::support::process_matches_name_exact;
+use super::support::get_pid_for_port;
+use super::support::normalize_process_name;
+use super::support::process_matches_name_exact;
 use crate::brp_tools::Port;
 use crate::brp_tools::ResponseStatus;
 use crate::brp_tools::{self};

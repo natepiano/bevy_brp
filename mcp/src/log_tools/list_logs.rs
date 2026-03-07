@@ -8,7 +8,7 @@ use serde::Serialize;
 use super::support::LogFileEntry;
 use crate::error::Error;
 use crate::error::Result;
-use crate::log_tools::support;
+use super::support;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
 use crate::tool::ToolFn;

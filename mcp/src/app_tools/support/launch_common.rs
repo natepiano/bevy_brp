@@ -16,7 +16,7 @@ use super::errors::PathDisambiguationError;
 use super::errors::TargetNotFoundAtSpecifiedPath;
 use super::process;
 use crate::app_tools::launch_params::LaunchBevyBinaryParams;
-use crate::app_tools::support::cargo_detector::BevyTarget;
+use super::cargo_detector::BevyTarget;
 use crate::error::Error;
 use crate::error::Result;
 
