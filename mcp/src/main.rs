@@ -8,7 +8,6 @@
 
 use std::error::Error;
 
-use brp_tools::initialize_watch_manager;
 use log_tools::TracingLevel;
 use mcp_service::McpService;
 use rmcp::ServiceExt;
@@ -28,9 +27,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize file-based tracing with dynamic level management
     // Uses lazy file creation - file only created on first log write
     TracingLevel::init_file_tracing();
-
-    // Initialize the watch manager
-    initialize_watch_manager().await;
 
     let service = McpService::new();
 

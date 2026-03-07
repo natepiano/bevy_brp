@@ -70,9 +70,3 @@ impl WatchManager {
     }
 
 }
-
-/// Initialize the watch manager
-pub(super) async fn initialize_watch_manager() {
-    // Force initialization of the lazy static
-    let _ = WATCH_MANAGER.lock().await;
-}
