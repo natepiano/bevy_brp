@@ -9,7 +9,7 @@ mod path_example;
 mod path_kind;
 mod recursion_context;
 mod support;
-mod type_kind_builders;
+mod type_kind_builder;
 mod type_parser;
 mod types;
 

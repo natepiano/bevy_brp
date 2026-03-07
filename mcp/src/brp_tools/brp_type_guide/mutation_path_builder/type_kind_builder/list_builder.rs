@@ -1,11 +1,11 @@
-//! `PathBuilder` for Array types
+//! `PathBuilder` for List types (Vec, etc.)
 //!
-//! Handles both fixed-size arrays like `[Vec3; 3]` and dynamic arrays.
-//! Creates mutation paths for both the entire array and individual elements.
+//! Similar to `ArrayMutationBuilder` but for dynamic containers like Vec<T>.
+//! Lists support indexed access and element-level mutations through BRP.
 //!
-//! **Recursion**: YES - Arrays recurse into each element to generate mutation paths
-//! for nested structures (e.g., `[Transform; 3]` generates paths for each Transform).
-//! This is because array elements are addressable by stable indices `[0]`, `[1]`, etc.
+//! **Recursion**: YES - Lists recurse into elements to generate mutation paths
+//! for nested structures (e.g., `Vec<Transform>` generates `[0].translation`).
+//! Elements are addressable by index, though indices may change as list mutates.
 
 use std::collections::HashMap;
 
@@ -17,22 +17,19 @@ use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::Example;
-use super::type_kind_builder::TypeKindBuilder;
-use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
+use super::ListMutationBuilder;
+use super::TypeKindBuilder;
 use crate::error::Error;
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
-pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) struct ArrayMutationBuilder;
-
-impl TypeKindBuilder for ArrayMutationBuilder {
+impl TypeKindBuilder for ListMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
         = std::vec::IntoIter<PathKind>
     where
         Self: 'a;
-
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
         let schema = ctx.require_registry_schema()?;
 
@@ -40,7 +37,7 @@ impl TypeKindBuilder for ArrayMutationBuilder {
         let Some(element_type) = schema.get_type(SchemaField::Items) else {
             return Err(Error::SchemaProcessing {
                 message:   format!(
-                    "Failed to extract element type from schema for array: {}",
+                    "Failed to extract element type from schema for list: {}",
                     ctx.type_name()
                 ),
                 type_name: Some(ctx.type_name().to_string()),
@@ -50,7 +47,7 @@ impl TypeKindBuilder for ArrayMutationBuilder {
             .into());
         };
 
-        // Arrays use indexed PathKind for the element at [0]
+        // Lists use indexed PathKind for the element at [0]
         // We only recurse into one element for efficiency
         Ok(vec![PathKind::ArrayElement {
             index:       0,
@@ -72,36 +69,20 @@ impl TypeKindBuilder for ArrayMutationBuilder {
             .get("0")
             .ok_or_else(|| {
                 BuilderError::SystemError(Error::InvalidState(format!(
-                "Protocol violation: Array {} missing element at index 0. Available keys: {:?}",
+                "Protocol violation: List {} missing element at index 0. Available keys: {:?}",
                 ctx.type_name(),
-                children.keys().collect::<Vec<_>>()
+                children.keys().map(|k| &**k).collect::<Vec<_>>()
             )).into())
             })?
             .to_value();
 
-        // Create array with appropriate size
-        let array_size = Self::extract_array_size(ctx.type_name());
-        let size = array_size.unwrap_or(2);
-
-        // Create array filled with the element example
-        let array = vec![element_example; size];
-        Ok(json!(array))
+        // Create single-element array to show it's a list
+        // One element is sufficient to demonstrate the pattern
+        // Create single-element array to show it's a list
+        // One element is sufficient to demonstrate the pattern
+        Ok(json!([element_example]))
     }
 
-    // NO child_path_action() override - Arrays DO expose indexed child paths
-    // This allows mutations like: myArray[0].field = value
-}
-
-impl ArrayMutationBuilder {
-    /// Extract array size from type name (e.g., "[f32; 4]" -> 4)
-    fn extract_array_size(type_name: &BrpTypeName) -> Option<usize> {
-        let type_str = type_name.as_str();
-        // Pattern: [ElementType; Size]
-        type_str.rfind("; ").and_then(|size_start| {
-            type_str.rfind(']').and_then(|size_end| {
-                let size_str = &type_str[size_start + 2..size_end];
-                size_str.parse().ok()
-            })
-        })
-    }
+    // NO child_path_action() override - Lists DO expose indexed child paths
+    // This allows mutations like: myList[0].field = value
 }

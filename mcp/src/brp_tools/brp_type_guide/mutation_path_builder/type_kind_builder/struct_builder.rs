@@ -19,12 +19,11 @@ use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::support;
 use super::super::types::Example;
-use super::type_kind_builder::TypeKindBuilder;
+use super::StructMutationBuilder;
+use super::TypeKindBuilder;
 use crate::error::Error;
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
-
-pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) struct StructMutationBuilder;
 
 impl TypeKindBuilder for StructMutationBuilder {
     type Item = PathKind;

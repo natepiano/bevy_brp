@@ -88,7 +88,7 @@ type ProcessChildrenResult = (
 /// This function always generates examples arrays for all enums, anywhere in the type hierarchy
 /// - Ensures all enum fields show their available variants
 /// - Improves discoverability for nested enums
-pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) fn process_enum(
+pub(super) fn process_enum(
     ctx: &RecursionContext,
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
     tracing::debug!(
@@ -203,7 +203,7 @@ pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) fn process_enum(
 ///
 /// 3. **Fallback**: Return `None` if no `Mutable` variants exist
 ///    - The entire enum is not spawnable
-pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Example> {
+pub(super) fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Example> {
     // First priority: Find a non-unit Mutable variant with a complete example
     // Note: We check mutability explicitly for clarity and safety, even though
     // example.is_some() now implies Mutable due to build_variant_group_example's logic
