@@ -17,10 +17,6 @@ use crate::app_tools::launch_params::LaunchBevyBinaryParams;
 use crate::app_tools::support::cargo_detector::BevyTarget;
 use crate::error::Error;
 use crate::error::Result;
-use crate::tool::HandlerContext;
-use crate::tool::HandlerResult;
-use crate::tool::ParamStruct;
-use crate::tool::ToolResult;
 
 /// Marker type for App launch configuration
 #[derive(Clone)]
@@ -755,39 +751,41 @@ fn launch_target<T: LaunchConfigTrait>(
 }
 
 fn launch_with_config<T, P>(
-    ctx: HandlerContext,
+    typed_params: P,
+    roots: Vec<PathBuf>,
     default_profile: &'static str,
-) -> HandlerResult<'static, ToolResult<LaunchResult, P>>
+) -> Result<LaunchResult>
 where
     T: FromLaunchParams,
-    P: ToLaunchParams + ParamStruct + for<'de> serde::Deserialize<'de>,
+    P: ToLaunchParams,
 {
-    Box::pin(async move {
-        let typed_params: P = ctx.extract_parameter_values()?;
-        let params = typed_params.to_launch_params(default_profile);
-        let search_paths = ctx.roots;
-        let config = T::from_params(&params);
-        let result = launch_target(&config, &search_paths);
-
-        Ok(ToolResult {
-            result,
-            params: Some(typed_params),
-        })
-    })
+    let params = typed_params.to_launch_params(default_profile);
+    let config = T::from_params(&params);
+    launch_target(&config, &roots)
 }
 
 pub fn launch_bevy_app(
-    ctx: HandlerContext,
+    typed_params: LaunchBevyBinaryParams,
+    roots: Vec<PathBuf>,
     default_profile: &'static str,
-) -> HandlerResult<'static, ToolResult<LaunchResult, LaunchBevyBinaryParams>> {
-    launch_with_config::<LaunchConfig<App>, LaunchBevyBinaryParams>(ctx, default_profile)
+) -> Result<LaunchResult> {
+    launch_with_config::<LaunchConfig<App>, LaunchBevyBinaryParams>(
+        typed_params,
+        roots,
+        default_profile,
+    )
 }
 
 pub fn launch_bevy_example(
-    ctx: HandlerContext,
+    typed_params: LaunchBevyBinaryParams,
+    roots: Vec<PathBuf>,
     default_profile: &'static str,
-) -> HandlerResult<'static, ToolResult<LaunchResult, LaunchBevyBinaryParams>> {
-    launch_with_config::<LaunchConfig<Example>, LaunchBevyBinaryParams>(ctx, default_profile)
+) -> Result<LaunchResult> {
+    launch_with_config::<LaunchConfig<Example>, LaunchBevyBinaryParams>(
+        typed_params,
+        roots,
+        default_profile,
+    )
 }
 
 impl FromLaunchParams for LaunchConfig<App> {

@@ -5,6 +5,7 @@ use super::launch_params::LaunchBevyBinaryParams;
 use super::support;
 use super::support::LaunchResult;
 use crate::error::Result;
+use crate::tool::call_with_typed_params;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
 use crate::tool::ToolFn;
@@ -22,7 +23,9 @@ impl ToolFn for LaunchBevyApp {
         &self,
         ctx: HandlerContext,
     ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
-        support::launch_bevy_app(ctx, DEFAULT_PROFILE)
+        call_with_typed_params(ctx, |ctx, params: LaunchBevyBinaryParams| async move {
+            support::launch_bevy_app(params, ctx.roots, DEFAULT_PROFILE)
+        })
     }
 
     async fn handle_impl(&self, _params: Self::Params) -> Result<Self::Output> {
@@ -47,7 +50,9 @@ impl ToolFn for LaunchBevyExample {
         &self,
         ctx: HandlerContext,
     ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
-        support::launch_bevy_example(ctx, DEFAULT_PROFILE)
+        call_with_typed_params(ctx, |ctx, params: LaunchBevyBinaryParams| async move {
+            support::launch_bevy_example(params, ctx.roots, DEFAULT_PROFILE)
+        })
     }
 
     async fn handle_impl(&self, _params: Self::Params) -> Result<Self::Output> {

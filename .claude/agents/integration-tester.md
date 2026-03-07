@@ -42,3 +42,8 @@ EOF
 **Port Requirement:**
 - Every MCP tool call MUST include the port parameter from your prompt
 - The app is already running - do not launch or shutdown unless explicitly told to
+
+**CRITICAL OUTPUT REQUIREMENT:**
+- You MUST end your response with a text summary of results — NEVER end on a tool call
+- After your final tool call, you MUST produce a text response with the test results
+- If you do not output text as your final message, your results will be lost

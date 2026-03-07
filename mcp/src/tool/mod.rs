@@ -31,3 +31,23 @@ pub use types::HandlerResult;
 pub use types::ResultStruct;
 pub use types::ToolFn;
 pub use types::ToolResult;
+
+pub(super) fn extract_parameter_values<T>(ctx: &HandlerContext) -> crate::error::Result<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    ctx.extract_parameter_values()
+}
+
+pub(super) fn call_with_typed_params<O, P, F, Fut>(
+    ctx: HandlerContext,
+    f: F,
+) -> HandlerResult<'static, ToolResult<O, P>>
+where
+    O: ResultStruct + Send + Sync + 'static,
+    P: ParamStruct + Clone + for<'de> serde::Deserialize<'de> + Send + 'static,
+    F: FnOnce(HandlerContext, P) -> Fut + Send + 'static,
+    Fut: std::future::Future<Output = crate::error::Result<O>> + Send + 'static,
+{
+    types::call_with_typed_params(ctx, f)
+}

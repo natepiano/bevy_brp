@@ -183,7 +183,7 @@ pub fn derive_result_struct(input: TokenStream) -> TokenStream {
 ///
 ///     fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
 ///         Box::pin(async move {
-///             let params: Self::Params = ctx.extract_parameter_values()?;
+///             let params: Self::Params = crate::tool::extract_parameter_values(&ctx)?;
 ///             let result = handle_impl(params.clone()).await;
 ///             Ok(ToolResult {
 ///                 result,
