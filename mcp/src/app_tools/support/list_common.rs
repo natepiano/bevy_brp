@@ -3,11 +3,14 @@
 use std::collections::HashSet;
 
 use super::cargo_detector::CargoDetector;
+use super::collection_strategy::BevyAppsStrategy;
+use super::collection_strategy::BevyExamplesStrategy;
+use super::collection_strategy::BrpAppsStrategy;
 use super::collection_strategy::CollectionStrategy;
 use super::scanning;
 
 /// Collect all items using the provided strategy
-pub fn collect_all_items<S: CollectionStrategy>(
+fn collect_all_items<S: CollectionStrategy>(
     search_paths: &[std::path::PathBuf],
     strategy: &S,
 ) -> Vec<serde_json::Value> {
@@ -36,4 +39,16 @@ pub fn collect_all_items<S: CollectionStrategy>(
     }
 
     all_items
+}
+
+pub fn collect_bevy_apps(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
+    collect_all_items(search_paths, &BevyAppsStrategy)
+}
+
+pub fn collect_brp_apps(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
+    collect_all_items(search_paths, &BrpAppsStrategy)
+}
+
+pub fn collect_bevy_examples(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
+    collect_all_items(search_paths, &BevyExamplesStrategy)
 }

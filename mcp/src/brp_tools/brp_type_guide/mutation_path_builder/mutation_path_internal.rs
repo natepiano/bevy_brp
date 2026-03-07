@@ -28,7 +28,7 @@ use super::types::Mutability;
 use super::types::MutabilityIssue;
 use super::types::MutabilityIssueTarget;
 use super::types::MutationPathExternal;
-use super::types::PathInfo;
+use super::types::PathInfoParams;
 use super::types::RootExample;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -75,13 +75,8 @@ impl MutationPathInternal {
     /// Create a `MutabilityIssue` from this mutation path (for non-enum types)
     pub fn to_mutability_issue(&self) -> MutabilityIssue {
         MutabilityIssue {
-            target:    MutabilityIssueTarget::Path(self.mutation_path.clone()),
-            type_name: self.type_name.clone(),
-            status:    self.mutability,
-            reason:    self
-                .mutability_reason
-                .as_ref()
-                .and_then(Option::<Value>::from),
+            target: MutabilityIssueTarget::Path(self.mutation_path.clone()),
+            status: self.mutability,
         }
     }
 
@@ -112,16 +107,20 @@ impl MutationPathInternal {
         MutationPathExternal::new(
             self.mutation_path.clone(),
             description,
-            PathInfo::new(
-                self.path_kind,
-                self.type_name,
+            PathInfoParams {
+                path_kind: self.path_kind,
+                type_name: self.type_name,
                 type_kind,
-                self.mutability,
-                self.mutability_reason.as_ref().and_then(Option::<Value>::from),
+                mutability: self.mutability,
+                mutability_reason: self
+                    .mutability_reason
+                    .as_ref()
+                    .and_then(Option::<Value>::from),
                 applicable_variants,
                 enum_instructions,
                 root_example,
-            ),
+            }
+            .into(),
             path_example,
         )
     }

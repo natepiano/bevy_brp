@@ -4,7 +4,6 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::support;
-use super::support::BrpAppsStrategy;
 use crate::error::Result;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
@@ -33,6 +32,6 @@ pub struct ListBrpApps;
 #[allow(clippy::unused_async)]
 async fn handle_impl(ctx: HandlerContext, _params: NoParams) -> Result<ListBrpAppsResult> {
     let search_paths = &ctx.roots;
-    let items = support::collect_all_items(search_paths, &BrpAppsStrategy);
+    let items = support::collect_brp_apps(search_paths);
     Ok(ListBrpAppsResult::new(items.len(), items))
 }

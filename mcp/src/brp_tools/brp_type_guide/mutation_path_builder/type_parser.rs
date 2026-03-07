@@ -21,7 +21,7 @@ use nom::sequence::preceded;
 
 /// A parsed type path with optional variant
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParsedTypePath {
+struct ParsedTypePath {
     /// The full type including module path and generics
     /// e.g., "`core::option::Option`<`bevy_asset::handle::Handle`<`bevy_mesh::mesh::Mesh`>>"
     pub full_type:       String,
@@ -177,7 +177,7 @@ fn simplify_generics(generics_str: &str) -> String {
 }
 
 /// Parse a complete type path and extract simplified variant name
-pub fn parse_type_with_variant(input: &str) -> Result<ParsedTypePath, String> {
+fn parse_type_with_variant(input: &str) -> Result<ParsedTypePath, String> {
     match full_type_path(input) {
         Ok((remaining, (type_part, variant))) => {
             if !remaining.is_empty() {
@@ -201,7 +201,7 @@ pub fn parse_type_with_variant(input: &str) -> Result<ParsedTypePath, String> {
 /// Extract a simplified variant name from a full type path
 /// e.g., "`core::option::Option`<`bevy_asset::handle::Handle`<`bevy_mesh::mesh::Mesh`>>`::Some`"
 ///    -> "Option<Handle<Mesh>>`::Some`"
-pub fn extract_simplified_variant_name(type_path: &str) -> String {
+pub(super) fn extract_simplified_variant_name(type_path: &str) -> String {
     match parse_type_with_variant(type_path) {
         Ok(parsed) => {
             if let Some(variant) = parsed.variant {

@@ -101,10 +101,10 @@ use crate::json_schema::SchemaField;
 /// The `increment()` and `exceeds_limit()` methods are intentionally private to this module,
 /// ensuring they can only be called from `RecursionContext::create_recursion_context()`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct RecursionDepth(usize);
+pub(super) struct RecursionDepth(usize);
 
 impl RecursionDepth {
-    pub const ZERO: Self = Self(0);
+    pub(super) const ZERO: Self = Self(0);
 
     /// Increment depth - private to this module
     const fn increment(self) -> Self { Self(self.0 + 1) }
@@ -125,29 +125,29 @@ impl Deref for RecursionDepth {
 /// This struct provides all the necessary context for building mutation paths,
 /// including access to the registry, and enum variants.
 #[derive(Debug)]
-pub struct RecursionContext {
+pub(super) struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind:                PathKind,
+    pub(super) path_kind:                PathKind,
     /// Reference to the type registry
-    pub registry:                 Arc<HashMap<BrpTypeName, Value>>,
+    pub(super) registry:                 Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
-    pub mutation_path:            MutationPath,
+    pub(super) mutation_path:            MutationPath,
     /// Action to take regarding path creation (set by `MutationPathBuilder`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action:              PathAction,
+    pub(super) path_action:              PathAction,
     /// Chain of variant constraints from root to current position
     /// Independent of `enum_context` - tracks ancestry for `PathRequirement` construction
-    pub variant_chain:            Vec<VariantName>,
+    pub(super) variant_chain:            Vec<VariantName>,
     /// Recursion depth tracking to prevent infinite loops
-    pub depth:                    RecursionDepth,
+    pub(super) depth:                    RecursionDepth,
     /// Parent enum variant signature (only set when processing enum variant children)
     /// The enum type is available via `path_kind.parent_type` - no need to store it redundantly
-    pub parent_variant_signature: Option<VariantSignature>,
+    pub(super) parent_variant_signature: Option<VariantSignature>,
 }
 
 impl RecursionContext {
     /// Create a new mutation path context
-    pub fn new(path_kind: PathKind, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
+    pub(super) fn new(path_kind: PathKind, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
         Self {
             path_kind,
             registry,
@@ -160,7 +160,7 @@ impl RecursionContext {
     }
 
     /// Get the type name being processed
-    pub const fn type_name(&self) -> &BrpTypeName { self.path_kind.type_name() }
+    pub(super) const fn type_name(&self) -> &BrpTypeName { self.path_kind.type_name() }
 
     /// Generate the path segment string for a `PathKind` (private to this module)
     fn path_kind_to_segment(path_kind: &PathKind) -> String {
@@ -173,7 +173,7 @@ impl RecursionContext {
     }
 
     /// Require the schema to be present, returning an error if missing
-    pub fn require_registry_schema(&self) -> crate::error::Result<&Value> {
+    pub(super) fn require_registry_schema(&self) -> crate::error::Result<&Value> {
         self.registry.get(self.type_name()).ok_or_else(|| {
             Error::General(format!(
                 "Type {} not found in registry",
@@ -190,7 +190,7 @@ impl RecursionContext {
     ///
     /// The `increment()` and `exceeds_limit()` methods are private to this module, ensuring
     /// they can only be called here.
-    pub fn create_recursion_context(
+    pub(super) fn create_recursion_context(
         &self,
         path_kind: PathKind,
         child_path_action: PathAction,
@@ -239,7 +239,7 @@ impl RecursionContext {
     }
 
     /// Extract all element types from Tuple/TupleStruct schema
-    pub fn extract_tuple_element_types(schema: &Value) -> Option<Vec<BrpTypeName>> {
+    pub(super) fn extract_tuple_element_types(schema: &Value) -> Option<Vec<BrpTypeName>> {
         Self::get_schema_field_as_array(schema, SchemaField::PrefixItems)
             .map(|items| items.iter().filter_map(Value::extract_field_type).collect())
     }
@@ -259,7 +259,7 @@ impl RecursionContext {
     ///    highest priority
     /// 2. Enum signature match (for variant element values like `AlphaMode2d::Mask(f32).0`)
     /// 3. Exact type match (handles most primitive and simple types) - fallback
-    pub fn find_knowledge(
+    pub(super) fn find_knowledge(
         &self,
     ) -> std::result::Result<
         Option<&'static super::super::type_knowledge::TypeKnowledge>,
@@ -333,7 +333,7 @@ impl RecursionContext {
     /// (static facts) into `KnowledgeAction` (control flow decisions). All builders
     /// should use this method instead of calling `find_knowledge()` directly to ensure
     /// consistent behavior.
-    pub fn check_knowledge(&self) -> Result<KnowledgeAction, BuilderError> {
+    pub(super) fn check_knowledge(&self) -> Result<KnowledgeAction, BuilderError> {
         match self.find_knowledge()? {
             Some(TypeKnowledge::TreatAsRootValue { example, .. }) => {
                 // Return example immediately - caller will build single root path
@@ -351,7 +351,7 @@ impl RecursionContext {
     }
 
     /// Creates a `NoMutableChildren` error with this context's type name
-    pub fn create_no_mutable_children_error(&self) -> NotMutableReason {
+    pub(super) fn create_no_mutable_children_error(&self) -> NotMutableReason {
         NotMutableReason::NoMutableChildren {
             parent_type: self.type_name().clone(),
         }

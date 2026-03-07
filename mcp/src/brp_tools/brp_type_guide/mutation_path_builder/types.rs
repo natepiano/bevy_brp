@@ -55,7 +55,7 @@ impl From<Example> for Value {
 
 /// Action to take regarding path creation during recursion
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PathAction {
+pub(super) enum PathAction {
     /// Create mutation paths during recursion
     Create,
     /// Skip path creation during recursion
@@ -76,7 +76,7 @@ pub enum Mutability {
 
 /// Identifies what component has a mutability issue
 #[derive(Debug, Clone)]
-pub enum MutabilityIssueTarget {
+pub(super) enum MutabilityIssueTarget {
     /// A mutation path within a type (e.g., ".translation.x")
     Path(MutationPath),
     /// An enum variant name (e.g., "`Color::Srgba`")
@@ -94,25 +94,17 @@ impl std::fmt::Display for MutabilityIssueTarget {
 
 /// Summary of a mutation issue for diagnostic reporting
 #[derive(Debug, Clone)]
-pub struct MutabilityIssue {
-    pub target:    MutabilityIssueTarget,
-    pub type_name: BrpTypeName,
-    pub status:    Mutability,
-    pub reason:    Option<Value>,
+pub(super) struct MutabilityIssue {
+    pub(super) target: MutabilityIssueTarget,
+    pub(super) status: Mutability,
 }
 
 impl MutabilityIssue {
     /// Create from an enum variant name (for enum types)
-    pub const fn from_variant_name(
-        variant: VariantName,
-        type_name: BrpTypeName,
-        status: Mutability,
-    ) -> Self {
+    pub const fn from_variant_name(variant: VariantName, status: Mutability) -> Self {
         Self {
             target: MutabilityIssueTarget::Variant(variant),
-            type_name,
             status,
-            reason: None,
         }
     }
 }
@@ -148,26 +140,29 @@ pub struct PathInfo {
     pub root_example:        Option<RootExample>,
 }
 
-impl PathInfo {
-    pub(super) fn new(
-        path_kind: PathKind,
-        type_name: BrpTypeName,
-        type_kind: TypeKind,
-        mutability: Mutability,
-        mutability_reason: Option<Value>,
-        applicable_variants: Option<Vec<VariantName>>,
-        enum_instructions: Option<String>,
-        root_example: Option<RootExample>,
-    ) -> Self {
+/// Parameters for constructing a `PathInfo`
+pub(super) struct PathInfoParams {
+    pub(super) path_kind:           PathKind,
+    pub(super) type_name:           BrpTypeName,
+    pub(super) type_kind:           TypeKind,
+    pub(super) mutability:          Mutability,
+    pub(super) mutability_reason:   Option<Value>,
+    pub(super) applicable_variants: Option<Vec<VariantName>>,
+    pub(super) enum_instructions:   Option<String>,
+    pub(super) root_example:        Option<RootExample>,
+}
+
+impl From<PathInfoParams> for PathInfo {
+    fn from(params: PathInfoParams) -> Self {
         Self {
-            path_kind,
-            type_name,
-            type_kind,
-            mutability,
-            mutability_reason,
-            applicable_variants,
-            enum_instructions,
-            root_example,
+            path_kind:           params.path_kind,
+            type_name:           params.type_name,
+            type_kind:           params.type_kind,
+            mutability:          params.mutability,
+            mutability_reason:   params.mutability_reason,
+            applicable_variants: params.applicable_variants,
+            enum_instructions:   params.enum_instructions,
+            root_example:        params.root_example,
         }
     }
 }
@@ -190,37 +185,37 @@ pub(super) struct ExampleGroup {
 /// Added to a `MutationPathInternal` whenever that path is nested in an enum
 /// i.e. `!ctx.variant_chain.is_empty()` - whenever we have a variant chain
 #[derive(Debug, Clone)]
-pub struct EnumPathInfo {
+pub(super) struct EnumPathInfo {
     /// Chain of enum variants from root to this path
-    pub variant_chain: Vec<VariantName>,
+    pub(super) variant_chain: Vec<VariantName>,
 
     /// All variants that share the same signature and support this path
-    pub applicable_variants: Vec<VariantName>,
+    pub(super) applicable_variants: Vec<VariantName>,
 
     /// root example enum - handles mutual exclusivity
     ///
     /// Available: Complete root example for this specific variant chain
     /// Unavailable: Explanation for why `root_example` cannot be used to construct this variant
     /// via BRP.
-    pub root_example: Option<RootExample>,
+    pub(super) root_example: Option<RootExample>,
 }
 
 /// Information about a mutation path that we serialize to our response
 #[derive(Debug, Clone, Serialize)]
 pub struct MutationPathExternal {
     /// The mutation path (e.g., ".translation.x" or "" for root)
-    pub path:         MutationPath,
+    pub path:        MutationPath,
     /// Human-readable description of what this path mutates
-    pub description:  String,
+    pub description: String,
     /// Combined path navigation and type metadata
-    pub path_info:    PathInfo,
+    pub path_info:   PathInfo,
     /// Example data (either single value or enum variant groups)
     #[serde(flatten)]
-    path_example:     PathExample,
+    path_example:    PathExample,
 }
 
 impl MutationPathExternal {
-    pub(super) fn new(
+    pub(super) const fn new(
         path: MutationPath,
         description: String,
         path_info: PathInfo,

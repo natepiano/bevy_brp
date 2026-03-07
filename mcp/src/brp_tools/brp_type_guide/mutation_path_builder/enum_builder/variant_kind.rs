@@ -6,10 +6,10 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::super::new_types::VariantName;
-use super::super::type_parser;
 use super::super::super::struct_field_name::StructFieldName;
 use super::super::super::variant_signature::VariantSignature;
+use super::super::new_types::VariantName;
+use super::super::type_parser;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::error::Error;
 use crate::error::Result;

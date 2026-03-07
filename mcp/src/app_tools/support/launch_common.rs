@@ -33,18 +33,18 @@ pub struct Example;
 /// Parameterized launch configuration for apps and examples
 #[derive(Clone)]
 pub struct LaunchConfig<T> {
-    pub target_name:    String,
-    pub profile:        String,
-    pub path:           Option<String>,
-    pub port:           Port,
-    pub instance_count: InstanceCount,
-    pub env:            Option<HashMap<String, String>>,
-    _phantom:           PhantomData<T>,
+    target_name:    String,
+    profile:        String,
+    path:           Option<String>,
+    port:           Port,
+    instance_count: InstanceCount,
+    env:            Option<HashMap<String, String>>,
+    _phantom:       PhantomData<T>,
 }
 
 impl<T> LaunchConfig<T> {
     /// Create a new launch configuration
-    pub const fn new(
+    const fn new(
         target_name: String,
         profile: String,
         path: Option<String>,
@@ -234,7 +234,7 @@ pub trait LaunchConfigTrait: Clone {
 }
 
 /// Validates and extracts the manifest directory from a manifest path
-pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path> {
+fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path> {
     manifest_path.parent().ok_or_else(|| {
         error_stack::Report::new(Error::FileOrPathNotFound(
             "Invalid manifest path".to_string(),
@@ -249,14 +249,14 @@ pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path> {
 /// Currently sets:
 /// - `BRP_PORT`: When a port is provided, sets this environment variable for `bevy_brp_extras` to
 ///   read
-pub fn set_brp_env_vars(cmd: &mut Command, port: Option<Port>) {
+fn set_brp_env_vars(cmd: &mut Command, port: Option<Port>) {
     if let Some(port) = port {
         cmd.env(BRP_EXTRAS_PORT_ENV_VAR, port.to_string());
     }
 }
 
 /// Sets user-specified environment variables on a command
-pub fn set_user_env_vars(cmd: &mut Command, env: Option<&HashMap<String, String>>) {
+fn set_user_env_vars(cmd: &mut Command, env: Option<&HashMap<String, String>>) {
     if let Some(env_vars) = env {
         for (key, value) in env_vars {
             cmd.env(key, value);
@@ -265,7 +265,7 @@ pub fn set_user_env_vars(cmd: &mut Command, env: Option<&HashMap<String, String>
 }
 
 /// Setup logging for launch operations and return log file handles
-pub fn setup_launch_logging(
+fn setup_launch_logging(
     name: &str,
     target_type: TargetType,
     profile: &str,
@@ -297,7 +297,7 @@ pub fn setup_launch_logging(
 }
 
 /// Build cargo command for running examples
-pub fn build_cargo_example_command(
+fn build_cargo_example_command(
     example_name: &str,
     profile: &str,
     port: Option<Port>,
@@ -321,7 +321,7 @@ pub fn build_cargo_example_command(
 }
 
 /// Build command for running app binaries
-pub fn build_app_command(
+fn build_app_command(
     binary_path: &Path,
     port: Option<Port>,
     env: Option<&HashMap<String, String>>,
@@ -451,7 +451,7 @@ fn log_build_result(build_state: BuildState, target_name: &str, target_type: Tar
 }
 
 /// Run cargo build for a target and block until completion
-pub fn run_cargo_build(
+fn run_cargo_build(
     target_name: &str,
     target_type: TargetType,
     profile: &str,
@@ -759,7 +759,7 @@ fn handle_target_discovery_error(error: Report<Error>) -> Report<Error> {
 }
 
 /// Generic function to launch a Bevy target (app or example)
-pub fn launch_target<T: LaunchConfigTrait>(
+fn launch_target<T: LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
 ) -> Result<LaunchResult> {

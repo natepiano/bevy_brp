@@ -23,7 +23,7 @@ use super::types::RootExample;
 /// - If any `PartiallyMutable` OR (has both `Mutable` and `NotMutable`) → `PartiallyMutable`
 /// - Else if any `NotMutable` → `NotMutable`
 /// - Else → `Mutable`
-pub fn aggregate_mutability(statuses: &[Mutability]) -> Mutability {
+pub(super) fn aggregate_mutability(statuses: &[Mutability]) -> Mutability {
     let has_partially_mutable = statuses
         .iter()
         .any(|s| matches!(s, Mutability::PartiallyMutable));
@@ -115,7 +115,7 @@ fn extract_child_value_for_chain(
 /// Value extraction:
 /// 1. Variant-specific value from `partial_root_examples[chain]` if available
 /// 2. Fallback to `example.for_parent()` otherwise
-pub fn collect_children_for_chain(
+pub(super) fn collect_children_for_chain(
     child_paths: &[&MutationPathInternal],
     ctx: &RecursionContext,
     target_chain: Option<&[VariantName]>,
@@ -146,7 +146,7 @@ pub fn collect_children_for_chain(
 ///
 /// Used for assembling struct-like objects from child examples in both structs and enum struct
 /// variants.
-pub fn assemble_struct_from_children(
+pub(super) fn assemble_struct_from_children(
     children: &HashMap<MutationPathDescriptor, Example>,
 ) -> serde_json::Map<String, Value> {
     let mut struct_obj = serde_json::Map::new();
@@ -170,7 +170,7 @@ pub fn assemble_struct_from_children(
 /// that have enum variant requirements (non-empty `variant_chain`).
 ///
 /// This is shared between `builder.rs` and `enum_path_builder.rs` to avoid code duplication.
-pub fn populate_root_examples_from_partials(
+pub(super) fn populate_root_examples_from_partials(
     paths: &mut [MutationPathInternal],
     new_partials: &HashMap<Vec<VariantName>, RootExample>,
 ) {
@@ -195,7 +195,7 @@ pub fn populate_root_examples_from_partials(
 ///
 /// This is shared between `path_builder.rs` (non-enum types) and `enum_path_builder.rs`
 /// (enum types) to avoid code duplication.
-pub fn wrap_example_with_availability(
+pub(super) fn wrap_example_with_availability(
     example: Example,
     children: &[&MutationPathInternal],
     chain: &[VariantName],

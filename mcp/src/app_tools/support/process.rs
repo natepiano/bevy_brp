@@ -16,7 +16,7 @@ use crate::error::Error;
 use crate::error::Result;
 
 /// Launch a detached process with proper setup
-pub fn launch_detached_process(
+pub(super) fn launch_detached_process(
     cmd: &std::process::Command,
     working_dir: &Path,
     log_file: File,

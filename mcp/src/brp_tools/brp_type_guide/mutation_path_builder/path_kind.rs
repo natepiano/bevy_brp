@@ -9,8 +9,8 @@ use serde::Serialize;
 use super::super::brp_type_name::BrpTypeName;
 use super::super::struct_field_name::StructFieldName;
 use super::super::type_kind::TypeKind;
-use super::option_classification::OptionClassification;
 use super::new_types::VariantName;
+use super::option_classification::OptionClassification;
 use super::types::EnumPathInfo;
 
 /// A semantic identifier for mutation paths in the builder system

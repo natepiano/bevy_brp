@@ -4,7 +4,6 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::support;
-use super::support::BevyExamplesStrategy;
 use crate::error::Result;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
@@ -33,6 +32,6 @@ pub struct ListBevyExamples;
 #[allow(clippy::unused_async)]
 async fn handle_impl(ctx: HandlerContext, _params: NoParams) -> Result<ListBevyExamplesResult> {
     let search_paths = &ctx.roots;
-    let items = support::collect_all_items(search_paths, &BevyExamplesStrategy);
+    let items = support::collect_bevy_examples(search_paths);
     Ok(ListBevyExamplesResult::new(items.len(), items))
 }

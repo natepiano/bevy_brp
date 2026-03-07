@@ -11,7 +11,7 @@ use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
 
-pub fn create_log_file(
+pub(super) fn create_log_file(
     name: &str,
     target_type: TargetType,
     profile: &str,
@@ -65,7 +65,7 @@ pub fn create_log_file(
 }
 
 /// Open an existing log file for appending (for stdout/stderr redirection)
-pub fn open_log_file_for_redirect(log_file_path: &Path) -> Result<File> {
+pub(super) fn open_log_file_for_redirect(log_file_path: &Path) -> Result<File> {
     File::options()
         .append(true)
         .open(log_file_path)
@@ -76,7 +76,7 @@ pub fn open_log_file_for_redirect(log_file_path: &Path) -> Result<File> {
 }
 
 /// Appends additional text to an existing log file
-pub fn append_to_log_file(log_file_path: &Path, content: &str) -> Result<()> {
+pub(super) fn append_to_log_file(log_file_path: &Path, content: &str) -> Result<()> {
     let mut file = File::options()
         .append(true)
         .open(log_file_path)

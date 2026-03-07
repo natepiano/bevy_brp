@@ -22,7 +22,7 @@ fn create_builds_json(item: &BevyTarget) -> serde_json::Value {
 }
 
 /// Strategy trait for collecting and serializing different types of items
-pub trait CollectionStrategy {
+pub(super) trait CollectionStrategy {
     type Item;
 
     /// Collect items from the detector
@@ -39,7 +39,7 @@ pub trait CollectionStrategy {
 }
 
 /// Strategy for collecting standard Bevy apps with build info
-pub struct BevyAppsStrategy;
+pub(super) struct BevyAppsStrategy;
 
 impl CollectionStrategy for BevyAppsStrategy {
     type Item = BevyTarget;
@@ -78,7 +78,7 @@ impl CollectionStrategy for BevyAppsStrategy {
 }
 
 /// Strategy for collecting BRP-enabled apps with `brp_enabled` flag
-pub struct BrpAppsStrategy;
+pub(super) struct BrpAppsStrategy;
 
 impl CollectionStrategy for BrpAppsStrategy {
     type Item = BevyTarget;
@@ -114,7 +114,7 @@ impl CollectionStrategy for BrpAppsStrategy {
 }
 
 /// Strategy for collecting examples without build info
-pub struct BevyExamplesStrategy;
+pub(super) struct BevyExamplesStrategy;
 
 impl CollectionStrategy for BevyExamplesStrategy {
     type Item = BevyTarget;

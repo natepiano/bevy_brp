@@ -87,7 +87,7 @@ impl NotMutableReason {
     ///
     /// Both create the same path string `.color_lut.0.0`, so this function detects the
     /// conflict and correctly marks it as `partially_mutable`.
-    pub fn from_partial_mutability(
+    pub(super) fn from_partial_mutability(
         parent_type: BrpTypeName,
         mutability_issues: Vec<MutabilityIssue>,
         message: String,

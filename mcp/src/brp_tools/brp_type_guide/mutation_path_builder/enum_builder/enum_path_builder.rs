@@ -35,11 +35,13 @@ use serde_json::Value;
 use serde_json::json;
 
 use super::super::super::type_kind::TypeKind;
+use super::super::super::variant_signature::VariantSignature;
 use super::super::BuilderError;
 use super::super::NotMutableReason;
 use super::super::mutation_path_internal::MutationPathInternal;
 use super::super::mutation_path_internal::MutationPathSliceExt;
 use super::super::new_types::VariantName;
+use super::super::option_classification::apply_option_transformation;
 use super::super::path_builder;
 use super::super::path_example::PathExample;
 use super::super::path_kind::MutationPathDescriptor;
@@ -53,8 +55,6 @@ use super::super::types::Mutability;
 use super::super::types::MutabilityIssue;
 use super::super::types::PathAction;
 use super::super::types::RootExample;
-use super::super::option_classification::apply_option_transformation;
-use super::super::super::variant_signature::VariantSignature;
 use super::variant_kind::VariantKind;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
@@ -795,11 +795,7 @@ fn build_enum_mutability_reason(
                 .iter()
                 .flat_map(|eg| {
                     eg.applicable_variants.iter().map(|variant| {
-                        MutabilityIssue::from_variant_name(
-                            variant.clone(),
-                            type_name.clone(),
-                            eg.mutability,
-                        )
+                        MutabilityIssue::from_variant_name(variant.clone(), eg.mutability)
                     })
                 })
                 .collect();

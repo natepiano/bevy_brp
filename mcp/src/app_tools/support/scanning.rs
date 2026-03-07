@@ -45,7 +45,7 @@ struct DiscoveredProject {
 /// Iterator over all valid Cargo project paths found in the given search paths
 /// Recursively scans all directories at any depth
 /// Smart deduplication: workspace-discovered apps take precedence over filesystem-discovered
-pub fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> Vec<PathBuf> {
+pub(super) fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> Vec<PathBuf> {
     use std::time::Instant;
     let start = Instant::now();
     debug!(
@@ -348,7 +348,7 @@ fn shallow_scan_internal(
 /// we use the directory name itself as the identifier to ensure round-trip compatibility
 /// with path parameters. For example, if searching in "/workspace/test-app" and finding
 /// a project at that exact path, we return "test-app" rather than an empty path.
-pub fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> PathBuf {
+pub(super) fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> PathBuf {
     // Try to find which search path this path is under
     for search_path in search_paths {
         let search_canonical = safe_canonicalize(search_path);
@@ -376,7 +376,7 @@ pub fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> PathBuf {
 
 /// Find all targets (apps and examples) by name across search paths, filtered by target type if
 /// specified This allows detection of duplicates across workspaces
-pub fn find_all_targets_by_name(
+pub(super) fn find_all_targets_by_name(
     target_name: &str,
     target_type: Option<TargetType>,
     search_paths: &[PathBuf],
@@ -414,7 +414,7 @@ pub fn find_all_targets_by_name(
 /// Returns an error with enhanced path error messages if duplicates found and no path specified
 ///
 /// If `cached_targets` is provided, uses those instead of scanning again (performance optimization)
-pub fn find_required_target_with_path(
+pub(super) fn find_required_target_with_path(
     target_name: &str,
     target_type: TargetType,
     path: Option<&str>,

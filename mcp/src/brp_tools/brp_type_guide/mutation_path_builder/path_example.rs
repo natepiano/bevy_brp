@@ -50,9 +50,8 @@ impl PathExample {
     pub(super) fn preferred_example(&self) -> Example {
         match self {
             Self::Simple(ex) => ex.clone(),
-            Self::EnumRoot { groups, .. } => {
-                super::enum_builder::select_preferred_example(groups).unwrap_or(Example::NotApplicable)
-            },
+            Self::EnumRoot { groups, .. } => super::enum_builder::select_preferred_example(groups)
+                .unwrap_or(Example::NotApplicable),
         }
     }
 }
