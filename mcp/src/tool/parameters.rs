@@ -161,12 +161,7 @@ impl ParameterBuilder {
     }
 
     /// Add a string array property to the schema
-    fn add_string_array_property(
-        mut self,
-        name: &str,
-        description: &str,
-        required: bool,
-    ) -> Self {
+    fn add_string_array_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::Array);
 
@@ -185,12 +180,7 @@ impl ParameterBuilder {
     }
 
     /// Add a number array property to the schema
-    fn add_number_array_property(
-        mut self,
-        name: &str,
-        description: &str,
-        required: bool,
-    ) -> Self {
+    fn add_number_array_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::Array);
 

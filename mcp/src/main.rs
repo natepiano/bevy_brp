@@ -20,6 +20,7 @@ mod json_object;
 mod json_schema;
 mod log_tools;
 mod mcp_service;
+mod serde_helpers;
 mod tool;
 
 #[tokio::main]

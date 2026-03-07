@@ -26,7 +26,7 @@ use crate::tool::response_builder::Response;
 #[derive(Clone)]
 pub struct HandlerContext {
     pub(super) tool_def: ToolDef,
-    request:            CallToolRequestParams,
+    request:             CallToolRequestParams,
     pub roots:           Vec<PathBuf>,
 }
 
@@ -158,7 +158,10 @@ impl HandlerContext {
     }
 
     /// Format framework errors
-    pub(super) fn format_framework_error(&self, error: error_stack::Report<Error>) -> CallToolResult {
+    pub(super) fn format_framework_error(
+        &self,
+        error: error_stack::Report<Error>,
+    ) -> CallToolResult {
         let tool_name = self.tool_def.tool_name;
         let call_info = tool_name.get_call_info();
 

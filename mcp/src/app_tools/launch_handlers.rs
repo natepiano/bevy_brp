@@ -5,11 +5,11 @@ use super::launch_params::LaunchBevyBinaryParams;
 use super::support;
 use super::support::LaunchResult;
 use crate::error::Result;
-use crate::tool::call_with_typed_params;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
 use crate::tool::ToolFn;
 use crate::tool::ToolResult;
+use crate::tool::call_with_typed_params;
 
 /// Handler for launching Bevy apps
 pub struct LaunchBevyApp;
@@ -34,9 +34,7 @@ impl ToolFn for LaunchBevyApp {
 }
 
 /// Create a `LaunchBevyApp` handler instance
-pub const fn create_launch_bevy_app_handler() -> LaunchBevyApp {
-    LaunchBevyApp
-}
+pub const fn create_launch_bevy_app_handler() -> LaunchBevyApp { LaunchBevyApp }
 
 /// Handler for launching Bevy examples
 pub struct LaunchBevyExample;
@@ -61,6 +59,4 @@ impl ToolFn for LaunchBevyExample {
 }
 
 /// Create a `LaunchBevyExample` handler instance
-pub const fn create_launch_bevy_example_handler() -> LaunchBevyExample {
-    LaunchBevyExample
-}
+pub const fn create_launch_bevy_example_handler() -> LaunchBevyExample { LaunchBevyExample }

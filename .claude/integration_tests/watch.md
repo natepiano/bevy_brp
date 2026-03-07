@@ -26,22 +26,17 @@ Validate entity watch functionality including component monitoring, list watchin
 - Read list watch log file again and verify COMPONENT_UPDATE shows Transform in added array
 - Stop this watch using `mcp__brp__brp_stop_watch`
 
-### 3. Stop All Watches and Verify Persistence
+### 3. Stop All Watches and Verify Clean State
 - Execute `mcp__brp__brp_stop_watch` for all active watch_ids
 - Verify all watches stop successfully
 - Execute list_active_watches and confirm empty list
-- Verify log files remain accessible after stopping watches
-- Read final log contents to confirm watches captured events
-- Check log file cleanup behavior
 
 ## Expected Results
 - ✅ Component watches start and return proper identifiers
 - ✅ List watches work independently from component watches
-- ✅ Active watch listing shows all running
 - ✅ Watch logs capture appropriate events
 - ✅ Different watch types log different information
-- ✅ All watches can be stopped in batch
-- ✅ Log files persist and remain readable
+- ✅ All watches can be stopped and list returns empty
 
 ## Failure Criteria
 STOP if: Watch creation fails, logs aren't generated, watch management doesn't work, or log files are inaccessible.

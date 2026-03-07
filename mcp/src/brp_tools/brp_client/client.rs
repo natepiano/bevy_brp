@@ -272,12 +272,11 @@ impl BrpClient {
         error: &BrpClientError,
         extracted_types: Vec<String>,
     ) -> Result<ResponseStatus> {
-        let type_guide_response =
-            crate::brp_tools::brp_type_guide::generate_type_guide_response(
-                self.port,
-                &extracted_types,
-            )
-            .await?;
+        let type_guide_response = crate::brp_tools::brp_type_guide::generate_type_guide_response(
+            self.port,
+            &extracted_types,
+        )
+        .await?;
 
         Err(Error::tool_call_failed_with_details(
             "Format error - see 'type_guide' field for correct format",

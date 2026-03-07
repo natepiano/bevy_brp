@@ -11,25 +11,35 @@ use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
+use crate::serde_helpers::deserialize_number_or_string;
+
 /// Minimum number of instances (1)
-const MIN_INSTANCE_COUNT: usize = 1;
+const MIN_INSTANCE_COUNT: u16 = 1;
 /// Maximum number of instances (100)
-const MAX_INSTANCE_COUNT: usize = 100;
+const MAX_INSTANCE_COUNT: u16 = 100;
 /// Valid range for instance count
-const VALID_INSTANCE_RANGE: RangeInclusive<usize> = MIN_INSTANCE_COUNT..=MAX_INSTANCE_COUNT;
+const VALID_INSTANCE_RANGE: RangeInclusive<u16> = MIN_INSTANCE_COUNT..=MAX_INSTANCE_COUNT;
 
 /// Count of instances to launch in sequence
 /// Validates count is within 1-100 - defaults to 1
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize)]
-pub struct InstanceCount(pub usize);
+pub struct InstanceCount(pub u16);
 
 impl<'de> Deserialize<'de> for InstanceCount {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let count = deserialize_instance_count(deserializer)?;
-        Ok(Self(count))
+        let count: u16 = deserialize_number_or_string(deserializer)?;
+        if VALID_INSTANCE_RANGE.contains(&count) {
+            Ok(Self(count))
+        } else {
+            Err(serde::de::Error::custom(format!(
+                "Invalid instance count {count}: must be in range {}-{}",
+                VALID_INSTANCE_RANGE.start(),
+                VALID_INSTANCE_RANGE.end()
+            )))
+        }
     }
 }
 
@@ -42,61 +52,7 @@ impl std::fmt::Display for InstanceCount {
 }
 
 impl Deref for InstanceCount {
-    type Target = usize;
+    type Target = u16;
 
     fn deref(&self) -> &Self::Target { &self.0 }
-}
-
-/// Deserialize and validate instance count
-///
-/// Ensures the count is within the valid range (1-100)
-/// Accepts both number and string inputs for compatibility
-fn deserialize_instance_count<'de, D>(deserializer: D) -> Result<usize, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use std::fmt;
-
-    use serde::de::Visitor;
-    use serde::de::{self};
-
-    struct InstanceCountVisitor;
-
-    impl Visitor<'_> for InstanceCountVisitor {
-        type Value = usize;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("an instance count as usize or string (1-100)")
-        }
-
-        fn visit_u64<E>(self, value: u64) -> Result<usize, E>
-        where
-            E: de::Error,
-        {
-            usize::try_from(value)
-                .map_err(|_| E::custom(format!("instance count {value} is out of usize range")))
-        }
-
-        fn visit_str<E>(self, value: &str) -> Result<usize, E>
-        where
-            E: de::Error,
-        {
-            value
-                .parse::<usize>()
-                .map_err(|_| E::custom(format!("invalid instance count string: {value}")))
-        }
-    }
-
-    let count = deserializer.deserialize_any(InstanceCountVisitor)?;
-
-    if VALID_INSTANCE_RANGE.contains(&count) {
-        Ok(count)
-    } else {
-        Err(serde::de::Error::custom(format!(
-            "Invalid instance count {}: must be in range {}-{}",
-            count,
-            VALID_INSTANCE_RANGE.start(),
-            VALID_INSTANCE_RANGE.end()
-        )))
-    }
 }

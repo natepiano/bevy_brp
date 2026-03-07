@@ -12,6 +12,7 @@ use serde::Serialize;
 
 use crate::brp_tools::constants::DEFAULT_BRP_EXTRAS_PORT;
 use crate::brp_tools::constants::VALID_PORT_RANGE;
+use crate::serde_helpers::deserialize_number_or_string;
 
 /// Port number for BRP - defaults to 15702
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize)]
@@ -22,7 +23,7 @@ impl<'de> Deserialize<'de> for Port {
     where
         D: Deserializer<'de>,
     {
-        let port = u16::deserialize(deserializer)?;
+        let port: u16 = deserialize_number_or_string(deserializer)?;
         if VALID_PORT_RANGE.contains(&port) {
             Ok(Self(port))
         } else {

@@ -618,25 +618,13 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
 }
 
 /// Validate that the port range for multi-instance launching is within bounds
-fn validate_port_range(base_port: u16, instance_count: usize) -> Result<()> {
+fn validate_port_range(base_port: u16, instance_count: u16) -> Result<()> {
     use crate::brp_tools::MAX_VALID_PORT;
 
-    // Convert instance_count to u16, failing if it's too large
-    let count_u16 = u16::try_from(instance_count).map_err(|_| {
-        Error::tool_call_failed(format!(
-            "Instance count {} is too large (maximum is {})",
-            instance_count,
-            u16::MAX
-        ))
-    })?;
-
-    // MAX_VALID_PORT is imported from brp_tools::constants (65534)
-    if base_port.saturating_add(count_u16.saturating_sub(1)) > MAX_VALID_PORT {
+    if base_port.saturating_add(instance_count.saturating_sub(1)) > MAX_VALID_PORT {
         return Err(Error::tool_call_failed(format!(
-            "Port range {} to {} exceeds maximum valid port {}",
-            base_port,
-            base_port.saturating_add(count_u16.saturating_sub(1)),
-            MAX_VALID_PORT
+            "Port range {base_port} to {} exceeds maximum valid port {MAX_VALID_PORT}",
+            base_port.saturating_add(instance_count.saturating_sub(1)),
         ))
         .into());
     }
@@ -647,7 +635,7 @@ fn validate_port_range(base_port: u16, instance_count: usize) -> Result<()> {
 fn launch_instances<T: LaunchConfigTrait>(
     config: &T,
     target: &BevyTarget,
-    instance_count: usize,
+    instance_count: u16,
     base_port: u16,
 ) -> Result<(Vec<u32>, Vec<PathBuf>, Vec<u16>)> {
     let mut all_pids = Vec::new();
@@ -655,9 +643,7 @@ fn launch_instances<T: LaunchConfigTrait>(
     let mut all_ports = Vec::new();
 
     for i in 0..instance_count {
-        // Use saturating conversion - validated in validate_port_range that this won't overflow
-        let i_u16 = u16::try_from(i).unwrap_or(u16::MAX);
-        let port = Port(base_port.saturating_add(i_u16));
+        let port = Port(base_port.saturating_add(i));
 
         // Create a modified config with the updated port for this instance
         let mut instance_config = config.clone();

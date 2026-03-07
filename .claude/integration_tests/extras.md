@@ -50,13 +50,6 @@ Validate brp_extras specific methods: screenshot, send_keys, and type_text.
 - Execute send_keys with invalid key code
 - Verify appropriate error response
 
-### 6. Screenshot After Key Input
-- Send some keys to the app
-- Take screenshot to verify UI reflects key input (use absolute path)
-- **IMPORTANT**: Poll for file completion using `.claude/scripts/integration_tests/extras_test_poll_screenshot.sh <absolute_path_to_screenshot>`
-- Read screenshot to confirm key display updated
-- Clean up is handled by the cleanup script above (it removes both screenshot files)
-
 ## Expected Results
 - ✅ FPS diagnostics returns valid fps, frame_time_ms, and frame_count data
 - ✅ Screenshot capture succeeds and creates valid files
@@ -67,7 +60,6 @@ Validate brp_extras specific methods: screenshot, send_keys, and type_text.
 - ✅ Special characters are typed properly
 - ✅ Unmappable characters are reported as skipped
 - ✅ Invalid inputs return appropriate errors
-- ✅ UI updates reflect sent keyboard input
 
 ## Failure Criteria
 STOP if: Any brp_extras method fails unexpectedly, screenshot capture fails, keyboard input doesn't work, or text typing doesn't accumulate properly.

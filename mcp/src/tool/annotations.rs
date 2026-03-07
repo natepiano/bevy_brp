@@ -76,7 +76,6 @@ impl Annotation {
             domain_of_interaction: DomainOfInteraction::LocalOnly, // Default for all our tools
         }
     }
-
 }
 
 impl From<Annotation> for ToolAnnotations {

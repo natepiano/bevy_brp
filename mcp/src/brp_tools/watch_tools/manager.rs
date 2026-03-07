@@ -31,7 +31,7 @@ pub(super) struct WatchInfo {
 /// Manager for watch subscriptions
 pub(super) struct WatchManager {
     /// Monotonic counter for watch IDs
-    next_watch_id:      AtomicU32,
+    next_watch_id:             AtomicU32,
     /// Active watches mapped by watch ID
     pub(super) active_watches: HashMap<u32, (WatchInfo, JoinHandle<()>)>,
 }
@@ -68,5 +68,4 @@ impl WatchManager {
             .map(|(info, _)| info.clone())
             .collect()
     }
-
 }

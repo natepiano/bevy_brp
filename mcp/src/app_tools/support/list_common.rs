@@ -49,8 +49,6 @@ pub fn collect_brp_apps(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::
     collect_all_items(search_paths, &BrpAppsStrategy)
 }
 
-pub fn collect_bevy_examples(
-    search_paths: &[std::path::PathBuf],
-) -> Vec<serde_json::Value> {
+pub fn collect_bevy_examples(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
     collect_all_items(search_paths, &BevyExamplesStrategy)
 }

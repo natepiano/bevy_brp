@@ -25,8 +25,8 @@ while IFS= read -r app; do
 done < <(
     jq -r '
       [
-        (.[] | select(has("app_name")) | .app_name),
-        (.[] | select(has("apps")) | .apps[]?.app_name)
+        (.tests[] | select(has("app_name")) | .app_name),
+        (.tests[] | select(has("apps")) | .apps[]?.app_name)
       ]
       | flatten
       | map(select(. != null and . != "" and . != "N/A" and . != "various"))

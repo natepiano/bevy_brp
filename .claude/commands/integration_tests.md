@@ -1,8 +1,8 @@
 # BRP Test Suite Runner
 
 ## Configuration
-PARALLEL_TESTS = 6  # Number of tests to run concurrently
 TEST_CONFIG_FILE = .claude/config/integration_tests.json  # Test configuration file location
+PARALLEL_TESTS = read from `batch_size` field in ${TEST_CONFIG_FILE}
 AGENT_MODEL = opus  # Model for test runner agents
 
 ## Overview
@@ -24,7 +24,11 @@ This command runs BRP tests in three modes:
 
 **Configuration Source**: ${TEST_CONFIG_FILE} (see above)
 
-This file contains an array of test configurations. Each entry has one of two formats:
+This file contains a JSON object with:
+- `batch_size`: Number of tests to run concurrently (used as PARALLEL_TESTS)
+- `tests`: Array of test configurations
+
+Each test entry has one of two formats:
 
 **Single-app format** (most tests):
 - `test_name`: Identifier for the test
@@ -53,7 +57,7 @@ This file contains an array of test configurations. Each entry has one of two fo
 
 **CRITICAL COUNTING INSTRUCTION**: You MUST use the following command to count tests accurately:
 ```bash
-jq '. | length' ${TEST_CONFIG_FILE}
+jq '.tests | length' ${TEST_CONFIG_FILE}
 ```
 Note: Replace ${TEST_CONFIG_FILE} with the actual path from the configuration section above.
 Use this exact count in your final summary. Do NOT manually count or assume any number.
@@ -138,6 +142,20 @@ bash .claude/scripts/integration_tests/prebuild_workspace.sh --include-wasm
 - This MUST complete before the wasm test starts to avoid Cargo lock contention
 - If the WASM build fails, STOP and report the build error
 </PrebuildWorkspace>
+
+<RetryNoOutputAgent>
+If an agent returned "(Subagent completed but returned no output.)", resume it using its agent ID:
+```
+Agent(
+  description="Retry [test_name] results",
+  resume=agent_id,
+  prompt="You completed all test steps but did not produce a results summary. Please provide your test results now using the required format."
+)
+```
+- Use the resumed agent's output as the test result
+- If the resumed agent ALSO returns no output, mark the test as "NO OUTPUT" (not failed, not passed)
+- Maximum 1 retry per agent
+</RetryNoOutputAgent>
 
 <CleanupApps>
 Apps fall into two categories based on the `consumed_by_test` field in the test config:
@@ -393,7 +411,8 @@ Use only the exact types, values, and tool parameters specified in the test file
 3. Execute <LaunchMultiAppInstances/> for all app entries
 4. Execute <VerifyMultiAppConnectivity/> for all instances
 5. **Execute Test**: Use MultiAppPrompt template with the label→port map, model=${AGENT_MODEL}
-6. Execute <CleanupApps/> for all app instances launched for this test
+6. If agent returned no output, execute <RetryNoOutputAgent/>
+7. Execute <CleanupApps/> for all app instances launched for this test
 
 **For tests where app_name is a specific app (not "various" or "N/A"):**
 1. **Clean up stale processes** from previous test runs:
@@ -404,10 +423,12 @@ Use only the exact types, values, and tool parameters specified in the test file
 3. Execute <LaunchDedicatedApp/> with instance_count=1
 4. Execute <VerifyBrpConnectivity/> for assigned port
 5. **Execute Test**: Use DedicatedAppPrompt template with assigned port, model=${AGENT_MODEL}
-6. Execute <CleanupApps/> for single app
+6. If agent returned no output, execute <RetryNoOutputAgent/>
+7. Execute <CleanupApps/> for single app
 
 **For self-managed tests (app_name is "various" or "N/A"):**
 1. **Execute Test**: Use SelfManagedPrompt template directly, model=${AGENT_MODEL}
+2. If agent returned no output, execute <RetryNoOutputAgent/>
 
 ### Error Handling
 
@@ -470,7 +491,7 @@ Examples:
 
 4. **Extract Test List**: Execute this EXACT command:
    ```bash
-   jq -c '.[] | {test_name, test_file, app_name, app_type, apps}' ${TEST_CONFIG_FILE}
+   jq -c '.tests[] | {test_name, test_file, app_name, app_type, apps}' ${TEST_CONFIG_FILE}
    ```
    This produces one JSON object per line, in config order. Tests with `apps` array will have `app_name: null` and `app_type: null`.
 
@@ -545,16 +566,30 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
      ```
    - Wait for ALL tasks in batch to complete
 
-9. **Check Batch Results**:
+9. **Retry No-Output Agents**:
+   - For each agent result, check if it returned "(Subagent completed but returned no output.)"
+   - For each no-output agent, resume it using its agent ID:
+     ```
+     Agent(
+       description="Retry [test_name] results",
+       resume=agent_id,
+       prompt="You completed all test steps but did not produce a results summary. Please provide your test results now using the required format."
+     )
+     ```
+   - Use the resumed agent's output as the test result
+   - If the resumed agent ALSO returns no output, mark the test as "NO OUTPUT" (not failed, not passed)
+   - Maximum 1 retry per agent
+
+10. **Check Batch Results**:
    - Monitor for failure indicators in any test result
    - If ANY test failed: Execute <CleanupApps/> for batch apps and STOP
-   - If all passed: Continue to step 10
+   - If all passed: Continue to step 11
 
-10. **Cleanup Batch Apps**:
+11. **Cleanup Batch Apps**:
     - Execute <CleanupApps/> for all apps launched in this batch
     - Clear batch tracking data
 
-11. **Continue or Complete**:
+12. **Continue or Complete**:
     - If more tests remain: Return to step 1 for next batch
     - If all tests complete: Proceed to final summary
 
