@@ -24,7 +24,6 @@ use crate::brp_tools::brp_type_guide::TypeGuideEngine;
 use crate::error::Error;
 use crate::error::Result;
 use crate::tool::BrpMethod;
-use crate::tool::ParameterName;
 
 /// Client for executing a BRP operation
 pub struct BrpClient {
@@ -41,27 +40,6 @@ impl BrpClient {
             port,
             params,
         }
-    }
-
-    /// Prepare parameters for BRP calls by filtering nulls and Port parameter
-    pub fn prepare_params<T: serde::Serialize>(params: T) -> Result<Option<Value>> {
-        let mut params_json = serde_json::to_value(params)
-            .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;
-
-        // Only filter out the port field
-        let brp_params = if let Value::Object(ref mut map) = params_json {
-            map.retain(|key, _value| key != &String::from(ParameterName::Port));
-            // Return None if map is empty after removing port
-            if map.is_empty() {
-                None
-            } else {
-                Some(params_json)
-            }
-        } else {
-            Some(params_json)
-        };
-
-        Ok(brp_params)
     }
 
     /// Primary execution method with automatic format discovery support

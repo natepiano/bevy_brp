@@ -83,8 +83,21 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                             let port = params.port;
                             let params_json = serde_json::to_value(&params).ok();
 
-                            // Use BrpClient::prepare_params to filter out nulls and port
-                            let brp_params = crate::brp_tools::BrpClient::prepare_params(&params)?;
+                            // Filter out transport-only metadata before sending BRP params.
+                            let mut params_value = serde_json::to_value(&params)
+                                .map_err(|e| crate::error::Error::InvalidArgument(format!(
+                                    "Failed to serialize parameters: {e}"
+                                )))?;
+                            let brp_params = if let serde_json::Value::Object(ref mut map) = params_value {
+                                map.retain(|key, _value| key != &String::from(crate::tool::ParameterName::Port));
+                                if map.is_empty() {
+                                    None
+                                } else {
+                                    Some(params_value)
+                                }
+                            } else {
+                                Some(params_value)
+                            };
                             // Create BrpClient and execute
                             let client = crate::brp_tools::BrpClient::new(
                                 crate::tool::BrpMethod::#variant_name,
