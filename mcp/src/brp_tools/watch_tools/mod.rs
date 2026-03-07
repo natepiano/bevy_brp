@@ -9,13 +9,13 @@ mod types;
 mod world_get_components_watch;
 mod world_list_components_watch;
 
-pub use task::start_entity_watch_task;
-pub use task::start_list_watch_task;
+use task::start_entity_watch_task;
+use task::start_list_watch_task;
 
 use crate::error::Error;
 
 /// Wrap errors from watch operations with consistent formatting
-pub fn wrap_watch_error<E: std::fmt::Display>(
+fn wrap_watch_error<E: std::fmt::Display>(
     operation: &str,
     entity_id: Option<u64>,
     error: E,

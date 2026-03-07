@@ -27,7 +27,7 @@ pub enum TargetType {
 
 impl TargetType {
     /// Add cargo-specific arguments for this target type
-    pub fn add_cargo_args(self, cmd: &mut Command, target_name: &str) {
+    pub(super) fn add_cargo_args(self, cmd: &mut Command, target_name: &str) {
         match self {
             Self::App => {
                 cmd.arg("--bin").arg(target_name);
@@ -43,22 +43,22 @@ impl TargetType {
 #[derive(Debug, Clone)]
 pub struct BevyTarget {
     /// Name of the target
-    pub name:           String,
+    pub(super) name:           String,
     /// Type of target (App or Example)
-    pub target_type:    TargetType,
+    pub(super) target_type:    TargetType,
     /// Package name (for examples, this is the package containing the example)
-    pub package_name:   String,
+    pub(super) package_name:   String,
     /// Workspace root (for apps)
-    pub workspace_root: PathBuf,
+    pub(super) workspace_root: PathBuf,
     /// Path to the package's Cargo.toml
-    pub manifest_path:  PathBuf,
+    pub(super) manifest_path:  PathBuf,
     /// Relative path from scan root to this item
-    pub relative_path:  PathBuf,
+    pub(super) relative_path:  PathBuf,
 }
 
 impl BevyTarget {
     /// Get the path to the binary for a given profile
-    pub fn get_binary_path(&self, profile: &str) -> PathBuf {
+    pub(super) fn get_binary_path(&self, profile: &str) -> PathBuf {
         match self.target_type {
             TargetType::App => self
                 .workspace_root
@@ -75,20 +75,20 @@ impl BevyTarget {
     }
 
     /// Check if this target is an app
-    pub fn is_app(&self) -> bool { self.target_type == TargetType::App }
+    pub(super) fn is_app(&self) -> bool { self.target_type == TargetType::App }
 
     /// Check if this target is an example
-    pub fn is_example(&self) -> bool { self.target_type == TargetType::Example }
+    pub(super) fn is_example(&self) -> bool { self.target_type == TargetType::Example }
 }
 
 /// Detects binary targets in a project or workspace
-pub struct CargoDetector {
+pub(super) struct CargoDetector {
     metadata: Metadata,
 }
 
 impl CargoDetector {
     /// Create a detector for a specific path
-    pub fn from_path(path: impl AsRef<Path>) -> Result<Self> {
+    pub(super) fn from_path(path: impl AsRef<Path>) -> Result<Self> {
         let metadata = MetadataCommand::new()
             .current_dir(path.as_ref())
             .exec()
@@ -162,14 +162,14 @@ impl CargoDetector {
     }
 
     /// Find all Bevy targets (apps and examples) in the workspace/project
-    pub fn find_bevy_targets(&self) -> Vec<BevyTarget> {
+    pub(super) fn find_bevy_targets(&self) -> Vec<BevyTarget> {
         self.find_packages_with_filter(Self::bevy_app_filter)
             .flat_map(|p| self.extract_all_targets(p))
             .collect()
     }
 
     /// Find all BRP-enabled Bevy targets (apps and examples) in the workspace/project
-    pub fn find_brp_targets(&self) -> Vec<BevyTarget> {
+    pub(super) fn find_brp_targets(&self) -> Vec<BevyTarget> {
         self.find_packages_with_filter(Self::brp_app_filter)
             .flat_map(|p| self.extract_all_targets(p))
             .collect()

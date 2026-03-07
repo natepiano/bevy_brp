@@ -12,7 +12,7 @@ use crate::brp_tools::brp_client::constants::JSONRPC_VERSION;
 ///
 /// This builder is used for direct HTTP communication with BRP,
 /// primarily by the `check_brp` tool.
-pub struct BrpJsonRpcBuilder {
+pub(super) struct BrpJsonRpcBuilder {
     method: String,
     params: Option<Value>,
     id:     u64,
@@ -20,7 +20,7 @@ pub struct BrpJsonRpcBuilder {
 
 impl BrpJsonRpcBuilder {
     /// Create a new JSON-RPC request builder
-    pub fn new(method: impl Into<String>) -> Self {
+    pub(super) fn new(method: impl Into<String>) -> Self {
         Self {
             method: method.into(),
             params: None,
@@ -29,13 +29,13 @@ impl BrpJsonRpcBuilder {
     }
 
     /// Set raw params
-    pub fn params(mut self, params: Value) -> Self {
+    pub(super) fn params(mut self, params: Value) -> Self {
         self.params = Some(params);
         self
     }
 
     /// Build the final JSON-RPC request
-    pub fn build(self) -> Value {
+    pub(super) fn build(self) -> Value {
         let mut request = json!({
             JSONRPC_FIELD: JSONRPC_VERSION,
             JSONRPC_FIELD_METHOD: self.method,

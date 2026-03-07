@@ -41,29 +41,29 @@ type ResolvedEnumPathInfo = (
 
 /// Mutation path information (internal representation)
 #[derive(Debug, Clone)]
-pub struct MutationPathInternal {
+pub(super) struct MutationPathInternal {
     /// Example value for this path - now type-safe!
-    pub example:               PathExample,
+    pub(super) example:               PathExample,
     /// Path for mutation, e.g., ".translation.x"
-    pub mutation_path:         MutationPath,
+    pub(super) mutation_path:         MutationPath,
     /// Type information for this path
-    pub type_name:             BrpTypeName,
+    pub(super) type_name:             BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind:             PathKind,
+    pub(super) path_kind:             PathKind,
     /// Whether this path can be mutated
-    pub mutability:            Mutability,
+    pub(super) mutability:            Mutability,
     /// Reason if mutation is not possible
-    pub mutability_reason:     Option<NotMutableReason>,
+    pub(super) mutability_reason:     Option<NotMutableReason>,
     /// Consolidated enum-specific data
-    pub enum_path_info:        Option<EnumPathInfo>,
+    pub(super) enum_path_info:        Option<EnumPathInfo>,
     /// Depth level of this path in the recursion tree (0 = root, 1 = .field, etc.)
     /// Used to identify direct children vs grandchildren during assembly
-    pub depth:                 usize,
+    pub(super) depth:                 usize,
     /// Maps variant chains to complete root examples for reaching nested enum paths.
     /// Populated during enum processing for paths where `matches!(example, PathExample::EnumRoot {
     /// .. })`. Built by `build_partial_root_examples()` in `enum_path_builder.rs` during
     /// ascent phase. None for non-enum paths and enum leaf paths.
-    pub partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
+    pub(super) partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
 }
 
 impl MutationPathInternal {
@@ -73,7 +73,7 @@ impl MutationPathInternal {
     }
 
     /// Create a `MutabilityIssue` from this mutation path (for non-enum types)
-    pub fn to_mutability_issue(&self) -> MutabilityIssue {
+    pub(super) fn to_mutability_issue(&self) -> MutabilityIssue {
         MutabilityIssue {
             target: MutabilityIssueTarget::Path(self.mutation_path.clone()),
             status: self.mutability,
@@ -84,7 +84,7 @@ impl MutationPathInternal {
     ///
     /// This method consumes `self` to enable efficient data movement without cloning.
     /// Following Rust's `into_*` naming convention for consuming conversions.
-    pub fn into_mutation_path_external(
+    pub(super) fn into_mutation_path_external(
         mut self,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> MutationPathExternal {
@@ -267,7 +267,7 @@ impl MutationPathInternal {
 }
 
 /// Extension trait for collecting variant chains from slices of `MutationPathInternal`
-pub trait MutationPathSliceExt {
+pub(super) trait MutationPathSliceExt {
     /// Collect all unique variant chains from direct children at the given depth
     ///
     /// Extracts variant chains from `partial_root_examples` for all direct children,

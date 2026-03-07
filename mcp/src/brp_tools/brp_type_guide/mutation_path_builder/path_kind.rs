@@ -21,7 +21,7 @@ use super::types::EnumPathInfo;
 /// - `IndexedElement`/`ArrayElement`: index as string (e.g., "0", "1")
 /// - `RootValue`: empty string ""
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MutationPathDescriptor(String);
+pub(super) struct MutationPathDescriptor(String);
 
 impl Deref for MutationPathDescriptor {
     type Target = str;

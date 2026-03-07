@@ -14,21 +14,21 @@ use crate::log_tools::TracingLevel;
 
 /// Log entry to be written
 #[derive(Debug)]
-pub struct LogEntry {
-    pub update_type: String,
-    pub data:        serde_json::Value,
-    pub timestamp:   chrono::DateTime<chrono::Local>,
+pub(super) struct LogEntry {
+    pub(super) update_type: String,
+    pub(super) data:        serde_json::Value,
+    pub(super) timestamp:   chrono::DateTime<chrono::Local>,
 }
 
 /// Buffered logger for watch updates
-pub struct BufferedWatchLogger {
+pub(super) struct BufferedWatchLogger {
     tx:          mpsc::Sender<LogEntry>,
     shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl BufferedWatchLogger {
     /// Create a new buffered logger and spawn the writer task
-    pub fn new(log_path: PathBuf) -> Self {
+    pub(super) fn new(log_path: PathBuf) -> Self {
         let (tx, rx) = mpsc::channel(1000); // Buffer up to 1000 messages
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
@@ -46,7 +46,7 @@ impl BufferedWatchLogger {
     }
 
     /// Queue a log entry for writing (non-blocking)
-    pub async fn write_update(
+    pub(super) async fn write_update(
         &self,
         update_type: &str,
         data: serde_json::Value,
@@ -64,7 +64,7 @@ impl BufferedWatchLogger {
     }
 
     /// Queue a debug log entry for writing only if debug mode is enabled
-    pub async fn write_debug_update(
+    pub(super) async fn write_debug_update(
         &self,
         update_type: &str,
         data: serde_json::Value,
@@ -80,7 +80,7 @@ impl BufferedWatchLogger {
     }
 
     /// Get the log file path for a watch (same as before)
-    pub fn get_watch_log_path(watch_id: u32, entity_id: u64, watch_type: &str) -> PathBuf {
+    pub(super) fn get_watch_log_path(watch_id: u32, entity_id: u64, watch_type: &str) -> PathBuf {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())

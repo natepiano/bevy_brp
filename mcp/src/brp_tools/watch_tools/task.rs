@@ -605,7 +605,7 @@ async fn start_watch_task(
 }
 
 /// Start a background task for entity component watching
-pub async fn start_entity_watch_task(
+pub(super) async fn start_entity_watch_task(
     entity_id: u64,
     components: Option<Vec<String>>,
     port: Port,
@@ -639,7 +639,7 @@ pub async fn start_entity_watch_task(
 }
 
 /// Start a background task for entity list watching
-pub async fn start_list_watch_task(entity_id: u64, port: Port) -> Result<(u32, PathBuf)> {
+pub(super) async fn start_list_watch_task(entity_id: u64, port: Port) -> Result<(u32, PathBuf)> {
     let params = serde_json::json!({
         "entity": entity_id
     });

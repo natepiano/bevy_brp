@@ -64,7 +64,7 @@ struct ChildProcessingResult {
     child_examples:  HashMap<MutationPathDescriptor, Example>,
 }
 
-pub struct MutationPathBuilder<B: TypeKindBuilder> {
+pub(super) struct MutationPathBuilder<B: TypeKindBuilder> {
     inner: B,
 }
 
@@ -202,7 +202,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
 /// Depth limit checking is automatic in `RecursionContext::create_recursion_context()`.
 /// The check happens at the point where depth is incremented, ensuring developers cannot
 /// accidentally skip the check.
-pub fn recurse_mutation_paths(
+pub(super) fn recurse_mutation_paths(
     type_kind: TypeKind,
     ctx: &RecursionContext,
 ) -> Result<Vec<MutationPathInternal>> {
@@ -246,7 +246,7 @@ pub fn recurse_mutation_paths(
 ///
 /// Unlike Structs where some fields can be mutable and others not, collections are
 /// all-or-nothing: either you can perform operations or you can't.
-pub fn determine_parent_mutability(
+pub(super) fn determine_parent_mutability(
     ctx: &RecursionContext,
     child_paths: &[MutationPathInternal],
 ) -> (Mutability, Option<NotMutableReason>) {
@@ -321,7 +321,7 @@ pub fn determine_parent_mutability(
 }
 
 impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
-    pub const fn new(inner: B) -> Self { Self { inner } }
+    pub(super) const fn new(inner: B) -> Self { Self { inner } }
 
     /// Process all children and collect their paths and examples
     fn process_all_children(

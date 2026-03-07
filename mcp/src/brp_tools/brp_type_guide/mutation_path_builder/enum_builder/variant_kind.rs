@@ -18,14 +18,14 @@ use crate::json_schema::SchemaField;
 
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VariantKind {
-    pub name:      VariantName,
-    pub signature: VariantSignature,
+pub(super) struct VariantKind {
+    pub(super) name:      VariantName,
+    pub(super) signature: VariantSignature,
 }
 
 impl VariantKind {
     /// Extract variant information from a schema variant
-    pub fn from_schema_variant(
+    pub(super) fn from_schema_variant(
         v: &Value,
         registry: &HashMap<BrpTypeName, Value>,
         enum_type: &BrpTypeName,

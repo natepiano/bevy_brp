@@ -36,7 +36,7 @@ use crate::error::Error;
 /// This design ensures that semantic information about why types cannot be mutated
 /// is preserved throughout the internal processing and properly communicated to users.
 #[derive(Debug)]
-pub(super) enum BuilderError {
+enum BuilderError {
     NotMutable(NotMutableReason),
     SystemError(Report<Error>),
 }

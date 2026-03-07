@@ -111,7 +111,7 @@ pub enum FormatCorrectionStatus {
 /// Type of BRP operation being performed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Operation {
+pub(super) enum Operation {
     /// Operations that create or replace entire components/resources
     /// Includes: `BevySpawn`, `BevyInsert`, `BevyInsertResource`
     /// Serializes as: `spawn_insert`
@@ -175,7 +175,7 @@ impl TryFrom<BrpMethod> for Operation {
 
 impl Operation {
     /// Extract type names from parameters based on the operation type
-    pub fn extract_type_names(self, params: &Value) -> Vec<String> {
+    pub(super) fn extract_type_names(self, params: &Value) -> Vec<String> {
         match self {
             Self::SpawnInsert { parameter_name } => match parameter_name {
                 ParameterName::Components => {

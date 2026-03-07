@@ -33,7 +33,7 @@ use super::types::MutabilityIssue;
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NotMutableReason {
+pub(super) enum NotMutableReason {
     /// Container type has non-mutable element type
     NonMutableHandle {
         container_type: BrpTypeName,
@@ -60,19 +60,6 @@ pub enum NotMutableReason {
 }
 
 impl NotMutableReason {
-    /// Extract the deepest failing type from nested error contexts
-    pub fn get_deepest_failing_type(&self) -> BrpTypeName {
-        match self {
-            Self::NotInRegistry(type_name)
-            | Self::RecursionLimitExceeded(type_name)
-            | Self::ComplexCollectionKey(type_name)
-            | Self::NoExampleAvailable(type_name) => type_name.clone(),
-            Self::NonMutableHandle { element_type, .. } => element_type.clone(),
-            Self::NoMutableChildren { parent_type }
-            | Self::PartialChildMutability { parent_type, .. } => parent_type.clone(),
-        }
-    }
-
     /// Construct `PartialChildMutability` from mutability issues
     ///
     /// # Deduplication Logic

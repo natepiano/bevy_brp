@@ -22,7 +22,7 @@ use crate::tool::BrpMethod;
 use crate::tool::ParameterName;
 
 /// HTTP client for BRP communication
-pub struct BrpHttpClient {
+pub(super) struct BrpHttpClient {
     method: BrpMethod,
     port:   Port,
     params: Option<Value>,
@@ -30,7 +30,7 @@ pub struct BrpHttpClient {
 
 impl BrpHttpClient {
     /// Create a new BRP HTTP client
-    pub const fn new(method: BrpMethod, port: Port, params: Option<Value>) -> Self {
+    pub(super) const fn new(method: BrpMethod, port: Port, params: Option<Value>) -> Self {
         Self {
             method,
             port,
@@ -62,7 +62,7 @@ impl BrpHttpClient {
     }
 
     /// Send an HTTP request with timeout
-    pub async fn send_request(&self) -> Result<reqwest::Response> {
+    pub(super) async fn send_request(&self) -> Result<reqwest::Response> {
         let url = self.build_url();
         let body = self.build_request_body();
         let client = reqwest::Client::new();
@@ -86,7 +86,7 @@ impl BrpHttpClient {
     }
 
     /// Send an HTTP request for streaming (no timeout)
-    pub async fn send_streaming_request(&self) -> Result<reqwest::Response> {
+    pub(super) async fn send_streaming_request(&self) -> Result<reqwest::Response> {
         let url = self.build_url();
         let body = self.build_request_body();
         // Create client with no timeout for streaming

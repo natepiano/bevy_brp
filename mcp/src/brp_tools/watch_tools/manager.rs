@@ -15,17 +15,17 @@ use crate::error::Error;
 use crate::error::Result;
 
 /// Global watch manager instance
-pub static WATCH_MANAGER: std::sync::LazyLock<Arc<Mutex<WatchManager>>> =
+pub(super) static WATCH_MANAGER: std::sync::LazyLock<Arc<Mutex<WatchManager>>> =
     std::sync::LazyLock::new(|| Arc::new(Mutex::new(WatchManager::new())));
 
 /// Information about an active watch
 #[derive(Debug, Clone)]
-pub struct WatchInfo {
-    pub watch_id:   u32,
-    pub entity_id:  u64,
-    pub watch_type: String,
-    pub log_path:   PathBuf,
-    pub port:       Port,
+pub(super) struct WatchInfo {
+    pub(super) watch_id:   u32,
+    pub(super) entity_id:  u64,
+    pub(super) watch_type: String,
+    pub(super) log_path:   PathBuf,
+    pub(super) port:       Port,
 }
 
 /// Manager for watch subscriptions
@@ -33,12 +33,12 @@ pub struct WatchManager {
     /// Monotonic counter for watch IDs
     next_watch_id:      AtomicU32,
     /// Active watches mapped by watch ID
-    pub active_watches: HashMap<u32, (WatchInfo, JoinHandle<()>)>,
+    pub(super) active_watches: HashMap<u32, (WatchInfo, JoinHandle<()>)>,
 }
 
 impl WatchManager {
     /// Create a new watch manager
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             next_watch_id:  AtomicU32::new(1),
             active_watches: HashMap::new(),
@@ -46,10 +46,10 @@ impl WatchManager {
     }
 
     /// Get the next watch ID (monotonically increasing)
-    pub fn next_id(&self) -> u32 { self.next_watch_id.fetch_add(1, Ordering::SeqCst) }
+    pub(super) fn next_id(&self) -> u32 { self.next_watch_id.fetch_add(1, Ordering::SeqCst) }
 
     /// Stop a watch by ID
-    pub fn stop_watch(&mut self, watch_id: u32) -> Result<()> {
+    pub(super) fn stop_watch(&mut self, watch_id: u32) -> Result<()> {
         if let Some((info, handle)) = self.active_watches.remove(&watch_id) {
             info!("Stopping watch {} for entity {}", watch_id, info.entity_id);
             handle.abort();
@@ -62,7 +62,7 @@ impl WatchManager {
     }
 
     /// List all active watches
-    pub fn list_active_watches(&self) -> Vec<WatchInfo> {
+    pub(super) fn list_active_watches(&self) -> Vec<WatchInfo> {
         self.active_watches
             .values()
             .map(|(info, _)| info.clone())
