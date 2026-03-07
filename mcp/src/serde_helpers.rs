@@ -6,9 +6,9 @@
 use std::fmt;
 use std::str::FromStr;
 
+use serde::Deserializer;
 use serde::de;
 use serde::de::Visitor;
-use serde::Deserializer;
 
 /// Deserialize a numeric value from either a JSON number or a string.
 ///

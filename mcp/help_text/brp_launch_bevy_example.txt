@@ -1,6 +1,9 @@
 Launches Bevy examples via cargo run --example in detached mode with auto-building, and logging.
 
 Notes:
+- Example launches always invoke `cargo run --example`.
+- Cargo decides whether the example is already fresh or needs rebuilding.
+- Because examples go through Cargo, launches may wait on Cargo locks before starting.
+- If you expected a rebuild and one did not happen, Cargo likely considered the example up to date. Run Cargo manually if you want to force a rebuild.
 - Use list_bevy_examples to see available examples.
-
-for further details see description from `mcp__brp__brp_launch_bevy_app`
+- App launches behave differently: they use a lock-free freshness check and only invoke Cargo when the binary is missing, stale, or freshness is inconclusive.

@@ -9,6 +9,8 @@ use error_stack::Report;
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::build_freshness::FreshnessCheckResult;
+use super::build_freshness::check_target_freshness;
 use super::errors::NoTargetsFoundError;
 use super::errors::PathDisambiguationError;
 use super::errors::TargetNotFoundAtSpecifiedPath;
@@ -165,6 +167,28 @@ trait LaunchConfigTrait: Clone {
     /// Ensure the target is built, blocking until compilation completes if needed
     /// Returns the build state indicating whether it was fresh, rebuilt, or not found
     fn ensure_built(&self, target: &BevyTarget) -> Result<BuildState> {
+        if Self::TARGET_TYPE == TargetType::App {
+            match check_target_freshness(target, self.profile()) {
+                FreshnessCheckResult::Fresh => return Ok(BuildState::Fresh),
+                FreshnessCheckResult::Stale(reason) => {
+                    tracing::debug!(
+                        "Lock-free freshness check marked {} '{}' stale: {}",
+                        Self::TARGET_TYPE,
+                        self.target_name(),
+                        reason
+                    );
+                },
+                FreshnessCheckResult::Unknown(reason) => {
+                    tracing::debug!(
+                        "Lock-free freshness check was inconclusive for {} '{}': {}",
+                        Self::TARGET_TYPE,
+                        self.target_name(),
+                        reason
+                    );
+                },
+            }
+        }
+
         let manifest_dir = validate_manifest_directory(&target.manifest_path)?;
         run_cargo_build(
             self.target_name(),

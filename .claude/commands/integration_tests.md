@@ -591,7 +591,17 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
 
 12. **Continue or Complete**:
     - If more tests remain: Return to step 1 for next batch
-    - If all tests complete: Proceed to final summary
+    - If all tests complete: Proceed to step 13
+
+13. **Rebalance Test Config**:
+    - Collect `duration_ms` from each test agent's task notification (convert to seconds: `duration_ms / 1000`)
+    - Build key=value pairs: `test_name=seconds` for every test
+    - Run the rebalance script:
+      ```bash
+      python3 .claude/scripts/integration_tests/rebalance_tests.py test1=X.X test2=Y.Y ...
+      ```
+    - Include the rebalance output in the final summary under "## Rebalance"
+    - If the script fails, note the error but do not treat it as a test failure
 
 ### Error Detection and Immediate Stopping
 

@@ -1,4 +1,5 @@
 // Local support modules for app_tools
+mod build_freshness;
 mod cargo_detector;
 mod collection_strategy;
 mod errors;
