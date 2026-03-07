@@ -13,26 +13,26 @@ use super::errors::NoTargetsFoundError;
 use super::errors::PathDisambiguationError;
 use super::errors::TargetNotFoundAtSpecifiedPath;
 use super::process;
+use crate::app_tools::launch_params::LaunchBevyBinaryParams;
 use crate::app_tools::support::cargo_detector::BevyTarget;
 use crate::error::Error;
 use crate::error::Result;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
 use crate::tool::ParamStruct;
-use crate::tool::ToolFn;
 use crate::tool::ToolResult;
 
 /// Marker type for App launch configuration
 #[derive(Clone)]
-pub struct App;
+struct App;
 
 /// Marker type for Example launch configuration
 #[derive(Clone)]
-pub struct Example;
+struct Example;
 
 /// Parameterized launch configuration for apps and examples
 #[derive(Clone)]
-pub struct LaunchConfig<T> {
+struct LaunchConfig<T> {
     target_name:    String,
     profile:        String,
     path:           Option<String>,
@@ -125,60 +125,6 @@ pub struct LaunchParams {
     pub env:            Option<HashMap<String, String>>,
 }
 
-/// Generic launch handler that can work with any `LaunchConfig` type
-pub struct GenericLaunchHandler<T: FromLaunchParams, P: ToLaunchParams> {
-    default_profile: &'static str,
-    _phantom_config: PhantomData<T>,
-    _phantom_params: PhantomData<P>,
-}
-
-impl<T: FromLaunchParams, P: ToLaunchParams> GenericLaunchHandler<T, P> {
-    /// Create a new generic launch handler
-    pub const fn new(default_profile: &'static str) -> Self {
-        Self {
-            default_profile,
-            _phantom_config: PhantomData,
-            _phantom_params: PhantomData,
-        }
-    }
-}
-
-impl<T: FromLaunchParams, P: ToLaunchParams + ParamStruct + for<'de> serde::Deserialize<'de>> ToolFn
-    for GenericLaunchHandler<T, P>
-{
-    type Output = LaunchResult;
-    type Params = P;
-
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
-        let default_profile = self.default_profile;
-        Box::pin(async move {
-            // Extract typed parameters - this returns framework error on failure
-            let typed_params: P = ctx.extract_parameter_values()?;
-
-            // Convert to LaunchParams
-            let params = typed_params.to_launch_params(default_profile);
-            // Port is available in params but not needed for launch
-
-            // Get search paths
-            let search_paths = ctx.roots;
-
-            // Create config from params
-            let config = T::from_params(&params);
-
-            // Launch the target
-            let result = launch_target(&config, &search_paths);
-
-            Ok(ToolResult {
-                result,
-                params: Some(typed_params),
-            })
-        })
-    }
-}
-
 /// Trait for converting typed parameters to `LaunchParams`
 pub trait ToLaunchParams: Send + Sync {
     /// Convert to `LaunchParams` with the given default profile
@@ -186,13 +132,13 @@ pub trait ToLaunchParams: Send + Sync {
 }
 
 /// Trait for creating launch configs from params
-pub trait FromLaunchParams: LaunchConfigTrait + Sized + Send + Sync {
+trait FromLaunchParams: LaunchConfigTrait + Sized + Send + Sync {
     /// Create a new instance from launch parameters
     fn from_params(params: &LaunchParams) -> Self;
 }
 
 /// Trait for configuring launch behavior for different target types (app vs example)
-pub trait LaunchConfigTrait: Clone {
+trait LaunchConfigTrait: Clone {
     /// The target type constant (App or Example)
     const TARGET_TYPE: TargetType;
 
@@ -336,7 +282,7 @@ use super::cargo_detector::TargetType;
 
 /// Represents the state of a build target after cargo build
 #[derive(Debug, Clone, Copy)]
-pub enum BuildState {
+enum BuildState {
     NotFound,
     Fresh,
     Rebuilt,
@@ -806,6 +752,42 @@ fn launch_target<T: LaunchConfigTrait>(
         &target,
         launch_start,
     ))
+}
+
+fn launch_with_config<T, P>(
+    ctx: HandlerContext,
+    default_profile: &'static str,
+) -> HandlerResult<'static, ToolResult<LaunchResult, P>>
+where
+    T: FromLaunchParams,
+    P: ToLaunchParams + ParamStruct + for<'de> serde::Deserialize<'de>,
+{
+    Box::pin(async move {
+        let typed_params: P = ctx.extract_parameter_values()?;
+        let params = typed_params.to_launch_params(default_profile);
+        let search_paths = ctx.roots;
+        let config = T::from_params(&params);
+        let result = launch_target(&config, &search_paths);
+
+        Ok(ToolResult {
+            result,
+            params: Some(typed_params),
+        })
+    })
+}
+
+pub fn launch_bevy_app(
+    ctx: HandlerContext,
+    default_profile: &'static str,
+) -> HandlerResult<'static, ToolResult<LaunchResult, LaunchBevyBinaryParams>> {
+    launch_with_config::<LaunchConfig<App>, LaunchBevyBinaryParams>(ctx, default_profile)
+}
+
+pub fn launch_bevy_example(
+    ctx: HandlerContext,
+    default_profile: &'static str,
+) -> HandlerResult<'static, ToolResult<LaunchResult, LaunchBevyBinaryParams>> {
+    launch_with_config::<LaunchConfig<Example>, LaunchBevyBinaryParams>(ctx, default_profile)
 }
 
 impl FromLaunchParams for LaunchConfig<App> {
