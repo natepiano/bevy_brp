@@ -96,12 +96,12 @@ impl From<Annotation> for ToolAnnotations {
             DomainOfInteraction::LocalOnly => Some(false),
         };
 
-        Self {
-            title:            Some(brp.title),
-            read_only_hint:   read_only,
-            destructive_hint: destructive,
-            idempotent_hint:  idempotent,
-            open_world_hint:  open_world,
-        }
+        ToolAnnotations::from_raw(
+            Some(brp.title),
+            read_only,
+            destructive,
+            idempotent,
+            open_world,
+        )
     }
 }

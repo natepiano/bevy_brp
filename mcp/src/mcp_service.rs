@@ -137,10 +137,9 @@ impl McpService {
 
 impl ServerHandler for McpService {
     fn get_info(&self) -> rmcp::model::ServerInfo {
-        rmcp::model::ServerInfo {
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
-            ..Default::default()
-        }
+        let mut info = rmcp::model::ServerInfo::default();
+        info.capabilities = ServerCapabilities::builder().enable_tools().build();
+        info
     }
 
     async fn list_tools(

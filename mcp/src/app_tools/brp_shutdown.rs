@@ -8,8 +8,8 @@ use sysinfo::Signal;
 use sysinfo::System;
 use tracing::debug;
 
-use crate::app_tools::support::get_pid_for_port;
-use crate::app_tools::support::process_matches_name_exact;
+use super::support::get_pid_for_port;
+use super::support::process_matches_name_exact;
 use crate::brp_tools::BrpClient;
 use crate::brp_tools::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use crate::brp_tools::Port;

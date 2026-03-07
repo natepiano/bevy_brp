@@ -12,15 +12,15 @@ use serde_json::json;
 
 use super::json_response::AnySchemaValue;
 use super::json_response::ToolCallJsonResponse;
+use super::response_builder::Response;
 use crate::error::Error;
 use crate::error::Result;
-use crate::tool::ParamStruct;
-use crate::tool::ResultStruct;
-use crate::tool::ToolDef;
-use crate::tool::ToolResult;
-use crate::tool::large_response::CHARS_PER_TOKEN;
-use crate::tool::large_response::LargeResponseConfig;
-use crate::tool::response_builder::Response;
+use super::ParamStruct;
+use super::ResultStruct;
+use super::ToolDef;
+use super::ToolResult;
+use super::large_response::CHARS_PER_TOKEN;
+use super::large_response::LargeResponseConfig;
 
 /// Context passed to all handlers containing service, request, and MCP context
 #[derive(Clone)]

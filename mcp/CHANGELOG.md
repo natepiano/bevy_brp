@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `brp_launch_bevy_app` now performs a lock-free freshness check before invoking Cargo. If the app binary appears up to date, it launches directly; if the binary is missing, stale, or freshness is inconclusive, it falls back to `cargo build`.
+
 ### Fixed
 - Fix port and instance_count parameters to accept both numbers and strings from MCP clients
 

@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use super::cargo_detector::BevyTarget;
-use super::cargo_detector::TargetType;
 use crate::error::Error;
 use crate::error::Result;
 
@@ -16,7 +15,7 @@ pub(super) enum FreshnessCheckResult {
 }
 
 pub(super) fn check_target_freshness(target: &BevyTarget, profile: &str) -> FreshnessCheckResult {
-    if target.target_type != TargetType::App {
+    if !target.is_app() {
         return FreshnessCheckResult::Unknown(
             "lock-free freshness checks are only supported for app binaries".to_string(),
         );
@@ -82,11 +81,7 @@ fn try_check_target_freshness(target: &BevyTarget, profile: &str) -> Result<Fres
 }
 
 fn dep_info_path(target: &BevyTarget, profile: &str) -> PathBuf {
-    target
-        .workspace_root
-        .join("target")
-        .join(profile)
-        .join(format!("{}.d", target.name))
+    target.get_binary_path(profile).with_extension("d")
 }
 
 fn extra_fingerprint_inputs(target: &BevyTarget) -> Vec<PathBuf> {
@@ -138,29 +133,41 @@ fn find_cargo_config_files(manifest_path: &Path, workspace_root: &Path) -> Vec<P
 }
 
 fn compare_input_to_binary(input_path: &Path, binary_mtime: SystemTime) -> Result<Option<String>> {
-    if !input_path.exists() {
-        return Ok(Some(format!(
-            "dependency listed in dep-info is missing: {}",
-            input_path.display()
-        )));
-    }
-
-    let input_mtime = file_modified_time(input_path)?;
-    Ok((input_mtime > binary_mtime)
-        .then(|| format!("dependency is newer than binary: {}", input_path.display())))
+    compare_path_to_binary(
+        input_path,
+        binary_mtime,
+        true,
+        "dependency listed in dep-info is missing",
+        "dependency is newer than binary",
+    )
 }
 
 fn compare_optional_input_to_binary(
     input_path: &Path,
     binary_mtime: SystemTime,
 ) -> Result<Option<String>> {
+    compare_path_to_binary(
+        input_path,
+        binary_mtime,
+        false,
+        "",
+        "build input is newer than binary",
+    )
+}
+
+fn compare_path_to_binary(
+    input_path: &Path,
+    binary_mtime: SystemTime,
+    missing_is_stale: bool,
+    missing_reason: &str,
+    stale_reason: &str,
+) -> Result<Option<String>> {
     if !input_path.exists() {
-        return Ok(None);
+        return Ok(missing_is_stale.then(|| format!("{missing_reason}: {}", input_path.display())));
     }
 
     let input_mtime = file_modified_time(input_path)?;
-    Ok((input_mtime > binary_mtime)
-        .then(|| format!("build input is newer than binary: {}", input_path.display())))
+    Ok((input_mtime > binary_mtime).then(|| format!("{stale_reason}: {}", input_path.display())))
 }
 
 fn file_modified_time(path: &Path) -> Result<SystemTime> {
@@ -235,6 +242,7 @@ mod tests {
 
     use tempfile::tempdir;
 
+    use super::super::cargo_detector::TargetType;
     use super::*;
 
     fn test_target(workspace_root: &Path, manifest_path: &Path, name: &str) -> BevyTarget {
