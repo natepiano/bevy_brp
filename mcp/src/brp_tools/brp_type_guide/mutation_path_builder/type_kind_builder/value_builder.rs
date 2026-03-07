@@ -14,7 +14,7 @@ use super::super::NotMutableReason;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
-use super::super::types::Example;
+use super::super::types_internal::Example;
 use super::TypeKindBuilder;
 use super::ValueMutationBuilder;
 use crate::error::Result;

@@ -11,15 +11,16 @@ mod recursion_context;
 mod support;
 mod type_kind_builder;
 mod type_parser;
-mod types;
+mod types_internal;
+mod types_response;
 
 // public use
 pub(super) use api::build_mutation_paths;
 pub(super) use api::extract_spawn_insert_example;
 use error_stack::Report;
 use not_mutable_reason::NotMutableReason;
-pub(super) use types::MutationPathExternal;
-pub(super) use types::SpawnInsertExample;
+pub(super) use types_response::MutationPathExternal;
+pub(super) use types_response::SpawnInsertExample;
 
 // local use
 use crate::error::Error;

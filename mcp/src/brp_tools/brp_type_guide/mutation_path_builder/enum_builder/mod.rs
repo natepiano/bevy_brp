@@ -4,8 +4,8 @@ mod variant_kind;
 use super::BuilderError;
 use super::mutation_path_internal::MutationPathInternal;
 use super::recursion_context::RecursionContext;
-use super::types::Example;
-use super::types::ExampleGroup;
+use super::types_internal::Example;
+use super::types_internal::ExampleGroup;
 
 pub(super) fn process_enum(
     ctx: &RecursionContext,

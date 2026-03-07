@@ -16,7 +16,7 @@ use super::super::BuilderError;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
-use super::super::types::Example;
+use super::super::types_internal::Example;
 use super::ListMutationBuilder;
 use super::TypeKindBuilder;
 use crate::error::Error;

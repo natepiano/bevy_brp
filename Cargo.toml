@@ -15,10 +15,10 @@ repository = "https://github.com/natepiano/bevy_brp"
 
 [workspace.dependencies]
 # Bevy with no default features - each crate specifies what it needs
-bevy        = { version = "0.18.0", default-features = false }
-bevy_mesh   = { version = "0.18.0" }
-bevy_remote = { version = "0.18.0" }
-bevy_winit  = { version = "0.18.0" }
+bevy        = { version = "0.18.1", default-features = false }
+bevy_mesh   = { version = "0.18.1" }
+bevy_remote = { version = "0.18.1" }
+bevy_winit  = { version = "0.18.1" }
 
 # Core dependencies (shared between extras and mcp)
 anyhow              = "1.0"
@@ -37,7 +37,7 @@ nom                 = "8.0.0"
 once_cell           = "1.21.3"
 paste               = "1.0"
 proc-macro2         = "1.0.106"
-quote               = "1.0.44"
+quote               = "1.0.45"
 regex               = "1.12.3"
 reqwest             = { version = "0.13.2", features = ["blocking", "json", "stream"] }
 rmcp                = { version = "0.17.0", features = ["server", "transport-io"] }
@@ -52,7 +52,7 @@ syn = { version = "2.0.117", features = ["extra-traits", "full"] }
 sysinfo = "0.38.3"
 tempfile = "3.26.0"
 thiserror = "2.0"
-tokio = { version = "1.49.0", features = ["full", "signal"] }
+tokio = { version = "1.50.0", features = ["full", "signal"] }
 tokio-stream = "0.1.18"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = { version = "0.1.44", features = [
@@ -61,7 +61,7 @@ tracing = { version = "0.1.44", features = [
 ] }
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "1.21.0", features = ["v4"] }
+uuid = { version = "1.22.0", features = ["v4"] }
 
 # Shared lints configuration
 [workspace.lints.rust]

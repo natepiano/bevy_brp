@@ -9,15 +9,15 @@ use crate::error::Error;
 use crate::error::Result;
 
 // Constants
-pub const LOG_PREFIX: &str = "bevy_brp_mcp_";
-pub const LOG_EXTENSION: &str = ".log";
+pub(super) const LOG_PREFIX: &str = "bevy_brp_mcp_";
+pub(super) const LOG_EXTENSION: &str = ".log";
 
 // Static regex for parsing app log filenames
 static APP_LOG_REGEX: LazyLock<Option<Regex>> =
     LazyLock::new(|| Regex::new(r"^bevy_brp_mcp_(.+?)_port\d+_(\d+)_\d+\.log$").ok());
 
 /// Validates if a filename follows the `bevy_brp_mcp` log naming convention
-pub fn is_valid_log_filename(filename: &str) -> bool {
+pub(super) fn is_valid_log_filename(filename: &str) -> bool {
     filename.starts_with(LOG_PREFIX) && filename.ends_with(LOG_EXTENSION)
 }
 
@@ -26,7 +26,7 @@ pub fn is_valid_log_filename(filename: &str) -> bool {
 ///
 /// Format: `bevy_brp_mcp`_{`app_name`}_port{number}_{timestamp}_{suffix}.log
 /// Extracts `app_name` as the part between "`bevy_brp_mcp`_" and "_port{number}"
-pub fn parse_app_log_filename(filename: &str) -> Option<(String, String)> {
+pub(super) fn parse_app_log_filename(filename: &str) -> Option<(String, String)> {
     if !is_valid_log_filename(filename) {
         return None;
     }
@@ -47,7 +47,7 @@ pub fn parse_app_log_filename(filename: &str) -> Option<(String, String)> {
 /// Returns `Some((app_name, timestamp_str))` if valid, `None` otherwise
 ///
 /// Tries app log pattern first, falls back to generic pattern for other log types
-pub fn parse_log_filename(filename: &str) -> Option<(String, String)> {
+pub(super) fn parse_log_filename(filename: &str) -> Option<(String, String)> {
     // Try app log pattern first
     if let Some(result) = parse_app_log_filename(filename) {
         return Some(result);
@@ -77,7 +77,7 @@ pub fn parse_log_filename(filename: &str) -> Option<(String, String)> {
 
 /// Formats bytes into human-readable string with appropriate unit
 #[allow(clippy::cast_precision_loss)]
-pub fn format_bytes(bytes: u64) -> String {
+pub(super) fn format_bytes(bytes: u64) -> String {
     const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
     let mut size = bytes as f64;
     let mut unit_index = 0;
@@ -96,24 +96,24 @@ pub fn format_bytes(bytes: u64) -> String {
 }
 
 /// Gets the log directory (system temp directory)
-pub fn get_log_directory() -> PathBuf { std::env::temp_dir() }
+pub(super) fn get_log_directory() -> PathBuf { std::env::temp_dir() }
 
 /// Gets the full path for a log file given its filename
-pub fn get_log_file_path(filename: &str) -> PathBuf { get_log_directory().join(filename) }
+pub(super) fn get_log_file_path(filename: &str) -> PathBuf { get_log_directory().join(filename) }
 
 /// Represents a log file entry with metadata
 #[derive(Debug, Clone)]
-pub struct LogFileEntry {
-    pub filename:  String,
-    pub app_name:  String,
-    pub timestamp: String,
-    pub path:      PathBuf,
-    pub metadata:  fs::Metadata,
+pub(super) struct LogFileEntry {
+    pub(super) filename:  String,
+    pub(super) app_name:  String,
+    pub(super) timestamp: String,
+    pub(super) path:      PathBuf,
+    pub(super) metadata:  fs::Metadata,
 }
 
 /// Iterates over app log files (port pattern only) in the temp directory with optional filtering
 /// The filter function receives a `LogFileEntry` and returns true to include it
-pub fn iterate_app_log_files<F>(filter: F) -> Result<Vec<LogFileEntry>>
+pub(super) fn iterate_app_log_files<F>(filter: F) -> Result<Vec<LogFileEntry>>
 where
     F: Fn(&LogFileEntry) -> bool,
 {
@@ -168,7 +168,7 @@ where
 
 /// Iterates over all log files in the temp directory with optional filtering
 /// The filter function receives a `LogFileEntry` and returns true to include it
-pub fn iterate_log_files<F>(filter: F) -> Result<Vec<LogFileEntry>>
+pub(super) fn iterate_log_files<F>(filter: F) -> Result<Vec<LogFileEntry>>
 where
     F: Fn(&LogFileEntry) -> bool,
 {

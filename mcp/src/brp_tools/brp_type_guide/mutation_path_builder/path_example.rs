@@ -5,8 +5,8 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::types::Example;
-use super::types::ExampleGroup;
+use super::types_internal::Example;
+use super::types_internal::ExampleGroup;
 
 #[derive(Debug, Clone)]
 pub(super) enum PathExample {

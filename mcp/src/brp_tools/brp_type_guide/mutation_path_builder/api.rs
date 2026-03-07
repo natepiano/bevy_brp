@@ -22,9 +22,9 @@ use super::super::type_kind::TypeKind;
 use super::path_builder::recurse_mutation_paths;
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
-use super::types::Example;
-use super::types::MutationPathExternal;
-use super::types::SpawnInsertExample;
+use super::types_internal::Example;
+use super::types_response::MutationPathExternal;
+use super::types_response::SpawnInsertExample;
 use crate::error::Error;
 use crate::error::Result;
 

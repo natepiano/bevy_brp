@@ -28,8 +28,8 @@ use serde_json::Value;
 use serde_json::json;
 
 use super::super::brp_type_name::BrpTypeName;
-use super::types::Mutability;
-use super::types::MutabilityIssue;
+use super::types_internal::Mutability;
+use super::types_internal::MutabilityIssue;
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -13,9 +13,9 @@ use super::mutation_path_internal::MutationPathInternal;
 use super::new_types::VariantName;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
-use super::types::Example;
-use super::types::Mutability;
-use super::types::RootExample;
+use super::types_internal::Example;
+use super::types_internal::Mutability;
+use super::types_response::RootExample;
 
 /// Aggregate multiple mutation statuses into a single status
 ///

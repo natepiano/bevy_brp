@@ -15,7 +15,7 @@ static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(1); // Default to WARN level (1) 
 
 /// Dynamic tracing filter that can be updated at runtime
 #[derive(Clone)]
-pub struct DynamicFilter;
+struct DynamicFilter;
 
 impl<S> Layer<S> for DynamicFilter
 where

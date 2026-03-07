@@ -7,7 +7,7 @@
 
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::new_types::VariantName;
-use crate::brp_tools::brp_type_guide::mutation_path_builder::types::Example;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::types_internal::Example;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum OptionClassification {

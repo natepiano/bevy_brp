@@ -45,12 +45,12 @@ use super::type_kind_builder::StructMutationBuilder;
 use super::type_kind_builder::TupleMutationBuilder;
 use super::type_kind_builder::TypeKindBuilder;
 use super::type_kind_builder::ValueMutationBuilder;
-use super::types::EnumPathInfo;
-use super::types::Example;
-use super::types::Mutability;
-use super::types::MutabilityIssue;
-use super::types::PathAction;
-use super::types::RootExample;
+use super::types_internal::EnumPathInfo;
+use super::types_internal::Example;
+use super::types_internal::Mutability;
+use super::types_internal::MutabilityIssue;
+use super::types_internal::PathAction;
+use super::types_response::RootExample;
 use crate::error::Error;
 use crate::error::Result;
 

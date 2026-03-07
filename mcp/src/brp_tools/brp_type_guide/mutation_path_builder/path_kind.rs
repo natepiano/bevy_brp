@@ -11,7 +11,7 @@ use super::super::struct_field_name::StructFieldName;
 use super::super::type_kind::TypeKind;
 use super::new_types::VariantName;
 use super::option_classification::OptionClassification;
-use super::types::EnumPathInfo;
+use super::types_internal::EnumPathInfo;
 
 /// A semantic identifier for mutation paths in the builder system
 ///

@@ -15,11 +15,11 @@ use crate::error::Result;
 ///
 /// This provides a cleaner, more ergonomic interface for creating responses
 /// compared to using `ResponseBuilder` directly.
-pub struct Response;
+pub(super) struct Response;
 
 impl Response {
     /// Create a success response from a `ResultStruct`
-    pub fn success<R: ResultStruct + ?Sized, P: ParamStruct>(
+    pub(super) fn success<R: ResultStruct + ?Sized, P: ParamStruct>(
         result: &R,
         params: Option<P>,
         call_info: CallInfo,
@@ -29,7 +29,7 @@ impl Response {
     }
 
     /// Create an error response from a `ResultStruct`
-    pub fn error<R: ResultStruct + ?Sized, P: ParamStruct>(
+    pub(super) fn error<R: ResultStruct + ?Sized, P: ParamStruct>(
         error_result: &R,
         params: Option<P>,
         call_info: CallInfo,
@@ -39,12 +39,15 @@ impl Response {
     }
 
     /// Create a simple error response with just a message
-    pub fn error_message(message: impl Into<String>, call_info: CallInfo) -> ToolCallJsonResponse {
+    pub(super) fn error_message(
+        message: impl Into<String>,
+        call_info: CallInfo,
+    ) -> ToolCallJsonResponse {
         ResponseBuilder::error(call_info).message(message).build()
     }
 
     /// Create an error response with message and optional details
-    pub fn error_with_details(
+    pub(super) fn error_with_details(
         message: impl Into<String>,
         details: Option<&Value>,
         call_info: CallInfo,
@@ -71,7 +74,7 @@ pub struct ResponseBuilder {
 
 impl ResponseBuilder {
     /// Create a success response with call info pre-populated
-    pub const fn success(call_info: CallInfo) -> Self {
+    pub(super) const fn success(call_info: CallInfo) -> Self {
         Self {
             status: ResponseStatus::Success,
             message: String::new(),
@@ -85,7 +88,7 @@ impl ResponseBuilder {
     }
 
     /// Create an error response with call info pre-populated
-    pub const fn error(call_info: CallInfo) -> Self {
+    pub(super) const fn error(call_info: CallInfo) -> Self {
         Self {
             status: ResponseStatus::Error,
             message: String::new(),
@@ -98,13 +101,13 @@ impl ResponseBuilder {
         }
     }
 
-    pub fn message(mut self, message: impl Into<String>) -> Self {
+    pub(super) fn message(mut self, message: impl Into<String>) -> Self {
         self.message = message.into();
         self
     }
 
     /// Add a field to the metadata object. Creates a new object if metadata is None.
-    pub fn add_field(mut self, key: &str, value: impl Serialize) -> Result<Self> {
+    fn add_field(mut self, key: &str, value: impl Serialize) -> Result<Self> {
         use error_stack::ResultExt;
 
         use super::json_response::AnySchemaValue;
@@ -132,7 +135,7 @@ impl ResponseBuilder {
 
     /// Add multiple fields from an optional JSON object to metadata
     /// Useful for adding error details or other optional metadata
-    pub fn add_optional_details(self, details: Option<&serde_json::Value>) -> Self {
+    fn add_optional_details(self, details: Option<&serde_json::Value>) -> Self {
         match details {
             Some(Value::Object(map)) => {
                 map.iter()
@@ -200,7 +203,7 @@ impl ResponseBuilder {
         Ok(self)
     }
 
-    pub fn build(self) -> ToolCallJsonResponse {
+    pub(super) fn build(self) -> ToolCallJsonResponse {
         ToolCallJsonResponse {
             status:                self.status,
             message:               self.message,
@@ -214,7 +217,7 @@ impl ResponseBuilder {
     }
 
     /// Get metadata for template substitution
-    pub const fn metadata(&self) -> Option<&Value> {
+    const fn metadata(&self) -> Option<&Value> {
         match &self.metadata {
             Some(any_val) => Some(&any_val.0),
             None => None,
@@ -222,7 +225,7 @@ impl ResponseBuilder {
     }
 
     /// Get result for template substitution
-    pub const fn result(&self) -> Option<&Value> {
+    const fn result(&self) -> Option<&Value> {
         match &self.result {
             Some(any_val) => Some(&any_val.0),
             None => None,
@@ -230,7 +233,7 @@ impl ResponseBuilder {
     }
 
     /// Set parameters with optional parameter tracking
-    pub fn parameters(mut self, params: impl Serialize) -> Result<Self> {
+    fn parameters(mut self, params: impl Serialize) -> Result<Self> {
         use error_stack::ResultExt;
 
         use super::json_response::AnySchemaValue;
@@ -279,7 +282,7 @@ impl ResponseBuilder {
     }
 
     /// Get parameters for template substitution
-    pub const fn parameters_ref(&self) -> Option<&Value> {
+    const fn parameters_ref(&self) -> Option<&Value> {
         match &self.parameters {
             Some(any_val) => Some(&any_val.0),
             None => None,
@@ -288,7 +291,7 @@ impl ResponseBuilder {
 
     /// Terminal operation: Build complete response from a `ResultStruct`, handling all formatting
     /// and template substitution
-    pub fn build_with_result_struct<R: ResultStruct + ?Sized, P: ParamStruct>(
+    pub(super) fn build_with_result_struct<R: ResultStruct + ?Sized, P: ParamStruct>(
         mut self,
         result: &R,
         params: Option<P>,

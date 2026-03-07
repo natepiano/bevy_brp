@@ -26,13 +26,13 @@ use crate::tool::response_builder::Response;
 #[derive(Clone)]
 pub struct HandlerContext {
     pub(super) tool_def: ToolDef,
-    pub request:         CallToolRequestParams,
+    request:            CallToolRequestParams,
     pub roots:           Vec<PathBuf>,
 }
 
 impl HandlerContext {
     /// Create a new `HandlerContext`
-    pub(crate) const fn new(
+    pub(super) const fn new(
         tool_def: ToolDef,
         request: CallToolRequestParams,
         roots: Vec<PathBuf>,
@@ -43,12 +43,6 @@ impl HandlerContext {
             roots,
         }
     }
-
-    /// Get tool definition by looking up the request name in the service's tool registry
-    ///
-    /// # Errors
-    /// Returns an error if the tool definition is not found.
-    pub const fn tool_def(&self) -> &ToolDef { &self.tool_def }
 
     /// Common parameter extraction methods (used by both BRP and local handlers)
     pub fn extract_parameter_values<T>(&self) -> Result<T>
@@ -95,12 +89,12 @@ impl HandlerContext {
     ///
     /// Note: Arguments are preprocessed by `parse_stringified_json_values` to handle
     /// MCP clients that stringify JSON objects/arrays for `Any`-typed parameters.
-    pub fn extract_optional_named_field(&self, field_name: &str) -> Option<&Value> {
+    pub(super) fn extract_optional_named_field(&self, field_name: &str) -> Option<&Value> {
         self.request.arguments.as_ref()?.get(field_name)
     }
 
     /// Format a tool result into a `CallToolResult`
-    pub fn format_result<T, P>(&self, tool_result: ToolResult<T, P>) -> CallToolResult
+    pub(super) fn format_result<T, P>(&self, tool_result: ToolResult<T, P>) -> CallToolResult
     where
         T: ResultStruct,
         P: ParamStruct,
@@ -164,7 +158,7 @@ impl HandlerContext {
     }
 
     /// Format framework errors
-    pub fn format_framework_error(&self, error: error_stack::Report<Error>) -> CallToolResult {
+    pub(super) fn format_framework_error(&self, error: error_stack::Report<Error>) -> CallToolResult {
         let tool_name = self.tool_def.tool_name;
         let call_info = tool_name.get_call_info();
 

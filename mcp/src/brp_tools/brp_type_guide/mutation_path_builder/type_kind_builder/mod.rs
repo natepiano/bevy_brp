@@ -8,8 +8,8 @@ use super::NotMutableReason;
 use super::mutation_path_internal::MutationPathInternal;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
-use super::types::Example;
-use super::types::PathAction;
+use super::types_internal::Example;
+use super::types_internal::PathAction;
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 

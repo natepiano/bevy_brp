@@ -91,7 +91,7 @@ use super::NotMutableReason;
 use super::new_types::MutationPath;
 use super::new_types::VariantName;
 use super::path_kind::PathKind;
-use super::types::PathAction;
+use super::types_internal::PathAction;
 use crate::error::Error;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;

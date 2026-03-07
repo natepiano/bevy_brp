@@ -9,13 +9,13 @@ use std::sync::Mutex;
 use tracing_subscriber::fmt::MakeWriter;
 
 /// A lazy file writer that only creates the file on first write
-pub struct LazyFileWriter {
+pub(super) struct LazyFileWriter {
     path: PathBuf,
     file: Arc<Mutex<Option<File>>>,
 }
 
 impl LazyFileWriter {
-    pub fn new(path: PathBuf) -> Self {
+    pub(super) fn new(path: PathBuf) -> Self {
         Self {
             path,
             file: Arc::new(Mutex::new(None)),
@@ -33,7 +33,7 @@ impl Clone for LazyFileWriter {
 }
 
 /// Writer instance that lazily creates the file on first write
-pub struct LazyWriter {
+pub(super) struct LazyWriter {
     path: PathBuf,
     file: Arc<Mutex<Option<File>>>,
 }
