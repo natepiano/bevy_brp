@@ -63,7 +63,7 @@ use super::constants::TYPE_U32;
 use super::constants::TYPE_U64;
 use super::constants::TYPE_U128;
 use super::constants::TYPE_USIZE;
-use super::mutation_path_builder::VariantSignature;
+use super::variant_signature::VariantSignature;
 use crate::brp_tools::BrpTypeName;
 use crate::error::Error;
 

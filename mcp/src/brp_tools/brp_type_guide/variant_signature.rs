@@ -9,12 +9,12 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::super::super::BrpTypeName;
-use super::super::new_types::StructFieldName;
+use super::brp_type_name::BrpTypeName;
+use super::struct_field_name::StructFieldName;
 
 /// Variant signature types for enum variants - used for grouping similar structures
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
-pub enum VariantSignature {
+pub(super) enum VariantSignature {
     /// Unit variant (no data)
     Unit,
     /// Tuple variant with ordered types

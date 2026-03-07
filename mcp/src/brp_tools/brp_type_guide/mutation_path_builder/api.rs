@@ -19,9 +19,7 @@ use super::super::constants::REFLECT_TRAIT_COMPONENT;
 use super::super::constants::REFLECT_TRAIT_RESOURCE;
 use super::super::constants::SPAWN_COMPONENT_GUIDANCE;
 use super::super::type_kind::TypeKind;
-use super::enum_builder::select_preferred_example;
 use super::path_builder::recurse_mutation_paths;
-use super::path_example::PathExample;
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
 use super::types::Example;
@@ -84,13 +82,7 @@ pub fn extract_spawn_insert_example(
 
     // Extract root path example
     let root_path = mutation_paths.iter().find(|p| (*p.path).is_empty())?;
-
-    let example = match &root_path.path_example {
-        PathExample::Simple(ex) => ex.clone(),
-        PathExample::EnumRoot { groups, .. } => {
-            select_preferred_example(groups).unwrap_or(Example::NotApplicable)
-        },
-    };
+    let example = root_path.preferred_example();
 
     // Build appropriate variant based on type
     if is_component {

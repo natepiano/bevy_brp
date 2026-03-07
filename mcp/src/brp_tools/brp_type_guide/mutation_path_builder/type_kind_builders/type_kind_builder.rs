@@ -17,7 +17,7 @@ use crate::json_object::JsonObjectAccess;
 ///
 /// This trait provides type-directed dispatch for mutation path building,
 /// Each type kind gets its own implementation that handles the specific logic needed.
-pub trait TypeKindBuilder {
+pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) trait TypeKindBuilder {
     /// The item type returned by `collect_children` - allows for
     /// `enum_builder` to return `PathKind` with `applicable_variants` where
     ///  all the other builders just return `PathKind`

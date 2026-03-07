@@ -53,9 +53,9 @@ use super::super::types::Mutability;
 use super::super::types::MutabilityIssue;
 use super::super::types::PathAction;
 use super::super::types::RootExample;
-use super::option_classification::apply_option_transformation;
+use super::super::option_classification::apply_option_transformation;
+use super::super::super::variant_signature::VariantSignature;
 use super::variant_kind::VariantKind;
-use super::variant_signature::VariantSignature;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
 use crate::error::Error;
@@ -88,7 +88,7 @@ type ProcessChildrenResult = (
 /// This function always generates examples arrays for all enums, anywhere in the type hierarchy
 /// - Ensures all enum fields show their available variants
 /// - Improves discoverability for nested enums
-pub fn process_enum(
+pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) fn process_enum(
     ctx: &RecursionContext,
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
     tracing::debug!(
@@ -203,7 +203,7 @@ pub fn process_enum(
 ///
 /// 3. **Fallback**: Return `None` if no `Mutable` variants exist
 ///    - The entire enum is not spawnable
-pub fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Example> {
+pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Example> {
     // First priority: Find a non-unit Mutable variant with a complete example
     // Note: We check mutability explicitly for clarity and safety, even though
     // example.is_some() now implies Mutable due to build_variant_group_example's logic

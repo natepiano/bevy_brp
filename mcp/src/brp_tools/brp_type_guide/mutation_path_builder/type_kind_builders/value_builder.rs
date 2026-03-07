@@ -18,7 +18,7 @@ use super::super::types::Example;
 use super::type_kind_builder::TypeKindBuilder;
 use crate::error::Result;
 
-pub struct ValueMutationBuilder;
+pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) struct ValueMutationBuilder;
 
 impl TypeKindBuilder for ValueMutationBuilder {
     type Item = PathKind;

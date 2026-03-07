@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use super::super::brp_type_name::BrpTypeName;
 use super::super::type_kind::TypeKind;
-use super::enum_builder::VariantSignature;
+use super::super::variant_signature::VariantSignature;
 use super::new_types::MutationPath;
 use super::new_types::VariantName;
 use super::path_example::PathExample;
@@ -124,7 +124,7 @@ impl MutabilityIssue {
 #[derive(Debug, Clone, Serialize)]
 pub struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
-    pub path_kind:           PathKind,
+    path_kind:               PathKind,
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
     pub type_name:           BrpTypeName,
@@ -148,18 +148,42 @@ pub struct PathInfo {
     pub root_example:        Option<RootExample>,
 }
 
+impl PathInfo {
+    pub(super) fn new(
+        path_kind: PathKind,
+        type_name: BrpTypeName,
+        type_kind: TypeKind,
+        mutability: Mutability,
+        mutability_reason: Option<Value>,
+        applicable_variants: Option<Vec<VariantName>>,
+        enum_instructions: Option<String>,
+        root_example: Option<RootExample>,
+    ) -> Self {
+        Self {
+            path_kind,
+            type_name,
+            type_kind,
+            mutability,
+            mutability_reason,
+            applicable_variants,
+            enum_instructions,
+            root_example,
+        }
+    }
+}
+
 /// Example group for enum variants
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExampleGroup {
+pub(super) struct ExampleGroup {
     /// List of variants that share this signature
-    pub applicable_variants: Vec<VariantName>,
+    pub(super) applicable_variants: Vec<VariantName>,
     /// Example value for this group (omitted for `NotMutable` variants)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example:             Option<Value>,
+    pub(super) example:             Option<Value>,
     /// The variant signature (Unit, Tuple, or Struct)
-    pub signature:           VariantSignature,
+    pub(super) signature:           VariantSignature,
     /// Mutation status for this signature/variant group
-    pub mutability:          Mutability,
+    pub(super) mutability:          Mutability,
 }
 
 /// Consolidated enum-specific data for mutation paths
@@ -192,7 +216,25 @@ pub struct MutationPathExternal {
     pub path_info:    PathInfo,
     /// Example data (either single value or enum variant groups)
     #[serde(flatten)]
-    pub path_example: PathExample,
+    path_example:     PathExample,
+}
+
+impl MutationPathExternal {
+    pub(super) fn new(
+        path: MutationPath,
+        description: String,
+        path_info: PathInfo,
+        path_example: PathExample,
+    ) -> Self {
+        Self {
+            path,
+            description,
+            path_info,
+            path_example,
+        }
+    }
+
+    pub(super) fn preferred_example(&self) -> Example { self.path_example.preferred_example() }
 }
 
 /// Root example for an enum variant, either available for construction or unavailable with reason

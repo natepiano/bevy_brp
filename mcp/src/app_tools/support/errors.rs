@@ -4,7 +4,7 @@ use serde::Serialize;
 
 /// Error when multiple targets with the same name exist
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct PathDisambiguationError {
+pub(super) struct PathDisambiguationError {
     #[to_error_info]
     available_paths: Vec<String>,
 
@@ -22,7 +22,7 @@ pub struct PathDisambiguationError {
 
 /// Error when target exists but not at the specified path
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct TargetNotFoundAtSpecifiedPath {
+pub(super) struct TargetNotFoundAtSpecifiedPath {
     #[to_error_info]
     target_name: String,
 
@@ -43,7 +43,7 @@ pub struct TargetNotFoundAtSpecifiedPath {
 
 /// Error when no targets found - apps only, we don't detect it for examples
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct NoTargetsFoundError {
+pub(super) struct NoTargetsFoundError {
     #[to_error_info]
     target_name: String,
 

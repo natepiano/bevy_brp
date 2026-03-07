@@ -12,8 +12,8 @@ use std::collections::HashMap;
 use serde_json::Value;
 use serde_json::json;
 
+use super::super::super::struct_field_name::StructFieldName;
 use super::super::BuilderError;
-use super::super::new_types::StructFieldName;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
@@ -25,7 +25,7 @@ use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
-pub struct SetMutationBuilder;
+pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) struct SetMutationBuilder;
 
 impl TypeKindBuilder for SetMutationBuilder {
     type Item = PathKind;

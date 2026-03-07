@@ -2,28 +2,28 @@
 //!
 //! This module handles special processing for `Option<T>` types in BRP mutations.
 //! The Bevy Remote Protocol expects Option values in a specific format:
-//! - `None` → `null`
-//! - `Some(value)` → `value` (unwrapped)
+//! - `None` -> `null`
+//! - `Some(value)` -> `value` (unwrapped)
 
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::new_types::VariantName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::types::Example;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OptionClassification {
+pub(super) enum OptionClassification {
     Option { inner_type: BrpTypeName },
     Regular(BrpTypeName),
 }
 
 impl OptionClassification {
-    pub fn from_type_name(type_name: &BrpTypeName) -> Self {
+    pub(super) fn from_type_name(type_name: &BrpTypeName) -> Self {
         Self::extract_option_inner(type_name).map_or_else(
             || Self::Regular(type_name.clone()),
             |inner_type| Self::Option { inner_type },
         )
     }
 
-    pub const fn is_option(&self) -> bool { matches!(self, Self::Option { .. }) }
+    pub(super) const fn is_option(&self) -> bool { matches!(self, Self::Option { .. }) }
 
     fn extract_option_inner(type_name: &BrpTypeName) -> Option<BrpTypeName> {
         const OPTION_PREFIX: &str = "core::option::Option<";
@@ -40,8 +40,8 @@ impl OptionClassification {
     }
 }
 
-/// Apply `Option<T>` transformation if needed: `{"Some": value}` → `value`, `"None"` → `null`
-pub fn apply_option_transformation(
+/// Apply `Option<T>` transformation if needed: `{"Some": value}` -> `value`, `"None"` -> `null`
+pub(super) fn apply_option_transformation(
     example: Example,
     variant_name: &VariantName,
     enum_type: &BrpTypeName,

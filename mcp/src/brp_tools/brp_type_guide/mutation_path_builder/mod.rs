@@ -3,6 +3,7 @@ mod enum_builder;
 mod mutation_path_internal;
 mod new_types;
 mod not_mutable_reason;
+mod option_classification;
 mod path_builder;
 mod path_example;
 mod path_kind;
@@ -15,7 +16,6 @@ mod types;
 // public use
 pub(super) use api::build_mutation_paths;
 pub(super) use api::extract_spawn_insert_example;
-pub(super) use enum_builder::VariantSignature;
 use error_stack::Report;
 use not_mutable_reason::NotMutableReason;
 pub(super) use types::MutationPathExternal;

@@ -9,7 +9,7 @@ use super::types::Example;
 use super::types::ExampleGroup;
 
 #[derive(Debug, Clone)]
-pub enum PathExample {
+pub(super) enum PathExample {
     /// Simple value example used by non-enum types
     ///
     /// Examples:
@@ -43,6 +43,16 @@ impl PathExample {
         match self {
             Self::Simple(ex) => ex,
             Self::EnumRoot { for_parent, .. } => for_parent,
+        }
+    }
+
+    /// Select the most useful example for spawn/insert operations.
+    pub(super) fn preferred_example(&self) -> Example {
+        match self {
+            Self::Simple(ex) => ex.clone(),
+            Self::EnumRoot { groups, .. } => {
+                super::enum_builder::select_preferred_example(groups).unwrap_or(Example::NotApplicable)
+            },
         }
     }
 }

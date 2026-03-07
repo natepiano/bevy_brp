@@ -24,7 +24,7 @@ use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
-pub struct ArrayMutationBuilder;
+pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) struct ArrayMutationBuilder;
 
 impl TypeKindBuilder for ArrayMutationBuilder {
     type Item = PathKind;

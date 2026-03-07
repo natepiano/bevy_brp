@@ -23,7 +23,7 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 
-pub struct TupleMutationBuilder;
+pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) struct TupleMutationBuilder;
 
 impl TypeKindBuilder for TupleMutationBuilder {
     type Item = PathKind;

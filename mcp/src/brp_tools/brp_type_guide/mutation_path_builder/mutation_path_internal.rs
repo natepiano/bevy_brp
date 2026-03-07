@@ -109,24 +109,21 @@ impl MutationPathInternal {
         // Extract enum-specific metadata only for mutable/partially mutable paths
         let (enum_instructions, applicable_variants, root_example) = self.resolve_enum_path_info();
 
-        MutationPathExternal {
-            path: self.mutation_path.clone(),
+        MutationPathExternal::new(
+            self.mutation_path.clone(),
             description,
-            path_info: PathInfo {
-                path_kind: self.path_kind,
-                type_name: self.type_name,
+            PathInfo::new(
+                self.path_kind,
+                self.type_name,
                 type_kind,
-                mutability: self.mutability,
-                mutability_reason: self
-                    .mutability_reason
-                    .as_ref()
-                    .and_then(Option::<Value>::from),
-                enum_instructions,
+                self.mutability,
+                self.mutability_reason.as_ref().and_then(Option::<Value>::from),
                 applicable_variants,
+                enum_instructions,
                 root_example,
-            },
+            ),
             path_example,
-        }
+        )
     }
 
     /// Check if this path is a root path with Default trait support

@@ -9,10 +9,12 @@ mod constants;
 mod guide;
 mod mutation_path_builder;
 mod response_types;
+mod struct_field_name;
 mod tool_all_types;
 mod tool_type_guide;
 mod type_kind;
 mod type_knowledge;
+mod variant_signature;
 
 // Re-export public API
 // Internal use for format discovery
