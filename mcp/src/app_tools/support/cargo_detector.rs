@@ -18,7 +18,7 @@ use strum::EnumString;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, EnumString, Serialize)]
 #[strum(serialize_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
-pub enum TargetType {
+pub(super) enum TargetType {
     /// A binary application target
     App,
     /// An example target
@@ -41,7 +41,7 @@ impl TargetType {
 
 /// Unified information about a Bevy target (app or example)
 #[derive(Debug, Clone)]
-pub struct BevyTarget {
+pub(super) struct BevyTarget {
     /// Name of the target
     pub(super) name:           String,
     /// Type of target (App or Example)

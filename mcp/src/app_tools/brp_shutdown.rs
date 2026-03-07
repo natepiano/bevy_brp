@@ -274,7 +274,7 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
 
 /// Error when process is not running
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct ProcessNotRunningError {
+struct ProcessNotRunningError {
     #[to_error_info]
     app_name: String,
 
@@ -284,7 +284,7 @@ pub struct ProcessNotRunningError {
 
 /// Error when shutdown fails
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct ShutdownFailedError {
+struct ShutdownFailedError {
     #[to_error_info]
     app_name: String,
 

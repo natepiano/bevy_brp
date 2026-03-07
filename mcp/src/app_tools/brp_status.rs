@@ -58,7 +58,7 @@ async fn handle_impl(params: StatusParams) -> Result<StatusResult> {
 
 /// Error when process is not found
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct ProcessNotFoundError {
+struct ProcessNotFoundError {
     #[to_error_info]
     app_name: String,
 
@@ -77,7 +77,7 @@ pub struct ProcessNotFoundError {
 
 /// Error when process is running but BRP not responding
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct BrpNotRespondingError {
+struct BrpNotRespondingError {
     #[to_error_info]
     app_name: String,
 

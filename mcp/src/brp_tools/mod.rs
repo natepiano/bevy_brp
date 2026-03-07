@@ -96,5 +96,6 @@ pub use watch_tools::WorldGetComponentsWatch;
 // Export watch tools
 pub use watch_tools::{
     BevyListWatch, BrpListActiveWatches, BrpStopWatch, ListComponentsWatchParams, StopWatchParams,
-    WatchManager,
 };
+
+pub(super) async fn initialize_watch_manager() { watch_tools::initialize_watch_manager().await }

@@ -29,7 +29,7 @@ pub(super) struct WatchInfo {
 }
 
 /// Manager for watch subscriptions
-pub struct WatchManager {
+pub(super) struct WatchManager {
     /// Monotonic counter for watch IDs
     next_watch_id:      AtomicU32,
     /// Active watches mapped by watch ID
@@ -69,9 +69,10 @@ impl WatchManager {
             .collect()
     }
 
-    /// Initialize the watch manager
-    pub async fn initialize_watch_manager() {
-        // Force initialization of the lazy static
-        let _ = WATCH_MANAGER.lock().await;
-    }
+}
+
+/// Initialize the watch manager
+pub(super) async fn initialize_watch_manager() {
+    // Force initialization of the lazy static
+    let _ = WATCH_MANAGER.lock().await;
 }
