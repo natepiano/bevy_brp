@@ -3,7 +3,7 @@ install_verify = "mcp"
 [[publish_phases]]
 name = "Publish macros"
 crates = ["mcp_macros"]
-post_script = ".claude/scripts/release/update_workspace_dep.sh"
+workspace_dep_updates = ["bevy_brp_mcp_macros"]
 
 [[publish_phases]]
 name = "Publish extras and mcp"
