@@ -77,10 +77,6 @@ impl Annotation {
         }
     }
 
-    pub const fn with_domain(mut self, domain: DomainOfInteraction) -> Self {
-        self.domain_of_interaction = domain;
-        self
-    }
 }
 
 impl From<Annotation> for ToolAnnotations {
