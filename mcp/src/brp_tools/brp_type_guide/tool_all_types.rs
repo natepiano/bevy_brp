@@ -10,7 +10,6 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::tool_type_guide::TypeGuideEngine;
 use super::tool_type_guide::TypeGuideResult;
 use crate::brp_tools::BrpClient;
 use crate::brp_tools::Port;
@@ -58,9 +57,7 @@ async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
     let mut all_types = component_types;
     all_types.extend(resource_types);
 
-    // Construct TypeSchemaEngine and generate response for all types
-    let engine = TypeGuideEngine::new(params.port).await?;
-    let response = engine.generate_response(&all_types);
+    let response = super::generate_type_guide_response(params.port, &all_types).await?;
     let type_count = response.discovered_count;
 
     Ok(

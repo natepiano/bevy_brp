@@ -65,11 +65,7 @@ pub struct BrpTypeGuide;
 
 /// Thin orchestration function: build engine and delegate the work to it.
 async fn handle_impl(params: TypeGuideParams) -> Result<TypeGuideResult> {
-    // Construct V2 engine
-    let engine = TypeGuideEngine::new(params.port).await?;
-
-    // Run the engine to produce the typed response
-    let response = engine.generate_response(&params.types);
+    let response = generate_type_guide_response(params.port, &params.types).await?;
     let type_count = response.discovered_count;
 
     Ok(TypeGuideResult::new(response, type_count)
@@ -77,13 +73,13 @@ async fn handle_impl(params: TypeGuideParams) -> Result<TypeGuideResult> {
 }
 
 /// orchestrates type schema generation using a single call to get the complete registry
-pub struct TypeGuideEngine {
+struct TypeGuideEngine {
     registry: Arc<HashMap<BrpTypeName, Value>>,
 }
 
 impl TypeGuideEngine {
     /// Create a new engine instance by fetching the complete registry
-    pub async fn new(port: Port) -> Result<Self> {
+    async fn new(port: Port) -> Result<Self> {
         let registry = Arc::new(Self::get_full_registry(port).await?);
         Ok(Self { registry })
     }
@@ -117,7 +113,7 @@ impl TypeGuideEngine {
     }
 
     /// Generate response for requested types
-    pub fn generate_response(&self, requested_types: &[String]) -> TypeGuideResponse {
+    fn generate_response(&self, requested_types: &[String]) -> TypeGuideResponse {
         // Build the type_guide HashMap functionally
         let type_guide: HashMap<BrpTypeName, TypeGuide> = requested_types
             .iter()
@@ -156,4 +152,16 @@ impl TypeGuideEngine {
             type_guide,
         }
     }
+}
+
+/// Visibility facade over the file-local `TypeGuideEngine`.
+///
+/// The parent `brp_type_guide` module uses this wrapper so sibling modules do not
+/// depend on the engine type itself.
+pub(super) async fn generate_type_guide_response(
+    port: Port,
+    requested_types: &[String],
+) -> Result<TypeGuideResponse> {
+    let engine = TypeGuideEngine::new(port).await?;
+    Ok(engine.generate_response(requested_types))
 }

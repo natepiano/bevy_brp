@@ -20,7 +20,6 @@ use super::types::Operation;
 use super::types::ResponseStatus;
 use super::types::ResultStructBrpExt;
 use crate::brp_tools::FormatCorrectionStatus;
-use crate::brp_tools::brp_type_guide::TypeGuideEngine;
 use crate::error::Error;
 use crate::error::Result;
 use crate::tool::BrpMethod;
@@ -273,9 +272,12 @@ impl BrpClient {
         error: &BrpClientError,
         extracted_types: Vec<String>,
     ) -> Result<ResponseStatus> {
-        // Create TypeGuideEngine and generate response for extracted types
-        let engine = TypeGuideEngine::new(self.port).await?;
-        let type_guide_response = engine.generate_response(&extracted_types);
+        let type_guide_response =
+            crate::brp_tools::brp_type_guide::generate_type_guide_response(
+                self.port,
+                &extracted_types,
+            )
+            .await?;
 
         Err(Error::tool_call_failed_with_details(
             "Format error - see 'type_guide' field for correct format",

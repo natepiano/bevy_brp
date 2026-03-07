@@ -33,8 +33,16 @@ pub use types::ResultStruct;
 pub use types::ToolFn;
 pub use types::ToolResult;
 
+/// Visibility facade for the tool catalog.
+///
+/// Callers outside `tool_name.rs` should depend on the `tool` subsystem boundary
+/// rather than on `ToolName` owning whole-registry construction.
 pub(super) fn get_all_tool_definitions() -> Vec<ToolDef> { registry::get_all_tool_definitions() }
 
+/// Visibility facade for parameter extraction used by generated and framework code.
+///
+/// This keeps request decoding owned by the `tool` subsystem instead of exposing
+/// `HandlerContext`'s parsing method across sibling modules.
 pub(super) fn extract_parameter_values<T>(ctx: &HandlerContext) -> crate::error::Result<T>
 where
     T: serde::de::DeserializeOwned,
@@ -42,6 +50,10 @@ where
     ctx.extract_parameter_values()
 }
 
+/// Visibility facade for custom `ToolFn::call()` implementations.
+///
+/// Sibling modules can request typed parameters through the top-level `tool`
+/// boundary instead of depending on lower-level helper placement.
 pub(super) fn call_with_typed_params<O, P, F, Fut>(
     ctx: HandlerContext,
     f: F,
