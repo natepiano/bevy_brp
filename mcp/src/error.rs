@@ -5,10 +5,8 @@ use crate::tool::ResultStruct;
 
 // Error message prefixes
 const MSG_FAILED_TO_PREFIX: &str = "Failed to";
-const MSG_CANNOT_PREFIX: &str = "Cannot";
 const MSG_INVALID_PREFIX: &str = "Invalid";
 const MSG_MISSING_PREFIX: &str = "Missing";
-const MSG_UNEXPECTED_PREFIX: &str = "Unexpected";
 
 /// Result type for the `bevy_brp_mcp` library
 pub type Result<T> = core::result::Result<T, Report<Error>>;
@@ -40,9 +38,6 @@ pub enum Error {
     #[error("Log operation failed: {0}")]
     LogOperation(String),
 
-    #[error("MCP client communication failed: {0}")]
-    McpClientCommunication(String),
-
     #[error("Configuration error: {0}")]
     MissingMessageTemplate(String),
 
@@ -62,9 +57,6 @@ pub enum Error {
 
     #[error("Structured error")] // Generic message, the real message comes from the ResultStruct
     Structured { result: Box<dyn ResultStruct> },
-
-    #[error("Type not registered: {type_name}")]
-    TypeNotRegistered { type_name: String },
 
     #[error("Tool call error: {message}")]
     ToolCall {
@@ -87,9 +79,6 @@ impl std::fmt::Debug for Error {
             Self::InvalidState(s) => f.debug_tuple("InvalidState").field(s).finish(),
             Self::JsonRpc(s) => f.debug_tuple("JsonRpc").field(s).finish(),
             Self::LogOperation(s) => f.debug_tuple("LogOperation").field(s).finish(),
-            Self::McpClientCommunication(s) => {
-                f.debug_tuple("McpClientCommunication").field(s).finish()
-            },
             Self::MissingMessageTemplate(s) => f.debug_tuple("Configuration").field(s).finish(),
             Self::ParameterExtraction(s) => f.debug_tuple("ParameterExtraction").field(s).finish(),
             Self::ProcessManagement(s) => f.debug_tuple("ProcessManagement").field(s).finish(),
@@ -109,10 +98,6 @@ impl std::fmt::Debug for Error {
                 .debug_struct("Structured")
                 .field("result", &"<dyn ResultStruct>")
                 .finish(),
-            Self::TypeNotRegistered { type_name } => f
-                .debug_struct("TypeNotRegistered")
-                .field("type_name", type_name)
-                .finish(),
             Self::ToolCall { message, details } => f
                 .debug_struct("ToolCall")
                 .field("message", message)
@@ -131,11 +116,6 @@ impl Error {
         Self::General(format!("{MSG_FAILED_TO_PREFIX} {action}: {details}"))
     }
 
-    /// Create a "Cannot X" error
-    pub fn cannot(action: &str, reason: impl std::fmt::Display) -> Self {
-        Self::General(format!("{MSG_CANNOT_PREFIX} {action}: {reason}"))
-    }
-
     /// Create an "Invalid X" error
     pub fn invalid(what: &str, details: impl std::fmt::Display) -> Self {
         Self::InvalidArgument(format!("{MSG_INVALID_PREFIX} {what}: {details}"))
@@ -144,11 +124,6 @@ impl Error {
     /// Create a "Missing X" error
     pub fn missing(what: &str) -> Self {
         Self::InvalidArgument(format!("{MSG_MISSING_PREFIX} {what}"))
-    }
-
-    /// Create an "Unexpected X" error
-    pub fn unexpected(what: &str, details: impl std::fmt::Display) -> Self {
-        Self::General(format!("{MSG_UNEXPECTED_PREFIX} {what}: {details}"))
     }
 
     /// Create error for IO operations
@@ -160,48 +135,6 @@ impl Error {
         Self::LogOperation(format!(
             "{MSG_FAILED_TO_PREFIX} {operation} {}: {error}",
             path.display()
-        ))
-    }
-
-    /// Create error for process operations
-    pub fn process_failed(operation: &str, process: &str, error: impl std::fmt::Display) -> Self {
-        Self::ProcessManagement(format!(
-            "{MSG_FAILED_TO_PREFIX} {operation} process '{process}': {error}"
-        ))
-    }
-
-    /// Create error for watch operations
-    pub fn watch_failed(
-        operation: &str,
-        entity: Option<u32>,
-        error: impl std::fmt::Display,
-    ) -> Self {
-        entity.map_or_else(
-            || Self::WatchOperation(format!("{MSG_FAILED_TO_PREFIX} {operation}: {error}")),
-            |id| {
-                Self::WatchOperation(format!(
-                    "{MSG_FAILED_TO_PREFIX} {operation} for entity {id}: {error}"
-                ))
-            },
-        )
-    }
-
-    /// Create error for BRP request failures
-    pub fn brp_request_failed(operation: &str, error: impl std::fmt::Display) -> Self {
-        Self::BrpCommunication(format!(
-            "{MSG_FAILED_TO_PREFIX} {operation} BRP request: {error}"
-        ))
-    }
-
-    /// Create error for validation failures
-    pub fn validation_failed(what: &str, reason: impl std::fmt::Display) -> Self {
-        Self::InvalidArgument(format!("Validation failed for {what}: {reason}"))
-    }
-
-    /// Create error for stream operations
-    pub fn stream_failed(operation: &str, limit: impl std::fmt::Display) -> Self {
-        Self::WatchOperation(format!(
-            "{MSG_FAILED_TO_PREFIX} {operation}: limit {limit} exceeded"
         ))
     }
 
@@ -221,16 +154,6 @@ impl Error {
         Self::ToolCall {
             message: message.into(),
             details: Some(details),
-        }
-    }
-
-    /// Create a schema processing error with just a message
-    pub fn schema_processing(message: impl Into<String>) -> Self {
-        Self::SchemaProcessing {
-            message:   message.into(),
-            type_name: None,
-            operation: None,
-            details:   None,
         }
     }
 

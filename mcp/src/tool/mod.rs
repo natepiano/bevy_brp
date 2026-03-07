@@ -4,6 +4,7 @@ mod handler_context;
 mod json_response;
 mod large_response;
 mod parameters;
+mod registry;
 mod response_builder;
 mod tool_def;
 mod tool_name;
@@ -31,6 +32,8 @@ pub use types::HandlerResult;
 pub use types::ResultStruct;
 pub use types::ToolFn;
 pub use types::ToolResult;
+
+pub(super) fn get_all_tool_definitions() -> Vec<ToolDef> { registry::get_all_tool_definitions() }
 
 pub(super) fn extract_parameter_values<T>(ctx: &HandlerContext) -> crate::error::Result<T>
 where

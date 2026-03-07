@@ -15,7 +15,6 @@ use rmcp::model::Tool;
 use rmcp::service::RequestContext;
 
 use crate::tool::ToolDef;
-use crate::tool::ToolName;
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
@@ -30,7 +29,7 @@ pub struct McpService {
 
 impl McpService {
     pub fn new() -> Self {
-        let all_defs = ToolName::get_all_tool_definitions();
+        let all_defs = crate::tool::get_all_tool_definitions();
 
         // Initialize tool_defs HashMap
         let tool_defs = all_defs

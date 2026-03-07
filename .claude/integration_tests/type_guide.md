@@ -180,14 +180,14 @@ mcp__brp__world_mutate_components with parameters:
 
 **STEP 1**: Query for entity with Visibility:
 - Tool: mcp__brp__world_query
-- Filter: {"with": ["bevy_render::view::visibility::Visibility"]}
+- Filter: {"with": ["bevy_camera::visibility::Visibility"]}
 
 **STEP 2**: Attempt mutation with INCORRECT enum syntax:
 ```json
 mcp__brp__world_mutate_components with parameters:
 {
   "entity": [USE_ENTITY_ID_FROM_QUERY],
-  "component": "bevy_render::view::visibility::Visibility",
+  "component": "bevy_camera::visibility::Visibility",
   "path": ".Visible",
   "value": {},
   "port": {{PORT}}

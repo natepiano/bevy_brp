@@ -849,20 +849,13 @@ impl ToolName {
     }
 
     /// Convert this tool name to a complete `ToolDef`
-    fn to_tool_def(self) -> ToolDef {
+    pub(super) fn to_tool_def(self) -> ToolDef {
         ToolDef {
             tool_name:   self,
             annotations: self.get_annotations(),
             handler:     self.create_handler(),
             parameters:  self.get_parameters(),
         }
-    }
-
-    /// Get all tool definitions for registration with the MCP service
-    pub fn get_all_tool_definitions() -> Vec<ToolDef> {
-        use strum::IntoEnumIterator;
-
-        Self::iter().map(Self::to_tool_def).collect()
     }
 
     /// Get a short human-readable title for this tool
