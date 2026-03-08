@@ -2,10 +2,10 @@ use serde_json::Value;
 use serde_json::json;
 
 use super::constants::JSONRPC_DEFAULT_ID;
-use super::constants::JSONRPC_FIELD_PARAMS;
 use super::constants::JSONRPC_FIELD;
 use super::constants::JSONRPC_FIELD_ID;
 use super::constants::JSONRPC_FIELD_METHOD;
+use super::constants::JSONRPC_FIELD_PARAMS;
 use super::constants::JSONRPC_VERSION;
 
 /// Builder for constructing raw JSON-RPC 2.0 requests

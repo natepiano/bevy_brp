@@ -14,7 +14,7 @@ use serde::de::Visitor;
 ///
 /// Accepts both `42` and `"42"` for compatibility with MCP clients that may
 /// send numeric parameters as strings.
-pub(super) fn deserialize_number_or_string<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+pub fn deserialize_number_or_string<'de, D, T>(deserializer: D) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
     T: TryFrom<u64> + FromStr + fmt::Display,

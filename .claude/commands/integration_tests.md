@@ -480,6 +480,8 @@ Examples:
 
 **Before running tests:**
 
+0. **Record Start Time**: Run `date +%s` and store as `SUITE_START_EPOCH` for wall clock timing
+
 1. Execute <PrebuildWorkspace/>
 
 2. **Clean up stale processes** from previous test runs:
@@ -510,7 +512,7 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
 
 **For each batch of up to PARALLEL_TESTS tests:**
 
-1. **Select Next Batch**: Take next PARALLEL_TESTS tests from the test list
+1. **Select Next Batch**: Take next PARALLEL_TESTS tests from the test list. Track the current batch number (starting from 1).
 
 2. **Analyze Batch App Requirements**:
    - For single-app tests: Identify unique app_name values in this batch (excluding "N/A" and "various"), count instances needed per app_name
@@ -593,8 +595,12 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
     - If more tests remain: Return to step 1 for next batch
     - If all tests complete: Proceed to step 13
 
-13. **Rebalance Test Config**:
+13. **Compute Wall Clock Time and Rebalance**:
+    - Run `date +%s` and store as `SUITE_END_EPOCH`
+    - Compute `TOTAL_WALL_CLOCK_SECONDS = SUITE_END_EPOCH - SUITE_START_EPOCH`
+    - Convert to minutes and seconds for display (e.g., "4m 23s")
     - Collect `duration_ms` from each test agent's task notification (convert to seconds: `duration_ms / 1000`)
+    - Record which batch number each test ran in
     - Build key=value pairs: `test_name=seconds` for every test
     - Run the rebalance script:
       ```bash
@@ -629,11 +635,16 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
 - **Skipped**: Y
 - **Critical Issues**: 0 (execution stops on critical issues)
 - **Total Batches**: Z
-- **Total Execution Time**: ~X minutes
+- **Total Wall Clock Time**: Xm Ys
 - **Execution Strategy**: Just-in-time batch execution (${PARALLEL_TESTS} tests per batch)
 
 ## Test Results Summary
-[List each test by name with its result count, avoiding duplication]
+
+| Test | Batch | Result | Duration | Steps |
+|------|-------|--------|----------|-------|
+| test_name | 1 | PASSED | 35.3s | 6/6 |
+| test_name | 2 | PASSED | 45.6s | 11/11 |
+[... one row per test, ordered by execution (batch 1 tests first, then batch 2, etc.)]
 
 ## ⚠️ SKIPPED TESTS
 [List of skipped tests with reasons]
@@ -652,20 +663,16 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
 **Failed Test**: [test_name]
 **Failed Batch**: Batch X (tests Y-Z)
 **Failure Type**: [Critical Issues/Failed Tests/etc.]
+**Total Wall Clock Time**: Xm Ys
 
 ### Failure Details
 [Include full failure details from the failed test]
 
-### Batch Information
-- **Batch Apps Launched**: [app_name on port X, ...]
-- **Batch Apps Cleaned Up**: Yes/No
-- **Tests in Failed Batch**: [test names]
-- **Results**: [passed count] passed, [failed count] failed
+### Test Results Summary
 
-### Tests Completed Before Failure
-- **Completed Batches**: X batches
-- **Completed Tests**: Y tests
-- **Results**: [Brief summary of completed tests from previous batches]
+| Test | Batch | Result | Duration | Steps |
+|------|-------|--------|----------|-------|
+[... one row per executed test with batch number, result, duration_ms/1000, and step counts]
 
 ### Tests Not Executed
 - **Remaining Tests**: Z tests

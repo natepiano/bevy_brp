@@ -96,7 +96,7 @@ impl From<Annotation> for ToolAnnotations {
             DomainOfInteraction::LocalOnly => Some(false),
         };
 
-        ToolAnnotations::from_raw(
+        Self::from_raw(
             Some(brp.title),
             read_only,
             destructive,

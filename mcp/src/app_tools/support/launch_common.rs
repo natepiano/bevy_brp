@@ -11,12 +11,12 @@ use serde::Serialize;
 
 use super::build_freshness::FreshnessCheckResult;
 use super::build_freshness::check_target_freshness;
+use super::cargo_detector::BevyTarget;
 use super::errors::NoTargetsFoundError;
 use super::errors::PathDisambiguationError;
 use super::errors::TargetNotFoundAtSpecifiedPath;
 use super::process;
 use crate::app_tools::launch_params::LaunchBevyBinaryParams;
-use super::cargo_detector::BevyTarget;
 use crate::error::Error;
 use crate::error::Result;
 

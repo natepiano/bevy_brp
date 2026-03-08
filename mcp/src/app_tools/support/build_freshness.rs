@@ -235,6 +235,7 @@ fn push_dependency(dependencies: &mut Vec<PathBuf>, current: &mut String, base_d
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use std::fs;
     use std::thread;
