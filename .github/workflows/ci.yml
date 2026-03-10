@@ -136,3 +136,35 @@ jobs:
           WINIT_UNIX_BACKEND: "x11"
           # Force mold linker to avoid rust-lld/LLVM crashes on CI runners
           RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+
+  mend:
+    name: Mend Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Install cargo-mend
+        run: cargo install --git https://github.com/natepiano/cargo-mend cargo-mend
+
+      - name: Install mold linker
+        uses: rui314/setup-mold@v1
+
+      - name: Install and cache Linux dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libudev-dev libasound2-dev pkg-config clang libwayland-dev libxkbcommon-dev
+          version: 1.0
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run cargo mend
+        run: cargo mend
+        env:
+          CARGO_TERM_COLOR: never
