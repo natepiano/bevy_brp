@@ -36,6 +36,19 @@ jobs:
       - name: Check formatting
         run: cargo +nightly fmt -- --check
 
+  taplo:
+    name: Taplo Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Taplo
+        run: cargo install taplo-cli --locked
+
+      - name: Check TOML formatting
+        run: taplo fmt --check
+
   # Clippy
   clippy:
     name: Clippy
