@@ -482,7 +482,6 @@ fn create_keyboard_events_with_text(
 ) -> Vec<bevy::input::keyboard::KeyboardInput> {
     use bevy::input::keyboard::Key;
     use bevy::input::keyboard::NativeKey;
-    use smol_str::SmolStr;
 
     let state = if press {
         ButtonState::Pressed
@@ -519,17 +518,17 @@ fn create_keyboard_events_with_text(
                 wrapper.to_char()
             };
 
-            // Build logical_key and text based on whether this is a printable character
+            // Build logical_key and text based on whether this is a printable character.
             let (logical_key, text) =
                 char_opt.map_or((Key::Unidentified(NativeKey::Unidentified), None), |c| {
-                    let s = SmolStr::new_inline(&c.to_string());
+                    let s: String = c.to_string();
                     // Only populate text on press events, not release, and only for the target key
                     let text = if press && is_target_key {
-                        Some(s.clone())
+                        Some(s.clone().into())
                     } else {
                         None
                     };
-                    (Key::Character(s), text)
+                    (Key::Character(s.into()), text)
                 });
 
             bevy::input::keyboard::KeyboardInput {

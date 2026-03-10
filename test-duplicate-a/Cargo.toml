@@ -18,7 +18,5 @@ name = "extras_plugin_duplicate"
 path = "examples/extras_plugin_duplicate.rs"
 
 [dependencies]
-bevy = { workspace = true, default-features = false, features = [
-  "bevy_remote",
-] }
+bevy            = { workspace = true, default-features = true }
 bevy_brp_extras = { path = "../extras" }

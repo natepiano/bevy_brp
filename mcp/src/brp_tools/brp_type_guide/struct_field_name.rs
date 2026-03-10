@@ -9,7 +9,7 @@ pub(super) struct StructFieldName(String);
 
 impl StructFieldName {
     /// Get the field name as a string slice
-    pub fn as_str(&self) -> &str { &self.0 }
+    pub(super) fn as_str(&self) -> &str { &self.0 }
 }
 
 impl std::fmt::Display for StructFieldName {

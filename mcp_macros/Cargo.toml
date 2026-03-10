@@ -1,14 +1,14 @@
 [package]
-authors     = ["natepiano <slicks.curable.0k@icloud.com>"]
-categories  = ["development-tools", "game-development"]
-description = "Procedural macros for bevy_brp_mcp"
-edition     = "2024"
-keywords    = ["bevy", "brp", "macros", "mcp"]
-license     = "MIT OR Apache-2.0"
-name        = "bevy_brp_mcp_macros"
-readme      = "README.md"
+authors              = ["natepiano <slicks.curable.0k@icloud.com>"]
+categories           = ["development-tools", "game-development"]
+description          = "Procedural macros for bevy_brp_mcp"
+edition              = "2024"
+keywords             = ["bevy", "brp", "macros", "mcp"]
+license              = "MIT OR Apache-2.0"
+name                 = "bevy_brp_mcp_macros"
+readme               = "README.md"
 repository.workspace = true
-version     = "0.18.7"
+version              = "0.18.7"
 
 [lib]
 proc-macro = true

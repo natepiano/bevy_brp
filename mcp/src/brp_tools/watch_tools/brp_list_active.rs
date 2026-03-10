@@ -16,7 +16,7 @@ use crate::tool::ToolResult;
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WatchInfo {
+struct WatchInfo {
     /// Watch ID
     pub watch_id:   u32,
     /// Entity ID being watched

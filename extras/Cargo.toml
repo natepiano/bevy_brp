@@ -15,20 +15,16 @@ repository.workspace = true
 version = "0.18.7"
 
 [dependencies]
-# Extras needs many Bevy features
+# Minimal Bevy features for extras library:
+# - bevy_render: Screenshot/ScreenshotCaptured (transitively enables bevy_window, bevy_camera, bevy_image)
+# - bevy_log: info!/warn!/error! macros in bevy::prelude
+# - serialize: Serialize/Deserialize impls on bevy input types (MouseButton, MouseScrollUnit, etc.)
+# - png: screenshot PNG support and ImageFormat::from_extension("png") check
 bevy = { workspace = true, features = [
-  "bevy_core_pipeline",
   "bevy_log",
   "bevy_render",
-  "bevy_sprite",
-  "bevy_text",
-  "bevy_ui",
-  "serialize",
-  "bevy_window",
-  "bevy_winit",
-  "default_font",
-  "gamepad",
   "png",
+  "serialize",
 ] }
 
 # Direct dependency to control default features (bevy/bevy_remote pulls in HTTP transport
@@ -37,14 +33,12 @@ bevy_remote = { version = "0.18", default-features = false }
 
 serde.workspace        = true
 serde_json.workspace   = true
-smol_str.workspace     = true
 strum.workspace        = true
 strum_macros.workspace = true
 thiserror.workspace    = true
 
-# On native, enable HTTP transport and x11 platform backend
+# On native, enable HTTP transport (default features include async-io)
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-bevy = { workspace = true, features = ["x11"] }
 bevy_remote = { version = "0.18" }
 
 [features]

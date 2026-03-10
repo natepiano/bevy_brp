@@ -69,7 +69,7 @@ use crate::log_tools::SetTracingLevelParams;
 /// Call information for tracking tool execution
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
-pub enum CallInfo {
+pub(super) enum CallInfo {
     /// Local tool execution (no BRP involved)
     Local {
         /// The MCP tool name (e.g., `brp_status`)

@@ -1,0 +1,2 @@
+[visibility]
+allow_pub_mod = ["mcp/src/brp_tools/tools/mod.rs"]

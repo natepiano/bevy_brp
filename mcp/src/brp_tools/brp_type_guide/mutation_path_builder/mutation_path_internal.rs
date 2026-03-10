@@ -68,7 +68,7 @@ pub(super) struct MutationPathInternal {
 
 impl MutationPathInternal {
     /// Check if this path is a direct child at the given parent depth
-    pub const fn is_direct_child_at_depth(&self, parent_depth: usize) -> bool {
+    pub(super) const fn is_direct_child_at_depth(&self, parent_depth: usize) -> bool {
         self.depth == parent_depth + 1
     }
 

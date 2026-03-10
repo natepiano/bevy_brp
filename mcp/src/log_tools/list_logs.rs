@@ -121,7 +121,7 @@ fn list_log_files(
 
 /// Individual log file entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogFileInfo {
+struct LogFileInfo {
     /// The filename
     pub filename:   String,
     /// The app name extracted from the filename

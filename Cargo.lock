@@ -577,7 +577,6 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "smol_str",
  "strum",
  "strum_macros",
  "thiserror 2.0.18",

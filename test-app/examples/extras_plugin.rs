@@ -113,7 +113,8 @@ use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
 
 /// Resource to track keyboard input history
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
 struct KeyboardInputHistory {
     /// Currently pressed keys
     active_keys:          Vec<String>,
@@ -126,6 +127,7 @@ struct KeyboardInputHistory {
     /// Complete modifiers from the last combination
     complete_modifiers:   Vec<String>,
     /// Time when the last key was pressed
+    #[reflect(ignore)]
     press_time:           Option<Instant>,
     /// Duration between press and release in milliseconds
     last_duration_ms:     Option<u64>,
