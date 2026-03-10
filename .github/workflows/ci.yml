@@ -148,9 +148,12 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
+          components: rust-src, rustc-dev, llvm-tools-preview
 
       - name: Install cargo-mend
         run: cargo install --git https://github.com/natepiano/cargo-mend cargo-mend
+        env:
+          RUSTC_BOOTSTRAP: "1"
 
       - name: Install mold linker
         uses: rui314/setup-mold@v1
