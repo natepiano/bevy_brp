@@ -546,7 +546,15 @@ fn main() {
 struct CurrentPort(u16);
 
 /// Minimize the window immediately on startup
+/// On Linux/Wayland, minimizing causes a swap chain timeout panic because the
+/// compositor stops providing frames. Skip minimization on Linux.
 fn minimize_window_on_start(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
+    #[cfg(target_os = "linux")]
+    {
+        let _ = &mut windows; // suppress unused warning
+        return;
+    }
+    #[cfg(not(target_os = "linux"))]
     for mut window in &mut windows {
         window.set_minimized(true);
     }
