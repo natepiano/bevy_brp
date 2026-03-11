@@ -13,6 +13,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_TERM_PROGRESS_WHEN: always
   CARGO_TERM_PROGRESS_WIDTH: 80
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 # Cancel duplicate runs
 concurrency:
