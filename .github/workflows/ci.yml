@@ -145,8 +145,8 @@ jobs:
           sudo rm -rf /opt/ghc
           df -h
 
-      - name: Run lib and integration tests
-        run: cargo nextest run --all-features --workspace --lib --tests
+      - name: Run test targets
+        run: cargo nextest run --all-features --workspace --tests
         env:
           # Disable GPU/windowing for headless testing
           WGPU_BACKEND: "gl"
