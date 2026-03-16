@@ -8,6 +8,8 @@ The response includes a launched_as field ("app" or "example") indicating how th
 
 If the target is not found as either type, returns an enriched error with an available_targets array listing all apps and examples (name, kind, path). Present these to the user as a table so they can pick the correct target.
 
+Optional args parameter passes command-line arguments to the launched process. For apps, args are appended directly. For examples, args are passed after a `--` separator (cargo run --example foo -- args...).
+
 Features: Non-blocking execution, temp directory logs, debug/release profiles, multi-instance support.
 
 Multi-instance launching:

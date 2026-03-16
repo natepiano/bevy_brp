@@ -46,6 +46,10 @@ pub struct LaunchBevyBinaryParams {
     /// Search order: "app" searches apps first (default), "example" searches examples first
     #[serde(default)]
     pub search_order:   SearchOrder,
+    /// Optional command-line arguments to pass to the launched process
+    #[serde(default)]
+    #[to_metadata(skip_if_none)]
+    pub args:           Option<Vec<String>>,
 }
 
 impl ToLaunchParams for LaunchBevyBinaryParams {
@@ -61,6 +65,7 @@ impl ToLaunchParams for LaunchBevyBinaryParams {
             instance_count: self.instance_count,
             env:            self.env.clone(),
             search_order:   self.search_order.clone(),
+            args:           self.args.clone(),
         }
     }
 }

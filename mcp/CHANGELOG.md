@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Response includes `launched_as` field ("app" or "example") indicating how the target was resolved
 - Not-found errors now list all available targets (apps and examples) with names, kinds, and paths
 
+### Added
+- Add optional `args` parameter to `brp_launch` for passing command-line arguments to the launched process. For apps, args are appended directly; for examples, args are passed after a `--` separator.
+
 ### Changed
 - App launches use a lock-free freshness check before invoking Cargo. If the app binary appears up to date, it launches directly; if the binary is missing, stale, or freshness is inconclusive, it falls back to `cargo build`.
 

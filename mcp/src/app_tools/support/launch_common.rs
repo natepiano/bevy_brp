@@ -36,6 +36,7 @@ struct LaunchConfig<T> {
     port:           Port,
     instance_count: InstanceCount,
     env:            Option<HashMap<String, String>>,
+    args:           Option<Vec<String>>,
     _phantom:       PhantomData<T>,
 }
 
@@ -48,6 +49,7 @@ impl<T> LaunchConfig<T> {
         port: Port,
         instance_count: InstanceCount,
         env: Option<HashMap<String, String>>,
+        args: Option<Vec<String>>,
     ) -> Self {
         Self {
             target_name,
@@ -56,6 +58,7 @@ impl<T> LaunchConfig<T> {
             port,
             instance_count,
             env,
+            args,
             _phantom: PhantomData,
         }
     }
@@ -124,6 +127,7 @@ pub struct LaunchParams {
     pub instance_count: InstanceCount,
     pub env:            Option<HashMap<String, String>>,
     pub search_order:   SearchOrder,
+    pub args:           Option<Vec<String>>,
 }
 
 /// Trait for converting typed parameters to `LaunchParams`
@@ -271,6 +275,7 @@ fn build_cargo_example_command(
     profile: &str,
     port: Option<Port>,
     env: Option<&HashMap<String, String>>,
+    args: Option<&[String]>,
 ) -> Command {
     let mut cmd = Command::new("cargo");
     cmd.arg("run").arg("--example").arg(example_name);
@@ -278,6 +283,11 @@ fn build_cargo_example_command(
     // Add profile flag if release
     if profile == "release" {
         cmd.arg("--release");
+    }
+
+    // Separate cargo args from app args with `--`
+    if let Some(user_args) = args {
+        cmd.arg("--").args(user_args);
     }
 
     // Set BRP-related environment variables
@@ -294,8 +304,12 @@ fn build_app_command(
     binary_path: &Path,
     port: Option<Port>,
     env: Option<&HashMap<String, String>>,
+    args: Option<&[String]>,
 ) -> Command {
     let mut cmd = Command::new(binary_path);
+    if let Some(user_args) = args {
+        cmd.args(user_args);
+    }
     set_brp_env_vars(&mut cmd, port);
     set_user_env_vars(&mut cmd, env);
     cmd
@@ -834,6 +848,7 @@ impl FromLaunchParams for LaunchConfig<App> {
             params.port,
             params.instance_count,
             params.env.clone(),
+            params.args.clone(),
         )
     }
 }
@@ -858,6 +873,7 @@ impl LaunchConfigTrait for LaunchConfig<App> {
             &target.get_binary_path(self.profile()),
             Some(self.port),
             self.env.as_ref(),
+            self.args.as_deref(),
         )
     }
 
@@ -873,6 +889,7 @@ impl FromLaunchParams for LaunchConfig<Example> {
             params.port,
             params.instance_count,
             params.env.clone(),
+            params.args.clone(),
         )
     }
 }
@@ -898,6 +915,7 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
             self.profile(),
             Some(self.port),
             self.env.as_ref(),
+            self.args.as_deref(),
         )
     }
 

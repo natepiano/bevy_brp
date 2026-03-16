@@ -72,6 +72,14 @@ fn setup(mut commands: Commands) {
 fn log_startup() {
     let port = std::env::var("BRP_EXTRAS_PORT").unwrap_or_else(|_| "15702".to_string());
     debug!("test_app starting on port {port}");
+
+    // Log --marker value if provided (used by args integration test)
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(pos) = args.iter().position(|a| a == "--marker")
+        && let Some(value) = args.get(pos + 1)
+    {
+        info!("MARKER:{value}");
+    }
 }
 
 fn rotate_sprite(time: Res<Time>, mut query: Query<(&mut Transform, &Rotator)>) {

@@ -46,4 +46,12 @@ fn setup(mut commands: Commands) {
         },
         TextColor(Color::WHITE),
     ));
+
+    // Log --marker value if provided (used by args integration test)
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(pos) = args.iter().position(|a| a == "--marker")
+        && let Some(value) = args.get(pos + 1)
+    {
+        info!("MARKER:{value}");
+    }
 }
