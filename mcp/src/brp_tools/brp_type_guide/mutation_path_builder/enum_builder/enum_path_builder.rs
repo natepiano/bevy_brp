@@ -60,8 +60,8 @@ use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
 use crate::error::Error;
 use crate::error::Result;
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
+use crate::support::JsonObjectAccess;
+use crate::support::SchemaField;
 
 /// Extension trait for sorting variant groups deterministically
 trait SortedVariantGroups {

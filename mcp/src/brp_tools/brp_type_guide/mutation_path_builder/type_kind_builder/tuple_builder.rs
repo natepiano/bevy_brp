@@ -22,7 +22,7 @@ use super::TupleMutationBuilder;
 use super::TypeKindBuilder;
 use crate::error::Error;
 use crate::error::Result;
-use crate::json_object::JsonObjectAccess;
+use crate::support::JsonObjectAccess;
 
 impl TypeKindBuilder for TupleMutationBuilder {
     type Item = PathKind;

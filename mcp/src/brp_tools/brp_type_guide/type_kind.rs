@@ -10,8 +10,8 @@ use strum::AsRefStr;
 use strum::Display;
 use strum::EnumString;
 
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
+use crate::support::JsonObjectAccess;
+use crate::support::SchemaField;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, AsRefStr, EnumString)]
 #[serde(rename_all = "PascalCase")]

@@ -93,8 +93,8 @@ use super::new_types::VariantName;
 use super::path_kind::PathKind;
 use super::types_internal::PathAction;
 use crate::error::Error;
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
+use crate::support::JsonObjectAccess;
+use crate::support::SchemaField;
 
 /// Type-safe wrapper for recursion depth tracking
 ///

@@ -16,11 +16,9 @@ use rmcp::transport::stdio;
 mod app_tools;
 mod brp_tools;
 mod error;
-mod json_object;
-mod json_schema;
 mod log_tools;
 mod mcp_service;
-mod serde_helpers;
+mod support;
 mod tool;
 
 #[tokio::main]

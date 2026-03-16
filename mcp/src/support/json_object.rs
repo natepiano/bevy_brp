@@ -7,8 +7,8 @@
 use serde_json::Map;
 use serde_json::Value;
 
+use super::SchemaField;
 use crate::brp_tools::BrpTypeName;
-use crate::json_schema::SchemaField;
 
 /// JSON Schema reference prefix for type definitions
 const SCHEMA_REF_PREFIX: &str = "#/$defs/";

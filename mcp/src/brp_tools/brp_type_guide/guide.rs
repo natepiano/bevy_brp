@@ -26,9 +26,9 @@ use super::response_types::SchemaInfo;
 use super::type_kind::TypeKind;
 use super::type_knowledge::TypeKnowledge;
 use crate::error::Result;
-use crate::json_object::IntoStrings;
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
+use crate::support::IntoStrings;
+use crate::support::JsonObjectAccess;
+use crate::support::SchemaField;
 
 /// this is all of the information we provide about a type
 /// we serialize this to our output - and we call it `type_guide`

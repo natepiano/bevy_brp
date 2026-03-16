@@ -13,10 +13,10 @@ use serde_json::Value;
 use strum::Display;
 use strum::EnumString;
 
-use crate::json_object::IntoStrings;
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::JsonSchemaType;
-use crate::json_schema::SchemaField;
+use crate::support::IntoStrings;
+use crate::support::JsonObjectAccess;
+use crate::support::JsonSchemaType;
+use crate::support::SchemaField;
 
 /// Trait for parameter types used in tools
 ///

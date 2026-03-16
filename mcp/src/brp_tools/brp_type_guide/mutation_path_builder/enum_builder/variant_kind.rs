@@ -13,8 +13,8 @@ use super::super::type_parser;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::error::Error;
 use crate::error::Result;
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
+use crate::support::JsonObjectAccess;
+use crate::support::SchemaField;
 
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]

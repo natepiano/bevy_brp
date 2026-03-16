@@ -14,8 +14,27 @@
       "app_type": "example"
     },
     {
-      "test_name": "watch_list",
-      "test_file": ".claude/integration_tests/watch_list.md",
+      "test_name": "apps",
+      "test_file": ".claude/integration_tests/apps.md",
+      "apps": [
+        {
+          "app_name": "test_app",
+          "app_type": "app",
+          "label": "main_app"
+        },
+        {
+          "app_name": "test_app",
+          "app_type": "app",
+          "label": "env_app",
+          "env": {
+            "RUST_LOG": "test_app=debug"
+          }
+        }
+      ]
+    },
+    {
+      "test_name": "query_basic",
+      "test_file": ".claude/integration_tests/query_basic.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
@@ -26,22 +45,10 @@
       "app_type": "example"
     },
     {
-      "test_name": "data_operations",
-      "test_file": ".claude/integration_tests/data_operations.md",
+      "test_name": "query_filtered",
+      "test_file": ".claude/integration_tests/query_filtered.md",
       "app_name": "extras_plugin",
       "app_type": "example"
-    },
-    {
-      "test_name": "wasm",
-      "test_file": ".claude/integration_tests/wasm.md",
-      "app_name": "various",
-      "app_type": null
-    },
-    {
-      "test_name": "path_errors",
-      "test_file": ".claude/integration_tests/path_errors.md",
-      "app_name": "various",
-      "app_type": null
     },
     {
       "test_name": "shutdown",
@@ -68,69 +75,14 @@
       ]
     },
     {
-      "test_name": "extras_text",
-      "test_file": ".claude/integration_tests/extras_text.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "trigger_event",
-      "test_file": ".claude/integration_tests/trigger_event.md",
-      "app_name": "event_test",
-      "app_type": "example"
-    },
-    {
-      "test_name": "list",
-      "test_file": ".claude/integration_tests/list.md",
-      "app_name": "N/A",
-      "app_type": null
-    },
-    {
-      "test_name": "apps",
-      "test_file": ".claude/integration_tests/apps.md",
-      "apps": [
-        {
-          "app_name": "test_app",
-          "app_type": "app",
-          "label": "main_app"
-        },
-        {
-          "app_name": "test_app",
-          "app_type": "app",
-          "label": "env_app",
-          "env": {
-            "RUST_LOG": "test_app=debug"
-          }
-        }
-      ]
-    },
-    {
-      "test_name": "type_guide",
-      "test_file": ".claude/integration_tests/type_guide.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "extras_keyboard",
-      "test_file": ".claude/integration_tests/extras_keyboard.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "query_basic",
-      "test_file": ".claude/integration_tests/query_basic.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
       "test_name": "introspection",
       "test_file": ".claude/integration_tests/introspection.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
     {
-      "test_name": "query_filtered",
-      "test_file": ".claude/integration_tests/query_filtered.md",
+      "test_name": "get",
+      "test_file": ".claude/integration_tests/get.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
@@ -141,15 +93,63 @@
       "app_type": "example"
     },
     {
+      "test_name": "list",
+      "test_file": ".claude/integration_tests/list.md",
+      "app_name": "N/A",
+      "app_type": null
+    },
+    {
+      "test_name": "watch_list",
+      "test_file": ".claude/integration_tests/watch_list.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "data_operations",
+      "test_file": ".claude/integration_tests/data_operations.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "extras_keyboard",
+      "test_file": ".claude/integration_tests/extras_keyboard.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "type_guide",
+      "test_file": ".claude/integration_tests/type_guide.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "wasm",
+      "test_file": ".claude/integration_tests/wasm.md",
+      "app_name": "various",
+      "app_type": null
+    },
+    {
+      "test_name": "extras_text",
+      "test_file": ".claude/integration_tests/extras_text.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
       "test_name": "mouse_input",
       "test_file": ".claude/integration_tests/mouse_input.md",
       "app_name": "mouse_test",
       "app_type": "example"
     },
     {
-      "test_name": "get",
-      "test_file": ".claude/integration_tests/get.md",
-      "app_name": "extras_plugin",
+      "test_name": "path_errors",
+      "test_file": ".claude/integration_tests/path_errors.md",
+      "app_name": "various",
+      "app_type": null
+    },
+    {
+      "test_name": "trigger_event",
+      "test_file": ".claude/integration_tests/trigger_event.md",
+      "app_name": "event_test",
       "app_type": "example"
     },
     {

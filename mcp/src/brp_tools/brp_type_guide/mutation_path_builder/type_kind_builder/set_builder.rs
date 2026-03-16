@@ -23,8 +23,8 @@ use super::SetMutationBuilder;
 use super::TypeKindBuilder;
 use crate::error::Error;
 use crate::error::Result;
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
+use crate::support::JsonObjectAccess;
+use crate::support::SchemaField;
 
 impl TypeKindBuilder for SetMutationBuilder {
     type Item = PathKind;

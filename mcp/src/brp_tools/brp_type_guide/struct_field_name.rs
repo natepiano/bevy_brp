@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::json_schema::SchemaField;
+use crate::support::SchemaField;
 
 /// Newtype for a struct field name used in mutation paths and variant signatures
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]

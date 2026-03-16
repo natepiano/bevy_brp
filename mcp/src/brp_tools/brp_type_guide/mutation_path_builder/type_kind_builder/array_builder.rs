@@ -22,8 +22,8 @@ use super::TypeKindBuilder;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::Error;
 use crate::error::Result;
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
+use crate::support::JsonObjectAccess;
+use crate::support::SchemaField;
 
 impl TypeKindBuilder for ArrayMutationBuilder {
     type Item = PathKind;

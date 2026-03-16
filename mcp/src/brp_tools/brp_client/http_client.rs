@@ -17,7 +17,7 @@ use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
-use crate::json_object::JsonObjectAccess;
+use crate::support::JsonObjectAccess;
 use crate::tool::BrpMethod;
 use crate::tool::ParameterName;
 

@@ -30,8 +30,8 @@ use super::types_internal::MutabilityIssueTarget;
 use super::types_response::MutationPathExternal;
 use super::types_response::PathInfoParams;
 use super::types_response::RootExample;
-use crate::json_object::JsonObjectAccess;
-use crate::json_schema::SchemaField;
+use crate::support::JsonObjectAccess;
+use crate::support::SchemaField;
 
 type ResolvedEnumPathInfo = (
     Option<String>,

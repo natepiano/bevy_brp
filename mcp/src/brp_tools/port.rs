@@ -12,7 +12,7 @@ use serde::Serialize;
 
 use super::constants::DEFAULT_BRP_EXTRAS_PORT;
 use super::constants::VALID_PORT_RANGE;
-use crate::serde_helpers::deserialize_number_or_string;
+use crate::support::deserialize_number_or_string;
 
 /// Port number for BRP - defaults to 15702
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize)]

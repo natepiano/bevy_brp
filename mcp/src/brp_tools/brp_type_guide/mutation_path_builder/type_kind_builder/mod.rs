@@ -11,7 +11,7 @@ use super::recursion_context::RecursionContext;
 use super::types_internal::Example;
 use super::types_internal::PathAction;
 use crate::error::Result;
-use crate::json_object::JsonObjectAccess;
+use crate::support::JsonObjectAccess;
 
 mod array_builder;
 mod list_builder;

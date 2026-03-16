@@ -11,7 +11,7 @@ use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
-use crate::serde_helpers::deserialize_number_or_string;
+use crate::support::deserialize_number_or_string;
 
 /// Minimum number of instances (1)
 const MIN_INSTANCE_COUNT: u16 = 1;
