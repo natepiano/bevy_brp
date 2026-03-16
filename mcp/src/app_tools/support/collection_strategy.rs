@@ -69,7 +69,7 @@ impl CollectionStrategy for BevyAppsStrategy {
             "workspace_root": item.workspace_root.display().to_string(),
             "manifest_path": item.manifest_path.display().to_string(),
             // The relative_path field is designed for round-trip compatibility with launch functions.
-            // This path can be used directly in brp_launch_bevy_app's path parameter
+            // This path can be used directly in brp_launch's path parameter
             // to disambiguate between apps with the same name in different locations.
             "relative_path": relative_path,
             "builds": create_builds_json(item)
@@ -144,7 +144,7 @@ impl CollectionStrategy for BevyExamplesStrategy {
             "package_name": item.package_name,
             "manifest_path": item.manifest_path.display().to_string(),
             // The relative_path field is designed for round-trip compatibility with launch functions.
-            // This path can be used directly in brp_launch_bevy_example's path parameter
+            // This path can be used directly in brp_launch's path parameter
             // to disambiguate between examples with the same name in different locations.
             "relative_path": relative_path
         })

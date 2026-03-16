@@ -18,6 +18,5 @@ pub use brp_shutdown::Shutdown;
 pub use brp_shutdown::ShutdownParams;
 pub use brp_status::Status;
 pub use brp_status::StatusParams;
-pub use launch_handlers::create_launch_bevy_app_handler;
-pub use launch_handlers::create_launch_bevy_example_handler;
+pub use launch_handlers::create_launch_handler;
 pub use launch_params::LaunchBevyBinaryParams;

@@ -1,0 +1,22 @@
+Launches Bevy apps or examples using unified target search.
+
+Searches for the target by name across both apps and examples. Use search_order to control priority:
+- "app" (default): searches apps first, then examples
+- "example": searches examples first, then apps
+
+The response includes a launched_as field ("app" or "example") indicating how the target was resolved.
+
+If the target is not found as either type, returns an enriched error with an available_targets array listing all apps and examples (name, kind, path). Present these to the user as a table so they can pick the correct target.
+
+Features: Non-blocking execution, temp directory logs, debug/release profiles, multi-instance support.
+
+Multi-instance launching:
+- When instance_count > 1, launches multiple instances on sequential ports starting from the specified port.
+- Each instance gets its own log file with port in filename
+
+Notes:
+- App launches use a lock-free freshness check before invoking Cargo. If the binary appears up to date, the tool launches it directly without running cargo build. If the binary is missing, stale, or freshness cannot be determined confidently, the tool runs cargo build first.
+- Example launches always invoke cargo run --example. Cargo decides whether the example is already fresh or needs rebuilding.
+- If multiple targets with the same name exist in different paths, you must specify the path parameter.
+- Path matching supports: full relative paths (e.g., "bevy_brp/my-app"), partial paths (e.g., "my-app"), or workspace names for disambiguation.
+- When specifying a port, bevy_brp_extras is required to support listening on the environment variable BRP_EXTRAS_PORT.

@@ -348,10 +348,8 @@ pub enum ToolName {
     BrpListBevyExamples,
     /// `brp_list_brp_apps` - List BRP-enabled Bevy apps
     BrpListBrpApps,
-    /// `brp_launch_bevy_app` - Launch Bevy applications
-    BrpLaunchBevyApp,
-    /// `brp_launch_bevy_example` - Launch Bevy examples
-    BrpLaunchBevyExample,
+    /// `brp_launch` - Launch Bevy apps or examples
+    BrpLaunch,
     /// `brp_shutdown` - Shutdown running Bevy applications
     #[brp_tool(brp_method = "brp_extras/shutdown")]
     BrpShutdown,
@@ -587,13 +585,8 @@ impl ToolName {
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
             ),
-            Self::BrpLaunchBevyApp => Annotation::new(
-                "launch bevy app",
-                ToolCategory::App,
-                EnvironmentImpact::AdditiveNonIdempotent,
-            ),
-            Self::BrpLaunchBevyExample => Annotation::new(
-                "launch bevy example",
+            Self::BrpLaunch => Annotation::new(
+                "launch bevy app or example",
                 ToolCategory::App,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
@@ -765,9 +758,7 @@ impl ToolName {
             | Self::BrpListActiveWatches => None,
 
             // and thest of these app and watch tools do have parameters
-            Self::BrpLaunchBevyApp | Self::BrpLaunchBevyExample => {
-                Some(parameters::build_parameters_from::<LaunchBevyBinaryParams>)
-            },
+            Self::BrpLaunch => Some(parameters::build_parameters_from::<LaunchBevyBinaryParams>),
             Self::BrpStopWatch => Some(parameters::build_parameters_from::<StopWatchParams>),
             Self::BrpListLogs => Some(parameters::build_parameters_from::<ListLogsParams>),
             Self::BrpReadLog => Some(parameters::build_parameters_from::<ReadLogParams>),
@@ -834,8 +825,7 @@ impl ToolName {
             Self::BrpDeleteLogs => Arc::new(DeleteLogs),
             #[cfg(feature = "mcp-debug")]
             Self::BrpGetTraceLogPath => Arc::new(GetTraceLogPath),
-            Self::BrpLaunchBevyApp => Arc::new(app_tools::create_launch_bevy_app_handler()),
-            Self::BrpLaunchBevyExample => Arc::new(app_tools::create_launch_bevy_example_handler()),
+            Self::BrpLaunch => Arc::new(app_tools::create_launch_handler()),
             Self::BrpListBevyApps => Arc::new(ListBevyApps),
             Self::BrpListBevyExamples => Arc::new(ListBevyExamples),
             Self::BrpListBrpApps => Arc::new(ListBrpApps),

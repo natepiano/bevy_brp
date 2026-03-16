@@ -78,7 +78,7 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
 
     1. **Launch Example**:
     ```bash
-    mcp__brp__brp_launch_bevy_example(
+    mcp__brp__brp_launch(
         target_name="${APP_NAME}",
         port=${APP_PORT}
     )

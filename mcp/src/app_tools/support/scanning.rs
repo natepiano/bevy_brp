@@ -374,6 +374,26 @@ pub(super) fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> Pa
     path.to_path_buf()
 }
 
+/// Collect all Bevy targets (apps and examples) across search paths without name filtering.
+/// Used for enriched not-found errors to show all available targets.
+pub(super) fn collect_all_bevy_targets(search_paths: &[PathBuf]) -> Vec<BevyTarget> {
+    let mut targets = Vec::new();
+    for path in iter_cargo_project_paths(search_paths) {
+        if let Ok(detector) = CargoDetector::from_path(&path) {
+            let mut found = detector.find_bevy_targets();
+            for target in &mut found {
+                let manifest_dir = target
+                    .manifest_path
+                    .parent()
+                    .unwrap_or(&target.manifest_path);
+                target.relative_path = compute_relative_path(manifest_dir, search_paths);
+            }
+            targets.extend(found);
+        }
+    }
+    targets
+}
+
 /// Find all targets (apps and examples) by name across search paths, filtered by target type if
 /// specified This allows detection of duplicates across workspaces
 pub(super) fn find_all_targets_by_name(

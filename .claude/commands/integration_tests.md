@@ -95,11 +95,8 @@ Tests with an `apps` array instead of `app_name`:
 ## Reusable Operation Sections
 
 <LaunchDedicatedApp>
-1. **Determine Launch Tool**: Based on app_type:
-   - If app_type is "example": use `mcp__brp__brp_launch_bevy_example`
-   - If app_type is "app": use `mcp__brp__brp_launch_bevy_app`
-2. **Launch**: Execute with target_name=[APP_NAME], port=[ASSIGNED_PORT], instance_count=[COUNT], env=[ENV] (if env field exists on config entry)
-3. **Track**: Record launched app for cleanup
+1. **Launch**: Execute `mcp__brp__brp_launch` with target_name=[APP_NAME], port=[ASSIGNED_PORT], instance_count=[COUNT], search_order=[app_type from config, "app" or "example"], env=[ENV] (if env field exists on config entry)
+2. **Track**: Record launched app for cleanup
 </LaunchDedicatedApp>
 
 <AllocatePortFromPool>
@@ -282,7 +279,7 @@ Configuration: App [APP_NAME]
 2. Read [TEST_FILE] and execute each numbered test step exactly as written. Use only the exact types, values, and tool parameters specified in the test file.
 
 **CRITICAL TOOL USAGE - USE MCP TOOLS DIRECTLY:**
-- **Launch apps**: `mcp__brp__brp_launch_bevy_example(target_name="app_name", port=PORT, profile="debug")`
+- **Launch apps**: `mcp__brp__brp_launch(target_name="app_name", port=PORT, search_order="example")`
 - **Check status**: `mcp__brp__brp_status(app_name="app_name", port=PORT)`
 - **Shutdown apps**: `mcp__brp__brp_shutdown(app_name="app_name", port=PORT)`
 - **DO NOT write bash scripts** - call MCP tools directly or invoke scripts that are already written if this is specified in the test

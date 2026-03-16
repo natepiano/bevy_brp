@@ -56,7 +56,7 @@ Launch application instances for all assigned ports:
 
 2. Launch instances:
 ```
-mcp__brp__brp_launch_bevy_example(
+mcp__brp__brp_launch(
     target_name="extras_plugin",
     port=base_port,
     instance_count=instance_count

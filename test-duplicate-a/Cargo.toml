@@ -13,9 +13,20 @@ repository.workspace = true
 # This package exists to test path disambiguation when multiple examples have the same name.
 # Both test-duplicate-a and test-duplicate-b contain an example named `extras_plugin_duplicate`,
 # which tests the MCP's ability to handle duplicates via the `path` parameter.
+#
+# SEARCH ORDER TESTING
+#
+# The `test_app` example intentionally shares its name with the `test_app` binary in the
+# `bevy_brp_test_apps` package. This cross-package name collision validates `brp_launch`'s
+# `search_order` parameter: "app" finds the binary first, "example" finds this example first.
+# No output collision occurs — bins go to target/<profile>/ and examples to target/<profile>/examples/.
 [[example]]
 name = "extras_plugin_duplicate"
 path = "examples/extras_plugin_duplicate.rs"
+
+[[example]]
+name = "test_app"
+path = "examples/test_app.rs"
 
 [dependencies]
 bevy            = { workspace = true, default-features = true }

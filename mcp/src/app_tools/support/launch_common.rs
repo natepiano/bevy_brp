@@ -13,10 +13,9 @@ use super::build_freshness::FreshnessCheckResult;
 use super::build_freshness::check_target_freshness;
 use super::cargo_detector::BevyTarget;
 use super::errors::NoTargetsFoundError;
-use super::errors::PathDisambiguationError;
-use super::errors::TargetNotFoundAtSpecifiedPath;
 use super::process;
 use crate::app_tools::launch_params::LaunchBevyBinaryParams;
+use crate::app_tools::launch_params::SearchOrder;
 use crate::error::Error;
 use crate::error::Result;
 
@@ -101,6 +100,9 @@ pub struct LaunchResult {
     /// Package name containing the example (only for examples)
     #[to_metadata(skip_if_none)]
     package_name:       Option<String>,
+    /// Whether the target was launched as an "app" or "example"
+    #[to_metadata(skip_if_none)]
+    launched_as:        Option<String>,
     /// Available duplicate paths (for disambiguation errors)
     #[to_metadata(skip_if_none)]
     duplicate_paths:    Option<Vec<String>>,
@@ -121,6 +123,7 @@ pub struct LaunchParams {
     pub port:           Port,
     pub instance_count: InstanceCount,
     pub env:            Option<HashMap<String, String>>,
+    pub search_order:   SearchOrder,
 }
 
 /// Trait for converting typed parameters to `LaunchParams`
@@ -498,6 +501,7 @@ fn build_launch_result<T: LaunchConfigTrait>(
         } else {
             None
         },
+        launched_as: Some(T::TARGET_TYPE.to_string()),
         duplicate_paths: None,
         message_template: Some(message),
     }
@@ -546,99 +550,6 @@ fn create_error_details<T: LaunchConfigTrait>(
         "port": config.port(),
         "duplicate_paths": duplicate_paths
     })
-}
-
-/// Find and validate a Bevy target based on configuration
-fn find_and_validate_target<T: LaunchConfigTrait>(
-    config: &T,
-    search_paths: &[PathBuf],
-) -> Result<BevyTarget> {
-    use super::scanning;
-
-    // Get the target type from the config
-    let target_type = T::TARGET_TYPE;
-
-    // First, find all targets with the given name to check for duplicates
-    let all_targets =
-        scanning::find_all_targets_by_name(config.target_name(), Some(target_type), search_paths);
-
-    // If multiple targets exist, we always want to include their paths
-    let duplicate_paths = if all_targets.len() > 1 {
-        Some(
-            all_targets
-                .iter()
-                .map(|target| target.relative_path.to_string_lossy().to_string())
-                .collect(),
-        )
-    } else {
-        None
-    };
-
-    // Find the specific target with path disambiguation (reuse all_targets to avoid duplicate scan)
-    let target = match scanning::find_required_target_with_path(
-        config.target_name(),
-        target_type,
-        config.path(),
-        search_paths,
-        Some(all_targets.clone()),
-    ) {
-        Ok(target) => target,
-        Err(err) => {
-            use crate::error::Error;
-
-            // For any other error when duplicates exist, return disambiguation error with paths
-            if let Some(available_paths) = duplicate_paths {
-                let path_disambiguation_error = PathDisambiguationError::new(
-                    available_paths,
-                    config.target_name().to_string(),
-                    T::TARGET_TYPE.to_string(),
-                );
-
-                Err(Error::Structured {
-                    result: Box::new(path_disambiguation_error),
-                })?;
-            }
-
-            // For non-duplicate errors, determine appropriate structured error
-            match all_targets.len() {
-                0 => {
-                    // No targets found at all
-                    let no_targets_error = NoTargetsFoundError::new(
-                        config.target_name().to_string(),
-                        T::TARGET_TYPE.to_string(),
-                    );
-                    return Err(Error::Structured {
-                        result: Box::new(no_targets_error),
-                    })?;
-                },
-                1 => {
-                    // Exactly one target exists but path disambiguation failed
-                    let available_paths: Vec<String> = all_targets
-                        .iter()
-                        .map(|target| target.relative_path.to_string_lossy().to_string())
-                        .collect();
-                    let target_not_found_error = TargetNotFoundAtSpecifiedPath::new(
-                        config.target_name().to_string(),
-                        T::TARGET_TYPE.to_string(),
-                        config.path().map(std::string::ToString::to_string),
-                        available_paths,
-                    );
-                    return Err(Error::Structured {
-                        result: Box::new(target_not_found_error),
-                    })?;
-                },
-                _ => {
-                    // This should not happen due to duplicate_paths logic above, but fallback
-                    return Err(Report::new(Error::tool_call_failed_with_details(
-                        err.to_string(),
-                        create_error_details(config, None),
-                    )));
-                },
-            }
-        },
-    };
-
-    Ok(target)
 }
 
 /// Validate that the port range for multi-instance launching is within bounds
@@ -710,10 +621,82 @@ fn handle_target_discovery_error(error: Report<Error>) -> Report<Error> {
     Error::tool_call_failed_with_details(error_message, details).into()
 }
 
-/// Generic function to launch a Bevy target (app or example)
-fn launch_target<T: LaunchConfigTrait>(
+/// Launch a Bevy target using unified search: tries one target type first, then the other.
+/// The `search_order` parameter determines which type is tried first.
+pub fn launch_bevy_target(
+    typed_params: LaunchBevyBinaryParams,
+    roots: Vec<PathBuf>,
+    default_profile: &'static str,
+) -> Result<LaunchResult> {
+    use super::errors::AvailableTarget;
+    use super::errors::UnifiedTargetNotFoundError;
+    use super::scanning;
+
+    let params = typed_params.to_launch_params(default_profile);
+
+    // Determine search order
+    let (first, second) = match params.search_order {
+        SearchOrder::App => (TargetType::App, TargetType::Example),
+        SearchOrder::Example => (TargetType::Example, TargetType::App),
+    };
+
+    // Try first type
+    let first_targets =
+        scanning::find_all_targets_by_name(&params.target_name, Some(first), &roots);
+    if !first_targets.is_empty() {
+        return launch_found_target(first, first_targets, &params, &roots);
+    }
+
+    // Try second type
+    let second_targets =
+        scanning::find_all_targets_by_name(&params.target_name, Some(second), &roots);
+    if !second_targets.is_empty() {
+        return launch_found_target(second, second_targets, &params, &roots);
+    }
+
+    // Neither found — build enriched error with ALL available targets
+    let all_targets = scanning::collect_all_bevy_targets(&roots);
+    let available: Vec<AvailableTarget> = all_targets
+        .into_iter()
+        .map(|t| AvailableTarget {
+            name: t.name,
+            kind: t.target_type.to_string(),
+            path: t.relative_path.to_string_lossy().to_string(),
+        })
+        .collect();
+
+    let error = UnifiedTargetNotFoundError::new(params.target_name, available);
+    Err(Error::Structured {
+        result: Box::new(error),
+    }
+    .into())
+}
+
+/// Launch a target that was found by name, handling disambiguation and dispatch
+fn launch_found_target(
+    target_type: TargetType,
+    cached_targets: Vec<BevyTarget>,
+    params: &LaunchParams,
+    roots: &[PathBuf],
+) -> Result<LaunchResult> {
+    match target_type {
+        TargetType::App => {
+            let config = LaunchConfig::<App>::from_params(params);
+            // Pass cached_targets through find_and_validate_target path
+            launch_target_with_cached(&config, roots, cached_targets)
+        },
+        TargetType::Example => {
+            let config = LaunchConfig::<Example>::from_params(params);
+            launch_target_with_cached(&config, roots, cached_targets)
+        },
+    }
+}
+
+/// Generic function to launch a Bevy target with pre-cached scan results
+fn launch_target_with_cached<T: LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
+    cached_targets: Vec<BevyTarget>,
 ) -> Result<LaunchResult> {
     use std::time::Instant;
 
@@ -721,12 +704,11 @@ fn launch_target<T: LaunchConfigTrait>(
 
     let launch_start = Instant::now();
 
-    // Log additional debug info
     debug!("Environment variable: BRP_EXTRAS_PORT={}", config.port());
 
-    // Find and validate the target
-    let target =
-        find_and_validate_target(config, search_paths).map_err(handle_target_discovery_error)?;
+    // Find and validate the target using cached scan results
+    let target = find_and_validate_target_with_cache(config, search_paths, cached_targets)
+        .map_err(handle_target_discovery_error)?;
 
     // Ensure the target is built (blocks until compilation completes if needed)
     let build_state = config.ensure_built(&target)?;
@@ -742,14 +724,11 @@ fn launch_target<T: LaunchConfigTrait>(
     let instance_count = *config.instance_count();
     let base_port = *config.port();
 
-    // Validate entire port range fits within valid bounds
     validate_port_range(base_port, instance_count)?;
 
-    // Launch all instances
     let (all_pids, all_log_files, all_ports) =
         launch_instances(config, &target, instance_count, base_port)?;
 
-    // Build unified result (works for both single and multi)
     Ok(build_launch_result(
         all_pids,
         all_log_files,
@@ -760,42 +739,90 @@ fn launch_target<T: LaunchConfigTrait>(
     ))
 }
 
-fn launch_with_config<T, P>(
-    typed_params: P,
-    roots: Vec<PathBuf>,
-    default_profile: &'static str,
-) -> Result<LaunchResult>
-where
-    T: FromLaunchParams,
-    P: ToLaunchParams,
-{
-    let params = typed_params.to_launch_params(default_profile);
-    let config = T::from_params(&params);
-    launch_target(&config, &roots)
-}
+/// Find and validate a target using pre-cached scan results
+fn find_and_validate_target_with_cache<T: LaunchConfigTrait>(
+    config: &T,
+    search_paths: &[PathBuf],
+    cached_targets: Vec<BevyTarget>,
+) -> Result<BevyTarget> {
+    use super::scanning;
 
-pub fn launch_bevy_app(
-    typed_params: LaunchBevyBinaryParams,
-    roots: Vec<PathBuf>,
-    default_profile: &'static str,
-) -> Result<LaunchResult> {
-    launch_with_config::<LaunchConfig<App>, LaunchBevyBinaryParams>(
-        typed_params,
-        roots,
-        default_profile,
-    )
-}
+    let target_type = T::TARGET_TYPE;
 
-pub fn launch_bevy_example(
-    typed_params: LaunchBevyBinaryParams,
-    roots: Vec<PathBuf>,
-    default_profile: &'static str,
-) -> Result<LaunchResult> {
-    launch_with_config::<LaunchConfig<Example>, LaunchBevyBinaryParams>(
-        typed_params,
-        roots,
-        default_profile,
-    )
+    let all_targets = cached_targets;
+
+    let duplicate_paths = if all_targets.len() > 1 {
+        Some(
+            all_targets
+                .iter()
+                .map(|target| target.relative_path.to_string_lossy().to_string())
+                .collect(),
+        )
+    } else {
+        None
+    };
+
+    let target = match scanning::find_required_target_with_path(
+        config.target_name(),
+        target_type,
+        config.path(),
+        search_paths,
+        Some(all_targets.clone()),
+    ) {
+        Ok(target) => target,
+        Err(err) => {
+            use super::errors::PathDisambiguationError;
+            use super::errors::TargetNotFoundAtSpecifiedPath;
+            use crate::error::Error;
+
+            if let Some(available_paths) = duplicate_paths {
+                let path_disambiguation_error = PathDisambiguationError::new(
+                    available_paths,
+                    config.target_name().to_string(),
+                    T::TARGET_TYPE.to_string(),
+                );
+
+                Err(Error::Structured {
+                    result: Box::new(path_disambiguation_error),
+                })?;
+            }
+
+            match all_targets.len() {
+                0 => {
+                    let no_targets_error = NoTargetsFoundError::new(
+                        config.target_name().to_string(),
+                        T::TARGET_TYPE.to_string(),
+                    );
+                    return Err(Error::Structured {
+                        result: Box::new(no_targets_error),
+                    })?;
+                },
+                1 => {
+                    let available_paths: Vec<String> = all_targets
+                        .iter()
+                        .map(|target| target.relative_path.to_string_lossy().to_string())
+                        .collect();
+                    let target_not_found_error = TargetNotFoundAtSpecifiedPath::new(
+                        config.target_name().to_string(),
+                        T::TARGET_TYPE.to_string(),
+                        config.path().map(std::string::ToString::to_string),
+                        available_paths,
+                    );
+                    return Err(Error::Structured {
+                        result: Box::new(target_not_found_error),
+                    })?;
+                },
+                _ => {
+                    return Err(Report::new(Error::tool_call_failed_with_details(
+                        err.to_string(),
+                        create_error_details(config, None),
+                    )));
+                },
+            }
+        },
+    };
+
+    Ok(target)
 }
 
 impl FromLaunchParams for LaunchConfig<App> {

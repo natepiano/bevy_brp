@@ -53,3 +53,24 @@ pub(super) struct NoTargetsFoundError {
     #[to_message(message_template = "No {target_type} named `{target_name}` found in workspace")]
     message_template: String,
 }
+
+/// An available target for enriched not-found errors
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(super) struct AvailableTarget {
+    pub(super) name: String,
+    pub(super) kind: String,
+    pub(super) path: String,
+}
+
+/// Error when no app or example with the given name was found across all target types
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
+pub(super) struct UnifiedTargetNotFoundError {
+    #[to_error_info]
+    target_name: String,
+
+    #[to_error_info]
+    available_targets: Vec<AvailableTarget>,
+
+    #[to_message(message_template = "No app or example named `{target_name}` found")]
+    message_template: String,
+}

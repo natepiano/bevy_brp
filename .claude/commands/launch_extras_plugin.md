@@ -2,8 +2,9 @@
 
 <LaunchExample>
 Use the BRP launch tool to start the extras_plugin example:
-- Tool: mcp__brp__brp_launch_bevy_example
+- Tool: mcp__brp__brp_launch
 - Target: extras_plugin
+- search_order: example
 - Expected result: Example launches successfully and is accessible via BRP
 </LaunchExample>
 

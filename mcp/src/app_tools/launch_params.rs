@@ -10,6 +10,18 @@ use super::support::LaunchParams;
 use super::support::ToLaunchParams;
 use crate::brp_tools::Port;
 
+/// Search order for target resolution: "app" searches apps first (default), "example" searches
+/// examples first
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum SearchOrder {
+    /// Search apps first, then examples
+    #[default]
+    App,
+    /// Search examples first, then apps
+    Example,
+}
+
 /// Shared parameters for launching Bevy binaries (apps or examples)
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct LaunchBevyBinaryParams {
@@ -31,6 +43,9 @@ pub struct LaunchBevyBinaryParams {
     #[serde(default)]
     #[to_metadata(skip_if_none)]
     pub env:            Option<HashMap<String, String>>,
+    /// Search order: "app" searches apps first (default), "example" searches examples first
+    #[serde(default)]
+    pub search_order:   SearchOrder,
 }
 
 impl ToLaunchParams for LaunchBevyBinaryParams {
@@ -45,6 +60,7 @@ impl ToLaunchParams for LaunchBevyBinaryParams {
             port:           self.port,
             instance_count: self.instance_count,
             env:            self.env.clone(),
+            search_order:   self.search_order.clone(),
         }
     }
 }

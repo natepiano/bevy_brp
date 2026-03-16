@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+- **Removed** `brp_launch_bevy_app` and `brp_launch_bevy_example` in favor of unified `brp_launch` tool
+- The new `brp_launch` tool searches both apps and examples automatically, controlled by `search_order` parameter ("app" default, or "example")
+- Response includes `launched_as` field ("app" or "example") indicating how the target was resolved
+- Not-found errors now list all available targets (apps and examples) with names, kinds, and paths
+
 ### Changed
-- `brp_launch_bevy_app` now performs a lock-free freshness check before invoking Cargo. If the app binary appears up to date, it launches directly; if the binary is missing, stale, or freshness is inconclusive, it falls back to `cargo build`.
+- App launches use a lock-free freshness check before invoking Cargo. If the app binary appears up to date, it launches directly; if the binary is missing, stale, or freshness is inconclusive, it falls back to `cargo build`.
 
 ### Fixed
 - Fix port and instance_count parameters to accept both numbers and strings from MCP clients
