@@ -78,6 +78,28 @@ BRP_EXTRAS_PORT=8080 cargo run
 
 Port priority: `BRP_EXTRAS_PORT` environment variable > `with_port()` > default port (15702)
 
+### Custom HTTP Transport
+
+For full control over the HTTP transport (address, port, headers), provide your own `RemoteHttpPlugin`:
+
+```rust
+use bevy_remote::http::RemoteHttpPlugin;
+
+.add_plugins(BrpExtrasPlugin::with_http_plugin(
+    RemoteHttpPlugin::default()
+        .with_port(9000)
+        .with_address([0, 0, 0, 0])
+))
+```
+
+`with_port()` and `with_http_plugin()` are mutually exclusive -- the compiler enforces this.
+
+### Plugin Composability
+
+`BrpExtrasPlugin` composes with existing BRP setups. If `RemotePlugin` or `RemoteHttpPlugin` are already added to your app, `BrpExtrasPlugin` will skip adding them and register its methods into the existing `RemoteMethods` resource.
+
+If `RemoteHttpPlugin` is already present, any port configuration (`with_port()` / `BRP_EXTRAS_PORT`) is ignored and a warning is logged.
+
 ## Integration with bevy_brp_mcp
 
 This crate is designed to work with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp/mcp), which provides a Model Context Protocol (MCP) server for controlling Bevy apps. When both are used together:
