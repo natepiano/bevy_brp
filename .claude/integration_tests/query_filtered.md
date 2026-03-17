@@ -51,7 +51,8 @@ Test filter combinations:
   ```json
   {
     "data": {
-      "option": "all"
+      "components": ["bevy_transform::components::transform::Transform"],
+      "has": ["bevy_camera::camera::Camera"]
     },
     "filter": {
       "with": ["bevy_transform::components::transform::Transform"],
@@ -59,9 +60,10 @@ Test filter combinations:
     }
   }
   ```
-- Validate using script: `.claude/scripts/integration_tests/query_validate.sh has_camera_excluded <result_file>`
-- Verify: Returns entities with Transform but not Camera
-- Verify: Camera entities are excluded from results
+- Verify by reading the JSON response directly (it's small — only Transform data per entity)
+- Check: Returns entities with Transform but not Camera
+- Check: All `has` values for Camera are `false` (confirming `without` filter worked)
+- **Do NOT use jq or bash commands** - the response is returned directly in the tool output
 
 ### 4. Query with "all" Option and Filter
 Test combining the new "all" syntax with filtering:

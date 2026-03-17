@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Add `with_http_plugin()` constructor for providing a fully configured `RemoteHttpPlugin`. 
+- Add `HasEffectivePort` trait enabling `get_effective_port()` on both `Unconfigured` and `PortConfigured` plugin states, returning the correct resolved port for each.
+
+### Fixed
+- Fix `BrpExtrasPlugin` panicking when `RemotePlugin` or `RemoteHttpPlugin` is already added by another plugin. `RemotePlugin` and `RemoteHttpPlugin` are now conditionally added only if not already present, and extras methods are registered directly into the existing `RemoteMethods` resource. If `RemoteHttpPlugin` is already present, port configuration (`with_port()` / `BRP_EXTRAS_PORT`) is ignored and a warning is logged.
+
 ## [0.18.7] - 2026-03-03
 
 ### Changed

@@ -16,6 +16,29 @@
 //!     .run();
 //! ```
 //!
+//! # Plugin Composability
+//!
+//! `BrpExtrasPlugin` is designed to compose with existing BRP setups. If
+//! [`RemotePlugin`](bevy_remote::RemotePlugin) or
+//! [`RemoteHttpPlugin`](bevy_remote::http::RemoteHttpPlugin) are already added
+//! to the app, `BrpExtrasPlugin` will skip adding them and register its methods
+//! into the existing [`RemoteMethods`](bevy_remote::RemoteMethods) resource.
+//!
+//! **Important**: If `RemoteHttpPlugin` is already present, any port
+//! configuration on `BrpExtrasPlugin` (`with_port()` or the `BRP_EXTRAS_PORT`
+//! environment variable) will be ignored — the existing HTTP transport is used
+//! as-is. A warning is logged when this occurs.
+//!
+//! # HTTP Transport Configuration
+//!
+//! On native targets, HTTP transport can be configured in three mutually
+//! exclusive ways (enforced at compile time):
+//!
+//! 1. **Default** — uses `BRP_EXTRAS_PORT` env var or port 15702
+//! 2. **Explicit port** — `BrpExtrasPlugin::with_port(9000)`
+//! 3. **Full control** — `BrpExtrasPlugin::with_http_plugin(plugin)` accepts a pre-configured
+//!    [`RemoteHttpPlugin`](bevy_remote::http::RemoteHttpPlugin)
+//!
 //! # Available BRP Methods
 //!
 //! ## App Lifecycle
@@ -123,6 +146,13 @@ mod window_event;
 mod window_title;
 
 pub use plugin::BrpExtrasPlugin;
+#[cfg(not(target_arch = "wasm32"))]
+pub use plugin::HasEffectivePort;
+#[cfg(not(target_arch = "wasm32"))]
+pub use plugin::HttpPluginConfigured;
+#[cfg(not(target_arch = "wasm32"))]
+pub use plugin::PortConfigured;
+pub use plugin::Unconfigured;
 
 /// Default port for remote control connections
 ///
