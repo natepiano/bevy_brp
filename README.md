@@ -2,8 +2,8 @@
 
 <table>
 <tr>
+<td><b>bevy_brp_mcp</b></td>
 <td>
-<b>bevy_brp_mcp</b>&nbsp;
 <a href="https://github.com/natepiano/bevy_brp#license"><img src="https://img.shields.io/badge/license-MIT%2FApache-blue.svg" alt="License"></a>
 <a href="https://crates.io/crates/bevy_brp_mcp"><img src="https://img.shields.io/crates/v/bevy_brp_mcp.svg" alt="Crates.io"></a>
 <a href="https://crates.io/crates/bevy_brp_mcp"><img src="https://img.shields.io/crates/d/bevy_brp_mcp.svg" alt="Downloads"></a>
@@ -11,8 +11,8 @@
 </td>
 </tr>
 <tr>
+<td><b>bevy_brp_extras</b></td>
 <td>
-<b>bevy_brp_extras</b>&nbsp;
 <a href="https://github.com/natepiano/bevy_brp#license"><img src="https://img.shields.io/badge/license-MIT%2FApache-blue.svg" alt="License"></a>
 <a href="https://crates.io/crates/bevy_brp_extras"><img src="https://img.shields.io/crates/v/bevy_brp_extras.svg" alt="Crates.io"></a>
 <a href="https://crates.io/crates/bevy_brp_extras"><img src="https://img.shields.io/crates/d/bevy_brp_extras.svg" alt="Downloads"></a>
