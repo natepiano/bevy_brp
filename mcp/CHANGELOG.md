@@ -15,8 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Removed** `brp_list_bevy_apps`, `brp_list_bevy_examples`, and `brp_list_brp_apps` in favor of unified `brp_list_bevy` tool
 - The new `brp_list_bevy` tool returns all Bevy targets (apps and examples) in a single response
 - Each item includes a `kind` field ("app" or "example") and `brp_level` field ("extras", "brp_only", or "none") replacing the old boolean `brp_enabled`
+- `brp_launch` parameter `path` renamed to `package_name` — matches the `package_name` field from `brp_list_bevy` (exact match). Old partial/suffix path matching removed.
 
 ### Added
+- Add optional `path` parameter to `brp_list_bevy` for overriding the search root directory (defaults to MCP workspace roots / cwd)
+- Add optional `path` parameter to `brp_launch` for overriding the search root directory (defaults to MCP workspace roots / cwd)
 - Add optional `args` parameter to `brp_launch` for passing command-line arguments to the launched process. For apps, args are appended directly; for examples, args are passed after a `--` separator.
 
 ### Changed

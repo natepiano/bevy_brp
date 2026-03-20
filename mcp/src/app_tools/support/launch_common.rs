@@ -12,7 +12,6 @@ use serde::Serialize;
 use super::build_freshness::FreshnessCheckResult;
 use super::build_freshness::check_target_freshness;
 use super::cargo_detector::BevyTarget;
-use super::errors::NoTargetsFoundError;
 use super::process;
 use crate::app_tools::launch_params::LaunchBevyBinaryParams;
 use crate::app_tools::launch_params::SearchOrder;
@@ -32,7 +31,7 @@ struct Example;
 struct LaunchConfig<T> {
     target_name:    String,
     profile:        String,
-    path:           Option<String>,
+    package_name:   Option<String>,
     port:           Port,
     instance_count: InstanceCount,
     env:            Option<HashMap<String, String>>,
@@ -45,7 +44,7 @@ impl<T> LaunchConfig<T> {
     const fn new(
         target_name: String,
         profile: String,
-        path: Option<String>,
+        package_name: Option<String>,
         port: Port,
         instance_count: InstanceCount,
         env: Option<HashMap<String, String>>,
@@ -54,7 +53,7 @@ impl<T> LaunchConfig<T> {
         Self {
             target_name,
             profile,
-            path,
+            package_name,
             port,
             instance_count,
             env,
@@ -123,6 +122,7 @@ pub struct LaunchParams {
     pub target_name:    String,
     pub profile:        String,
     pub path:           Option<String>,
+    pub package_name:   Option<String>,
     pub port:           Port,
     pub instance_count: InstanceCount,
     pub env:            Option<HashMap<String, String>>,
@@ -153,8 +153,8 @@ trait LaunchConfigTrait: Clone {
     /// Get the build profile ("debug" or "release")
     fn profile(&self) -> &str;
 
-    /// Get the optional path for disambiguation
-    fn path(&self) -> Option<&str>;
+    /// Get the optional package name for disambiguation
+    fn package_name(&self) -> Option<&str>;
 
     /// Get the BRP port
     fn port(&self) -> Port;
@@ -551,21 +551,6 @@ fn prepare_launch_environment<T: LaunchConfigTrait>(
     ))
 }
 
-/// Create error details for `ToolError` with common fields populated
-fn create_error_details<T: LaunchConfigTrait>(
-    config: &T,
-    duplicate_paths: Option<Vec<String>>,
-) -> serde_json::Value {
-    serde_json::json!({
-        "target_name": config.target_name(),
-        "target_type": T::TARGET_TYPE,
-        "profile": config.profile(),
-        "path": config.path(),
-        "port": config.port(),
-        "duplicate_paths": duplicate_paths
-    })
-}
-
 /// Validate that the port range for multi-instance launching is within bounds
 fn validate_port_range(base_port: u16, instance_count: u16) -> Result<()> {
     use crate::brp_tools::MAX_VALID_PORT;
@@ -648,28 +633,48 @@ pub fn launch_bevy_target(
 
     let params = typed_params.to_launch_params(default_profile);
 
+    // Use `path` as search root override if provided, otherwise use MCP workspace roots
+    let search_roots = params
+        .path
+        .as_ref()
+        .map_or(roots, |path| vec![PathBuf::from(path)]);
+
     // Determine search order
     let (first, second) = match params.search_order {
         SearchOrder::App => (TargetType::App, TargetType::Example),
         SearchOrder::Example => (TargetType::Example, TargetType::App),
     };
 
+    // When a user-specified path is provided, post-filter targets to only those
+    // whose manifest directory is under that path. Cargo metadata resolves workspace
+    // members up to the workspace root, which can expand the scope beyond what the user intended.
+    let scope_path = params.path.as_ref().map(PathBuf::from);
+
     // Try first type
-    let first_targets =
-        scanning::find_all_targets_by_name(&params.target_name, Some(first), &roots);
+    let mut first_targets =
+        scanning::find_all_targets_by_name(&params.target_name, Some(first), &search_roots);
+    if let Some(ref scope) = scope_path {
+        first_targets = scanning::filter_targets_by_path_scope(first_targets, scope);
+    }
     if !first_targets.is_empty() {
-        return launch_found_target(first, first_targets, &params, &roots);
+        return launch_found_target(first, first_targets, &params, &search_roots);
     }
 
     // Try second type
-    let second_targets =
-        scanning::find_all_targets_by_name(&params.target_name, Some(second), &roots);
+    let mut second_targets =
+        scanning::find_all_targets_by_name(&params.target_name, Some(second), &search_roots);
+    if let Some(ref scope) = scope_path {
+        second_targets = scanning::filter_targets_by_path_scope(second_targets, scope);
+    }
     if !second_targets.is_empty() {
-        return launch_found_target(second, second_targets, &params, &roots);
+        return launch_found_target(second, second_targets, &params, &search_roots);
     }
 
     // Neither found — build enriched error with ALL available targets
-    let all_targets = scanning::collect_all_bevy_targets(&roots);
+    let mut all_targets = scanning::collect_all_bevy_targets(&search_roots);
+    if let Some(ref scope) = scope_path {
+        all_targets = scanning::filter_targets_by_path_scope(all_targets, scope);
+    }
     let available: Vec<AvailableTarget> = all_targets
         .into_iter()
         .map(|t| AvailableTarget {
@@ -761,82 +766,15 @@ fn find_and_validate_target_with_cache<T: LaunchConfigTrait>(
 ) -> Result<BevyTarget> {
     use super::scanning;
 
-    let target_type = T::TARGET_TYPE;
-
-    let all_targets = cached_targets;
-
-    let duplicate_paths = if all_targets.len() > 1 {
-        Some(
-            all_targets
-                .iter()
-                .map(|target| target.relative_path.to_string_lossy().to_string())
-                .collect(),
-        )
-    } else {
-        None
-    };
-
-    let target = match scanning::find_required_target_with_path(
+    // Delegate to scanning which now handles all error cases (disambiguation, not-found-in-package)
+    scanning::find_required_target_with_package_name(
         config.target_name(),
-        target_type,
-        config.path(),
+        T::TARGET_TYPE,
+        config.package_name(),
         search_paths,
-        Some(all_targets.clone()),
-    ) {
-        Ok(target) => target,
-        Err(err) => {
-            use super::errors::PathDisambiguationError;
-            use super::errors::TargetNotFoundAtSpecifiedPath;
-            use crate::error::Error;
-
-            if let Some(available_paths) = duplicate_paths {
-                let path_disambiguation_error = PathDisambiguationError::new(
-                    available_paths,
-                    config.target_name().to_string(),
-                    T::TARGET_TYPE.to_string(),
-                );
-
-                Err(Error::Structured {
-                    result: Box::new(path_disambiguation_error),
-                })?;
-            }
-
-            match all_targets.len() {
-                0 => {
-                    let no_targets_error = NoTargetsFoundError::new(
-                        config.target_name().to_string(),
-                        T::TARGET_TYPE.to_string(),
-                    );
-                    return Err(Error::Structured {
-                        result: Box::new(no_targets_error),
-                    })?;
-                },
-                1 => {
-                    let available_paths: Vec<String> = all_targets
-                        .iter()
-                        .map(|target| target.relative_path.to_string_lossy().to_string())
-                        .collect();
-                    let target_not_found_error = TargetNotFoundAtSpecifiedPath::new(
-                        config.target_name().to_string(),
-                        T::TARGET_TYPE.to_string(),
-                        config.path().map(std::string::ToString::to_string),
-                        available_paths,
-                    );
-                    return Err(Error::Structured {
-                        result: Box::new(target_not_found_error),
-                    })?;
-                },
-                _ => {
-                    return Err(Report::new(Error::tool_call_failed_with_details(
-                        err.to_string(),
-                        create_error_details(config, None),
-                    )));
-                },
-            }
-        },
-    };
-
-    Ok(target)
+        Some(cached_targets),
+    )
+    .map_err(|e| Report::new(e))
 }
 
 impl FromLaunchParams for LaunchConfig<App> {
@@ -844,7 +782,7 @@ impl FromLaunchParams for LaunchConfig<App> {
         Self::new(
             params.target_name.clone(),
             params.profile.clone(),
-            params.path.clone(),
+            params.package_name.clone(),
             params.port,
             params.instance_count,
             params.env.clone(),
@@ -860,7 +798,7 @@ impl LaunchConfigTrait for LaunchConfig<App> {
 
     fn profile(&self) -> &str { &self.profile }
 
-    fn path(&self) -> Option<&str> { self.path.as_deref() }
+    fn package_name(&self) -> Option<&str> { self.package_name.as_deref() }
 
     fn port(&self) -> Port { self.port }
 
@@ -885,7 +823,7 @@ impl FromLaunchParams for LaunchConfig<Example> {
         Self::new(
             params.target_name.clone(),
             params.profile.clone(),
-            params.path.clone(),
+            params.package_name.clone(),
             params.port,
             params.instance_count,
             params.env.clone(),
@@ -901,7 +839,7 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
 
     fn profile(&self) -> &str { &self.profile }
 
-    fn path(&self) -> Option<&str> { self.path.as_deref() }
+    fn package_name(&self) -> Option<&str> { self.package_name.as_deref() }
 
     fn port(&self) -> Port { self.port }
 

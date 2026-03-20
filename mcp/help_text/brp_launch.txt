@@ -19,6 +19,7 @@ Multi-instance launching:
 Notes:
 - App launches use a lock-free freshness check before invoking Cargo. If the binary appears up to date, the tool launches it directly without running cargo build. If the binary is missing, stale, or freshness cannot be determined confidently, the tool runs cargo build first.
 - Example launches always invoke cargo run --example. Cargo decides whether the example is already fresh or needs rebuilding.
-- If multiple targets with the same name exist in different paths, you must specify the path parameter.
-- Path matching supports: full relative paths (e.g., "bevy_brp/my-app"), partial paths (e.g., "my-app"), or workspace names for disambiguation.
+- Optional `path` parameter overrides the default search roots (MCP workspace roots / cwd). When provided, only the specified OS-level directory is searched for Bevy projects.
+- If multiple targets with the same name exist in different packages, you must specify the package_name parameter.
+- `package_name` matches the `package_name` field returned by `brp_list_bevy` for exact disambiguation.
 - When specifying a port, bevy_brp_extras is required to support listening on the environment variable BRP_EXTRAS_PORT.

@@ -10,6 +10,7 @@ mod launch_params;
 mod support;
 
 pub use brp_list_bevy::ListBevy;
+pub use brp_list_bevy::ListBevyParams;
 pub use brp_shutdown::Shutdown;
 pub use brp_shutdown::ShutdownParams;
 pub use brp_status::Status;

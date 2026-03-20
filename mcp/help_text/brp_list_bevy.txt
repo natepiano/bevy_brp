@@ -7,4 +7,5 @@ Each item includes a `kind` field ("app" or "example") and `brp_level` field:
   - "none": No BRP support detected
 For bins, `brp_level` reflects whether the package's src/ tree uses BRP plugins.
 For examples, the individual source file is checked for BRP plugin imports.
-Use `relative_path` with `brp_launch` path parameter to disambiguate targets with the same name.
+Optional `path` parameter overrides the default search roots (MCP workspace roots / cwd). When provided, only the specified OS-level directory is searched for Bevy projects.
+Use `package_name` with `brp_launch`'s `package_name` parameter to disambiguate targets with the same name.

@@ -9,7 +9,7 @@ use super::cargo_detector::BevyTarget;
 use super::cargo_detector::CargoDetector;
 use super::cargo_detector::TargetType;
 use super::errors::NoTargetsFoundError;
-use super::errors::PathDisambiguationError;
+use super::errors::PackageDisambiguationError;
 use crate::error::Error;
 
 /// Helper function to safely canonicalize a path
@@ -374,6 +374,27 @@ pub(super) fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> Pa
     path.to_path_buf()
 }
 
+/// Filter targets to only those whose package directory is under the given path scope.
+///
+/// When a user explicitly provides a `path` search root, workspace resolution via
+/// `cargo metadata` may expand the search to the full workspace. This post-filter
+/// restricts results to only targets whose manifest directory is actually under the
+/// user-specified path.
+pub(super) fn filter_targets_by_path_scope(
+    targets: Vec<BevyTarget>,
+    scope: &Path,
+) -> Vec<BevyTarget> {
+    let canonical_scope = safe_canonicalize(scope);
+    targets
+        .into_iter()
+        .filter(|t| {
+            let manifest_dir = t.manifest_path.parent().unwrap_or(&t.manifest_path);
+            let canonical_manifest = safe_canonicalize(manifest_dir);
+            canonical_manifest.starts_with(&canonical_scope)
+        })
+        .collect()
+}
+
 /// Collect all Bevy targets (apps and examples) across search paths without name filtering.
 /// Used for enriched not-found errors to show all available targets.
 pub(super) fn collect_all_bevy_targets(search_paths: &[PathBuf]) -> Vec<BevyTarget> {
@@ -430,14 +451,17 @@ pub(super) fn find_all_targets_by_name(
     targets
 }
 
-/// Find a required target by name with path parameter handling
-/// Returns an error with enhanced path error messages if duplicates found and no path specified
+/// Find a required target by name with optional `package_name` disambiguation.
 ///
-/// If `cached_targets` is provided, uses those instead of scanning again (performance optimization)
-pub(super) fn find_required_target_with_path(
+/// When multiple targets share the same name (across different packages),
+/// `package_name` filters by exact match against `BevyTarget::package_name`.
+///
+/// If `cached_targets` is provided, uses those instead of scanning again (performance
+/// optimization).
+pub(super) fn find_required_target_with_package_name(
     target_name: &str,
     target_type: TargetType,
-    path: Option<&str>,
+    package_name: Option<&str>,
     search_paths: &[PathBuf],
     cached_targets: Option<Vec<BevyTarget>>,
 ) -> Result<BevyTarget, Error> {
@@ -447,8 +471,8 @@ pub(super) fn find_required_target_with_path(
     };
 
     debug!("Searching for {target_type_str} '{target_name}'");
-    if let Some(p) = path {
-        debug!("With path filter: {p}");
+    if let Some(pkg) = package_name {
+        debug!("With package_name filter: {pkg}");
     }
 
     let all_targets = cached_targets.unwrap_or_else(|| {
@@ -457,183 +481,74 @@ pub(super) fn find_required_target_with_path(
     });
     debug!("Found {} matching {target_type_str}(s)", all_targets.len());
 
-    // If a path is provided and we found multiple targets, check for ambiguity
-    if let Some(path_str) = path
-        && all_targets.len() > 1
-    {
-        let filtered_targets =
-            find_and_filter_by_path(all_targets.clone(), path, |target| &target.relative_path);
+    // Filter by package_name if provided
+    let filtered = if let Some(pkg) = package_name {
+        let matched: Vec<_> = all_targets
+            .iter()
+            .filter(|t| t.package_name == pkg)
+            .cloned()
+            .collect();
 
-        // If filtering resulted in 0 matches but there were multiple targets,
-        // check if the path could have been ambiguous
-        if filtered_targets.is_empty() {
-            // Check if the path partially matches multiple targets
-            let partial_matches: Vec<_> = all_targets
+        if matched.is_empty() {
+            // No match — report available package names
+            let available: Vec<String> = all_targets
                 .iter()
-                .filter(|target| {
-                    let relative_path = &target.relative_path;
-                    partial_path_match(relative_path, path_str)
-                })
+                .map(|t| (*t.package_name).to_string())
                 .collect();
 
-            if partial_matches.len() > 1 {
-                // This is an ambiguous partial path
-                let paths: Vec<String> = partial_matches
-                    .iter()
-                    .map(|target| target.relative_path.to_string_lossy().to_string())
-                    .collect();
-
-                let path_disambiguation_error = PathDisambiguationError::new(
-                    paths,
-                    target_name.to_string(),
-                    target_type_str.to_string(),
-                );
-                return Err(Error::Structured {
-                    result: Box::new(path_disambiguation_error),
-                });
-            }
-
-            // Enhanced error message for path not found
-            let available_paths: Vec<String> = all_targets
-                .iter()
-                .map(|target| target.relative_path.to_string_lossy().to_string())
-                .collect();
-
-            let path_disambiguation_error = PathDisambiguationError::new(
-                available_paths,
+            let error = super::errors::TargetNotFoundInPackage::new(
                 target_name.to_string(),
                 target_type_str.to_string(),
+                Some((*pkg).to_string()),
+                available,
             );
             return Err(Error::Structured {
-                result: Box::new(path_disambiguation_error),
+                result: Box::new(error),
             });
         }
 
-        return validate_single_result_or_error(
-            filtered_targets,
-            target_name,
-            target_type_str,
-            |target| &target.relative_path,
-        );
-    }
-
-    let filtered_targets =
-        find_and_filter_by_path(all_targets, path, |target| &target.relative_path);
-
-    validate_single_result_or_error(filtered_targets, target_name, target_type_str, |target| {
-        &target.relative_path
-    })
-}
-
-/// Check if the relative path exactly matches the provided path string
-fn exact_path_match(relative_path: &Path, path_str: &str) -> bool {
-    relative_path.to_string_lossy() == path_str
-}
-
-/// Check if the relative path ends with the provided path (partial match)
-fn partial_path_match(relative_path: &Path, path_str: &str) -> bool {
-    if let Some(path_str_path) = Path::new(path_str).to_str()
-        && let Some(relative_str) = relative_path.to_str()
-    {
-        // Check if it ends with the path (suffix match)
-        if relative_str.ends_with(path_str_path) {
-            return true;
-        }
-        // Also check if the path string is contained within any path component
-        // This handles cases like "duplicate" matching "test-duplicate-a"
-        for component in relative_path.components() {
-            if let Some(component_str) = component.as_os_str().to_str()
-                && component_str.contains(path_str)
-            {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-/// Find items by name and filter by path if provided
-/// Prioritizes exact matches over partial matches
-fn find_and_filter_by_path<T>(
-    all_items: Vec<T>,
-    path: Option<&str>,
-    get_relative_path: impl Fn(&T) -> &PathBuf,
-) -> Vec<T> {
-    if let Some(path_str) = path {
-        // First, check if there are any exact matches
-        let has_exact_match = all_items
-            .iter()
-            .any(|item| exact_path_match(get_relative_path(item), path_str));
-
-        if has_exact_match {
-            // Return only exact matches
-            all_items
-                .into_iter()
-                .filter(|item| exact_path_match(get_relative_path(item), path_str))
-                .collect()
-        } else {
-            // No exact matches, fall back to partial matches
-            all_items
-                .into_iter()
-                .filter(|item| partial_path_match(get_relative_path(item), path_str))
-                .collect()
-        }
+        matched
     } else {
-        all_items
-    }
-}
+        all_targets
+    };
 
-/// Validate that exactly one item was found, or return helpful error
-fn validate_single_result_or_error<T>(
-    items: Vec<T>,
-    item_name: &str,
-    item_type: &str,
-    get_relative_path: impl Fn(&T) -> &PathBuf,
-) -> Result<T, Error> {
-    match items.len() {
+    // Validate single result
+    match filtered.len() {
         0 => {
-            let no_targets_error =
-                NoTargetsFoundError::new(item_name.to_string(), item_type.to_string());
+            let error =
+                NoTargetsFoundError::new(target_name.to_string(), target_type_str.to_string());
             Err(Error::Structured {
-                result: Box::new(no_targets_error),
+                result: Box::new(error),
             })
         },
         1 => {
-            // We know exactly one item exists
-            let mut iter = items.into_iter();
+            let mut iter = filtered.into_iter();
             iter.next().map_or_else(
                 || {
-                    let no_targets_error =
-                        NoTargetsFoundError::new(item_name.to_string(), item_type.to_string());
+                    let error = NoTargetsFoundError::new(
+                        target_name.to_string(),
+                        target_type_str.to_string(),
+                    );
                     Err(Error::Structured {
-                        result: Box::new(no_targets_error),
+                        result: Box::new(error),
                     })
                 },
-                |item| Ok(item),
+                Ok,
             )
         },
         _ => {
-            let all_paths: Vec<String> = items
+            let available: Vec<String> = filtered
                 .iter()
-                .map(|item| {
-                    let relative_path = get_relative_path(item);
-                    relative_path.to_string_lossy().to_string()
-                })
+                .map(|t| (*t.package_name).to_string())
                 .collect();
 
-            let non_empty_paths: Vec<String> = all_paths
-                .iter()
-                .filter(|path| !path.is_empty())
-                .cloned()
-                .collect();
-
-            let path_disambiguation_error = PathDisambiguationError::new(
-                non_empty_paths,
-                item_name.to_string(),
-                item_type.to_string(),
+            let error = PackageDisambiguationError::new(
+                available,
+                target_name.to_string(),
+                target_type_str.to_string(),
             );
             Err(Error::Structured {
-                result: Box::new(path_disambiguation_error),
+                result: Box::new(error),
             })
         },
     }
@@ -680,66 +595,26 @@ mod tests {
 
     #[test]
     fn test_find_and_filter_by_path_exact() {
-        // Create test items with relative paths
-        #[derive(Debug, Clone)]
-        struct TestItem {
-            relative_path: PathBuf,
-        }
-
-        let items = vec![
-            TestItem {
-                relative_path: PathBuf::from("workspace1/app1"),
-            },
-            TestItem {
-                relative_path: PathBuf::from("workspace2/app1"),
-            },
-            TestItem {
-                relative_path: PathBuf::from("workspace1/app2"),
-            },
-        ];
-
-        // Test exact path matching
-        let filtered =
-            find_and_filter_by_path(items, Some("workspace1/app1"), |item| &item.relative_path);
-
-        assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].relative_path, PathBuf::from("workspace1/app1"));
+        // Kept for backwards compatibility — validates compute_relative_path still works
+        let search_paths = vec![PathBuf::from("/home/user/projects")];
+        let path = PathBuf::from("/home/user/projects/workspace1/app1");
+        let relative = compute_relative_path(&path, &search_paths);
+        assert_eq!(relative, PathBuf::from("workspace1/app1"));
     }
 
     #[test]
     fn test_find_and_filter_by_path_suffix() {
-        // Create test items with relative paths
-        #[derive(Debug, Clone)]
-        struct TestItem {
-            relative_path: PathBuf,
-        }
+        // Kept for backwards compatibility — validates compute_relative_path with nested paths
+        let search_paths = vec![PathBuf::from("/home/user/projects")];
 
-        let items = vec![
-            TestItem {
-                relative_path: PathBuf::from("workspace1/app1"),
-            },
-            TestItem {
-                relative_path: PathBuf::from("workspace2/app1"),
-            },
-            TestItem {
-                relative_path: PathBuf::from("workspace1/app2"),
-            },
-        ];
+        let path1 = PathBuf::from("/home/user/projects/workspace1/app1");
+        let path2 = PathBuf::from("/home/user/projects/workspace2/app1");
 
-        // Test suffix matching
-        let filtered = find_and_filter_by_path(items, Some("app1"), |item| &item.relative_path);
+        let rel1 = compute_relative_path(&path1, &search_paths);
+        let rel2 = compute_relative_path(&path2, &search_paths);
 
-        assert_eq!(filtered.len(), 2);
-        assert!(
-            filtered
-                .iter()
-                .any(|i| i.relative_path == Path::new("workspace1/app1"))
-        );
-        assert!(
-            filtered
-                .iter()
-                .any(|i| i.relative_path == Path::new("workspace2/app1"))
-        );
+        assert_eq!(rel1, PathBuf::from("workspace1/app1"));
+        assert_eq!(rel2, PathBuf::from("workspace2/app1"));
     }
 
     #[test]
@@ -1156,5 +1031,70 @@ path = "src/main.rs"
                 >= 1,
             "Should find at least 1 standalone project"
         );
+    }
+
+    /// Helper to create a `BevyTarget` with only the fields relevant to path scope filtering
+    fn make_target(name: &str, package_name: &str, manifest_path: &str) -> BevyTarget {
+        BevyTarget {
+            name:           name.to_string(),
+            target_type:    TargetType::Example,
+            package_name:   package_name.to_string(),
+            workspace_root: PathBuf::from("/workspace"),
+            manifest_path:  PathBuf::from(manifest_path),
+            relative_path:  PathBuf::new(),
+            source_path:    PathBuf::new(),
+        }
+    }
+
+    #[test]
+    fn test_filter_targets_by_path_scope_includes_targets_under_scope() {
+        let targets = vec![
+            make_target("app_a", "pkg-a", "/workspace/sub-a/Cargo.toml"),
+            make_target("app_b", "pkg-b", "/workspace/sub-b/Cargo.toml"),
+        ];
+
+        let filtered = filter_targets_by_path_scope(targets, Path::new("/workspace/sub-a"));
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].name, "app_a");
+    }
+
+    #[test]
+    fn test_filter_targets_by_path_scope_excludes_targets_outside_scope() {
+        let targets = vec![
+            make_target("app_a", "pkg-a", "/workspace/sub-a/Cargo.toml"),
+            make_target("app_b", "pkg-b", "/workspace/sub-b/Cargo.toml"),
+        ];
+
+        let filtered = filter_targets_by_path_scope(targets, Path::new("/workspace/sub-c"));
+
+        assert!(filtered.is_empty());
+    }
+
+    #[test]
+    fn test_filter_targets_by_path_scope_includes_nested_targets() {
+        let targets = vec![
+            make_target("app_a", "pkg-a", "/workspace/group/sub-a/Cargo.toml"),
+            make_target("app_b", "pkg-b", "/workspace/group/sub-b/Cargo.toml"),
+            make_target("app_c", "pkg-c", "/workspace/other/Cargo.toml"),
+        ];
+
+        let filtered = filter_targets_by_path_scope(targets, Path::new("/workspace/group"));
+
+        assert_eq!(filtered.len(), 2);
+        assert!(filtered.iter().any(|t| t.name == "app_a"));
+        assert!(filtered.iter().any(|t| t.name == "app_b"));
+    }
+
+    #[test]
+    fn test_filter_targets_by_path_scope_workspace_root_includes_all() {
+        let targets = vec![
+            make_target("app_a", "pkg-a", "/workspace/sub-a/Cargo.toml"),
+            make_target("app_b", "pkg-b", "/workspace/sub-b/Cargo.toml"),
+        ];
+
+        let filtered = filter_targets_by_path_scope(targets, Path::new("/workspace"));
+
+        assert_eq!(filtered.len(), 2);
     }
 }

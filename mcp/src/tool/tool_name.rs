@@ -24,6 +24,7 @@ use super::parameters;
 use super::types::ErasedToolFn;
 use crate::app_tools::LaunchBevyBinaryParams;
 use crate::app_tools::ListBevy;
+use crate::app_tools::ListBevyParams;
 use crate::app_tools::Shutdown;
 use crate::app_tools::ShutdownParams;
 use crate::app_tools::Status;
@@ -736,7 +737,8 @@ impl ToolName {
             // this lot has no parametrers
             #[cfg(feature = "mcp-debug")]
             Self::BrpGetTraceLogPath => None,
-            Self::BrpListBevy | Self::BrpListActiveWatches => None,
+            Self::BrpListActiveWatches => None,
+            Self::BrpListBevy => Some(parameters::build_parameters_from::<ListBevyParams>),
 
             // and thest of these app and watch tools do have parameters
             Self::BrpLaunch => Some(parameters::build_parameters_from::<LaunchBevyBinaryParams>),

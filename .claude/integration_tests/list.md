@@ -30,6 +30,11 @@ Validate the unified `brp_list_bevy` tool for discovering Bevy apps and examples
 - Confirm all items have a `kind` field with value `"app"` or `"example"`
 - Verify apps and examples are properly distinguished
 
+### 5. Test path Search Root Override
+- Execute `mcp__brp__brp_list_bevy` with `path` set to the absolute path of `test-duplicate-a` directory (under the workspace root)
+- Verify only targets from that package are returned (should find `extras_plugin_duplicate` and `test_app` examples from `test-app-a`)
+- Verify the result count is smaller than the full list from step 1
+
 ## Expected Results
 - ✅ `brp_list_bevy` returns valid response with all targets
 - ✅ Expected app found: `test_app` with `kind: "app"` (bevy_brp_mcp excluded)
@@ -40,6 +45,7 @@ Validate the unified `brp_list_bevy` tool for discovering Bevy apps and examples
 - ✅ `no_extras_plugin` has `brp_level: "brp_only"` (not "none")
 - ✅ All items include `kind`, `brp_level`, `builds`, and `relative_path` fields
 - ✅ Build status information is accurate
+- ✅ `path` search root override returns only targets from the specified directory
 
 ## Failure Criteria
-STOP if: `brp_list_bevy` returns errors, expected apps/examples are missing, same-name bin+example deduplicated into one entry, `brp_level` is "none" for BRP-using targets, `kind` or `brp_level` fields are missing, or response format is malformed.
+STOP if: `brp_list_bevy` returns errors, expected apps/examples are missing, same-name bin+example deduplicated into one entry, `brp_level` is "none" for BRP-using targets, `kind` or `brp_level` fields are missing, `path` override doesn't scope results correctly, or response format is malformed.

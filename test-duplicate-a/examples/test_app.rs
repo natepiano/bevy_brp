@@ -32,8 +32,22 @@ fn main() {
             ..default()
         }))
         .add_plugins(brp_plugin)
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, minimize_window_on_start))
         .run();
+}
+
+/// Minimize the window immediately on startup (no-op on Linux/Wayland)
+#[cfg(target_os = "linux")]
+fn minimize_window_on_start(windows: Query<&mut Window, With<bevy::window::PrimaryWindow>>) {
+    let _ = windows.iter().count();
+}
+
+/// Minimize the window immediately on startup
+#[cfg(not(target_os = "linux"))]
+fn minimize_window_on_start(mut windows: Query<&mut Window, With<bevy::window::PrimaryWindow>>) {
+    for mut window in &mut windows {
+        window.set_minimized(true);
+    }
 }
 
 fn setup(mut commands: Commands) {
