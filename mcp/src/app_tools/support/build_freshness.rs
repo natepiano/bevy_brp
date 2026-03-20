@@ -254,6 +254,7 @@ mod tests {
             workspace_root: workspace_root.to_path_buf(),
             manifest_path:  manifest_path.to_path_buf(),
             relative_path:  PathBuf::new(),
+            source_path:    PathBuf::new(),
         }
     }
 

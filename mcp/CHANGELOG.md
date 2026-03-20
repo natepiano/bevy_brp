@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The new `brp_launch` tool searches both apps and examples automatically, controlled by `search_order` parameter ("app" default, or "example")
 - Response includes `launched_as` field ("app" or "example") indicating how the target was resolved
 - Not-found errors now list all available targets (apps and examples) with names, kinds, and paths
+- **Removed** `brp_list_bevy_apps`, `brp_list_bevy_examples`, and `brp_list_brp_apps` in favor of unified `brp_list_bevy` tool
+- The new `brp_list_bevy` tool returns all Bevy targets (apps and examples) in a single response
+- Each item includes a `kind` field ("app" or "example") and `brp_level` field ("extras", "brp_only", or "none") replacing the old boolean `brp_enabled`
 
 ### Added
 - Add optional `args` parameter to `brp_launch` for passing command-line arguments to the launched process. For apps, args are appended directly; for examples, args are passed after a `--` separator.

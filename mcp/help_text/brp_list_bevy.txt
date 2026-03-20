@@ -1,0 +1,10 @@
+Discovers all Bevy apps and examples declared in workspace Cargo.toml files via cargo metadata.
+Targets not registered in Cargo.toml are not included.
+Returns target names, kind (app or example), BRP support level, build profiles, build status, and paths.
+Each item includes a `kind` field ("app" or "example") and `brp_level` field:
+  - "extras": Uses `BrpExtrasPlugin` (full support: screenshots, input simulation, clean shutdown, etc.)
+  - "brp_only": Uses `RemotePlugin` only (core BRP queries and mutations, no extras methods)
+  - "none": No BRP support detected
+For bins, `brp_level` reflects whether the package's src/ tree uses BRP plugins.
+For examples, the individual source file is checked for BRP plugin imports.
+Use `relative_path` with `brp_launch` path parameter to disambiguate targets with the same name.

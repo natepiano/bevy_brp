@@ -1,11 +1,9 @@
-//! Generic listing handler using the strategy pattern
+//! Listing handler using the strategy pattern
 
 use std::collections::HashSet;
 
 use super::cargo_detector::CargoDetector;
-use super::collection_strategy::BevyAppsStrategy;
-use super::collection_strategy::BevyExamplesStrategy;
-use super::collection_strategy::BrpAppsStrategy;
+use super::collection_strategy::AllBevyTargetsStrategy;
 use super::collection_strategy::CollectionStrategy;
 use super::scanning;
 
@@ -41,14 +39,7 @@ fn collect_all_items<S: CollectionStrategy>(
     all_items
 }
 
-pub fn collect_bevy_apps(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
-    collect_all_items(search_paths, &BevyAppsStrategy)
-}
-
-pub fn collect_brp_apps(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
-    collect_all_items(search_paths, &BrpAppsStrategy)
-}
-
-pub fn collect_bevy_examples(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
-    collect_all_items(search_paths, &BevyExamplesStrategy)
+/// Collect all Bevy targets (apps and examples) with `kind` and `brp_enabled` fields
+pub fn collect_all_bevy_targets(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
+    collect_all_items(search_paths, &AllBevyTargetsStrategy)
 }

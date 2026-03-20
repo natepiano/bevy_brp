@@ -16,7 +16,7 @@ This command runs BRP tests in three modes:
 ```
 /test                           # Run all tests ${PARALLEL_TESTS} at a time, stop on first failure
 /test extras                    # Run only the extras test
-/test extras,mouse_input        # Run extras and mouse_input tests
+/test extras,mouse        # Run extras and mouse tests
 /test data_operations,events    # Run data_operations and events tests
 ```
 
@@ -438,7 +438,7 @@ The test "{test_name}" was not found in ${TEST_CONFIG_FILE}.
 Usage: /test [test_name[,test_name...]]
 Examples:
   /test extras
-  /test extras,mouse_input
+  /test extras,mouse
 ```
 
 ## Multiple Tests Mode (2+ test names in $ARGUMENTS)
@@ -468,7 +468,7 @@ Available tests: {list of all available test names}
 Usage: /test [test_name[,test_name...]]
 Examples:
   /test extras
-  /test extras,mouse_input,data_operations
+  /test extras,mouse,data_operations
 ```
 
 ## All Tests Mode (when no $ARGUMENTS)

@@ -1,2 +1,0 @@
-Discovers all Bevy examples in workspace using cargo metadata.
-Returns example names organized by package with paths to source code.

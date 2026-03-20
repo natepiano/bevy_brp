@@ -118,8 +118,8 @@ In either case you'll need to make sure to enable bevy's "bevy_remote" feature.
 
 ## Example Workflow
 
-1. **Discover**: Use `list_bevy_apps` to find available applications
-2. **Launch**: Use `launch_bevy_app` to start your game with proper logging
+1. **Discover**: Use `brp_list_bevy` to find available applications and examples
+2. **Launch**: Use `brp_launch` to start your game with proper logging
 3. **Inspect**: Use `world_query` to find entities of interest
 4. **Monitor**: Use `world_get_components_watch` to observe entity changes in real-time
 5. **Modify**: Use `world_mutate_components` to adjust entity properties

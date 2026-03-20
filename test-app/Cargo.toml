@@ -29,6 +29,11 @@ path = "examples/event_test.rs"
 name = "mouse_test"
 path = "examples/mouse_test.rs"
 
+# Same name as the [[bin]] above — tests that brp_list_bevy distinguishes by kind
+[[example]]
+name = "test_app"
+path = "examples/test_app.rs"
+
 
 [dependencies]
 bevy_brp_extras = { path = "../extras" }

@@ -6,7 +6,7 @@ Validate that path parameter successfully resolves conflicts when multiple examp
 ## Test Steps
 
 ### 1. Check for Path Conflicts (Examples)
-- Execute `mcp__brp__brp_list_bevy_examples` to check for duplicate example names
+- Execute `mcp__brp__brp_list_bevy` to check for duplicate example names
 - **CRITICAL**: If NO duplicate examples exist, you MUST mark this as a FAILED test with reason: "No duplicate examples found to test disambiguation logic"
 - If duplicates exist, note available paths for testing
 

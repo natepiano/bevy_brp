@@ -25,6 +25,29 @@ pub(super) enum TargetType {
     Example,
 }
 
+/// Level of BRP (Bevy Remote Protocol) support detected in a target
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum BrpLevel {
+    /// No BRP support detected
+    None,
+    /// Uses `RemotePlugin` only (core BRP, no extras)
+    BrpOnly,
+    /// Uses `BrpExtrasPlugin` (full extras support: screenshots, input, shutdown, etc.)
+    Extras,
+}
+
+impl BrpLevel {
+    /// Returns the string representation used in JSON output
+    pub(super) const fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::BrpOnly => "brp_only",
+            Self::Extras => "extras",
+        }
+    }
+}
+
 impl TargetType {
     /// Add cargo-specific arguments for this target type
     pub(super) fn add_cargo_args(self, cmd: &mut Command, target_name: &str) {
@@ -54,6 +77,8 @@ pub(super) struct BevyTarget {
     pub(super) manifest_path:  PathBuf,
     /// Relative path from scan root to this item
     pub(super) relative_path:  PathBuf,
+    /// Path to the target's source file (from `cargo metadata`)
+    pub(super) source_path:    PathBuf,
 }
 
 impl BevyTarget {
@@ -76,9 +101,6 @@ impl BevyTarget {
 
     /// Check if this target is an app
     pub(super) fn is_app(&self) -> bool { self.target_type == TargetType::App }
-
-    /// Check if this target is an example
-    pub(super) fn is_example(&self) -> bool { self.target_type == TargetType::Example }
 }
 
 /// Detects binary targets in a project or workspace
@@ -131,6 +153,7 @@ impl CargoDetector {
                 workspace_root: workspace_root.clone(),
                 manifest_path:  manifest_path.clone(),
                 relative_path:  PathBuf::new(), // Will be set by scanning logic
+                source_path:    target.src_path.clone().into(),
             });
         }
 
@@ -143,6 +166,7 @@ impl CargoDetector {
                 workspace_root: workspace_root.clone(),
                 manifest_path:  manifest_path.clone(),
                 relative_path:  PathBuf::new(), // Will be set by scanning logic
+                source_path:    target.src_path.clone().into(),
             });
         }
 
@@ -250,22 +274,46 @@ impl CargoDetector {
         false
     }
 
-    /// Check if a specific file uses `RemotePlugin` or `BrpExtrasPlugin`
-    fn file_uses_brp_plugins(file_path: &std::path::Path) -> bool {
+    /// Determine the BRP support level of a specific file.
+    ///
+    /// Returns `"extras"` if the file imports `BrpExtrasPlugin`,
+    /// `"brp_only"` if it imports `RemotePlugin` without extras,
+    /// or `"none"` if neither is found.
+    pub(super) fn file_brp_level(file_path: &std::path::Path) -> BrpLevel {
         use std::fs;
 
-        fs::read_to_string(file_path).is_ok_and(|content| {
-            // Look for actual use statements that import BRP plugins
-            // Use more specific patterns to avoid matching our own detection code
-            let has_remote_plugin_import = content.contains("use bevy::remote::RemotePlugin")
-                || (content.contains("use bevy::remote::{") && content.contains("RemotePlugin"));
+        let Ok(content) = fs::read_to_string(file_path) else {
+            return BrpLevel::None;
+        };
 
-            let has_brp_extras_plugin_import = content
-                .contains("use bevy_brp_extras::BrpExtrasPlugin")
-                || (content.contains("use bevy_brp_extras::{")
-                    && content.contains("BrpExtrasPlugin"));
+        let has_extras = Self::content_has_extras_plugin(&content);
+        let has_remote = Self::content_has_remote_plugin(&content);
 
-            has_remote_plugin_import || has_brp_extras_plugin_import
-        })
+        if has_extras {
+            BrpLevel::Extras
+        } else if has_remote {
+            BrpLevel::BrpOnly
+        } else {
+            BrpLevel::None
+        }
+    }
+
+    /// Check if file content imports `BrpExtrasPlugin`
+    fn content_has_extras_plugin(content: &str) -> bool {
+        content.contains("use bevy_brp_extras::BrpExtrasPlugin")
+            || (content.contains("use bevy_brp_extras::{") && content.contains("BrpExtrasPlugin"))
+    }
+
+    /// Check if file content imports `RemotePlugin` (via `bevy::remote` or `bevy_remote`)
+    fn content_has_remote_plugin(content: &str) -> bool {
+        content.contains("use bevy::remote::RemotePlugin")
+            || (content.contains("use bevy::remote::{") && content.contains("RemotePlugin"))
+            || content.contains("use bevy_remote::RemotePlugin")
+            || (content.contains("use bevy_remote::{") && content.contains("RemotePlugin"))
+    }
+
+    /// Check if a specific file uses `RemotePlugin` or `BrpExtrasPlugin` (any BRP support)
+    pub(super) fn file_uses_brp_plugins(file_path: &std::path::Path) -> bool {
+        !matches!(Self::file_brp_level(file_path), BrpLevel::None)
     }
 }

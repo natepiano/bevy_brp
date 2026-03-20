@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Mouse input integration test script
-# Usage: bash .claude/scripts/integration_tests/mouse_input_test.sh <PORT>
+# Usage: bash .claude/scripts/integration_tests/mouse_test.sh <PORT>
 #
 # Validates comprehensive mouse input simulation on both primary and secondary windows.
 # Communicates with a running mouse_test Bevy example via BRP JSON-RPC over HTTP.

@@ -16,7 +16,7 @@ This test is executed via a bash script that communicates directly with the BRP 
 
 **Run the script**:
 ```bash
-bash .claude/scripts/integration_tests/mouse_input_test.sh <PORT>
+bash .claude/scripts/integration_tests/mouse_test.sh <PORT>
 ```
 
 **Interpret results**:

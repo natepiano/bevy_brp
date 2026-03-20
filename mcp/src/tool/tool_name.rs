@@ -23,9 +23,7 @@ use super::annotations::ToolCategory;
 use super::parameters;
 use super::types::ErasedToolFn;
 use crate::app_tools::LaunchBevyBinaryParams;
-use crate::app_tools::ListBevyApps;
-use crate::app_tools::ListBevyExamples;
-use crate::app_tools::ListBrpApps;
+use crate::app_tools::ListBevy;
 use crate::app_tools::Shutdown;
 use crate::app_tools::ShutdownParams;
 use crate::app_tools::Status;
@@ -342,12 +340,8 @@ pub enum ToolName {
     BrpListActiveWatches,
 
     // Application Management Tools
-    /// `brp_list_bevy_apps` - List Bevy apps in workspace
-    BrpListBevyApps,
-    /// `brp_list_bevy_examples` - List Bevy examples in workspace
-    BrpListBevyExamples,
-    /// `brp_list_brp_apps` - List BRP-enabled Bevy apps
-    BrpListBrpApps,
+    /// `brp_list_bevy` - List all Bevy apps and examples in workspace
+    BrpListBevy,
     /// `brp_launch` - Launch Bevy apps or examples
     BrpLaunch,
     /// `brp_shutdown` - Shutdown running Bevy applications
@@ -590,18 +584,8 @@ impl ToolName {
                 ToolCategory::App,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            Self::BrpListBevyApps => Annotation::new(
-                "list bevy apps",
-                ToolCategory::App,
-                EnvironmentImpact::ReadOnly,
-            ),
-            Self::BrpListBevyExamples => Annotation::new(
-                "list bevy examples",
-                ToolCategory::App,
-                EnvironmentImpact::ReadOnly,
-            ),
-            Self::BrpListBrpApps => Annotation::new(
-                "list bevy brp-enabled apps",
+            Self::BrpListBevy => Annotation::new(
+                "list bevy apps and examples",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
@@ -752,10 +736,7 @@ impl ToolName {
             // this lot has no parametrers
             #[cfg(feature = "mcp-debug")]
             Self::BrpGetTraceLogPath => None,
-            Self::BrpListBevyApps
-            | Self::BrpListBevyExamples
-            | Self::BrpListBrpApps
-            | Self::BrpListActiveWatches => None,
+            Self::BrpListBevy | Self::BrpListActiveWatches => None,
 
             // and thest of these app and watch tools do have parameters
             Self::BrpLaunch => Some(parameters::build_parameters_from::<LaunchBevyBinaryParams>),
@@ -826,9 +807,7 @@ impl ToolName {
             #[cfg(feature = "mcp-debug")]
             Self::BrpGetTraceLogPath => Arc::new(GetTraceLogPath),
             Self::BrpLaunch => Arc::new(app_tools::create_launch_handler()),
-            Self::BrpListBevyApps => Arc::new(ListBevyApps),
-            Self::BrpListBevyExamples => Arc::new(ListBevyExamples),
-            Self::BrpListBrpApps => Arc::new(ListBrpApps),
+            Self::BrpListBevy => Arc::new(ListBevy),
             Self::BrpListLogs => Arc::new(ListLogs),
             Self::BrpReadLog => Arc::new(ReadLog),
             #[cfg(feature = "mcp-debug")]

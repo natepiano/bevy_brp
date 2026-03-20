@@ -1,13 +1,16 @@
 //! Collection strategy trait for app listing handlers
 
+use std::collections::HashSet;
+
 use serde_json::json;
 
 use super::cargo_detector::BevyTarget;
+use super::cargo_detector::BrpLevel;
 use super::cargo_detector::CargoDetector;
 use crate::app_tools::constants::PROFILE_DEBUG;
 use crate::app_tools::constants::PROFILE_RELEASE;
 
-/// Helper function to create builds JSON for binary items (apps only)
+/// Helper function to create builds JSON for binary items
 fn create_builds_json(item: &BevyTarget) -> serde_json::Value {
     let profiles = vec![PROFILE_DEBUG, PROFILE_RELEASE];
     let mut builds = json!({});
@@ -38,115 +41,87 @@ pub(super) trait CollectionStrategy {
     fn serialize_item(&self, item: &Self::Item, relative_path: String) -> serde_json::Value;
 }
 
-/// Strategy for collecting standard Bevy apps with build info
-pub(super) struct BevyAppsStrategy;
+/// Unified strategy for collecting all Bevy targets (apps and examples)
+/// with `kind` and `brp_level` fields on each item.
+///
+/// Only targets declared in workspace `Cargo.toml` files are included (via `cargo metadata`).
+pub(super) struct AllBevyTargetsStrategy;
 
-impl CollectionStrategy for BevyAppsStrategy {
-    type Item = BevyTarget;
+/// A `BevyTarget` enriched with BRP status.
+///
+/// For bins, `brp_level` reflects whether the package's `src/` tree uses BRP plugins.
+/// For examples, the individual source file is checked for BRP plugin imports.
+pub(super) struct EnrichedTarget {
+    pub(super) target:    BevyTarget,
+    pub(super) brp_level: BrpLevel,
+}
+
+impl CollectionStrategy for AllBevyTargetsStrategy {
+    type Item = EnrichedTarget;
 
     fn collect_items(&self, detector: &CargoDetector) -> Vec<Self::Item> {
-        detector
-            .find_bevy_targets()
+        let all_targets = detector.find_bevy_targets();
+
+        // Build a package-level BRP lookup for bins (requires deep `src/` scan)
+        let brp_targets = detector.find_brp_targets();
+        let brp_keys: HashSet<String> = brp_targets
+            .iter()
+            .map(|t| format!("{}::{}", t.manifest_path.display(), t.name))
+            .collect();
+
+        // Enrich each target with BRP level using a hybrid approach:
+        // - Bins: package-level set lookup (scans `src/` tree for BRP plugin registration) then
+        //   file-level check for extras vs brp_only distinction
+        // - Examples: per-file check (reads the example's source file directly)
+        all_targets
             .into_iter()
-            .filter(BevyTarget::is_app)
+            .map(|target| {
+                let brp_level = if target.is_app() {
+                    let key = format!("{}::{}", target.manifest_path.display(), target.name);
+                    if brp_keys.contains(&key) {
+                        // Package has BRP — check the specific binary's source for level
+                        CargoDetector::file_brp_level(&target.source_path)
+                    } else {
+                        BrpLevel::None
+                    }
+                } else {
+                    CargoDetector::file_brp_level(&target.source_path)
+                };
+                EnrichedTarget { target, brp_level }
+            })
             .collect()
     }
 
     fn create_unique_key(&self, item: &Self::Item) -> String {
-        format!("{}::{}", item.manifest_path.display(), item.name)
+        format!(
+            "{}::{}::{}",
+            item.target.manifest_path.display(),
+            item.target.name,
+            item.target.target_type.as_ref()
+        )
     }
 
     fn get_path_for_relative(&self, item: &Self::Item) -> std::path::PathBuf {
-        item.manifest_path
+        item.target
+            .manifest_path
             .parent()
-            .unwrap_or(&item.manifest_path)
+            .unwrap_or(&item.target.manifest_path)
             .to_path_buf()
     }
 
     fn serialize_item(&self, item: &Self::Item, relative_path: String) -> serde_json::Value {
         json!({
-            "name": item.name,
-            "workspace_root": item.workspace_root.display().to_string(),
-            "manifest_path": item.manifest_path.display().to_string(),
+            "name": item.target.name,
+            "kind": item.target.target_type.as_ref(),
+            "package_name": item.target.package_name,
+            "brp_level": item.brp_level.as_str(),
+            "workspace_root": item.target.workspace_root.display().to_string(),
+            "manifest_path": item.target.manifest_path.display().to_string(),
             // The relative_path field is designed for round-trip compatibility with launch functions.
-            // This path can be used directly in brp_launch's path parameter
-            // to disambiguate between apps with the same name in different locations.
+            // This path can be used directly in `brp_launch`'s path parameter
+            // to disambiguate between targets with the same name in different locations.
             "relative_path": relative_path,
-            "builds": create_builds_json(item)
-        })
-    }
-}
-
-/// Strategy for collecting BRP-enabled apps with `brp_enabled` flag
-pub(super) struct BrpAppsStrategy;
-
-impl CollectionStrategy for BrpAppsStrategy {
-    type Item = BevyTarget;
-
-    fn collect_items(&self, detector: &CargoDetector) -> Vec<Self::Item> {
-        detector
-            .find_brp_targets()
-            .into_iter()
-            .filter(BevyTarget::is_app)
-            .collect()
-    }
-
-    fn create_unique_key(&self, item: &Self::Item) -> String {
-        format!("{}::{}", item.manifest_path.display(), item.name)
-    }
-
-    fn get_path_for_relative(&self, item: &Self::Item) -> std::path::PathBuf {
-        item.manifest_path
-            .parent()
-            .unwrap_or(&item.manifest_path)
-            .to_path_buf()
-    }
-
-    fn serialize_item(&self, item: &Self::Item, _relative_path: String) -> serde_json::Value {
-        json!({
-            "name": item.name,
-            "workspace_root": item.workspace_root.display().to_string(),
-            "manifest_path": item.manifest_path.display().to_string(),
-            "builds": create_builds_json(item),
-            "brp_enabled": true
-        })
-    }
-}
-
-/// Strategy for collecting examples without build info
-pub(super) struct BevyExamplesStrategy;
-
-impl CollectionStrategy for BevyExamplesStrategy {
-    type Item = BevyTarget;
-
-    fn collect_items(&self, detector: &CargoDetector) -> Vec<Self::Item> {
-        detector
-            .find_bevy_targets()
-            .into_iter()
-            .filter(BevyTarget::is_example)
-            .collect()
-    }
-
-    fn create_unique_key(&self, item: &Self::Item) -> String {
-        format!("{}::{}", item.package_name, item.name)
-    }
-
-    fn get_path_for_relative(&self, item: &Self::Item) -> std::path::PathBuf {
-        item.manifest_path
-            .parent()
-            .unwrap_or(&item.manifest_path)
-            .to_path_buf()
-    }
-
-    fn serialize_item(&self, item: &Self::Item, relative_path: String) -> serde_json::Value {
-        json!({
-            "name": item.name,
-            "package_name": item.package_name,
-            "manifest_path": item.manifest_path.display().to_string(),
-            // The relative_path field is designed for round-trip compatibility with launch functions.
-            // This path can be used directly in brp_launch's path parameter
-            // to disambiguate between examples with the same name in different locations.
-            "relative_path": relative_path
+            "builds": create_builds_json(&item.target)
         })
     }
 }

@@ -1,2 +1,0 @@
-Discovers all Bevy apps in workspace using cargo metadata.
-Returns app names, binary paths, build profiles, build status, and full paths.
