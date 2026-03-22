@@ -48,28 +48,28 @@ This test uses pre-launched app instances referenced by label:
 - Verify entity ID is returned
 - Store entity ID for subsequent tests
 
-### 5. Query Operation - Non-Reflected Component
+### 5. Get Component Data
+- Execute `mcp__brp__world_get_components` on spawned entity with port [main_app port]
+- Request Transform component
+- Verify translation matches spawned values (translation.x is 50.0, translation.y is 50.0)
+
+### 6. Query Operation - Non-Reflected Component
 - Execute `mcp__brp__world_query` with port [main_app port] for `test_app::Rotator` component (which lacks Reflect derive)
 - **IMPORTANT**: The `data` parameter is required - use an empty object `{}` if you only want to filter
 - With default `strict: false` and `data: {}`: Verify it returns empty results (0 entities)
 - With `strict: true` and `data: {}`: Verify it returns error -23402 with message about component not being registered
 - This tests proper handling of components that exist in the app but aren't reflection-enabled
 
-### 6. Mutate Component
+### 7. Mutate Component
 - Use `mcp__brp__world_mutate_components` on spawned entity with port [main_app port]
 - Change translation.x to 100.0 (pass as numeric value, not string)
 - Verify mutation succeeds
 - **IMPORTANT**: The value must be passed as a number (100.0), not as a string ("100.0")
 - If passed as string, expect error: `invalid type: string "100.0", expected f32`
 
-### 7. Get Component Data
-- Execute `mcp__brp__world_get_components` on mutated entity with port [main_app port]
-- Request Transform component
-- Verify translation.x is now 100.0
-
 ## Expected Results
 - BRP connectivity works with binary applications
-- Basic BRP operations (spawn, query, mutate, get) function correctly
+- Basic BRP operations (spawn, get, query, mutate) function correctly
 - RPC discovery shows both standard BRP and extras methods
 - App vs example launch distinction is validated
 - Environment variables are passed through to the launched process

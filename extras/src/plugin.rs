@@ -5,6 +5,8 @@ use std::sync::Mutex;
 #[cfg(feature = "diagnostics")]
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
+#[cfg(not(target_arch = "wasm32"))]
+use bevy::window::PrimaryWindow;
 use bevy_remote::RemoteMethodSystemId;
 use bevy_remote::RemoteMethods;
 use bevy_remote::RemotePlugin;
@@ -23,6 +25,23 @@ use crate::window_title;
 
 /// Command prefix for `brp_extras` methods
 const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
+
+// ---------------------------------------------------------------------------
+// Port display configuration
+// ---------------------------------------------------------------------------
+
+/// Controls whether the BRP port is appended to the window title.
+///
+/// Used with [`BrpExtrasPlugin::port_in_title`] to display the port in the
+/// primary window's title bar.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Copy, Debug)]
+pub enum PortDisplay {
+    /// Always append `(port: XXXXX)` to the window title.
+    Always,
+    /// Only append when not using the default port (15702).
+    NonDefault,
+}
 
 // ---------------------------------------------------------------------------
 // HTTP configuration state types
@@ -118,7 +137,9 @@ pub const BrpExtrasPlugin: BrpExtrasPlugin = BrpExtrasPlugin::new();
 /// The `HttpConfig` type parameter controls how HTTP transport is configured.
 /// See the [module-level documentation](BrpExtrasPlugin) for usage examples.
 pub struct BrpExtrasPlugin<HttpConfig = Unconfigured> {
-    http_config: HttpConfig,
+    http_config:  HttpConfig,
+    #[cfg(not(target_arch = "wasm32"))]
+    port_display: Option<PortDisplay>,
 }
 
 impl Default for BrpExtrasPlugin<Unconfigured> {
@@ -132,7 +153,9 @@ impl BrpExtrasPlugin<Unconfigured> {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            http_config: Unconfigured,
+            http_config:                                      Unconfigured,
+            #[cfg(not(target_arch = "wasm32"))]
+            port_display:                                     None,
         }
     }
 
@@ -146,7 +169,8 @@ impl BrpExtrasPlugin<Unconfigured> {
     #[must_use]
     pub const fn with_port(port: u16) -> BrpExtrasPlugin<PortConfigured> {
         BrpExtrasPlugin {
-            http_config: PortConfigured(port),
+            http_config:  PortConfigured(port),
+            port_display: None,
         }
     }
 
@@ -163,7 +187,8 @@ impl BrpExtrasPlugin<Unconfigured> {
         plugin: RemoteHttpPlugin,
     ) -> BrpExtrasPlugin<HttpPluginConfigured> {
         BrpExtrasPlugin {
-            http_config: HttpPluginConfigured(Mutex::new(Some(plugin))),
+            http_config:  HttpPluginConfigured(Mutex::new(Some(plugin))),
+            port_display: None,
         }
     }
 }
@@ -206,6 +231,31 @@ impl<H: HasEffectivePort> BrpExtrasPlugin<H> {
 
         (effective_port, source_description)
     }
+
+    /// Append `(port: XXXXX)` to the primary window's title at startup.
+    ///
+    /// - [`PortDisplay::Always`] — always appends the port
+    /// - [`PortDisplay::NonDefault`] — only appends when the effective port differs from the
+    ///   default (15702)
+    ///
+    /// If not called, the window title is left unchanged.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_brp_extras::BrpExtrasPlugin;
+    /// # use bevy_brp_extras::PortDisplay;
+    /// App::new()
+    ///     .add_plugins(DefaultPlugins)
+    ///     .add_plugins(BrpExtrasPlugin::with_port(9000).port_in_title(PortDisplay::NonDefault))
+    ///     .run();
+    /// ```
+    #[must_use]
+    pub fn port_in_title(mut self, display: PortDisplay) -> Self {
+        self.port_display = Some(display);
+        self
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -215,7 +265,10 @@ impl<H: HasEffectivePort> BrpExtrasPlugin<H> {
 impl Plugin for BrpExtrasPlugin<Unconfigured> {
     fn build(&self, app: &mut App) {
         #[cfg(not(target_arch = "wasm32"))]
-        add_managed_http_transport(app, None);
+        {
+            add_managed_http_transport(app, None);
+            maybe_add_port_title_system(app, &self.http_config, self.port_display);
+        }
 
         build_shared(app);
     }
@@ -225,6 +278,7 @@ impl Plugin for BrpExtrasPlugin<Unconfigured> {
 impl Plugin for BrpExtrasPlugin<PortConfigured> {
     fn build(&self, app: &mut App) {
         add_managed_http_transport(app, Some(self.http_config.0));
+        maybe_add_port_title_system(app, &self.http_config, self.port_display);
         build_shared(app);
     }
 }
@@ -407,4 +461,41 @@ fn register_extras_methods(world: &mut World) {
 #[cfg(not(target_arch = "wasm32"))]
 fn log_initialization(port: u16, source_description: &str) {
     info!("BRP extras enabled on http://localhost:{port} ({source_description})");
+}
+
+/// Conditionally adds a `Startup` system that appends the port to the primary
+/// window's title, based on the [`PortDisplay`] policy.
+#[cfg(not(target_arch = "wasm32"))]
+fn maybe_add_port_title_system(
+    app: &mut App,
+    http_config: &impl HasEffectivePort,
+    port_display: Option<PortDisplay>,
+) {
+    let Some(display) = port_display else {
+        return;
+    };
+
+    let fallback = http_config.fallback_port();
+
+    let env_port = std::env::var("BRP_EXTRAS_PORT")
+        .ok()
+        .and_then(|s| s.parse::<u16>().ok());
+
+    let effective_port = env_port.unwrap_or(fallback);
+
+    let should_display = match display {
+        PortDisplay::Always => true,
+        PortDisplay::NonDefault => effective_port != DEFAULT_REMOTE_PORT,
+    };
+
+    if should_display {
+        app.add_systems(
+            Startup,
+            move |mut query: Query<&mut Window, With<PrimaryWindow>>| {
+                if let Ok(mut window) = query.single_mut() {
+                    window.title = format!("{} (port: {effective_port})", window.title);
+                }
+            },
+        );
+    }
 }

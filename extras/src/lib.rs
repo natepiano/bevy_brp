@@ -152,6 +152,8 @@ pub use plugin::HasEffectivePort;
 pub use plugin::HttpPluginConfigured;
 #[cfg(not(target_arch = "wasm32"))]
 pub use plugin::PortConfigured;
+#[cfg(not(target_arch = "wasm32"))]
+pub use plugin::PortDisplay;
 pub use plugin::Unconfigured;
 
 /// Default port for remote control connections

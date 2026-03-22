@@ -13,9 +13,10 @@
 
 use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
+use bevy_brp_extras::PortDisplay;
 
 fn main() {
-    let brp_plugin = BrpExtrasPlugin::new();
+    let brp_plugin = BrpExtrasPlugin::new().port_in_title(PortDisplay::Always);
     let (port, _) = brp_plugin.get_effective_port();
 
     App::new()

@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Add `with_http_plugin()` constructor for providing a fully configured `RemoteHttpPlugin`. 
+- Add `port_in_title()` builder method to optionally append `(port: XXXXX)` to the primary window's title at startup. Accepts `PortDisplay::Always` (always show) or `PortDisplay::NonDefault` (only when the port differs from the default 15702). Not called by default — window title is unchanged unless opted in.
+- Add `with_http_plugin()` constructor for providing a fully configured `RemoteHttpPlugin`.
 - Add `HasEffectivePort` trait enabling `get_effective_port()` on both `Unconfigured` and `PortConfigured` plugin states, returning the correct resolved port for each.
 
 ### Fixed

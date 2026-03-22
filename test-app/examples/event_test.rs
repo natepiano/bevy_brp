@@ -5,6 +5,7 @@
 use bevy::ecs::observer::On;
 use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
+use bevy_brp_extras::PortDisplay;
 
 /// Test event with no payload
 #[derive(Event, Reflect, Clone)]
@@ -30,19 +31,16 @@ struct EventTriggerTracker {
 }
 
 fn main() {
-    let brp_plugin = BrpExtrasPlugin::new();
-    let (port, _) = brp_plugin.get_effective_port();
-
     App::new()
         .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
             primary_window: Some(bevy::window::Window {
-                title: format!("Event Test - Port {port}"),
+                title: "Event Test".to_string(),
                 resolution: (400, 300).into(),
                 ..default()
             }),
             ..default()
         }))
-        .add_plugins(brp_plugin)
+        .add_plugins(BrpExtrasPlugin::new().port_in_title(PortDisplay::Always))
         // Register types with BRP for discovery and triggering
         .register_type::<TestUnitEvent>()
         .register_type::<TestPayloadEvent>()

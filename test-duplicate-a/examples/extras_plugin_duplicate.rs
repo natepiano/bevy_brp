@@ -13,6 +13,7 @@ use std::time::Instant;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
+use bevy_brp_extras::PortDisplay;
 
 /// Resource to track keyboard input history
 #[derive(Resource, Default)]
@@ -36,7 +37,7 @@ struct KeyboardInputHistory {
 struct KeyboardDisplayText;
 
 fn main() {
-    let brp_plugin = BrpExtrasPlugin::new();
+    let brp_plugin = BrpExtrasPlugin::new().port_in_title(PortDisplay::Always);
     let (port, _) = brp_plugin.get_effective_port();
 
     info!("Starting BRP Extras Test on port {}", port);

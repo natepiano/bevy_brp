@@ -11,16 +11,28 @@ Validate brp_extras text input method: type_text with sequential typing, special
 - The `extras_plugin` app is already running on the assigned `{{PORT}}`
 - Do not launch or shutdown the app in this test
 
-### 2. Text Input Tests
-- Clear the `TextInputContent` resource: `mcp__brp__world_insert_resources` with resource `extras_plugin::TextInputContent` and value `{"text": ""}`
-- Test basic typing: `mcp__brp__brp_extras_type_text` with `{"text": "hello"}`
-- Verify text appears: `mcp__brp__world_get_resources` with resource `extras_plugin::TextInputContent`, should return `{"text": "hello"}`
-- Test sequential typing: `mcp__brp__brp_extras_type_text` with `{"text": " world"}`
-- Verify concatenation: `mcp__brp__world_get_resources` with resource `extras_plugin::TextInputContent`, should return `{"text": "hello world"}`
-- Test special characters: `mcp__brp__brp_extras_type_text` with `{"text": "!@#"}`
-- Verify special chars: `mcp__brp__world_get_resources` with resource `extras_plugin::TextInputContent`, should return `{"text": "hello world!@#"}`
-- Test unmappable characters: `mcp__brp__brp_extras_type_text` with text containing unmappable chars
-- Verify skipped array is populated in response
+### 2. Clear Text Resource
+- Execute `mcp__brp__world_insert_resources` with resource `extras_plugin::TextInputContent` and value `{"text": ""}`
+- Verify the resource is cleared
+
+### 3. Basic Typing
+- Execute `mcp__brp__brp_extras_type_text` with `{"text": "hello"}`
+- Execute `mcp__brp__world_get_resources` with resource `extras_plugin::TextInputContent`
+- Verify the resource returns `{"text": "hello"}`
+
+### 4. Sequential Typing
+- Execute `mcp__brp__brp_extras_type_text` with `{"text": " world"}`
+- Execute `mcp__brp__world_get_resources` with resource `extras_plugin::TextInputContent`
+- Verify the resource returns `{"text": "hello world"}`
+
+### 5. Special Characters
+- Execute `mcp__brp__brp_extras_type_text` with `{"text": "!@#"}`
+- Execute `mcp__brp__world_get_resources` with resource `extras_plugin::TextInputContent`
+- Verify the resource returns `{"text": "hello world!@#"}`
+
+### 6. Unmappable Characters
+- Execute `mcp__brp__brp_extras_type_text` with text containing unmappable chars (e.g. `"café"`)
+- Verify the skipped array is populated in the response
 
 ## Expected Results
 - Text typing works sequentially and accumulates correctly

@@ -27,6 +27,7 @@ use bevy::window::WindowMode;
 use bevy::window::WindowRef;
 use bevy::window::WindowResolution;
 use bevy_brp_extras::BrpExtrasPlugin;
+use bevy_brp_extras::PortDisplay;
 
 /// Size of the pickable cuboid (used for both mesh and gizmo outline)
 const CUBOID_SIZE: f32 = 1.5;
@@ -51,7 +52,7 @@ fn main() {
                 ..default()
             }),
             MeshPickingPlugin,
-            BrpExtrasPlugin::new(),
+            BrpExtrasPlugin::new().port_in_title(PortDisplay::Always),
         ))
         .init_resource::<MouseStateTracker>()
         .add_systems(Startup, (setup_windows, setup_scene).chain())

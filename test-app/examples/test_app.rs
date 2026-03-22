@@ -9,11 +9,12 @@
 
 use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
+use bevy_brp_extras::PortDisplay;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(BrpExtrasPlugin)
+        .add_plugins(BrpExtrasPlugin::new().port_in_title(PortDisplay::Always))
         .add_systems(Startup, setup)
         .run();
 }

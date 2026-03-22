@@ -35,6 +35,7 @@ Each test entry has one of two formats:
 - `test_file`: Test file path (relative to project root)
 - `app_name`: App/example to launch (or "N/A" or "various")
 - `app_type`: Type of app - "example" or "app" (null for "various" or "N/A")
+- `individual_only` (optional): If true, this test is excluded from batch execution (All Tests Mode and Multiple Tests Mode). It can only be run via Single Test Mode (e.g., `/test mouse`). Use this for tests that require exclusive system access (e.g., mouse input tests that conflict with user mouse movement).
 
 **Multi-app format** (tests needing multiple pre-launched instances):
 - `test_name`: Identifier for the test
@@ -55,12 +56,13 @@ Each test entry has one of two formats:
 
 **IMPORTANT**: Count the number of test objects in test_config.json to determine the total number of tests. Do NOT assume it matches ${PARALLEL_TESTS}.
 
-**CRITICAL COUNTING INSTRUCTION**: You MUST use the following command to count tests accurately:
+**CRITICAL COUNTING INSTRUCTION**: You MUST use the following commands to count tests accurately:
 ```bash
-jq '.tests | length' ${TEST_CONFIG_FILE}
+jq '.tests | length' ${TEST_CONFIG_FILE}                                    # total tests
+jq '[.tests[] | select(.individual_only == true)] | length' ${TEST_CONFIG_FILE}  # individual-only tests
 ```
 Note: Replace ${TEST_CONFIG_FILE} with the actual path from the configuration section above.
-Use this exact count in your final summary. Do NOT manually count or assume any number.
+In batch modes (All Tests / Multiple Tests), report both counts: total tests in config and how many were excluded as `individual_only`. In Single Test Mode, just report the single test.
 
 ## App Management Strategy
 
@@ -450,7 +452,7 @@ Examples:
 3. **Validate All Tests**: For each test name, search for matching test configuration
    - If ANY test not found, report error listing all missing tests and available test names
    - If all found, continue to execution
-4. **Filter Test List**: Build test list containing only the specified tests (preserve config order)
+4. **Filter Test List**: Build test list containing only the specified tests (preserve config order). If any specified test has `individual_only: true`, warn the user that it was skipped (e.g., "Skipping 'mouse' — individual_only test, run separately with `/test mouse`") and exclude it from the batch. If ALL specified tests are `individual_only`, report that no tests remain and exit.
 5. **Execute Tests**: Use the same batched parallel execution as "All Tests Mode" (see below), but with filtered test list
 
 ### Error Handling
@@ -490,9 +492,9 @@ Examples:
 
 4. **Extract Test List**: Execute this EXACT command:
    ```bash
-   jq -c '.tests[] | {test_name, test_file, app_name, app_type, apps}' ${TEST_CONFIG_FILE}
+   jq -c '.tests[] | select(.individual_only != true) | {test_name, test_file, app_name, app_type, apps}' ${TEST_CONFIG_FILE}
    ```
-   This produces one JSON object per line, in config order. Tests with `apps` array will have `app_name: null` and `app_type: null`.
+   This produces one JSON object per line, in config order. Tests with `individual_only: true` are excluded from batch execution. Tests with `apps` array will have `app_name: null` and `app_type: null`.
 
 5. **Extract Objectives and Build Test List**:
    - Collect all test_file paths from step 3 into a space-separated list
@@ -625,7 +627,8 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
 # BRP Test Suite - Consolidated Results
 
 ## Overall Statistics
-- **Total Tests**: [Count from ${TEST_CONFIG_FILE}]
+- **Total Tests in Config**: [Count from ${TEST_CONFIG_FILE}]
+- **Individual-Only (excluded)**: N (list names, e.g., "mouse")
 - **Executed**: X
 - **Passed**: X
 - **Failed**: 0 (execution stops on first failure)

@@ -4,17 +4,13 @@ use bevy::log::debug;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
+use bevy_brp_extras::PortDisplay;
 
 fn main() {
-    let port = std::env::var("BRP_EXTRAS_PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(15702);
-
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: format!("Test Extras Plugin App - BRP Port {port}"),
+                title: "Test Extras Plugin App".to_string(),
                 resolution: (400, 300).into(),
                 focused: false,
                 position: bevy::window::WindowPosition::Centered(
@@ -24,7 +20,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins(BrpExtrasPlugin)
+        .add_plugins(BrpExtrasPlugin::new().port_in_title(PortDisplay::Always))
         .add_systems(Startup, (setup, minimize_window_on_start, log_startup))
         .add_systems(Update, rotate_sprite)
         .run();

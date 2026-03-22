@@ -111,6 +111,7 @@ use bevy::ui::widget::Label;
 use bevy::window::CursorIcon;
 use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
+use bevy_brp_extras::PortDisplay;
 
 /// Resource to track keyboard input history
 #[derive(Resource, Default, Reflect)]
@@ -474,7 +475,7 @@ impl Default for TestCollectionComponent {
 }
 
 fn main() {
-    let brp_plugin = BrpExtrasPlugin::new();
+    let brp_plugin = BrpExtrasPlugin::new().port_in_title(PortDisplay::Always);
     let (port, _) = brp_plugin.get_effective_port();
 
     info!("Starting BRP Extras Test on port {}", port);
@@ -482,7 +483,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
             primary_window: Some(bevy::window::Window {
-                title: format!("BRP Extras Test - Port {port}"),
+                title: "BRP Extras Test".to_string(),
                 resolution: (800, 600).into(),
                 focused: false,
                 position: bevy::window::WindowPosition::Centered(
