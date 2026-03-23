@@ -252,7 +252,7 @@ impl<H: HasEffectivePort> BrpExtrasPlugin<H> {
     ///     .run();
     /// ```
     #[must_use]
-    pub fn port_in_title(mut self, display: PortDisplay) -> Self {
+    pub const fn port_in_title(mut self, display: PortDisplay) -> Self {
         self.port_display = Some(display);
         self
     }
