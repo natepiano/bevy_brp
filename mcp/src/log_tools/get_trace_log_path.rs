@@ -9,6 +9,7 @@ use crate::tool::HandlerResult;
 use crate::tool::NoParams;
 use crate::tool::ToolFn;
 use crate::tool::ToolResult;
+use crate::error::Result;
 
 /// Result from getting the trace log path
 #[cfg(feature = "mcp-debug")]
@@ -34,7 +35,7 @@ pub struct GetTraceLogPath;
 
 #[cfg(feature = "mcp-debug")]
 #[allow(clippy::unused_async)]
-async fn handle_impl(_params: NoParams) -> crate::error::Result<GetTraceLogPathResult> {
+async fn handle_impl(_params: NoParams) -> Result<GetTraceLogPathResult> {
     // Get the trace log path
     let log_path = TracingLevel::get_trace_log_path();
 

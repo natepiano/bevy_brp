@@ -15,6 +15,7 @@ use crate::brp_tools::ResponseStatus;
 use crate::error::Error;
 use crate::tool::BrpMethod;
 use crate::tool::ToolFn;
+use crate::error::Result;
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ExecuteParams {
@@ -49,7 +50,7 @@ impl ToolFn for BrpExecute {
     type Output = ExecuteResult;
     type Params = ExecuteParams;
 
-    async fn handle_impl(&self, params: ExecuteParams) -> crate::error::Result<ExecuteResult> {
+    async fn handle_impl(&self, params: ExecuteParams) -> Result<ExecuteResult> {
         let client = BrpClient::new(
             params.method,         // Direct use of typed BRP method
             params.port,           // Use typed port parameter

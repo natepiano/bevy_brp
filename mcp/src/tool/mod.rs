@@ -32,6 +32,7 @@ pub use types::HandlerResult;
 pub use types::ResultStruct;
 pub use types::ToolFn;
 pub use types::ToolResult;
+use crate::error::Result;
 
 /// Visibility facade for the tool catalog.
 ///
@@ -43,7 +44,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> { registry::get_all_tool_defin
 ///
 /// This keeps request decoding owned by the `tool` subsystem instead of exposing
 /// `HandlerContext`'s parsing method across sibling modules.
-pub fn extract_parameter_values<T>(ctx: &HandlerContext) -> crate::error::Result<T>
+pub fn extract_parameter_values<T>(ctx: &HandlerContext) -> Result<T>
 where
     T: serde::de::DeserializeOwned,
 {
@@ -62,7 +63,7 @@ where
     O: ResultStruct + Send + Sync + 'static,
     P: ParamStruct + Clone + for<'de> serde::Deserialize<'de> + Send + 'static,
     F: FnOnce(HandlerContext, P) -> Fut + Send + 'static,
-    Fut: std::future::Future<Output = crate::error::Result<O>> + Send + 'static,
+    Fut: std::future::Future<Output = Result<O>> + Send + 'static,
 {
     types::call_with_typed_params(ctx, f)
 }

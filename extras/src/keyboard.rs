@@ -18,7 +18,7 @@ use strum_macros::Display;
 use strum_macros::EnumIter;
 use strum_macros::EnumString;
 
-use crate::window_event::write_input_event;
+use crate::window_event;
 
 /// Maximum duration for holding keys in milliseconds (1 minute)
 const MAX_KEY_DURATION_MS: u32 = 60_000;
@@ -589,7 +589,7 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     // Always send press events first
     let press_events = create_keyboard_events(&wrappers, true);
     for event in press_events {
-        write_input_event(world, event);
+        window_event::write_input_event(world, event);
     }
 
     // Always spawn an entity to handle the timed release

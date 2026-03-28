@@ -66,6 +66,7 @@ use super::constants::TYPE_USIZE;
 use super::variant_signature::VariantSignature;
 use crate::brp_tools::BrpTypeName;
 use crate::error::Error;
+use crate::error::Result;
 
 /// Format knowledge key for matching types
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -188,7 +189,7 @@ impl TypeKnowledge {
     ///
     /// This is used for generating agent guidance messages that reference Entity IDs.
     /// Returns an error if the Entity type knowledge is missing or invalid.
-    pub(super) fn get_entity_example_value() -> crate::error::Result<u64> {
+    pub(super) fn get_entity_example_value() -> Result<u64> {
         BRP_TYPE_KNOWLEDGE
             .get(&KnowledgeKey::exact(TYPE_BEVY_ENTITY))
             .and_then(|knowledge| knowledge.example().as_u64())

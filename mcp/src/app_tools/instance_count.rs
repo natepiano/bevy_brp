@@ -11,7 +11,7 @@ use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 
-use crate::support::deserialize_number_or_string;
+use crate::support;
 
 /// Minimum number of instances (1)
 const MIN_INSTANCE_COUNT: u16 = 1;
@@ -30,7 +30,7 @@ impl<'de> Deserialize<'de> for InstanceCount {
     where
         D: Deserializer<'de>,
     {
-        let count: u16 = deserialize_number_or_string(deserializer)?;
+        let count: u16 = support::deserialize_number_or_string(deserializer)?;
         if VALID_INSTANCE_RANGE.contains(&count) {
             Ok(Self(count))
         } else {

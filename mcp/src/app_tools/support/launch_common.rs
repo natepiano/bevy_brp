@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::build_freshness::FreshnessCheckResult;
-use super::build_freshness::check_target_freshness;
+use super::build_freshness;
 use super::cargo_detector::BevyTarget;
 use super::process;
 use crate::app_tools::launch_params::LaunchBevyBinaryParams;
@@ -175,7 +175,7 @@ trait LaunchConfigTrait: Clone {
     /// Returns the build state indicating whether it was fresh, rebuilt, or not found
     fn ensure_built(&self, target: &BevyTarget) -> Result<BuildState> {
         if Self::TARGET_TYPE == TargetType::App {
-            match check_target_freshness(target, self.profile()) {
+            match build_freshness::check_target_freshness(target, self.profile()) {
                 FreshnessCheckResult::Fresh => return Ok(BuildState::Fresh),
                 FreshnessCheckResult::Stale(reason) => {
                     tracing::debug!(

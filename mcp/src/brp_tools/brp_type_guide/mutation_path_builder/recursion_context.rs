@@ -262,7 +262,7 @@ impl RecursionContext {
     pub(super) fn find_knowledge(
         &self,
     ) -> std::result::Result<
-        Option<&'static super::super::type_knowledge::TypeKnowledge>,
+        Option<&'static TypeKnowledge>,
         BuilderError,
     > {
         // Try context-specific matches based on PathKind FIRST - these have higher priority

@@ -32,7 +32,7 @@ use serde::Serialize;
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::window_event::write_input_event;
+use crate::window_event;
 
 // ============================================================================
 // Constants
@@ -137,7 +137,7 @@ fn send_timed_button_press(
     duration_ms: u32,
 ) {
     // Send button press event to both individual and `WindowEvent` channels
-    write_input_event(
+    window_event::write_input_event(
         world,
         MouseButtonInput {
             button,
@@ -171,8 +171,8 @@ fn send_timed_button_press(
 /// * `position` - New cursor position in window coordinates (logical pixels)
 /// * `delta` - Delta movement from previous position
 fn send_motion_events(world: &mut World, window: Entity, position: Vec2, delta: Vec2) {
-    write_input_event(world, MouseMotion { delta });
-    write_input_event(
+    window_event::write_input_event(world, MouseMotion { delta });
+    window_event::write_input_event(
         world,
         CursorMoved {
             window,
@@ -691,7 +691,7 @@ pub fn double_click_mouse_handler(In(params): In<Option<Value>>, world: &mut Wor
     let window = resolve_window(world, request.window)?;
 
     // First click: press + immediate release
-    write_input_event(
+    window_event::write_input_event(
         world,
         MouseButtonInput {
             button: request.button,
@@ -699,7 +699,7 @@ pub fn double_click_mouse_handler(In(params): In<Option<Value>>, world: &mut Wor
             window,
         },
     );
-    write_input_event(
+    window_event::write_input_event(
         world,
         MouseButtonInput {
             button: request.button,
@@ -730,7 +730,7 @@ pub fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut World) ->
     let request: ScrollMouseRequest = parse_request(params, false)?;
     let window = resolve_window(world, request.window)?;
 
-    write_input_event(
+    window_event::write_input_event(
         world,
         MouseWheel {
             unit: request.unit,
@@ -791,7 +791,7 @@ pub fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
 pub fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: PinchGestureRequest = parse_request(params, false)?;
 
-    write_input_event(world, bevy::input::gestures::PinchGesture(request.delta));
+    window_event::write_input_event(world, bevy::input::gestures::PinchGesture(request.delta));
 
     serialize_response(
         PinchGestureResponse {
@@ -805,7 +805,7 @@ pub fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -
 pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: RotationGestureRequest = parse_request(params, false)?;
 
-    write_input_event(world, bevy::input::gestures::RotationGesture(request.delta));
+    window_event::write_input_event(world, bevy::input::gestures::RotationGesture(request.delta));
 
     serialize_response(
         RotationGestureResponse {
@@ -819,7 +819,7 @@ pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World
 pub fn double_tap_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let _request: DoubleTapGestureRequest = parse_request(params, true)?;
 
-    write_input_event(world, bevy::input::gestures::DoubleTapGesture);
+    window_event::write_input_event(world, bevy::input::gestures::DoubleTapGesture);
 
     serialize_response(DoubleTapGestureResponse {}, "double_tap_gesture")
 }

@@ -8,8 +8,7 @@ use sysinfo::Signal;
 use sysinfo::System;
 use tracing::debug;
 
-use super::support::get_pid_for_port;
-use super::support::process_matches_name_exact;
+use super::support;
 use crate::brp_tools::BrpClient;
 use crate::brp_tools::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use crate::brp_tools::Port;
@@ -224,7 +223,7 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
     // First try: Get PID from port for more reliable process identification
-    let target_pid = get_pid_for_port(port).map_or_else(
+    let target_pid = support::get_pid_for_port(port).map_or_else(
         || {
             debug!("No process found listening on port {port}, falling back to name-only lookup");
             None
@@ -236,7 +235,7 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
             debug!("PID {pid} not found in process list");
             None
         }, |process| {
-            if process_matches_name_exact(process, app_name) {
+            if support::process_matches_name_exact(process, app_name) {
                 debug!("Verified process name matches: {}", process.name().to_string_lossy());
                 Some(pid)
             } else {

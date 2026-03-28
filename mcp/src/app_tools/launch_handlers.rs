@@ -9,7 +9,7 @@ use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
 use crate::tool::ToolFn;
 use crate::tool::ToolResult;
-use crate::tool::call_with_typed_params;
+use crate::tool;
 
 /// Handler for launching Bevy targets (apps or examples) using unified search
 pub struct LaunchBevyTarget;
@@ -23,7 +23,7 @@ impl ToolFn for LaunchBevyTarget {
         &self,
         ctx: HandlerContext,
     ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
-        call_with_typed_params(ctx, |ctx, params: LaunchBevyBinaryParams| async move {
+        tool::call_with_typed_params(ctx, |ctx, params: LaunchBevyBinaryParams| async move {
             support::launch_bevy_target(params, ctx.roots, DEFAULT_PROFILE)
         })
     }

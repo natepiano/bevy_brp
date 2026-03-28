@@ -9,7 +9,7 @@ use syn::Data;
 use syn::DeriveInput;
 use syn::parse_macro_input;
 
-use crate::shared::extract_field_data;
+use crate::shared;
 
 /// Implementation of the ParamStruct derive macro
 pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
@@ -25,7 +25,7 @@ pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
     let fields: Vec<_> = data_struct.fields.iter().collect();
 
     // Extract field information using shared function
-    let extraction_result = extract_field_data(&fields);
+    let extraction_result = shared::extract_field_data(&fields);
 
     // Validate that there's no #[to_message] attribute
     if extraction_result.message_template_field.is_some() {

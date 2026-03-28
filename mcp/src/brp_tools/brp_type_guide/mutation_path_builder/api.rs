@@ -19,7 +19,7 @@ use super::super::constants::REFLECT_TRAIT_COMPONENT;
 use super::super::constants::REFLECT_TRAIT_RESOURCE;
 use super::super::constants::SPAWN_COMPONENT_GUIDANCE;
 use super::super::type_kind::TypeKind;
-use super::path_builder::recurse_mutation_paths;
+use super::path_builder;
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;
 use super::types_internal::Example;
@@ -49,7 +49,7 @@ pub fn build_mutation_paths(
     let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
 
     // Dispatch to the recursive builder
-    let internal_paths = recurse_mutation_paths(type_kind, &ctx)?;
+    let internal_paths = path_builder::recurse_mutation_paths(type_kind, &ctx)?;
 
     // Convert internal representation to external format before returning
     let external_paths = internal_paths

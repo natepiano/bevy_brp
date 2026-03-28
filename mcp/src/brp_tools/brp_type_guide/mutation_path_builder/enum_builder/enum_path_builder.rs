@@ -41,7 +41,7 @@ use super::super::NotMutableReason;
 use super::super::mutation_path_internal::MutationPathInternal;
 use super::super::mutation_path_internal::MutationPathSliceExt;
 use super::super::new_types::VariantName;
-use super::super::option_classification::apply_option_transformation;
+use super::super::option_classification;
 use super::super::path_builder;
 use super::super::path_example::PathExample;
 use super::super::path_kind::MutationPathDescriptor;
@@ -428,7 +428,7 @@ fn build_variant_example(
     };
 
     // Apply `Option<T>` transformation only for actual Option types
-    apply_option_transformation(example, variant_name, enum_type)
+    option_classification::apply_option_transformation(example, variant_name, enum_type)
 }
 
 /// Process child paths - simplified version of `MutationPathBuilder`'s child processing
