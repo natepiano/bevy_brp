@@ -6,11 +6,11 @@ use syn::Lit;
 use syn::Result;
 use syn::parse2;
 
-/// Derive macro for implementing the ToolFn trait
+/// Derive macro for implementing the `ToolFn` trait
 ///
-/// This macro generates the standard ToolFn implementation pattern that is
+/// This macro generates the standard `ToolFn` implementation pattern that is
 /// repeated across all tools in the codebase. It handles parameter extraction,
-/// calling the handle_impl function, and wrapping the result.
+/// calling the `handle_impl` function, and wrapping the result.
 ///
 /// # Usage
 ///
@@ -30,7 +30,7 @@ use syn::parse2;
 /// The macro expects:
 /// - A `params` attribute specifying the parameter type
 /// - An `output` attribute specifying the output type
-/// - An optional `with_context` flag to pass HandlerContext to handle_impl
+/// - An optional `with_context` flag to pass `HandlerContext` to `handle_impl`
 /// - A `handle_impl` function in scope with signature:
 ///   - Without context: `async fn handle_impl(params: MyParams) -> Result<MyOutput>`
 ///   - With context: `async fn handle_impl(ctx: HandlerContext, params: MyParams) ->

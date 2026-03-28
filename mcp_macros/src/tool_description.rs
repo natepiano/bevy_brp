@@ -1,4 +1,4 @@
-//! ToolDescription derive macro implementation
+//! `ToolDescription` derive macro implementation
 
 use heck::ToSnakeCase;
 use proc_macro::TokenStream;
@@ -8,7 +8,7 @@ use syn::DeriveInput;
 use syn::Fields;
 use syn::parse_macro_input;
 
-/// Implementation of the ToolDescription derive macro
+/// Implementation of the `ToolDescription` derive macro
 pub fn derive_tool_description_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -23,9 +23,10 @@ pub fn derive_tool_description_impl(input: TokenStream) -> TokenStream {
     // Generate match arms for each variant
     let match_arms = data_enum.variants.iter().map(|variant| {
         // Ensure the variant has no fields
-        if !matches!(variant.fields, Fields::Unit) {
-            panic!("ToolDescription can only be derived for enums with unit variants");
-        }
+        assert!(
+            matches!(variant.fields, Fields::Unit),
+            "ToolDescription can only be derived for enums with unit variants"
+        );
 
         let variant_name = &variant.ident;
         let snake_case_name = variant_name.to_string().to_snake_case();
@@ -53,7 +54,7 @@ pub fn derive_tool_description_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Extract the path from tool_description attributes
+/// Extract the path from `tool_description` attributes
 fn extract_path(attrs: &[syn::Attribute]) -> String {
     for attr in attrs {
         if attr.path().is_ident("tool_description") {

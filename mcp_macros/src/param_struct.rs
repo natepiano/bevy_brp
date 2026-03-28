@@ -1,4 +1,4 @@
-//! ParamStruct derive macro implementation
+//! `ParamStruct` derive macro implementation
 //!
 //! This macro generates implementations for parameter structs used in MCP tools.
 //! Parameter structs are deserialized from JSON and have public fields.
@@ -11,7 +11,7 @@ use syn::parse_macro_input;
 
 use crate::shared;
 
-/// Implementation of the ParamStruct derive macro
+/// Implementation of the `ParamStruct` derive macro
 pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
@@ -28,11 +28,10 @@ pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
     let extraction_result = shared::extract_field_data(&fields);
 
     // Validate that there's no #[to_message] attribute
-    if extraction_result.message_template_field.is_some() {
-        panic!(
-            "ParamStruct cannot have #[to_message] attributes. Use ResultStruct for result types."
-        );
-    }
+    assert!(
+        extraction_result.message_template_field.is_none(),
+        "ParamStruct cannot have #[to_message] attributes. Use ResultStruct for result types."
+    );
 
     let field_placements = extraction_result.field_placements;
 

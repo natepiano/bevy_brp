@@ -1,4 +1,4 @@
-//! BrpTools derive macro implementation
+//! `BrpTools` derive macro implementation
 
 use proc_macro::TokenStream;
 use quote::quote;
@@ -14,7 +14,7 @@ struct ToolAttrs {
     brp_method: String, // Make required (not Option)
 }
 
-/// Implementation of the BrpTools derive macro
+/// Implementation of the `BrpTools` derive macro
 pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -23,19 +23,45 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
         panic!("BrpTools can only be derived for enums");
     };
 
+    let (marker_structs, tool_impls) = generate_tool_impls(data_enum);
+    let method_match_arms = generate_method_match_arms(data_enum);
+    let brp_method_parts = generate_brp_method_parts(data_enum);
+
+    let enum_name = &input.ident;
+    let expanded = assemble_output(
+        enum_name,
+        &marker_structs,
+        &tool_impls,
+        &method_match_arms,
+        &brp_method_parts,
+    );
+
+    TokenStream::from(expanded)
+}
+
+/// Collected token streams for the `BrpMethod` enum and its conversions.
+struct BrpMethodParts {
+    variants:           Vec<proc_macro2::TokenStream>,
+    to_brp_method_arms: Vec<proc_macro2::TokenStream>,
+    from_brp_method:    Vec<proc_macro2::TokenStream>,
+    string_arms:        Vec<proc_macro2::TokenStream>,
+    from_str_arms:      Vec<proc_macro2::TokenStream>,
+}
+
+/// Generate marker structs and `ToolFn` implementations for each variant.
+fn generate_tool_impls(
+    data_enum: &syn::DataEnum,
+) -> (Vec<proc_macro2::TokenStream>, Vec<proc_macro2::TokenStream>) {
     let mut tool_impls = Vec::new();
     let mut marker_structs = Vec::new();
 
-    // Process each variant
     for variant in &data_enum.variants {
-        // Ensure the variant has no fields
-        if !matches!(variant.fields, Fields::Unit) {
-            panic!("BrpTools can only be derived for enums with unit variants");
-        }
+        assert!(
+            matches!(variant.fields, Fields::Unit),
+            "BrpTools can only be derived for enums with unit variants"
+        );
 
         let variant_name = &variant.ident;
-
-        // Extract tool attributes from unified #[tool(...)] syntax
         let tool_attrs = extract_tool_attr(&variant.attrs);
 
         let method = if tool_attrs.brp_method.is_empty() {
@@ -46,150 +72,175 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
         let tool_params = tool_attrs.params;
         let tool_result = tool_attrs.result;
 
-        // Only generate a marker struct if this is a BRP tool with params
         if tool_params.is_some() && method.is_some() {
             marker_structs.push(quote! {
                 pub struct #variant_name;
             });
         }
 
-        // Generate tool implementation if params are present and it's a BRP tool
         if let Some(params) = tool_params
             && method.is_some()
         {
-            // This is a BRP tool with params
             let params_ident = syn::Ident::new(&params, variant_name.span());
+            let result_str = tool_result
+                .as_ref()
+                .expect("BRP tools must specify a result type");
+            let result_ident = syn::Ident::new(result_str, variant_name.span());
+            let result_type = quote! { #result_ident };
 
-            // Use specific result type (required for BRP tools)
-            let result_type = if let Some(result) = &tool_result {
-                let result_ident = syn::Ident::new(result, variant_name.span());
-                quote! { #result_ident }
-            } else {
-                panic!("BRP tools must specify a result type");
-            };
-
-            // Generate unified ToolFn implementation
-            tool_impls.push(quote! {
-                impl crate::tool::ToolFn for #variant_name {
-                    type Output = #result_type;
-                    type Params = #params_ident;
-
-                    fn call(
-                        &self,
-                        ctx: crate::tool::HandlerContext,
-                    ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::Params>> {
-                        Box::pin(async move {
-                            let params = ctx.extract_parameter_values::<#params_ident>()?;
-                            let port = params.port;
-                            let params_json = serde_json::to_value(&params).ok();
-
-                            // Filter out transport-only metadata before sending BRP params.
-                            let mut params_value = serde_json::to_value(&params)
-                                .map_err(|e| crate::error::Error::InvalidArgument(format!(
-                                    "Failed to serialize parameters: {e}"
-                                )))?;
-                            let brp_params = if let serde_json::Value::Object(ref mut map) = params_value {
-                                map.retain(|key, _value| key != &String::from(crate::tool::ParameterName::Port));
-                                if map.is_empty() {
-                                    None
-                                } else {
-                                    Some(params_value)
-                                }
-                            } else {
-                                Some(params_value)
-                            };
-                            // Create BrpClient and execute
-                            let client = crate::brp_tools::BrpClient::new(
-                                crate::tool::BrpMethod::#variant_name,
-                                port,
-                                brp_params,
-                            );
-                            let result = match client.execute::<#result_type>().await {
-                                Ok(r) => r,
-                                Err(e) => {
-                                    let params = params_json
-                                        .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
-                                    return Ok(crate::tool::ToolResult {
-                                        result: Err(e),
-                                        params,
-                                    });
-                                },
-                            };
-
-                            let params = params_json
-                                .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
-
-                            Ok(crate::tool::ToolResult {
-                                result: Ok(result),
-                                params,
-                            })
-                        })
-                    }
-                }
-            });
+            tool_impls.push(generate_tool_fn_impl(
+                variant_name,
+                &params_ident,
+                &result_type,
+            ));
         }
     }
 
-    // Generate match arms for the enum's brp_method() function
+    (marker_structs, tool_impls)
+}
+
+/// Generate a single `ToolFn` implementation for a BRP tool variant.
+fn generate_tool_fn_impl(
+    variant_name: &syn::Ident,
+    params_ident: &syn::Ident,
+    result_type: &proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
+    quote! {
+        impl crate::tool::ToolFn for #variant_name {
+            type Output = #result_type;
+            type Params = #params_ident;
+
+            fn call(
+                &self,
+                ctx: crate::tool::HandlerContext,
+            ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::Params>> {
+                Box::pin(async move {
+                    let params = ctx.extract_parameter_values::<#params_ident>()?;
+                    let port = params.port;
+                    let params_json = serde_json::to_value(&params).ok();
+
+                    // Filter out transport-only metadata before sending BRP params.
+                    let mut params_value = serde_json::to_value(&params)
+                        .map_err(|e| crate::error::Error::InvalidArgument(format!(
+                            "Failed to serialize parameters: {e}"
+                        )))?;
+                    let brp_params = if let serde_json::Value::Object(ref mut map) = params_value {
+                        map.retain(|key, _value| key != &String::from(crate::tool::ParameterName::Port));
+                        if map.is_empty() {
+                            None
+                        } else {
+                            Some(params_value)
+                        }
+                    } else {
+                        Some(params_value)
+                    };
+                    // Create BrpClient and execute
+                    let client = crate::brp_tools::BrpClient::new(
+                        crate::tool::BrpMethod::#variant_name,
+                        port,
+                        brp_params,
+                    );
+                    let result = match client.execute::<#result_type>().await {
+                        Ok(r) => r,
+                        Err(e) => {
+                            let params = params_json
+                                .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
+                            return Ok(crate::tool::ToolResult {
+                                result: Err(e),
+                                params,
+                            });
+                        },
+                    };
+
+                    let params = params_json
+                        .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
+
+                    Ok(crate::tool::ToolResult {
+                        result: Ok(result),
+                        params,
+                    })
+                })
+            }
+        }
+    }
+}
+
+/// Generate match arms for the `brp_method()` accessor on the tool enum.
+fn generate_method_match_arms(data_enum: &syn::DataEnum) -> Vec<proc_macro2::TokenStream> {
     let mut method_match_arms = Vec::new();
     for variant in &data_enum.variants {
         let variant_name = &variant.ident;
         let tool_attrs = extract_tool_attr(&variant.attrs);
-        if !tool_attrs.brp_method.is_empty() {
+        if tool_attrs.brp_method.is_empty() {
+            method_match_arms.push(quote! {
+                Self::#variant_name => None
+            });
+        } else {
             let method = &tool_attrs.brp_method;
             method_match_arms.push(quote! {
                 Self::#variant_name => Some(#method)
             });
-        } else {
-            method_match_arms.push(quote! {
-                Self::#variant_name => None
-            });
         }
     }
+    method_match_arms
+}
 
-    let enum_name = &input.ident;
-
-    // Generate BrpMethod enum variants only for those with brp_method attribute
-    let mut brp_method_variants = Vec::new();
-    let mut to_brp_method_arms = Vec::new();
-    let mut from_brp_method_arms = Vec::new();
-    let mut brp_method_string_arms = Vec::new();
-    let mut from_str_arms = Vec::new();
+/// Generate `BrpMethod` enum variants and all associated conversion arms.
+fn generate_brp_method_parts(data_enum: &syn::DataEnum) -> BrpMethodParts {
+    let mut parts = BrpMethodParts {
+        variants:           Vec::new(),
+        to_brp_method_arms: Vec::new(),
+        from_brp_method:    Vec::new(),
+        string_arms:        Vec::new(),
+        from_str_arms:      Vec::new(),
+    };
 
     for variant in &data_enum.variants {
         let variant_name = &variant.ident;
         let tool_attrs = extract_tool_attr(&variant.attrs);
-        if !tool_attrs.brp_method.is_empty() {
+        if tool_attrs.brp_method.is_empty() {
+            parts.to_brp_method_arms.push(quote! {
+                Self::#variant_name => None
+            });
+        } else {
             let method = &tool_attrs.brp_method;
-            brp_method_variants.push(quote! {
+            parts.variants.push(quote! {
                 #[serde(rename = #method)]
                 #variant_name
             });
-
-            to_brp_method_arms.push(quote! {
+            parts.to_brp_method_arms.push(quote! {
                 Self::#variant_name => Some(BrpMethod::#variant_name)
             });
-
-            from_brp_method_arms.push(quote! {
+            parts.from_brp_method.push(quote! {
                 BrpMethod::#variant_name => Self::#variant_name
             });
-
-            brp_method_string_arms.push(quote! {
+            parts.string_arms.push(quote! {
                 BrpMethod::#variant_name => #method
             });
-
-            from_str_arms.push(quote! {
+            parts.from_str_arms.push(quote! {
                 #method => Some(BrpMethod::#variant_name)
-            });
-        } else {
-            to_brp_method_arms.push(quote! {
-                Self::#variant_name => None
             });
         }
     }
 
-    // Generate the complete output
-    let expanded = quote! {
+    parts
+}
+
+/// Assemble the final output combining all generated parts.
+fn assemble_output(
+    enum_name: &syn::Ident,
+    marker_structs: &[proc_macro2::TokenStream],
+    tool_impls: &[proc_macro2::TokenStream],
+    method_match_arms: &[proc_macro2::TokenStream],
+    parts: &BrpMethodParts,
+) -> proc_macro2::TokenStream {
+    let brp_method_variants = &parts.variants;
+    let to_brp_method_arms = &parts.to_brp_method_arms;
+    let from_brp_method_arms = &parts.from_brp_method;
+    let brp_method_string_arms = &parts.string_arms;
+    let from_str_arms = &parts.from_str_arms;
+
+    quote! {
         // Marker structs for all tools
         #(#marker_structs)*
 
@@ -205,7 +256,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                 }
             }
 
-            /// Converts to BrpMethod if this variant has a BRP method
+            /// Converts to `BrpMethod` if this variant has a BRP method
             pub const fn to_brp_method(&self) -> Option<BrpMethod> {
                 match self {
                     #(#to_brp_method_arms,)*
@@ -227,7 +278,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                 }
             }
 
-            /// Parse a method string into a BrpMethod variant
+            /// Parse a method string into a `BrpMethod` variant
             pub fn from_str(s: &str) -> Option<Self> {
                 match s {
                     #(#from_str_arms,)*
@@ -249,9 +300,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                 }
             }
         }
-    };
-
-    TokenStream::from(expanded)
+    }
 }
 
 /// Extract unified tool attributes from #[tool(...)]
@@ -289,9 +338,10 @@ fn extract_tool_attr(attrs: &[syn::Attribute]) -> ToolAttrs {
     }
 
     // Only validate if brp_tool attribute was present
-    if has_brp_tool && tool_attrs.brp_method.trim().is_empty() {
-        panic!("brp_tool attribute must include non-empty brp_method parameter");
-    }
+    assert!(
+        !(has_brp_tool && tool_attrs.brp_method.trim().is_empty()),
+        "brp_tool attribute must include non-empty brp_method parameter"
+    );
 
     tool_attrs
 }

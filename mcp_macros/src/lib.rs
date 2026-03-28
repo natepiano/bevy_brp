@@ -1,4 +1,15 @@
-//! Procedural macros for bevy_brp_mcp
+//! Procedural macros for `bevy_brp_mcp`
+// Proc macros use `panic!()` as the standard mechanism for compile-time errors,
+// and `expect()` for invariants on well-formed input from syn. These are not
+// runtime failure modes — they surface as compiler errors during `cargo build`.
+#![allow(
+    clippy::panic,
+    reason = "proc macros use panic!() for compile-time errors"
+)]
+#![allow(
+    clippy::expect_used,
+    reason = "proc macros use expect() for syn invariants"
+)]
 
 mod brp_tools;
 mod param_struct;
@@ -57,7 +68,7 @@ pub fn derive_tool_description(input: TokenStream) -> TokenStream {
 ///
 /// This will generate:
 /// - Tool struct implementations for variants with params
-/// - BRP method constants for all variants with brp_method
+/// - BRP method constants for all variants with `brp_method`
 /// - All necessary trait implementations
 /// - A `brp_method()` function on the enum
 #[proc_macro_derive(BrpTools, attributes(brp_tool))]
@@ -155,11 +166,11 @@ pub fn derive_result_struct(input: TokenStream) -> TokenStream {
     result_struct::derive_result_struct_impl(input)
 }
 
-/// Derives the ToolFn trait implementation for tool structs.
+/// Derives the `ToolFn` trait implementation for tool structs.
 ///
-/// This macro generates the standard ToolFn implementation pattern that is
+/// This macro generates the standard `ToolFn` implementation pattern that is
 /// repeated across all tools in the codebase. It handles parameter extraction,
-/// calling the handle_impl function, and wrapping the result.
+/// calling the `handle_impl` function, and wrapping the result.
 ///
 /// # Example
 ///

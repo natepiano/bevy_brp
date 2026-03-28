@@ -61,7 +61,7 @@ pub fn parse_computed_attr(attr: &Attribute, result_operation: &mut Option<Strin
     });
 }
 
-/// Parse to_message attribute arguments
+/// Parse `to_message` attribute arguments
 pub fn parse_to_message_attr(attr: &Attribute) -> Option<String> {
     let mut message_template = None;
     let _ = attr.parse_nested_meta(|meta| {
@@ -152,14 +152,13 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
                 );
             } else if attr.path().is_ident("to_call_info") {
                 // Skip fields marked with to_call_info as we no longer need them
-                continue;
             } else if attr.path().is_ident("computed") {
                 is_computed = true;
                 parse_computed_attr(attr, &mut result_operation);
             } else if attr.path().is_ident("to_message") {
                 let template = parse_to_message_attr(attr);
                 message_template_field = Some((field_name.clone(), template));
-                continue; // Skip adding to other collections
+                // Skip adding to other collections
             }
         }
 
@@ -187,8 +186,7 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
 
             let source_path_token = source_path
                 .as_ref()
-                .map(|s| quote! { Some(#s) })
-                .unwrap_or_else(|| quote! { None });
+                .map_or_else(|| quote! { None }, |s| quote! { Some(#s) });
 
             field_placements.push(quote! {
                 crate::tool::FieldPlacementInfo {
