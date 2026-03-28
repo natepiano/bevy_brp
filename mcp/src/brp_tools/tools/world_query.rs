@@ -7,7 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::brp_tools::Port;
+use super::super::Port;
 
 /// Selector for optional components in a query (mirrors Bevy's `ComponentSelector`)
 #[derive(Clone, Debug, Serialize, JsonSchema)]

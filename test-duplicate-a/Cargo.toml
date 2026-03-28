@@ -28,6 +28,9 @@ path = "examples/extras_plugin_duplicate.rs"
 name = "test_app"
 path = "examples/test_app.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 bevy            = { workspace = true, default-features = true }
 bevy_brp_extras = { path = "../extras" }

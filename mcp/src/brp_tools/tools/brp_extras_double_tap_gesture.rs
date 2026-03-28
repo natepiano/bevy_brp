@@ -7,7 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::brp_tools::Port;
+use super::super::Port;
 
 /// Parameters for the `brp_extras/double_tap_gesture` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]

@@ -9,9 +9,9 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::brp_tools::BrpClient;
-use crate::brp_tools::Port;
-use crate::brp_tools::ResponseStatus;
+use super::super::BrpClient;
+use super::super::Port;
+use super::super::ResponseStatus;
 use crate::error::Error;
 use crate::error::Result;
 use crate::tool::BrpMethod;

@@ -18,15 +18,18 @@ pub use brp_client::ResponseStatus;
 pub use brp_client::ResultStructBrpExt;
 //
 // Export brp_type_guide tools
-pub use brp_type_guide::{
-    AllTypeGuidesParams, BrpAllTypeGuides, BrpTypeGuide, BrpTypeName, TypeGuideParams,
-};
+pub use brp_type_guide::AllTypeGuidesParams;
+pub use brp_type_guide::BrpAllTypeGuides;
+pub use brp_type_guide::BrpTypeGuide;
+pub use brp_type_guide::BrpTypeName;
+pub use brp_type_guide::TypeGuideParams;
 pub use constants::BRP_EXTRAS_PORT_ENV_VAR;
 pub use constants::MAX_VALID_PORT;
 pub use port::Port;
 //
 // Export special case tools that don't follow the standard pattern
-pub use tools::brp_execute::{BrpExecute, ExecuteParams};
+pub use tools::brp_execute::BrpExecute;
+pub use tools::brp_execute::ExecuteParams;
 pub use tools::brp_extras_click_mouse::ClickMouseParams;
 pub use tools::brp_extras_click_mouse::ClickMouseResult;
 pub use tools::brp_extras_double_click_mouse::DoubleClickMouseParams;
@@ -57,7 +60,8 @@ pub use tools::brp_extras_type_text::TypeTextParams;
 pub use tools::brp_extras_type_text::TypeTextResult;
 //
 // Export all parameter and result structs by name
-pub use tools::registry_schema::{RegistrySchemaParams, RegistrySchemaResult};
+pub use tools::registry_schema::RegistrySchemaParams;
+pub use tools::registry_schema::RegistrySchemaResult;
 pub use tools::rpc_discover::RpcDiscoverParams;
 pub use tools::rpc_discover::RpcDiscoverResult;
 pub use tools::world_despawn_entity::DespawnEntityParams;
@@ -90,10 +94,12 @@ pub use tools::world_spawn_entity::SpawnEntityParams;
 pub use tools::world_spawn_entity::SpawnEntityResult;
 pub use tools::world_trigger_event::TriggerEventParams;
 pub use tools::world_trigger_event::TriggerEventResult;
-pub use watch_tools::GetComponentsWatchParams;
-pub use watch_tools::WorldGetComponentsWatch;
 //
 // Export watch tools
-pub use watch_tools::{
-    BevyListWatch, BrpListActiveWatches, BrpStopWatch, ListComponentsWatchParams, StopWatchParams,
-};
+pub use watch_tools::BevyListWatch;
+pub use watch_tools::BrpListActiveWatches;
+pub use watch_tools::BrpStopWatch;
+pub use watch_tools::GetComponentsWatchParams;
+pub use watch_tools::ListComponentsWatchParams;
+pub use watch_tools::StopWatchParams;
+pub use watch_tools::WorldGetComponentsWatch;

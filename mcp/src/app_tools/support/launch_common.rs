@@ -3,18 +3,31 @@ use std::marker::PhantomData;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Instant;
 
 use bevy_brp_mcp_macros::ResultStruct;
 use error_stack::Report;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::Value;
+use tracing::debug;
+use tracing::info;
+use tracing::warn;
 
+use super::super::instance_count::InstanceCount;
+use super::super::launch_params::LaunchBevyBinaryParams;
+use super::super::launch_params::SearchOrder;
 use super::build_freshness;
 use super::build_freshness::FreshnessCheckResult;
 use super::cargo_detector::BevyTarget;
+use super::errors::AvailableTarget;
+use super::errors::UnifiedTargetNotFoundError;
+use super::logging;
 use super::process;
-use crate::app_tools::launch_params::LaunchBevyBinaryParams;
-use crate::app_tools::launch_params::SearchOrder;
+use super::scanning;
+use crate::brp_tools::BRP_EXTRAS_PORT_ENV_VAR;
+use crate::brp_tools::MAX_VALID_PORT;
+use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
 
@@ -112,10 +125,6 @@ pub struct LaunchResult {
     #[to_message]
     message_template:   Option<String>,
 }
-
-use crate::app_tools::instance_count::InstanceCount;
-use crate::brp_tools::BRP_EXTRAS_PORT_ENV_VAR;
-use crate::brp_tools::Port;
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
@@ -247,8 +256,6 @@ fn setup_launch_logging(
     port: Port,
     extra_log_info: Option<&str>,
 ) -> Result<(PathBuf, std::fs::File)> {
-    use super::logging;
-
     // Create log file
     let (log_file_path, _) =
         logging::create_log_file(name, target_type, profile, binary_path, manifest_dir, port)
@@ -358,8 +365,6 @@ fn execute_build_command(
     profile: &str,
     manifest_dir: &Path,
 ) -> Result<std::process::Output> {
-    use tracing::debug;
-
     debug!(
         "Running cargo build for {} '{}' with args: {:?}",
         target_type, target_name, cmd
@@ -386,8 +391,6 @@ fn execute_build_command(
 
 /// Parse cargo build JSON output to determine build state
 fn parse_build_output(stdout: &[u8], target_name: &str) -> BuildState {
-    use serde_json::Value;
-
     let stdout_str = String::from_utf8_lossy(stdout);
 
     for line in stdout_str.lines() {
@@ -414,9 +417,6 @@ fn parse_build_output(stdout: &[u8], target_name: &str) -> BuildState {
 
 /// Log the build result based on build state
 fn log_build_result(build_state: BuildState, target_name: &str, target_type: TargetType) {
-    use tracing::debug;
-    use tracing::info;
-
     match build_state {
         BuildState::NotFound => {
             debug!(
@@ -553,8 +553,6 @@ fn prepare_launch_environment<T: LaunchConfigTrait>(
 
 /// Validate that the port range for multi-instance launching is within bounds
 fn validate_port_range(base_port: u16, instance_count: u16) -> Result<()> {
-    use crate::brp_tools::MAX_VALID_PORT;
-
     if base_port.saturating_add(instance_count.saturating_sub(1)) > MAX_VALID_PORT {
         return Err(Error::tool_call_failed(format!(
             "Port range {base_port} to {} exceeds maximum valid port {MAX_VALID_PORT}",
@@ -627,10 +625,6 @@ pub fn launch_bevy_target(
     roots: Vec<PathBuf>,
     default_profile: &'static str,
 ) -> Result<LaunchResult> {
-    use super::errors::AvailableTarget;
-    use super::errors::UnifiedTargetNotFoundError;
-    use super::scanning;
-
     let params = typed_params.to_launch_params(default_profile);
 
     // Use `path` as search root override if provided, otherwise use MCP workspace roots
@@ -717,10 +711,6 @@ fn launch_target_with_cached<T: LaunchConfigTrait>(
     search_paths: &[PathBuf],
     cached_targets: Vec<BevyTarget>,
 ) -> Result<LaunchResult> {
-    use std::time::Instant;
-
-    use tracing::debug;
-
     let launch_start = Instant::now();
 
     debug!("Environment variable: BRP_EXTRAS_PORT={}", config.port());
@@ -735,7 +725,6 @@ fn launch_target_with_cached<T: LaunchConfigTrait>(
         BuildState::Fresh => debug!("Target was already up to date, launching immediately"),
         BuildState::Rebuilt => debug!("Target was rebuilt before launch"),
         BuildState::NotFound => {
-            use tracing::warn;
             warn!("Target not found in build output but build succeeded");
         },
     }
@@ -764,8 +753,6 @@ fn find_and_validate_target_with_cache<T: LaunchConfigTrait>(
     search_paths: &[PathBuf],
     cached_targets: Vec<BevyTarget>,
 ) -> Result<BevyTarget> {
-    use super::scanning;
-
     // Delegate to scanning which now handles all error cases (disambiguation, not-found-in-package)
     scanning::find_required_target_with_package_name(
         config.target_name(),

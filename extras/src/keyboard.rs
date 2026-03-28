@@ -4,7 +4,9 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use bevy::input::ButtonState;
+use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyCode;
+use bevy::input::keyboard::NativeKey;
 use bevy::prelude::*;
 use bevy::window::WindowEvent;
 use bevy_remote::BrpError;
@@ -480,9 +482,6 @@ fn create_keyboard_events_with_text(
     press: bool,
     target_char: Option<char>,
 ) -> Vec<bevy::input::keyboard::KeyboardInput> {
-    use bevy::input::keyboard::Key;
-    use bevy::input::keyboard::NativeKey;
-
     let state = if press {
         ButtonState::Pressed
     } else {

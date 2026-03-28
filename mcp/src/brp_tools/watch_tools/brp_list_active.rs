@@ -5,8 +5,8 @@ use bevy_brp_mcp_macros::ToolFn;
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::super::Port;
 use super::manager::WATCH_MANAGER;
-use crate::brp_tools::Port;
 use crate::error::Result;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;

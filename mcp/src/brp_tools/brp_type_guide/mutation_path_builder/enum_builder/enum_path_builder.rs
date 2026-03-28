@@ -34,7 +34,9 @@ use itertools::Itertools;
 use serde_json::Value;
 use serde_json::json;
 
+use super::super::super::BrpTypeName;
 use super::super::super::type_kind::TypeKind;
+use super::super::super::type_knowledge::KnowledgeAction;
 use super::super::super::variant_signature::VariantSignature;
 use super::super::BuilderError;
 use super::super::NotMutableReason;
@@ -56,8 +58,6 @@ use super::super::types_internal::MutabilityIssue;
 use super::super::types_internal::PathAction;
 use super::super::types_response::RootExample;
 use super::variant_kind::VariantKind;
-use crate::brp_tools::brp_type_guide::BrpTypeName;
-use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
 use crate::error::Error;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;

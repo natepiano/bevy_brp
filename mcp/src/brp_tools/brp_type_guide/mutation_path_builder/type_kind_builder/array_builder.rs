@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 use serde_json::json;
 
+use super::super::super::BrpTypeName;
 use super::super::BuilderError;
 use super::super::path_kind::MutationPathDescriptor;
 use super::super::path_kind::PathKind;
@@ -19,7 +20,6 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types_internal::Example;
 use super::ArrayMutationBuilder;
 use super::TypeKindBuilder;
-use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::Error;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;

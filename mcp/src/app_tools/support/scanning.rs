@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::Instant;
 
 use tracing::debug;
 
@@ -46,7 +47,6 @@ struct DiscoveredProject {
 /// Recursively scans all directories at any depth
 /// Smart deduplication: workspace-discovered apps take precedence over filesystem-discovered
 pub(super) fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> Vec<PathBuf> {
-    use std::time::Instant;
     let start = Instant::now();
     debug!(
         "Starting iter_cargo_project_paths with {} search paths",
@@ -260,7 +260,6 @@ fn shallow_scan_internal(
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
     check_skip: bool,
 ) {
-    use std::time::Instant;
     let scan_start = Instant::now();
     debug!("shallow_scan_internal: {}", dir.display());
 

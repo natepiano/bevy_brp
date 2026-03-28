@@ -11,6 +11,7 @@ use error_stack::Report;
 use serde_json::Value;
 use serde_json::json;
 
+use super::BrpTypeName;
 use super::constants::TYPE_ALLOC_STRING;
 use super::constants::TYPE_BEVY_CAMERA;
 use super::constants::TYPE_BEVY_ENTITY;
@@ -64,7 +65,6 @@ use super::constants::TYPE_U64;
 use super::constants::TYPE_U128;
 use super::constants::TYPE_USIZE;
 use super::variant_signature::VariantSignature;
-use crate::brp_tools::BrpTypeName;
 use crate::error::Error;
 use crate::error::Result;
 

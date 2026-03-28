@@ -29,7 +29,7 @@ bevy = { workspace = true, features = [
 
 # Direct dependency to control default features (bevy/bevy_remote pulls in HTTP transport
 # which requires async-io and doesn't compile on wasm32)
-bevy_remote = { version = "0.18", default-features = false }
+bevy_remote = { workspace = true, default-features = false }
 
 serde.workspace        = true
 serde_json.workspace   = true
@@ -39,7 +39,7 @@ thiserror.workspace    = true
 
 # On native, enable HTTP transport (default features include async-io)
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-bevy_remote = { version = "0.18" }
+bevy_remote = { workspace = true, default-features = true }
 
 [features]
 default     = ["diagnostics"]

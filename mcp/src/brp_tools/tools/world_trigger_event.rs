@@ -9,7 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::brp_tools::Port;
+use super::super::Port;
 
 /// Parameters for the `world.trigger_event` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]

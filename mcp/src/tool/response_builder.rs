@@ -1,3 +1,4 @@
+use error_stack::ResultExt;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -5,6 +6,7 @@ use super::HandlerContext;
 use super::ParamStruct;
 use super::ResultStruct;
 use super::field_placement::FieldPlacement;
+use super::json_response::AnySchemaValue;
 use super::json_response::ResponseStatus;
 use super::json_response::ToolCallJsonResponse;
 use super::tool_name::CallInfo;
@@ -108,10 +110,6 @@ impl ResponseBuilder {
 
     /// Add a field to the metadata object. Creates a new object if metadata is None.
     fn add_field(mut self, key: &str, value: impl Serialize) -> Result<Self> {
-        use error_stack::ResultExt;
-
-        use super::json_response::AnySchemaValue;
-
         let value_json = serde_json::to_value(value)
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
 
@@ -158,10 +156,6 @@ impl ResponseBuilder {
         value: impl Serialize,
         placement: FieldPlacement,
     ) -> Result<Self> {
-        use error_stack::ResultExt;
-
-        use super::json_response::AnySchemaValue;
-
         let value_json = serde_json::to_value(value)
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
 
@@ -234,10 +228,6 @@ impl ResponseBuilder {
 
     /// Set parameters with optional parameter tracking
     fn parameters(mut self, params: impl Serialize) -> Result<Self> {
-        use error_stack::ResultExt;
-
-        use super::json_response::AnySchemaValue;
-
         let mut params_value = serde_json::to_value(params)
             .change_context(Error::General("Failed to serialize parameters".to_string()))?;
 
@@ -366,8 +356,6 @@ impl ResponseBuilder {
         builder: &Self,
         handler_context: &HandlerContext,
     ) -> Option<String> {
-        use super::json_response::AnySchemaValue;
-
         tracing::debug!("Looking for placeholder: '{}'", placeholder);
         // First check error_info (for error fields)
         if let Some(AnySchemaValue(Value::Object(error_info))) = &builder.error_info {

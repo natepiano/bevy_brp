@@ -17,6 +17,9 @@ repository.workspace = true
 name = "extras_plugin_duplicate"
 path = "examples/extras_plugin_duplicate.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 bevy            = { workspace = true, default-features = true }
 bevy_brp_extras = { path = "../extras" }

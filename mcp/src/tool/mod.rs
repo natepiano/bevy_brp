@@ -27,7 +27,8 @@ pub use tool_def::ToolDef;
 //
 // Macro creates and populates the `BrpMethod` enum from tools
 // flagged in the `ToolName` enum as having a `brp_method`
-pub use tool_name::{BrpMethod, ToolName};
+pub use tool_name::BrpMethod;
+pub use tool_name::ToolName;
 pub use types::HandlerResult;
 pub use types::ResultStruct;
 pub use types::ToolFn;

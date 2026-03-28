@@ -17,7 +17,7 @@ repository = "https://github.com/natepiano/bevy_brp"
 # Bevy with no default features - each crate specifies what it needs
 bevy        = { version = "0.18.1", default-features = false }
 bevy_mesh   = { version = "0.18.1" }
-bevy_remote = { version = "0.18.1" }
+bevy_remote = { version = "0.18.1", default-features = false }
 bevy_winit  = { version = "0.18.1" }
 
 # Core dependencies (shared between extras and mcp)
@@ -80,3 +80,7 @@ pedantic = { level = "deny", priority = -1 }
 # Allow specific lints that conflict with Bevy patterns
 multiple_crate_versions = "allow"
 needless_pass_by_value  = "allow"
+option_if_let_else      = "allow"
+too_many_arguments      = "allow"
+type_complexity         = "allow"
+wildcard_imports        = "allow"
