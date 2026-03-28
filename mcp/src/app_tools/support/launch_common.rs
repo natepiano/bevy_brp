@@ -9,8 +9,8 @@ use error_stack::Report;
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::build_freshness::FreshnessCheckResult;
 use super::build_freshness;
+use super::build_freshness::FreshnessCheckResult;
 use super::cargo_detector::BevyTarget;
 use super::process;
 use crate::app_tools::launch_params::LaunchBevyBinaryParams;

@@ -4,12 +4,12 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::TracingLevel;
+use crate::error::Result;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
 use crate::tool::NoParams;
 use crate::tool::ToolFn;
 use crate::tool::ToolResult;
-use crate::error::Result;
 
 /// Result from getting the trace log path
 #[cfg(feature = "mcp-debug")]

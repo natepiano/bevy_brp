@@ -13,9 +13,9 @@ use crate::brp_tools::BrpClient;
 use crate::brp_tools::Port;
 use crate::brp_tools::ResponseStatus;
 use crate::error::Error;
+use crate::error::Result;
 use crate::tool::BrpMethod;
 use crate::tool::ToolFn;
-use crate::error::Result;
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ExecuteParams {

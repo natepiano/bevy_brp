@@ -32,6 +32,7 @@ pub use types::HandlerResult;
 pub use types::ResultStruct;
 pub use types::ToolFn;
 pub use types::ToolResult;
+
 use crate::error::Result;
 
 /// Visibility facade for the tool catalog.

@@ -23,6 +23,7 @@ pub use tool_all_types::AllTypeGuidesParams;
 pub use tool_all_types::BrpAllTypeGuides;
 pub use tool_type_guide::BrpTypeGuide;
 pub use tool_type_guide::TypeGuideParams;
+
 use crate::error::Result;
 
 /// Visibility facade for type-guide generation across `brp_tools` submodules.

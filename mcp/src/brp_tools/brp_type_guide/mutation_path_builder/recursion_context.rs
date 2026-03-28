@@ -261,10 +261,7 @@ impl RecursionContext {
     /// 3. Exact type match (handles most primitive and simple types) - fallback
     pub(super) fn find_knowledge(
         &self,
-    ) -> std::result::Result<
-        Option<&'static TypeKnowledge>,
-        BuilderError,
-    > {
+    ) -> std::result::Result<Option<&'static TypeKnowledge>, BuilderError> {
         // Try context-specific matches based on PathKind FIRST - these have higher priority
         match &self.path_kind {
             PathKind::StructField {

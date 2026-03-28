@@ -5,11 +5,11 @@ use super::launch_params::LaunchBevyBinaryParams;
 use super::support;
 use super::support::LaunchResult;
 use crate::error::Result;
+use crate::tool;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
 use crate::tool::ToolFn;
 use crate::tool::ToolResult;
-use crate::tool;
 
 /// Handler for launching Bevy targets (apps or examples) using unified search
 pub struct LaunchBevyTarget;
