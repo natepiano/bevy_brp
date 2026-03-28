@@ -481,13 +481,13 @@ fn setup_scene(
 // ============================================================================
 
 fn on_primary_cuboid_click(
-    _trigger: On<Pointer<Click>>,
+    trigger: On<Pointer<Click>>,
     mut tracker: ResMut<MouseStateTracker>,
     mut commands: Commands,
     cuboids: Query<Entity, With<PrimaryCuboid>>,
     time: Res<Time>,
 ) {
-    if _trigger.button != PointerButton::Primary {
+    if trigger.button != PointerButton::Primary {
         return;
     }
     let current = time.elapsed_secs();
@@ -511,13 +511,13 @@ fn on_primary_cuboid_click(
 }
 
 fn on_secondary_cuboid_click(
-    _trigger: On<Pointer<Click>>,
+    trigger: On<Pointer<Click>>,
     mut tracker: ResMut<MouseStateTracker>,
     mut commands: Commands,
     cuboids: Query<Entity, With<SecondaryCuboid>>,
     time: Res<Time>,
 ) {
-    if _trigger.button != PointerButton::Primary {
+    if trigger.button != PointerButton::Primary {
         return;
     }
     let current = time.elapsed_secs();
@@ -541,12 +541,12 @@ fn on_secondary_cuboid_click(
 }
 
 fn on_primary_background_click(
-    _trigger: On<Pointer<Click>>,
+    trigger: On<Pointer<Click>>,
     mut tracker: ResMut<MouseStateTracker>,
     mut commands: Commands,
     cuboids: Query<Entity, With<PrimaryCuboid>>,
 ) {
-    if _trigger.button != PointerButton::Primary {
+    if trigger.button != PointerButton::Primary {
         return;
     }
     tracker.primary_picking_gizmo_active = false;
@@ -556,12 +556,12 @@ fn on_primary_background_click(
 }
 
 fn on_secondary_background_click(
-    _trigger: On<Pointer<Click>>,
+    trigger: On<Pointer<Click>>,
     mut tracker: ResMut<MouseStateTracker>,
     mut commands: Commands,
     cuboids: Query<Entity, With<SecondaryCuboid>>,
 ) {
-    if _trigger.button != PointerButton::Primary {
+    if trigger.button != PointerButton::Primary {
         return;
     }
     tracker.secondary_picking_gizmo_active = false;
