@@ -487,6 +487,9 @@ fn on_primary_cuboid_click(
     cuboids: Query<Entity, With<PrimaryCuboid>>,
     time: Res<Time>,
 ) {
+    if _trigger.button != PointerButton::Primary {
+        return;
+    }
     let current = time.elapsed_secs();
     let Ok(cuboid_entity) = cuboids.single() else {
         return;
@@ -514,6 +517,9 @@ fn on_secondary_cuboid_click(
     cuboids: Query<Entity, With<SecondaryCuboid>>,
     time: Res<Time>,
 ) {
+    if _trigger.button != PointerButton::Primary {
+        return;
+    }
     let current = time.elapsed_secs();
     let Ok(cuboid_entity) = cuboids.single() else {
         return;
@@ -540,6 +546,9 @@ fn on_primary_background_click(
     mut commands: Commands,
     cuboids: Query<Entity, With<PrimaryCuboid>>,
 ) {
+    if _trigger.button != PointerButton::Primary {
+        return;
+    }
     tracker.primary_picking_gizmo_active = false;
     if let Ok(cuboid_entity) = cuboids.single() {
         commands.entity(cuboid_entity).remove::<GizmoOutline>();
@@ -552,6 +561,9 @@ fn on_secondary_background_click(
     mut commands: Commands,
     cuboids: Query<Entity, With<SecondaryCuboid>>,
 ) {
+    if _trigger.button != PointerButton::Primary {
+        return;
+    }
     tracker.secondary_picking_gizmo_active = false;
     if let Ok(cuboid_entity) = cuboids.single() {
         commands.entity(cuboid_entity).remove::<GizmoOutline>();

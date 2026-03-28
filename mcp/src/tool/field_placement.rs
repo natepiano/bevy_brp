@@ -22,7 +22,7 @@ pub enum FieldPlacement {
 /// `crate::tool::FieldPlacementInfo` and `crate::tool::HasFieldPlacement`
 /// but no code within `mcp/src` calls this so we use the allow
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+#[allow(dead_code, reason = "used by ParamStruct/ResultStruct derive macros")]
 pub struct FieldPlacementInfo {
     /// The name of the field
     pub field_name:   &'static str,
@@ -37,7 +37,7 @@ pub struct FieldPlacementInfo {
 /// Trait for types that have field placement information
 ///
 /// Note: see note on `FieldPlacementInfo`
-#[allow(dead_code)]
+#[allow(dead_code, reason = "used by ParamStruct/ResultStruct derive macros")]
 pub trait HasFieldPlacement {
     /// Get the field placement information for this type
     fn field_placements() -> Vec<FieldPlacementInfo>;
