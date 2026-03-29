@@ -607,6 +607,11 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
       ```
     - Include the rebalance output in the final summary under "## Rebalance"
     - If the script fails, note the error but do not treat it as a test failure
+    - **Auto-commit rebalance**: If the rebalance script modified `${TEST_CONFIG_FILE}`, stage and commit it automatically:
+      ```bash
+      git add ${TEST_CONFIG_FILE} && git commit -m "chore: rebalance integration test ordering from latest run"
+      ```
+      Do not ask for confirmation — this is a routine ordering update.
 
 ### Error Detection and Immediate Stopping
 

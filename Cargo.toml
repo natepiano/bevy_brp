@@ -27,7 +27,7 @@ bevy_brp_mcp_macros = { version = "0.20.0-dev", path = "mcp_macros" }
 cargo_metadata = "0.23"
 chrono = "0.4"
 either = "1.15"
-error-stack = { version = "0.6.0", features = ["spantrace"] }
+error-stack = { version = "0.7.0", features = ["spantrace"] }
 futures = "0.3"
 heck = "0.5.0"
 itertools = "0.14.0"
@@ -40,7 +40,7 @@ proc-macro2 = "1.0.106"
 quote = "1.0.45"
 regex = "1.12.3"
 reqwest = { version = "0.13.2", features = ["blocking", "json", "stream"] }
-rmcp = { version = "1.2.0", features = ["server", "transport-io"] }
+rmcp = { version = "1.3.0", features = ["server", "transport-io"] }
 schemars = "1.2.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.149", features = ["preserve_order"] }
@@ -59,7 +59,7 @@ tracing = { version = "0.1.44", features = [
 ] }
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "1.22.0", features = ["v4"] }
+uuid = { version = "1.23.0", features = ["v4"] }
 
 # Shared lints configuration
 [workspace.lints.rust]
