@@ -67,11 +67,11 @@ pub struct ResponseBuilder {
     status:                ResponseStatus,
     message:               String,
     call_info:             CallInfo,
-    metadata:              Option<super::json_response::AnySchemaValue>,
-    parameters:            Option<super::json_response::AnySchemaValue>,
-    result:                Option<super::json_response::AnySchemaValue>,
-    error_info:            Option<super::json_response::AnySchemaValue>,
-    brp_extras_debug_info: Option<super::json_response::AnySchemaValue>,
+    metadata:              Option<AnySchemaValue>,
+    parameters:            Option<AnySchemaValue>,
+    result:                Option<AnySchemaValue>,
+    error_info:            Option<AnySchemaValue>,
+    brp_extras_debug_info: Option<AnySchemaValue>,
 }
 
 impl ResponseBuilder {
