@@ -162,7 +162,7 @@ fn send_timed_button_press(
 /// The `Window` component update is critical because `window.cursor_position()` reads from
 /// `Window.physical_cursor_position`, which is normally only set by winit's OS-level cursor
 /// handler. Without this update, systems that check `window.cursor_position()` (e.g.,
-/// `PanOrbitCamera`, UI hit-testing) would see `None` when the app is unfocused and ignore
+/// `OrbitCam`, UI hit-testing) would see `None` when the app is unfocused and ignore
 /// all BRP-injected input.
 ///
 /// # Arguments
