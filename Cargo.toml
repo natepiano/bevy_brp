@@ -67,7 +67,8 @@ missing_docs = "deny"
 
 [workspace.lints.clippy]
 # Strict lints as specified in the migration plan
-expect_used = "deny"
+allow_attributes_without_reason = "deny"
+expect_used                     = "deny"
 panic       = "deny"
 unwrap_used = "deny"
 
