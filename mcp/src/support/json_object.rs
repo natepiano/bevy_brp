@@ -21,7 +21,7 @@ pub trait JsonObjectAccess {
     /// Get field value as string
     fn get_field_str<T: AsRef<str>>(&self, field: T) -> Option<&str>;
 
-    /// Get field value as owned String
+    /// Get field value as owned `String`
     fn get_field_string<T: AsRef<str>>(&self, field: T) -> Option<String> {
         self.get_field_str(field).map(String::from)
     }
@@ -31,8 +31,8 @@ pub trait JsonObjectAccess {
         self.get_field(field).and_then(Value::as_array)
     }
 
-    /// Insert field with value using any type that converts to String and any value that can become
-    /// JSON
+    /// Insert field with value using any type that converts to `String` and any value that can
+    /// become `Value`
     fn insert_field<F, V>(&mut self, field: F, value: V)
     where
         F: Into<String>,

@@ -78,7 +78,10 @@ fn main() {
 /// Resource tracking all mouse input state for testing purposes
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
-#[allow(clippy::struct_excessive_bools)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "test tracker mirrors all mouse button states"
+)]
 struct MouseStateTracker {
     // Cursor positions per window with timestamps
     primary_window_position:    Vec2,
@@ -301,7 +304,10 @@ fn position_secondary_window(mut windows: ParamSet<(PrimaryWindowQuery, Secondar
     secondary.position = WindowPosition::At(IVec2::new(secondary_x, primary_pos.y));
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "test scene setup with many UI elements"
+)]
 fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,

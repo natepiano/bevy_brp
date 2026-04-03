@@ -86,7 +86,10 @@ pub struct LaunchedInstance {
 
 /// Unified result type for launching Bevy apps and examples
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "derive-generated constructor for flat response struct"
+)]
 pub struct LaunchResult {
     /// Name of the target that was launched (app or example)
     #[to_metadata(skip_if_none)]

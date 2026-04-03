@@ -14,7 +14,6 @@ use serde_json::json;
 /// Returns FPS and frame time diagnostics from Bevy's `DiagnosticsStore`.
 /// Requires `FrameTimeDiagnosticsPlugin` to be installed (done automatically
 /// by `BrpExtrasPlugin` when the `diagnostics` feature is enabled).
-#[allow(clippy::unnecessary_wraps)]
 pub fn handler(In(_params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let Some(store) = world.get_resource::<DiagnosticsStore>() else {
         return Err(BrpError {

@@ -4,6 +4,7 @@
 //! Enum roots MUST use `EnumRoot` variant, non-enum paths MUST use `Simple` variant.
 use serde::Deserialize;
 use serde::Serialize;
+use serde::ser::SerializeMap;
 
 use super::types_internal::Example;
 use super::types_internal::ExampleGroup;
@@ -66,8 +67,6 @@ impl Serialize for PathExample {
     where
         S: serde::Serializer,
     {
-        use serde::ser::SerializeMap;
-
         match self {
             Self::Simple(example) => {
                 let value = example.to_value();

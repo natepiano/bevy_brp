@@ -52,7 +52,10 @@ pub struct DeleteLogsResult {
 #[tool_fn(params = "DeleteLogsParams", output = "DeleteLogsResult")]
 pub struct DeleteLogs;
 
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "ToolFn trait requires async handler signature"
+)]
 async fn handle_impl(params: DeleteLogsParams) -> Result<DeleteLogsResult> {
     let deleted_files = delete_log_files(params.app_name.as_deref(), params.older_than_seconds)?;
 

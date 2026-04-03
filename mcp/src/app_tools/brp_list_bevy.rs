@@ -43,7 +43,10 @@ pub struct ListBevyResult {
 #[tool_fn(params = "ListBevyParams", output = "ListBevyResult", with_context)]
 pub struct ListBevy;
 
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "ToolFn trait requires async handler signature"
+)]
 async fn handle_impl(ctx: HandlerContext, params: ListBevyParams) -> Result<ListBevyResult> {
     let search_paths = params
         .path

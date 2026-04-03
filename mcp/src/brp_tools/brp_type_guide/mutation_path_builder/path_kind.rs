@@ -171,7 +171,7 @@ impl PathKind {
                     format!("Mutate element [{index}] of {variant} variant")
                 },
                 Self::RootValue { .. } => {
-                    unreachable!("single_variant_matching_parent returns None for RootValue")
+                    format!("Mutate the root value of {variant} variant")
                 },
             };
         }

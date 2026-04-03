@@ -9,7 +9,10 @@
 //!
 //! Used by the test suite to validate all extras functionality.
 
-#![allow(clippy::used_underscore_binding)] // False positive on enum struct variant fields
+#![allow(
+    clippy::used_underscore_binding,
+    reason = "false positive on enum struct variant fields"
+)]
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -585,7 +588,7 @@ fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) 
     );
 
     // Reinterpret as cube texture (height/width = 6)
-    #[allow(clippy::expect_used)]
+    #[allow(clippy::expect_used, reason = "infallible for valid cube textures")]
     image
         .reinterpret_stacked_2d_as_array(image.height() / image.width())
         .expect("Failed to reinterpret image as cube texture array");
@@ -1703,7 +1706,6 @@ fn is_printable_char(chr: char) -> bool {
 }
 
 /// Track keyboard input events
-#[allow(clippy::assigning_clones)] // clone_from doesn't work due to borrow checker
 fn track_keyboard_input(
     mut events: MessageReader<KeyboardInput>,
     mut history: ResMut<KeyboardInputHistory>,
@@ -1744,7 +1746,8 @@ fn track_keyboard_input(
                     }
 
                     // Save the complete combination as last_keys
-                    history.last_keys = history.complete_combination.clone();
+                    let combination = history.complete_combination.clone();
+                    history.last_keys = combination;
 
                     // Extract modifiers from the complete combination
                     let mut modifiers = Vec::new();

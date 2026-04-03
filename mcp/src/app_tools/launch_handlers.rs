@@ -29,7 +29,10 @@ impl ToolFn for LaunchBevyTarget {
     }
 
     async fn handle_impl(&self, _params: Self::Params) -> Result<Self::Output> {
-        unreachable!("LaunchBevyTarget uses its custom call implementation")
+        Err(crate::error::Error::InvalidState(
+            "LaunchBevyTarget uses its custom call implementation".to_string(),
+        )
+        .into())
     }
 }
 

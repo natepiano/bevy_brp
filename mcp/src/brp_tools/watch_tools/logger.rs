@@ -161,7 +161,9 @@ async fn write_task(
                         }
 
                         // Check if we should flush (buffer size or time)
-                        if buffer.len() > 4096 || last_flush.elapsed() > flush_interval {
+                        if buffer.len() > super::constants::BUFFER_FLUSH_SIZE
+                            || last_flush.elapsed() > flush_interval
+                        {
                             flush_buffer(&mut file, &mut buffer, &mut last_flush).await?;
                         }
                     }

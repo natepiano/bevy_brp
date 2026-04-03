@@ -34,7 +34,10 @@ pub struct GetTraceLogPathResult {
 pub struct GetTraceLogPath;
 
 #[cfg(feature = "mcp-debug")]
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "ToolFn trait requires async handler signature"
+)]
 async fn handle_impl(_params: NoParams) -> Result<GetTraceLogPathResult> {
     // Get the trace log path
     let log_path = TracingLevel::get_trace_log_path();

@@ -45,7 +45,10 @@ pub struct ListLogResult {
 #[tool_fn(params = "ListLogsParams", output = "ListLogResult")]
 pub struct ListLogs;
 
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "ToolFn trait requires async handler signature"
+)]
 async fn handle_impl(params: ListLogsParams) -> Result<ListLogResult> {
     let logs = list_log_files(params.app_name.as_deref(), params.verbose)?;
     Ok(ListLogResult::new(

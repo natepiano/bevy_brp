@@ -14,7 +14,10 @@ pub struct PendingShutdown {
 /// Handler for shutdown requests
 ///
 /// Schedules a graceful shutdown after a few frames to allow the response to be sent
-#[allow(clippy::unnecessary_wraps)]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "BRP handler signature requires BrpResult return type"
+)]
 pub fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult {
     info!("BRP EXTRAS SHUTDOWN METHOD CALLED - scheduling deferred shutdown");
     info!("Call stack: {:?}", std::backtrace::Backtrace::capture());
@@ -34,7 +37,7 @@ pub fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult {
 }
 
 /// System to handle deferred shutdown
-pub fn deferred_shutdown_system(
+pub(super) fn deferred_shutdown_system(
     pending: Option<ResMut<PendingShutdown>>,
     mut exit: MessageWriter<bevy::app::AppExit>,
 ) {

@@ -33,7 +33,7 @@ pub enum TypeKind {
     Tuple,
     /// Tuple struct type
     TupleStruct,
-    /// Value type (primitive types like i32, f32, bool, String)
+    /// Value type (primitive types like `i32`, `f32`, `bool`, `String`)
     Value,
 }
 

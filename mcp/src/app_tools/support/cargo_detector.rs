@@ -253,9 +253,7 @@ impl CargoDetector {
 
     /// Recursively check directory for BRP plugin usage
     fn check_directory_for_brp_plugins(dir: &std::path::Path) -> bool {
-        use std::fs;
-
-        if let Ok(entries) = fs::read_dir(dir) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
 
@@ -280,9 +278,7 @@ impl CargoDetector {
     /// `"brp_only"` if it imports `RemotePlugin` without extras,
     /// or `"none"` if neither is found.
     pub(super) fn file_brp_level(file_path: &std::path::Path) -> BrpLevel {
-        use std::fs;
-
-        let Ok(content) = fs::read_to_string(file_path) else {
+        let Ok(content) = std::fs::read_to_string(file_path) else {
             return BrpLevel::None;
         };
 

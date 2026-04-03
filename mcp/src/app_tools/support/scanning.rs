@@ -554,7 +554,15 @@ pub(super) fn find_required_target_with_package_name(
 }
 
 #[cfg(test)]
-#[allow(clippy::expect_used)]
+#[allow(
+    clippy::expect_used,
+    reason = "tests should panic on unexpected values"
+)]
+#[allow(
+    clippy::unwrap_used,
+    reason = "tests should panic on unexpected values"
+)]
+#[allow(clippy::panic, reason = "tests should panic on unexpected values")]
 mod tests {
     use std::path::PathBuf;
 
@@ -893,7 +901,7 @@ path = "src/main.rs"
     }
 
     #[test]
-    #[allow(clippy::too_many_lines)]
+    #[allow(clippy::too_many_lines, reason = "complex workspace test setup")]
     fn test_process_cargo_toml_workspace_detection() {
         use std::collections::HashMap;
         use std::fs;

@@ -54,7 +54,10 @@ pub struct TextTypingQueue {
 /// Wrapper enum for Bevy's `KeyCode` with strum derives for string conversion
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, EnumIter, Display)]
 #[strum(serialize_all = "PascalCase")]
-#[allow(missing_docs)]
+#[allow(
+    missing_docs,
+    reason = "variants mirror Bevy KeyCode and are self-describing"
+)]
 pub enum KeyCodeWrapper {
     // Letters
     KeyA,
@@ -273,7 +276,10 @@ impl KeyCodeWrapper {
 
     /// Convert the wrapper to a Bevy `KeyCode`
     #[must_use]
-    #[allow(clippy::too_many_lines)]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "trivial 1:1 exhaustive variant mapping"
+    )]
     pub const fn to_key_code(self) -> KeyCode {
         match self {
             // Letters
@@ -610,7 +616,7 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
 }
 
 /// System that processes timed key releases
-pub fn process_timed_key_releases(
+pub(super) fn process_timed_key_releases(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedKeyRelease)>,
@@ -780,7 +786,7 @@ pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
 }
 
 /// System that processes text typing queues (one character per frame).
-pub fn process_text_typing(
+pub(super) fn process_text_typing(
     mut commands: Commands,
     mut query: Query<(Entity, &mut TextTypingQueue)>,
     mut keyboard_events: MessageWriter<bevy::input::keyboard::KeyboardInput>,
@@ -822,6 +828,15 @@ pub fn process_text_typing(
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::expect_used,
+    reason = "tests should panic on unexpected values"
+)]
+#[allow(
+    clippy::unwrap_used,
+    reason = "tests should panic on unexpected values"
+)]
+#[allow(clippy::panic, reason = "tests should panic on unexpected values")]
 mod tests {
     use bevy::app::App;
     use strum::IntoEnumIterator;
@@ -829,7 +844,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(clippy::expect_used)]
     fn test_duration_validation_exceeds_maximum() {
         // Create a minimal Bevy app
         let mut app = App::new();
@@ -853,7 +867,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::expect_used)]
     fn test_duration_validation_within_maximum() {
         // Create a minimal Bevy app
         let mut app = App::new();
@@ -876,7 +889,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::expect_used)]
     fn test_default_duration() {
         // Create a minimal Bevy app
         let mut app = App::new();
@@ -899,7 +911,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::expect_used)]
     fn test_zero_duration() {
         // Create a minimal Bevy app
         let mut app = App::new();
@@ -923,7 +934,6 @@ mod tests {
 
     /// Test that all key code variants can be parsed
     #[test]
-    #[allow(clippy::expect_used)]
     fn test_parse_all_key_codes() {
         // Test that all keys can be successfully used in a send_keys request
         let mut app = App::new();
@@ -984,7 +994,6 @@ mod tests {
 
     /// Test press-hold-release cycle with different durations
     #[test]
-    #[allow(clippy::expect_used)]
     fn test_press_hold_release_cycle() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
@@ -1037,7 +1046,6 @@ mod tests {
 
     /// Test empty key array
     #[test]
-    #[allow(clippy::expect_used)]
     fn test_empty_keys() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);

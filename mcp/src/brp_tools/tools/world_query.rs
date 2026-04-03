@@ -5,6 +5,7 @@ use bevy_brp_mcp_macros::ResultStruct;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
+use serde::de::Error;
 use serde_json::Value;
 
 use super::super::Port;
@@ -25,8 +26,6 @@ impl<'de> Deserialize<'de> for ComponentSelector {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::Error;
-
         let value = serde_json::Value::deserialize(deserializer)?;
 
         match value {

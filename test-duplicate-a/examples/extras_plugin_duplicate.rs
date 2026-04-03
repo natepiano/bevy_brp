@@ -166,7 +166,6 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
 }
 
 /// Track keyboard input events
-#[allow(clippy::assigning_clones)] // clone_from doesn't work due to borrow checker
 fn track_keyboard_input(
     mut events: MessageReader<KeyboardInput>,
     mut history: ResMut<KeyboardInputHistory>,
@@ -222,7 +221,8 @@ fn track_keyboard_input(
         }
 
         if !history.active_keys.is_empty() {
-            history.last_keys = history.active_keys.clone();
+            let keys = history.active_keys.clone();
+            history.last_keys = keys;
         }
     }
 }

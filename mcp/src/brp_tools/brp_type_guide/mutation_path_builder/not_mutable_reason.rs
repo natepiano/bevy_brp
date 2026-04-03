@@ -22,6 +22,8 @@
 //! - Rich diagnostic information in the final output
 //! - Clear separation between system errors and expected "not mutable" states
 //! - Consistent formatting of all "not mutable" paths
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt::Display;
 
 use serde_json::Value;
@@ -79,9 +81,6 @@ impl NotMutableReason {
         mutability_issues: Vec<MutabilityIssue>,
         message: String,
     ) -> Self {
-        use std::collections::HashMap;
-        use std::collections::HashSet;
-
         // First pass: Collect all statuses for each unique path string
         // This detects when the same path appears with different statuses across variants
         let mut path_statuses: HashMap<String, HashSet<Mutability>> = HashMap::new();

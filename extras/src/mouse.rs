@@ -608,20 +608,18 @@ pub fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
     let current_pos = cursor_res.get_position(window);
 
     // Calculate new position and delta
-    let (new_position, delta) = request.delta.map_or_else(
-        || {
-            #[allow(clippy::expect_used)]
-            let new_pos = request
-                .position
-                .expect("Position is required when delta is not provided");
-            let delta = new_pos - current_pos;
-            (new_pos, delta)
-        },
-        |delta| {
-            let new_pos = current_pos + delta;
-            (new_pos, delta)
-        },
-    );
+    let (new_position, delta) = if let Some(delta) = request.delta {
+        (current_pos + delta, delta)
+    } else if let Some(pos) = request.position {
+        (pos, pos - current_pos)
+    } else {
+        // Validation above already rejects this case
+        return Err(BrpError {
+            code:    INVALID_PARAMS,
+            message: "Must provide either 'delta' or 'position'".to_string(),
+            data:    None,
+        });
+    };
 
     // Update resource and send motion events
     cursor_res.positions.insert(window, new_position);
@@ -832,7 +830,7 @@ pub fn double_tap_gesture_handler(In(params): In<Option<Value>>, world: &mut Wor
 ///
 /// Ticks timers on `TimedButtonRelease` components. When a timer finishes,
 /// sends the button release event and despawns the entity.
-pub fn process_timed_button_releases(
+pub(super) fn process_timed_button_releases(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedButtonRelease)>,
@@ -863,7 +861,7 @@ pub fn process_timed_button_releases(
 /// - Sends the second press event
 /// - Spawns a `TimedButtonRelease` for the release
 /// - Despawns the scheduled click entity
-pub fn process_scheduled_clicks(
+pub(super) fn process_scheduled_clicks(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut ScheduledClick)>,
@@ -903,8 +901,7 @@ pub fn process_scheduled_clicks(
 /// - Pressed: Send button press, move to start, transition to Dragging
 /// - Dragging: Interpolate position, send motion events, advance frame
 /// - Released: Send button release, despawn entity
-#[allow(clippy::too_many_arguments)]
-pub fn process_drag_operations(
+pub(super) fn process_drag_operations(
     mut commands: Commands,
     mut query: Query<(Entity, &mut DragOperation)>,
     mut cursor_res: ResMut<SimulatedCursorPosition>,
@@ -953,7 +950,10 @@ pub fn process_drag_operations(
             },
             DragState::Dragging => {
                 // Calculate interpolation factor
-                #[allow(clippy::cast_precision_loss)]
+                #[allow(
+                    clippy::cast_precision_loss,
+                    reason = "precision loss acceptable for interpolation factor"
+                )]
                 let t = drag.current_frame as f32 / drag.total_frames as f32;
                 let new_position = drag.start.lerp(drag.end, t);
 
@@ -1034,7 +1034,7 @@ pub fn process_drag_operations(
 /// - **Hybrid testing**: BRP automation mixed with manual interaction
 /// - **Debugging**: Developer moves mouse while running BRP commands
 /// - **Recovery**: Syncs state after unexpected manual input
-pub fn sync_cursor_position(
+pub(super) fn sync_cursor_position(
     mut cursor_res: ResMut<SimulatedCursorPosition>,
     mut cursor_events: MessageReader<CursorMoved>,
 ) {

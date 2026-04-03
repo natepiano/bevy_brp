@@ -18,7 +18,10 @@ pub(super) struct AnySchemaValue(pub(super) Value);
 impl JsonSchema for AnySchemaValue {
     fn schema_name() -> Cow<'static, str> { "AnySchemaValue".into() }
 
-    #[allow(clippy::expect_used)]
+    #[allow(
+        clippy::expect_used,
+        reason = "empty JSON object deserialization is infallible"
+    )]
     fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
         serde_json::from_value(json!({}))
             .expect("Serializing empty JSON object to Schema should always succeed")

@@ -50,7 +50,7 @@ syn = { version = "2.0.117", features = ["extra-traits", "full"] }
 sysinfo = "0.38.4"
 tempfile = "3.27.0"
 thiserror = "2.0"
-tokio = { version = "1.50.0", features = ["full", "signal"] }
+tokio = { version = "1.51.0", features = ["full", "signal"] }
 tokio-stream = "0.1.18"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = { version = "0.1.44", features = [
@@ -66,10 +66,11 @@ uuid = { version = "1.23.0", features = ["v4"] }
 missing_docs = "deny"
 
 [workspace.lints.clippy]
-# Strict lints as specified in the migration plan
-expect_used = "deny"
-panic       = "deny"
-unwrap_used = "deny"
+allow_attributes_without_reason = "deny"
+expect_used                     = "deny"
+panic                           = "deny"
+unreachable                     = "deny"
+unwrap_used                     = "deny"
 
 # Enable lint groups as errors (with lower priority so allows can override)
 all      = { level = "deny", priority = -1 }
@@ -80,6 +81,7 @@ pedantic = { level = "deny", priority = -1 }
 # Allow specific lints that conflict with Bevy patterns
 multiple_crate_versions = "allow"
 needless_pass_by_value  = "allow"
+redundant_pub_crate     = "allow"
 option_if_let_else      = "allow"
 too_many_arguments      = "allow"
 type_complexity         = "allow"

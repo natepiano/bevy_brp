@@ -11,6 +11,7 @@ use crate::error::Result;
 // Constants
 pub(super) const LOG_PREFIX: &str = "bevy_brp_mcp_";
 pub(super) const LOG_EXTENSION: &str = ".log";
+pub(super) const BYTES_PER_UNIT: f64 = 1024.0;
 
 // Static regex for parsing app log filenames
 static APP_LOG_REGEX: LazyLock<Option<Regex>> =
@@ -76,14 +77,17 @@ pub(super) fn parse_log_filename(filename: &str) -> Option<(String, String)> {
 }
 
 /// Formats bytes into human-readable string with appropriate unit
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for display formatting"
+)]
 pub(super) fn format_bytes(bytes: u64) -> String {
     const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
     let mut size = bytes as f64;
     let mut unit_index = 0;
 
-    while size >= 1024.0 && unit_index < UNITS.len() - 1 {
-        size /= 1024.0;
+    while size >= BYTES_PER_UNIT && unit_index < UNITS.len() - 1 {
+        size /= BYTES_PER_UNIT;
         unit_index += 1;
     }
 

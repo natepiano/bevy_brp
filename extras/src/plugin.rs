@@ -129,7 +129,10 @@ impl HasEffectivePort for PortConfigured {
 ///         .with_address([0, 0, 0, 0])
 /// )));
 /// ```
-#[allow(non_upper_case_globals)]
+#[allow(
+    non_upper_case_globals,
+    reason = "const shares struct name for ergonomic plugin construction"
+)]
 pub const BrpExtrasPlugin: BrpExtrasPlugin = BrpExtrasPlugin::new();
 
 /// Plugin type for adding extra BRP methods.

@@ -32,7 +32,10 @@ pub struct ReadLogParams {
 
 /// Result from reading a log file
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "derive-generated constructor for flat response struct"
+)]
 pub struct ReadLogResult {
     /// The filename that was read
     #[to_metadata]
@@ -67,7 +70,10 @@ pub struct ReadLogResult {
 #[tool_fn(params = "ReadLogParams", output = "ReadLogResult")]
 pub struct ReadLog;
 
-#[allow(clippy::unused_async)]
+#[allow(
+    clippy::unused_async,
+    reason = "ToolFn trait requires async handler signature"
+)]
 async fn handle_impl(params: ReadLogParams) -> Result<ReadLogResult> {
     // Convert tail_lines if provided
     let tail_lines = match params.tail_lines {

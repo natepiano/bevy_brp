@@ -286,12 +286,12 @@ async fn log_first_chunk(
     watch_type: &str,
     logger: &BufferedWatchLogger,
 ) {
-    let preview = if bytes.len() <= 500 {
+    let preview = if bytes.len() <= super::constants::MAX_PREVIEW_BYTES {
         String::from_utf8_lossy(bytes).to_string()
     } else {
         format!(
             "{}... (truncated from {} bytes)",
-            String::from_utf8_lossy(&bytes[..500]),
+            String::from_utf8_lossy(&bytes[..super::constants::MAX_PREVIEW_BYTES]),
             bytes.len()
         )
     };
@@ -313,7 +313,6 @@ async fn log_first_chunk(
 }
 
 /// Process the watch stream from the BRP server
-#[allow(clippy::too_many_lines)]
 async fn process_watch_stream(
     response: reqwest::Response,
     entity_id: u64,
@@ -346,7 +345,24 @@ async fn process_watch_stream(
         )
         .await;
 
-    // Read the streaming response with bounded memory usage
+    let total_chunks =
+        consume_stream_chunks(response, entity_id, watch_type, logger, start_time).await?;
+
+    info!(
+        "[{}] Watch stream ended for entity {} ({total_chunks} chunks)",
+        watch_type, entity_id
+    );
+    Ok(())
+}
+
+/// Read all chunks from the streaming response and process them
+async fn consume_stream_chunks(
+    response: reqwest::Response,
+    entity_id: u64,
+    watch_type: &str,
+    logger: &BufferedWatchLogger,
+    start_time: std::time::Instant,
+) -> Result<usize> {
     let mut stream = response.bytes_stream();
     let mut line_buffer = String::new();
     let mut total_buffer_size = 0;
@@ -390,8 +406,6 @@ async fn process_watch_stream(
         parse_sse_line(line_buffer.trim(), entity_id, watch_type, logger).await?;
     }
 
-    // Scenario 3 removed - redundant with Scenario 2 stream error timeout detection
-
     // Log stream end with details
     let _ = logger
         .write_debug_update(
@@ -407,11 +421,7 @@ async fn process_watch_stream(
         )
         .await;
 
-    info!(
-        "[{}] Watch stream ended for entity {}",
-        watch_type, entity_id
-    );
-    Ok(())
+    Ok(total_chunks)
 }
 
 /// Handle connection errors and log appropriately

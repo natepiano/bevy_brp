@@ -80,12 +80,14 @@ impl BrpClient {
                 // Check if this result type supports adding the `TypeGuide`
                 if R::ADD_TYPE_GUIDE_TO_ERROR && err.has_format_error_code() {
                     // embed type_guide information
-                    match self.try_add_type_guide_to_error(&err).await {
-                        Ok(_) => {
-                            unreachable!("ADD_TYPE_GUIDE_TO_ERROR error should always return Err")
-                        },
-                        Err(error_report) => Err(error_report),
-                    }
+                    self.try_add_type_guide_to_error(&err)
+                        .await
+                        .map_or_else(Err, |_| {
+                            Err(Error::InvalidState(
+                                "try_add_type_guide_to_error unexpectedly returned Ok".to_string(),
+                            )
+                            .into())
+                        })
                 } else {
                     // Regular error - enhance with context if possible
                     let enhanced_message =
