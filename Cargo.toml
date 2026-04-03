@@ -81,8 +81,8 @@ pedantic = { level = "deny", priority = -1 }
 # Allow specific lints that conflict with Bevy patterns
 multiple_crate_versions = "allow"
 needless_pass_by_value  = "allow"
-redundant_pub_crate     = "allow"
 option_if_let_else      = "allow"
+redundant_pub_crate     = "allow"
 too_many_arguments      = "allow"
 type_complexity         = "allow"
 wildcard_imports        = "allow"
