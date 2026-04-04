@@ -9,16 +9,16 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use super::super::brp_type_name::BrpTypeName;
-use super::super::constants::INSERT_RESOURCE_GUIDANCE;
-use super::super::constants::NO_COMPONENT_EXAMPLE_TEMPLATE;
-use super::super::constants::NO_RESOURCE_EXAMPLE_TEMPLATE;
-use super::super::constants::OPERATION_INSERT;
-use super::super::constants::OPERATION_SPAWN;
-use super::super::constants::REFLECT_TRAIT_COMPONENT;
-use super::super::constants::REFLECT_TRAIT_RESOURCE;
-use super::super::constants::SPAWN_COMPONENT_GUIDANCE;
-use super::super::type_kind::TypeKind;
+use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
+use crate::brp_tools::brp_type_guide::constants::INSERT_RESOURCE_GUIDANCE;
+use crate::brp_tools::brp_type_guide::constants::NO_COMPONENT_EXAMPLE_TEMPLATE;
+use crate::brp_tools::brp_type_guide::constants::NO_RESOURCE_EXAMPLE_TEMPLATE;
+use crate::brp_tools::brp_type_guide::constants::OPERATION_INSERT;
+use crate::brp_tools::brp_type_guide::constants::OPERATION_SPAWN;
+use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_COMPONENT;
+use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_RESOURCE;
+use crate::brp_tools::brp_type_guide::constants::SPAWN_COMPONENT_GUIDANCE;
+use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 use super::path_builder;
 use super::path_kind::PathKind;
 use super::recursion_context::RecursionContext;

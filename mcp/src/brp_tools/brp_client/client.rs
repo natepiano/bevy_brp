@@ -9,7 +9,7 @@
 use serde_json::Value;
 use tracing::warn;
 
-use super::super::Port;
+use crate::brp_tools::Port;
 use super::constants::BRP_EXTRAS_PREFIX;
 use super::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use super::http_client::BrpHttpClient;

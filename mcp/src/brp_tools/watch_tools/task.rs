@@ -9,8 +9,8 @@ use tracing::error;
 use tracing::info;
 use tracing::warn;
 
-use super::super::BrpClient;
-use super::super::Port;
+use crate::brp_tools::BrpClient;
+use crate::brp_tools::Port;
 use super::logger::BufferedWatchLogger;
 use super::manager::WATCH_MANAGER;
 use super::manager::WatchInfo;

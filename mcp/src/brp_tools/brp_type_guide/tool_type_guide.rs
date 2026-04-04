@@ -16,9 +16,9 @@ use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
 
-use super::super::BrpClient;
-use super::super::Port;
-use super::super::ResponseStatus;
+use crate::brp_tools::BrpClient;
+use crate::brp_tools::Port;
+use crate::brp_tools::ResponseStatus;
 use super::brp_type_name::BrpTypeName;
 use super::guide::TypeGuide;
 use super::response_types::TypeGuideResponse;

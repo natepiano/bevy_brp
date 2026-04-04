@@ -10,7 +10,7 @@ use serde_json::Value;
 use tracing::debug;
 use tracing::warn;
 
-use super::super::Port;
+use crate::brp_tools::Port;
 use super::constants::BRP_DEFAULT_HOST;
 use super::constants::BRP_HTTP_PROTOCOL;
 use super::constants::BRP_JSONRPC_PATH;

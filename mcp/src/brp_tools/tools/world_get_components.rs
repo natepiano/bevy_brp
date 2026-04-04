@@ -7,7 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::super::Port;
+use crate::brp_tools::Port;
 
 /// Parameters for the `world.get_components` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]

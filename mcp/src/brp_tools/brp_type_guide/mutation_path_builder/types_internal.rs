@@ -4,7 +4,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::super::variant_signature::VariantSignature;
+use crate::brp_tools::brp_type_guide::variant_signature::VariantSignature;
 use super::new_types::MutationPath;
 use super::new_types::VariantName;
 use super::types_response::RootExample;

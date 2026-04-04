@@ -251,7 +251,7 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use super::super::cargo_detector::TargetType;
+    use crate::app_tools::support::cargo_detector::TargetType;
     use super::*;
 
     fn test_target(workspace_root: &Path, manifest_path: &Path, name: &str) -> BevyTarget {

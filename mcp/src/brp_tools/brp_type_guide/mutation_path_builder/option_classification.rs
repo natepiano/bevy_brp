@@ -5,7 +5,7 @@
 //! - `None` -> `null`
 //! - `Some(value)` -> `value` (unwrapped)
 
-use super::super::BrpTypeName;
+use crate::brp_tools::brp_type_guide::BrpTypeName;
 use super::new_types::VariantName;
 use super::types_internal::Example;
 

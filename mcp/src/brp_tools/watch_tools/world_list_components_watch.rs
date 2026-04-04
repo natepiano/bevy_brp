@@ -6,7 +6,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::super::Port;
+use crate::brp_tools::Port;
 use super::types::WatchStartResult;
 use crate::error::Error;
 use crate::error::Result;

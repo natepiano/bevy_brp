@@ -14,9 +14,9 @@ use tracing::debug;
 use tracing::info;
 use tracing::warn;
 
-use super::super::instance_count::InstanceCount;
-use super::super::launch_params::LaunchBevyBinaryParams;
-use super::super::launch_params::SearchOrder;
+use crate::app_tools::instance_count::InstanceCount;
+use crate::app_tools::launch_params::LaunchBevyBinaryParams;
+use crate::app_tools::launch_params::SearchOrder;
 use super::build_freshness;
 use super::build_freshness::FreshnessCheckResult;
 use super::cargo_detector::BevyTarget;

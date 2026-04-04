@@ -4,8 +4,8 @@ use std::collections::HashSet;
 
 use serde_json::json;
 
-use super::super::constants::PROFILE_DEBUG;
-use super::super::constants::PROFILE_RELEASE;
+use crate::app_tools::constants::PROFILE_DEBUG;
+use crate::app_tools::constants::PROFILE_RELEASE;
 use super::cargo_detector::BevyTarget;
 use super::cargo_detector::BrpLevel;
 use super::cargo_detector::CargoDetector;

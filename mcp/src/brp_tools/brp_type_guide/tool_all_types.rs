@@ -10,9 +10,9 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::super::BrpClient;
-use super::super::Port;
-use super::super::ResponseStatus;
+use crate::brp_tools::BrpClient;
+use crate::brp_tools::Port;
+use crate::brp_tools::ResponseStatus;
 use super::tool_type_guide::TypeGuideResult;
 use crate::error::Error;
 use crate::error::Result;

@@ -12,12 +12,12 @@ use std::collections::HashMap;
 use serde_json::Value;
 use serde_json::json;
 
-use super::super::BuilderError;
-use super::super::NotMutableReason;
-use super::super::path_kind::MutationPathDescriptor;
-use super::super::path_kind::PathKind;
-use super::super::recursion_context::RecursionContext;
-use super::super::types_internal::Example;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::BuilderError;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::NotMutableReason;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::MutationPathDescriptor;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::PathKind;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::recursion_context::RecursionContext;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::types_internal::Example;
 use super::TupleMutationBuilder;
 use super::TypeKindBuilder;
 use crate::error::Error;

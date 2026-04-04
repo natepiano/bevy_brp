@@ -12,7 +12,7 @@ use serde::de::MapAccess;
 use serde::de::Visitor;
 use serde_json::Value;
 
-use super::super::Port;
+use crate::brp_tools::Port;
 
 /// Parameters for the `world.mutate_components` tool
 #[derive(Clone, Serialize, JsonSchema, ParamStruct)]
