@@ -14,8 +14,8 @@
       "app_type": null
     },
     {
-      "test_name": "resource",
-      "test_file": ".claude/integration_tests/resource.md",
+      "test_name": "watch_list",
+      "test_file": ".claude/integration_tests/watch_list.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
@@ -24,6 +24,55 @@
       "test_file": ".claude/integration_tests/extras_keyboard.md",
       "app_name": "extras_plugin",
       "app_type": "example"
+    },
+    {
+      "test_name": "watch_component",
+      "test_file": ".claude/integration_tests/watch_component.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "extras_text",
+      "test_file": ".claude/integration_tests/extras_text.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "get",
+      "test_file": ".claude/integration_tests/get.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "query_filtered",
+      "test_file": ".claude/integration_tests/query_filtered.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "type_guide",
+      "test_file": ".claude/integration_tests/type_guide.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "extras_capture",
+      "test_file": ".claude/integration_tests/extras_capture.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "mouse",
+      "test_file": ".claude/integration_tests/mouse.md",
+      "app_name": "mouse_test",
+      "app_type": "example",
+      "individual_only": true
+    },
+    {
+      "test_name": "launch_errors",
+      "test_file": ".claude/integration_tests/launch_errors.md",
+      "app_name": "various",
+      "app_type": null
     },
     {
       "test_name": "apps",
@@ -45,21 +94,39 @@
       ]
     },
     {
-      "test_name": "type_guide",
-      "test_file": ".claude/integration_tests/type_guide.md",
+      "test_name": "data_operations",
+      "test_file": ".claude/integration_tests/data_operations.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
     {
-      "test_name": "get",
-      "test_file": ".claude/integration_tests/get.md",
+      "test_name": "resource",
+      "test_file": ".claude/integration_tests/resource.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
     {
-      "test_name": "query_filtered",
-      "test_file": ".claude/integration_tests/query_filtered.md",
+      "test_name": "introspection",
+      "test_file": ".claude/integration_tests/introspection.md",
       "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "list",
+      "test_file": ".claude/integration_tests/list.md",
+      "app_name": "N/A",
+      "app_type": null
+    },
+    {
+      "test_name": "query_basic",
+      "test_file": ".claude/integration_tests/query_basic.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "trigger_event",
+      "test_file": ".claude/integration_tests/trigger_event.md",
+      "app_name": "event_test",
       "app_type": "example"
     },
     {
@@ -89,73 +156,6 @@
     {
       "test_name": "large_response",
       "test_file": ".claude/integration_tests/large_response.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "mouse",
-      "test_file": ".claude/integration_tests/mouse.md",
-      "app_name": "mouse_test",
-      "app_type": "example",
-      "individual_only": true
-    },
-    {
-      "test_name": "launch_errors",
-      "test_file": ".claude/integration_tests/launch_errors.md",
-      "app_name": "various",
-      "app_type": null
-    },
-    {
-      "test_name": "data_operations",
-      "test_file": ".claude/integration_tests/data_operations.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "watch_list",
-      "test_file": ".claude/integration_tests/watch_list.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "query_basic",
-      "test_file": ".claude/integration_tests/query_basic.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "watch_component",
-      "test_file": ".claude/integration_tests/watch_component.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "list",
-      "test_file": ".claude/integration_tests/list.md",
-      "app_name": "N/A",
-      "app_type": null
-    },
-    {
-      "test_name": "extras_capture",
-      "test_file": ".claude/integration_tests/extras_capture.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "introspection",
-      "test_file": ".claude/integration_tests/introspection.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "trigger_event",
-      "test_file": ".claude/integration_tests/trigger_event.md",
-      "app_name": "event_test",
-      "app_type": "example"
-    },
-    {
-      "test_name": "extras_text",
-      "test_file": ".claude/integration_tests/extras_text.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     }
