@@ -34,10 +34,8 @@ use itertools::Itertools;
 use serde_json::Value;
 use serde_json::json;
 
+use super::variant_kind::VariantKind;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
-use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
-use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
-use crate::brp_tools::brp_type_guide::variant_signature::VariantSignature;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::BuilderError;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::NotMutableReason;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::mutation_path_internal::MutationPathInternal;
@@ -57,7 +55,9 @@ use crate::brp_tools::brp_type_guide::mutation_path_builder::types_internal::Mut
 use crate::brp_tools::brp_type_guide::mutation_path_builder::types_internal::MutabilityIssue;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::types_internal::PathAction;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::types_response::RootExample;
-use super::variant_kind::VariantKind;
+use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
+use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
+use crate::brp_tools::brp_type_guide::variant_signature::VariantSignature;
 use crate::error::Error;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;

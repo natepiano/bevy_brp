@@ -9,14 +9,14 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
+use super::TypeKindBuilder;
+use super::ValueMutationBuilder;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::BuilderError;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::NotMutableReason;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::MutationPathDescriptor;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::PathKind;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::recursion_context::RecursionContext;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::types_internal::Example;
-use super::TypeKindBuilder;
-use super::ValueMutationBuilder;
 use crate::error::Result;
 
 impl TypeKindBuilder for ValueMutationBuilder {

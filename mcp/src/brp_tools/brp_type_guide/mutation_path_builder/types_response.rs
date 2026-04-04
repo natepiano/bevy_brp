@@ -5,14 +5,14 @@ use serde::Serialize;
 use serde::ser::SerializeMap;
 use serde_json::Value;
 
-use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
-use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 use super::new_types::MutationPath;
 use super::new_types::VariantName;
 use super::path_example::PathExample;
 use super::path_kind::PathKind;
 use super::types_internal::Example;
 use super::types_internal::Mutability;
+use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
+use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 
 /// User facing path information
 ///

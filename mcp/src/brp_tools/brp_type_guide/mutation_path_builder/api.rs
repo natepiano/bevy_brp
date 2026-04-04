@@ -9,6 +9,12 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
+use super::path_builder;
+use super::path_kind::PathKind;
+use super::recursion_context::RecursionContext;
+use super::types_internal::Example;
+use super::types_response::MutationPathExternal;
+use super::types_response::SpawnInsertExample;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::brp_tools::brp_type_guide::constants::INSERT_RESOURCE_GUIDANCE;
 use crate::brp_tools::brp_type_guide::constants::NO_COMPONENT_EXAMPLE_TEMPLATE;
@@ -19,12 +25,6 @@ use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_COMPONENT;
 use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_RESOURCE;
 use crate::brp_tools::brp_type_guide::constants::SPAWN_COMPONENT_GUIDANCE;
 use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
-use super::path_builder;
-use super::path_kind::PathKind;
-use super::recursion_context::RecursionContext;
-use super::types_internal::Example;
-use super::types_response::MutationPathExternal;
-use super::types_response::SpawnInsertExample;
 use crate::error::Error;
 use crate::error::Result;
 

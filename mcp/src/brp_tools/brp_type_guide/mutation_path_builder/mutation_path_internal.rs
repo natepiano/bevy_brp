@@ -10,13 +10,6 @@ use std::collections::HashSet;
 use serde_json::Value;
 use serde_json::json;
 
-use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
-use crate::brp_tools::brp_type_guide::constants::OPERATION_INSERT;
-use crate::brp_tools::brp_type_guide::constants::OPERATION_SPAWN;
-use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_COMPONENT;
-use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_DEFAULT;
-use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_RESOURCE;
-use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 use super::new_types::MutationPath;
 use super::new_types::VariantName;
 use super::not_mutable_reason::NotMutableReason;
@@ -30,6 +23,13 @@ use super::types_internal::MutabilityIssueTarget;
 use super::types_response::MutationPathExternal;
 use super::types_response::PathInfoParams;
 use super::types_response::RootExample;
+use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
+use crate::brp_tools::brp_type_guide::constants::OPERATION_INSERT;
+use crate::brp_tools::brp_type_guide::constants::OPERATION_SPAWN;
+use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_COMPONENT;
+use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_DEFAULT;
+use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_RESOURCE;
+use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 use crate::support::JsonObjectAccess;
 use crate::support::SchemaField;
 

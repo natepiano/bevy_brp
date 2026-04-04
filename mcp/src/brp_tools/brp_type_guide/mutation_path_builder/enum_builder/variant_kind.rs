@@ -7,10 +7,10 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::brp_tools::brp_type_guide::BrpTypeName;
-use crate::brp_tools::brp_type_guide::struct_field_name::StructFieldName;
-use crate::brp_tools::brp_type_guide::variant_signature::VariantSignature;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::new_types::VariantName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::type_parser;
+use crate::brp_tools::brp_type_guide::struct_field_name::StructFieldName;
+use crate::brp_tools::brp_type_guide::variant_signature::VariantSignature;
 use crate::error::Error;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;

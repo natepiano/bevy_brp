@@ -6,12 +6,12 @@ use std::ops::Deref;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
-use crate::brp_tools::brp_type_guide::struct_field_name::StructFieldName;
-use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 use super::new_types::VariantName;
 use super::option_classification::OptionClassification;
 use super::types_internal::EnumPathInfo;
+use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
+use crate::brp_tools::brp_type_guide::struct_field_name::StructFieldName;
+use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 
 /// A semantic identifier for mutation paths in the builder system
 ///

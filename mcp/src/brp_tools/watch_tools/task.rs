@@ -9,11 +9,11 @@ use tracing::error;
 use tracing::info;
 use tracing::warn;
 
-use crate::brp_tools::BrpClient;
-use crate::brp_tools::Port;
 use super::logger::BufferedWatchLogger;
 use super::manager::WATCH_MANAGER;
 use super::manager::WatchInfo;
+use crate::brp_tools::BrpClient;
+use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
 use crate::tool::BrpMethod;

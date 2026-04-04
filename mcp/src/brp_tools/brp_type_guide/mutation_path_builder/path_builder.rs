@@ -24,8 +24,6 @@ use error_stack::Report;
 use serde_json::Value;
 use serde_json::json;
 
-use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
-use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
 use super::BuilderError;
 use super::enum_builder;
 use super::mutation_path_internal::MutationPathInternal;
@@ -51,6 +49,8 @@ use super::types_internal::Mutability;
 use super::types_internal::MutabilityIssue;
 use super::types_internal::PathAction;
 use super::types_response::RootExample;
+use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
+use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
 use crate::error::Error;
 use crate::error::Result;
 
