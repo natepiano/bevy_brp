@@ -8,16 +8,12 @@
 
 use nom::IResult;
 use nom::Parser;
-use nom::branch::alt;
-use nom::bytes::complete::tag;
-use nom::bytes::complete::take_while1;
-use nom::character::complete::char;
-use nom::combinator::opt;
-use nom::combinator::recognize;
-use nom::multi::separated_list0;
-use nom::sequence::delimited;
-use nom::sequence::pair;
-use nom::sequence::preceded;
+use nom::branch;
+use nom::bytes;
+use nom::character;
+use nom::combinator;
+use nom::multi;
+use nom::sequence;
 
 /// A parsed type path with optional variant
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,30 +31,34 @@ struct ParsedTypePath {
 
 /// Parse an identifier (alphanumeric + underscore, not starting with digit)
 fn identifier(input: &str) -> IResult<&str, &str> {
-    take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)
+    bytes::complete::take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)
 }
 
 /// Parse generic arguments recursively
 fn generics(input: &str) -> IResult<&str, &str> {
-    recognize(delimited(
-        char('<'),
-        separated_list0(
-            tag(", "),
-            alt((
+    combinator::recognize(sequence::delimited(
+        character::complete::char('<'),
+        multi::separated_list0(
+            bytes::complete::tag(", "),
+            branch::alt((
                 // Type with generics
-                recognize(pair(type_path_inner, opt(generics))),
+                combinator::recognize(sequence::pair(type_path_inner, combinator::opt(generics))),
                 // Simple type
                 type_path_inner,
             )),
         ),
-        char('>'),
+        character::complete::char('>'),
     ))
     .parse(input)
 }
 
 /// Internal type path parser (needed because we can't reference `type_path` before it's defined)
 fn type_path_inner(input: &str) -> IResult<&str, &str> {
-    recognize(pair(separated_list0(tag("::"), identifier), opt(generics))).parse(input)
+    combinator::recognize(sequence::pair(
+        multi::separated_list0(bytes::complete::tag("::"), identifier),
+        combinator::opt(generics),
+    ))
+    .parse(input)
 }
 
 /// Parse a complete type path (`module::Type`<Generics>)
@@ -95,7 +95,8 @@ fn full_type_path(input: &str) -> IResult<&str, (&str, Option<&str>)> {
 
     // Fall back to the original parsing for complex cases with generics
     let (input, type_part) = type_path(input)?;
-    let (input, variant) = opt(preceded(tag("::"), identifier)).parse(input)?;
+    let (input, variant) =
+        combinator::opt(sequence::preceded(bytes::complete::tag("::"), identifier)).parse(input)?;
     Ok((input, (type_part, variant)))
 }
 
