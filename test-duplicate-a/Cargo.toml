@@ -33,4 +33,4 @@ workspace = true
 
 [dependencies]
 bevy            = { workspace = true, default-features = true }
-bevy_brp_extras = { path = "../extras" }
+bevy_brp_extras = { workspace = true }

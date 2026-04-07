@@ -130,7 +130,7 @@ async fn parse_sse_line(
 /// Log a watch update with error handling
 async fn log_update(logger: &BufferedWatchLogger, result: Value) -> Result<()> {
     if let Err(e) = logger.write_update("COMPONENT_UPDATE", result).await {
-        error!("Failed to write watch update to log: {}", e);
+        error!("Failed to write watch update to log: {e}");
         return Err(error_stack::Report::new(Error::failed_to(
             "write watch update to log",
             &e,
@@ -261,7 +261,7 @@ async fn handle_stream_error(
     let elapsed = start_time.elapsed();
     let error_string = error.to_string();
 
-    error!("Error reading stream chunk: {}", error);
+    error!("Error reading stream chunk: {error}");
 
     // Log stream error
     let _ = logger
@@ -326,7 +326,7 @@ async fn process_watch_stream(
             response.status(),
             response.status().canonical_reason().unwrap_or("Unknown")
         );
-        error!("Failed to process watch stream: {}", error_msg);
+        error!("Failed to process watch stream: {error_msg}");
         return Err(error_stack::Report::new(Error::BrpCommunication(format!(
             "Failed to process watch stream: {error_msg}"
         ))));
@@ -434,7 +434,7 @@ async fn handle_connection_error(
     let elapsed = start_time.elapsed();
     let error_string = error.to_string();
 
-    error!("Failed to connect to BRP server: {}", error);
+    error!("Failed to connect to BRP server: {error}");
 
     let _ = logger
         .write_update(
@@ -492,7 +492,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
             )
             .await
             {
-                error!("Watch stream processing failed: {}", e);
+                error!("Watch stream processing failed: {e}");
             }
         },
         Err(e) => {

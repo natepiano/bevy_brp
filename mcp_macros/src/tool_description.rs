@@ -9,7 +9,7 @@ use syn::Fields;
 use syn::parse_macro_input;
 
 /// Implementation of the `ToolDescription` derive macro
-pub fn derive_tool_description_impl(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_tool_description_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     // Extract the path from the attribute

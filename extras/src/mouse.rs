@@ -194,7 +194,7 @@ fn send_motion_events(world: &mut World, window: Entity, position: Vec2, delta: 
 
 /// Drag operation state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DragState {
+pub(crate) enum DragState {
     /// Button pressed, cursor moved to start position
     Pressed,
     /// Actively dragging, interpolating between start and end
@@ -205,7 +205,7 @@ pub enum DragState {
 
 /// Request structure for `move_mouse`
 #[derive(Deserialize)]
-pub struct MoveMouseRequest {
+pub(crate) struct MoveMouseRequest {
     /// Delta movement (mutually exclusive with position)
     #[serde(default)]
     pub delta:    Option<Vec2>,
@@ -219,7 +219,7 @@ pub struct MoveMouseRequest {
 
 /// Response structure for `move_mouse`
 #[derive(Serialize)]
-pub struct MoveMouseResponse {
+pub(crate) struct MoveMouseResponse {
     /// New cursor position
     pub new_position: Vec2,
     /// Delta that was applied
@@ -248,7 +248,7 @@ pub struct MoveMouseResponse {
 /// real input sync, delta commands could cause unexpected jumps after physical
 /// mouse movement.
 #[derive(Resource, Default)]
-pub struct SimulatedCursorPosition {
+pub(crate) struct SimulatedCursorPosition {
     /// Per-window cursor positions
     pub positions:   std::collections::HashMap<Entity, Vec2>,
     /// The last window the cursor was moved to (used as default for click/scroll operations)
@@ -263,7 +263,7 @@ impl SimulatedCursorPosition {
     ///
     /// # Returns
     /// Current cursor position or `Vec2::ZERO` if no position stored
-    pub fn get_position(&self, window: Entity) -> Vec2 {
+    pub(crate) fn get_position(&self, window: Entity) -> Vec2 {
         self.positions.get(&window).copied().unwrap_or(Vec2::ZERO)
     }
 
@@ -275,7 +275,7 @@ impl SimulatedCursorPosition {
     ///
     /// # Returns
     /// Delta from previous position (or from origin if no previous position)
-    pub fn update_position(&mut self, window: Entity, new_pos: Vec2) -> Vec2 {
+    pub(crate) fn update_position(&mut self, window: Entity, new_pos: Vec2) -> Vec2 {
         let old_pos = self.get_position(window);
         self.positions.insert(window, new_pos);
         new_pos - old_pos
@@ -291,7 +291,7 @@ impl SimulatedCursorPosition {
 /// Attached to entities to track button press duration. When the timer expires,
 /// the button release event is sent and the entity is despawned.
 #[derive(Component)]
-pub struct TimedButtonRelease {
+pub(crate) struct TimedButtonRelease {
     /// Which button to release
     pub button: MouseButton,
     /// Which window the button was pressed in (None = primary)
@@ -305,7 +305,7 @@ pub struct TimedButtonRelease {
 /// Manages multi-frame drag operations with linear interpolation between
 /// start and end positions. Runs a state machine: Pressed -> Dragging -> Released.
 #[derive(Component)]
-pub struct DragOperation {
+pub(crate) struct DragOperation {
     /// Which button is pressed during drag
     pub button:        MouseButton,
     /// Which window to target (None = primary)
@@ -327,7 +327,7 @@ pub struct DragOperation {
 /// Delays the second click in a double-click operation to ensure proper
 /// temporal separation between the two clicks.
 #[derive(Component)]
-pub struct ScheduledClick {
+pub(crate) struct ScheduledClick {
     /// Which button to click
     pub button:         MouseButton,
     /// Which window to target (None = primary)
@@ -344,7 +344,7 @@ pub struct ScheduledClick {
 
 /// Request structure for `send_mouse_button`
 #[derive(Deserialize)]
-pub struct SendMouseButtonRequest {
+pub(crate) struct SendMouseButtonRequest {
     /// Mouse button to press
     pub button:      MouseButton,
     /// Duration in milliseconds to hold button (default: 100ms, max: 60000ms)
@@ -357,7 +357,7 @@ pub struct SendMouseButtonRequest {
 
 /// Response structure for `send_mouse_button`
 #[derive(Serialize)]
-pub struct SendMouseButtonResponse {
+pub(crate) struct SendMouseButtonResponse {
     /// Button that was pressed
     pub button:      MouseButton,
     /// Duration in milliseconds the button was held
@@ -370,7 +370,7 @@ pub struct SendMouseButtonResponse {
 
 /// Request structure for `click_mouse`
 #[derive(Deserialize)]
-pub struct ClickMouseRequest {
+pub(crate) struct ClickMouseRequest {
     /// Mouse button to click
     pub button: MouseButton,
     /// Target window entity (None = primary window)
@@ -380,7 +380,7 @@ pub struct ClickMouseRequest {
 
 /// Response structure for `click_mouse`
 #[derive(Serialize)]
-pub struct ClickMouseResponse {
+pub(crate) struct ClickMouseResponse {
     /// Button that was clicked
     pub button: MouseButton,
 }
@@ -391,7 +391,7 @@ pub struct ClickMouseResponse {
 
 /// Request structure for `double_click_mouse`
 #[derive(Deserialize)]
-pub struct DoubleClickMouseRequest {
+pub(crate) struct DoubleClickMouseRequest {
     /// Mouse button to double click
     pub button:   MouseButton,
     /// Delay between clicks in milliseconds (default: 250ms)
@@ -404,7 +404,7 @@ pub struct DoubleClickMouseRequest {
 
 /// Response structure for `double_click_mouse`
 #[derive(Serialize)]
-pub struct DoubleClickMouseResponse {
+pub(crate) struct DoubleClickMouseResponse {
     /// Button that was double-clicked
     pub button:   MouseButton,
     /// Delay between clicks in milliseconds
@@ -417,7 +417,7 @@ pub struct DoubleClickMouseResponse {
 
 /// Request structure for `drag_mouse`
 #[derive(Deserialize)]
-pub struct DragMouseRequest {
+pub(crate) struct DragMouseRequest {
     /// Button to hold during drag
     pub button: MouseButton,
     /// Starting position
@@ -433,7 +433,7 @@ pub struct DragMouseRequest {
 
 /// Response structure for `drag_mouse`
 #[derive(Serialize)]
-pub struct DragMouseResponse {
+pub(crate) struct DragMouseResponse {
     /// Button that was used for dragging
     pub button: MouseButton,
     /// Starting position
@@ -450,7 +450,7 @@ pub struct DragMouseResponse {
 
 /// Request structure for `scroll_mouse`
 #[derive(Deserialize)]
-pub struct ScrollMouseRequest {
+pub(crate) struct ScrollMouseRequest {
     /// Horizontal scroll amount
     pub x:      f32,
     /// Vertical scroll amount
@@ -464,7 +464,7 @@ pub struct ScrollMouseRequest {
 
 /// Response structure for `scroll_mouse`
 #[derive(Serialize)]
-pub struct ScrollMouseResponse {
+pub(crate) struct ScrollMouseResponse {
     /// Horizontal scroll amount
     pub x:    f32,
     /// Vertical scroll amount
@@ -479,14 +479,14 @@ pub struct ScrollMouseResponse {
 
 /// Request structure for `pinch_gesture`
 #[derive(Deserialize)]
-pub struct PinchGestureRequest {
+pub(crate) struct PinchGestureRequest {
     /// Pinch delta (positive = zoom in, negative = zoom out)
     pub delta: f32,
 }
 
 /// Response structure for `pinch_gesture`
 #[derive(Serialize)]
-pub struct PinchGestureResponse {
+pub(crate) struct PinchGestureResponse {
     /// Pinch delta that was applied
     pub delta: f32,
 }
@@ -497,14 +497,14 @@ pub struct PinchGestureResponse {
 
 /// Request structure for `rotation_gesture`
 #[derive(Deserialize)]
-pub struct RotationGestureRequest {
+pub(crate) struct RotationGestureRequest {
     /// Rotation delta in radians
     pub delta: f32,
 }
 
 /// Response structure for `rotation_gesture`
 #[derive(Serialize)]
-pub struct RotationGestureResponse {
+pub(crate) struct RotationGestureResponse {
     /// Rotation delta that was applied
     pub delta: f32,
 }
@@ -515,13 +515,13 @@ pub struct RotationGestureResponse {
 
 /// Request structure for `double_tap_gesture`
 #[derive(Deserialize)]
-pub struct DoubleTapGestureRequest {
+pub(crate) struct DoubleTapGestureRequest {
     // No parameters needed
 }
 
 /// Response structure for `double_tap_gesture`
 #[derive(Serialize)]
-pub struct DoubleTapGestureResponse {
+pub(crate) struct DoubleTapGestureResponse {
     // No fields needed - success is indicated by Ok result
 }
 
@@ -574,7 +574,7 @@ fn resolve_window(world: &mut World, window_id: Option<u64>) -> Result<Entity, B
 // ============================================================================
 
 /// Handler for `move_mouse` BRP method
-pub fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: MoveMouseRequest = parse_request(params, false)?;
 
     // Validate that exactly one of delta or position is provided
@@ -638,7 +638,7 @@ pub fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
 /// Handler for `click_mouse` BRP method
 ///
 /// Performs a simple click (press and release) with default timing
-pub fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: ClickMouseRequest = parse_request(params, false)?;
     let window = resolve_window(world, request.window)?;
 
@@ -655,7 +655,10 @@ pub fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> 
 /// Handler for `send_mouse_button` BRP method
 ///
 /// Sends a mouse button press with configurable hold duration before automatic release
-pub fn send_mouse_button_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn send_mouse_button_handler(
+    In(params): In<Option<Value>>,
+    world: &mut World,
+) -> BrpResult {
     let request: SendMouseButtonRequest = parse_request(params, false)?;
 
     // Validate duration
@@ -683,7 +686,10 @@ pub fn send_mouse_button_handler(In(params): In<Option<Value>>, world: &mut Worl
 }
 
 /// Handler for `double_click_mouse` BRP method
-pub fn double_click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn double_click_mouse_handler(
+    In(params): In<Option<Value>>,
+    world: &mut World,
+) -> BrpResult {
     let request: DoubleClickMouseRequest = parse_request(params, false)?;
     let delay_ms = request.delay_ms.unwrap_or(DEFAULT_DOUBLE_CLICK_DELAY_MS);
     let window = resolve_window(world, request.window)?;
@@ -724,7 +730,7 @@ pub fn double_click_mouse_handler(In(params): In<Option<Value>>, world: &mut Wor
 }
 
 /// Handler for `scroll_mouse` BRP method
-pub fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: ScrollMouseRequest = parse_request(params, false)?;
     let window = resolve_window(world, request.window)?;
 
@@ -749,7 +755,7 @@ pub fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut World) ->
 }
 
 /// Handler for `drag_mouse` BRP method
-pub fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: DragMouseRequest = parse_request(params, false)?;
 
     // Validate frames
@@ -786,7 +792,7 @@ pub fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
 }
 
 /// Handler for `pinch_gesture` BRP method
-pub fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: PinchGestureRequest = parse_request(params, false)?;
 
     window_event::write_input_event(world, bevy::input::gestures::PinchGesture(request.delta));
@@ -800,7 +806,10 @@ pub fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -
 }
 
 /// Handler for `rotation_gesture` BRP method
-pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn rotation_gesture_handler(
+    In(params): In<Option<Value>>,
+    world: &mut World,
+) -> BrpResult {
     let request: RotationGestureRequest = parse_request(params, false)?;
 
     window_event::write_input_event(world, bevy::input::gestures::RotationGesture(request.delta));
@@ -814,7 +823,10 @@ pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World
 }
 
 /// Handler for `double_tap_gesture` BRP method
-pub fn double_tap_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn double_tap_gesture_handler(
+    In(params): In<Option<Value>>,
+    world: &mut World,
+) -> BrpResult {
     let _request: DoubleTapGestureRequest = parse_request(params, true)?;
 
     window_event::write_input_event(world, bevy::input::gestures::DoubleTapGesture);

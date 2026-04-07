@@ -15,7 +15,7 @@ struct ToolAttrs {
 }
 
 /// Implementation of the `BrpTools` derive macro
-pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     // Ensure we're working with an enum

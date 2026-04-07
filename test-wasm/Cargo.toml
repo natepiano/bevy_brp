@@ -4,7 +4,7 @@ name    = "bevy_brp_test_wasm"
 publish = false
 
 [dependencies]
-bevy_brp_extras = { path = "../extras" }
+bevy_brp_extras = { workspace = true }
 
 # WebSocket relay for BRP on WASM — connects outbound to wasm-server-runner's relay
 bevy_brp_websocket_relay = { git = "https://github.com/johanhelsing/bevy_brp_websocket_relay", branch = "main" }

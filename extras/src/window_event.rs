@@ -12,7 +12,7 @@ use bevy::window::WindowEvent;
 ///
 /// This ensures systems reading either channel (like `bevy_picking`) see the event.
 /// Mirrors the dual-write pattern from `bevy_winit::state::forward_bevy_events()`.
-pub fn write_input_event<T>(world: &mut World, event: T)
+pub(crate) fn write_input_event<T>(world: &mut World, event: T)
 where
     T: Clone + Message,
     WindowEvent: From<T>,

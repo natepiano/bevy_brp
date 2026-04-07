@@ -4,8 +4,6 @@
 //! It encapsulates all HTTP-related operations including URL building, request sending,
 //! status checking, and response parsing.
 
-use std::time::Duration;
-
 use serde_json::Value;
 use tracing::debug;
 use tracing::warn;
@@ -71,7 +69,7 @@ impl BrpHttpClient {
             .post(&url)
             .header("Content-Type", "application/json")
             .body(body.clone())
-            .timeout(Duration::from_secs(30))
+            .timeout(super::constants::HTTP_REQUEST_TIMEOUT)
             .send()
             .await;
 
@@ -145,7 +143,7 @@ impl BrpHttpClient {
         request_body: &str,
     ) -> Result<reqwest::Response> {
         // Always log HTTP errors to help debug intermittent failures
-        warn!("BRP execute_brp_method: HTTP request failed - error={}", e);
+        warn!("BRP execute_brp_method: HTTP request failed - error={e}");
 
         let error_details = format!(
             "HTTP Error at {}\nMethod: {}\nPort: {}\nURL: {}\nError: {:?}\n",
@@ -165,7 +163,7 @@ impl BrpHttpClient {
                 std::process::id()
             );
             let _ = std::fs::write(&error_file, &error_details);
-            debug!("HTTP error details written to: {}", error_file);
+            debug!("HTTP error details written to: {error_file}");
         }
 
         // Extract additional context from the request body for better error reporting
@@ -220,7 +218,10 @@ impl BrpHttpClient {
             .attach(format!("Full error: {e:?}"))
             .attach(format!(
                 "Request body (first 500 chars): {}",
-                &request_body.chars().take(500).collect::<String>()
+                &request_body
+                    .chars()
+                    .take(super::constants::ERROR_BODY_PREVIEW_CHARS)
+                    .collect::<String>()
             )))
     }
 }

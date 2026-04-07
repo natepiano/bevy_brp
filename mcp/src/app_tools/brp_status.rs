@@ -308,7 +308,7 @@ async fn check_brp_on_port(port: Port) -> Result<bool> {
             },
             Ok(ResponseStatus::Error(_)) | Err(_) => {
                 // BRP not responding or returned an error, wait and retry
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                tokio::time::sleep(super::constants::STATUS_POLL_INTERVAL).await;
             },
         }
     }

@@ -60,7 +60,7 @@ fn convert_template_braces(template: &str) -> String {
 }
 
 /// Implementation of the `ResultStruct` derive macro
-pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
@@ -250,7 +250,7 @@ fn generate_message_template_provider(
 
     let field_initializers = build_constructor_initializers(
         field_name,
-        default_template.as_ref(),
+        default_template.as_deref(),
         regular_fields,
         computed_fields,
     );
@@ -285,7 +285,7 @@ fn generate_message_template_provider(
 /// Build field initializers for the constructor.
 fn build_constructor_initializers(
     template_field_name: &syn::Ident,
-    default_template: Option<&String>,
+    default_template: Option<&str>,
     regular_fields: &[(syn::Ident, syn::Type)],
     computed_fields: &[ComputedField],
 ) -> Vec<proc_macro2::TokenStream> {
@@ -312,7 +312,7 @@ fn build_constructor_initializers(
 fn template_field_initializer(
     name: &syn::Ident,
     ty: &syn::Type,
-    default_template: Option<&String>,
+    default_template: Option<&str>,
 ) -> proc_macro2::TokenStream {
     let type_str = quote!(#ty).to_string();
     let is_option = type_str.contains("Option <");
@@ -523,7 +523,7 @@ fn generate_regular_field_initializer(
         Some(template_field_initializer(
             field_name,
             field_type,
-            template_default.as_ref(),
+            template_default.as_deref(),
         ))
     } else {
         None

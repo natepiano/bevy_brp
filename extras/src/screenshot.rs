@@ -16,7 +16,7 @@ use serde_json::json;
 /// Takes a screenshot of the primary window and saves it to the specified path.
 /// The path parameter must be provided in the request.
 /// File I/O is performed asynchronously to avoid blocking the main thread.
-pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Check if PNG support is available at runtime
     if bevy::image::ImageFormat::from_extension("png").is_none() {
         return Err(BrpError {
@@ -54,7 +54,7 @@ pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let absolute_path_str = absolute_path.to_string_lossy().to_string();
 
     // Log the screenshot request
-    info!("Screenshot requested for: {}", absolute_path_str);
+    info!("Screenshot requested for: {absolute_path_str}");
 
     // Check if we have a primary window
     let window_exists = world.query::<&Window>().iter(world).any(|w| {

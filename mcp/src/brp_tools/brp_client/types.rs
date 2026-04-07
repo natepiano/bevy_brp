@@ -244,6 +244,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+    use crate::tool::ParameterName;
 
     #[test]
     fn test_extract_from_components_object() {
@@ -358,8 +359,6 @@ mod tests {
 
     #[test]
     fn test_operation_extract_type_names_spawn_insert() {
-        use crate::tool::ParameterName;
-
         // Test spawn/insert operation with components
         let operation = Operation::SpawnInsert {
             parameter_name: ParameterName::Components,
@@ -380,8 +379,6 @@ mod tests {
 
     #[test]
     fn test_operation_extract_type_names_insert_resource() {
-        use crate::tool::ParameterName;
-
         // Test insert resource operation
         let operation = Operation::SpawnInsert {
             parameter_name: ParameterName::Value,
@@ -398,8 +395,6 @@ mod tests {
 
     #[test]
     fn test_operation_extract_type_names_mutate_component() {
-        use crate::tool::ParameterName;
-
         // Test mutate component operation
         let operation = Operation::Mutate {
             parameter_name: ParameterName::Component,
@@ -421,8 +416,6 @@ mod tests {
 
     #[test]
     fn test_operation_extract_type_names_mutate_resource() {
-        use crate::tool::ParameterName;
-
         // Test mutate resource operation
         let operation = Operation::Mutate {
             parameter_name: ParameterName::Resource,

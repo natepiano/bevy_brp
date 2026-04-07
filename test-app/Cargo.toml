@@ -36,7 +36,7 @@ path = "examples/test_app.rs"
 
 
 [dependencies]
-bevy_brp_extras = { path = "../extras" }
+bevy_brp_extras = { workspace = true }
 bevy_mesh       = { workspace = true }
 bevy_remote     = { workspace = true, default-features = true }
 bevy_winit      = { workspace = true }

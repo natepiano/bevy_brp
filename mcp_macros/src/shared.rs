@@ -8,14 +8,14 @@ use syn::Ident;
 use syn::Type;
 
 /// Information about a computed field
-pub struct ComputedField {
+pub(crate) struct ComputedField {
     pub field_name: Ident,
     pub from_field: String,
     pub operation:  String,
 }
 
 /// Parse placement attribute arguments
-pub fn parse_placement_attr(
+pub(crate) fn parse_placement_attr(
     attr: &Attribute,
     source_path: &mut Option<String>,
     field_type: &mut Option<String>,
@@ -48,7 +48,7 @@ pub fn parse_placement_attr(
 }
 
 /// Parse computed attribute arguments
-pub fn parse_computed_attr(attr: &Attribute, result_operation: &mut Option<String>) {
+pub(crate) fn parse_computed_attr(attr: &Attribute, result_operation: &mut Option<String>) {
     let _ = attr.parse_nested_meta(|meta| {
         if meta.path.is_ident("operation") {
             let value = meta.value()?;
@@ -62,7 +62,7 @@ pub fn parse_computed_attr(attr: &Attribute, result_operation: &mut Option<Strin
 }
 
 /// Parse `to_message` attribute arguments
-pub fn parse_to_message_attr(attr: &Attribute) -> Option<String> {
+pub(crate) fn parse_to_message_attr(attr: &Attribute) -> Option<String> {
     let mut message_template = None;
     let _ = attr.parse_nested_meta(|meta| {
         if meta.path.is_ident("message_template") {
@@ -79,7 +79,7 @@ pub fn parse_to_message_attr(attr: &Attribute) -> Option<String> {
 }
 
 /// Generate response data field addition
-pub fn generate_response_data_field(
+pub(crate) fn generate_response_data_field(
     field_name: &Ident,
     field_type: &Type,
     placement: &TokenStream,
@@ -103,7 +103,7 @@ pub fn generate_response_data_field(
 }
 
 /// Extract field data from struct fields
-pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
+pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
     let mut field_placements = Vec::new();
     let mut response_data_fields = Vec::new();
     let mut computed_fields = Vec::new();
@@ -215,7 +215,7 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
     }
 }
 
-pub struct FieldExtractionResult {
+pub(crate) struct FieldExtractionResult {
     pub field_placements:       Vec<TokenStream>,
     pub response_data_fields:   Vec<TokenStream>,
     pub computed_fields:        Vec<ComputedField>,

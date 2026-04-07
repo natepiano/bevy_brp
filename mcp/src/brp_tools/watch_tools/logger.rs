@@ -29,13 +29,13 @@ pub(super) struct BufferedWatchLogger {
 impl BufferedWatchLogger {
     /// Create a new buffered logger and spawn the writer task
     pub(super) fn new(log_path: PathBuf) -> Self {
-        let (tx, rx) = mpsc::channel(1000); // Buffer up to 1000 messages
+        let (tx, rx) = mpsc::channel(super::constants::WATCH_LOG_BUFFER_SIZE);
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
         // Spawn the writer task
         tokio::spawn(async move {
             if let Err(e) = write_task(log_path, rx, shutdown_rx).await {
-                error!("Watch logger write task failed: {}", e);
+                error!("Watch logger write task failed: {e}");
             }
         });
 
@@ -135,7 +135,7 @@ async fn write_task(
     // Buffer for batching writes
     let mut buffer = String::with_capacity(8192); // 8KB buffer
     let mut last_flush = tokio::time::Instant::now();
-    let flush_interval = std::time::Duration::from_millis(100); // Flush every 100ms
+    let flush_interval = super::constants::WATCH_LOG_FLUSH_INTERVAL;
 
     loop {
         // Try to receive with timeout, but also check for shutdown signal

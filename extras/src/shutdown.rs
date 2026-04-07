@@ -7,7 +7,7 @@ use serde_json::json;
 
 /// Resource to track pending shutdown
 #[derive(Resource)]
-pub struct PendingShutdown {
+pub(crate) struct PendingShutdown {
     frames_remaining: u32,
 }
 
@@ -18,7 +18,7 @@ pub struct PendingShutdown {
     clippy::unnecessary_wraps,
     reason = "BRP handler signature requires BrpResult return type"
 )]
-pub fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult {
     info!("BRP EXTRAS SHUTDOWN METHOD CALLED - scheduling deferred shutdown");
     info!("Call stack: {:?}", std::backtrace::Backtrace::capture());
 

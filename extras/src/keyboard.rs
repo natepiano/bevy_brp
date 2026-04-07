@@ -30,7 +30,7 @@ const DEFAULT_KEY_DURATION_MS: u32 = 100;
 
 /// Component that tracks keys that need to be released after a duration
 #[derive(Component)]
-pub struct TimedKeyRelease {
+pub(crate) struct TimedKeyRelease {
     /// The key code wrappers to release (stores wrapper for text field generation)
     pub keys:  Vec<KeyCodeWrapper>,
     /// Timer tracking the remaining duration
@@ -40,7 +40,7 @@ pub struct TimedKeyRelease {
 /// Component for sequential text typing (one character per frame).
 /// Used by `type_text` RPC to simulate realistic typing.
 #[derive(Component)]
-pub struct TextTypingQueue {
+pub(crate) struct TextTypingQueue {
     /// Characters remaining to type
     pub chars:        std::collections::VecDeque<char>,
     /// Currently pressed keys (waiting for release next frame)
@@ -58,7 +58,7 @@ pub struct TextTypingQueue {
     missing_docs,
     reason = "variants mirror Bevy KeyCode and are self-describing"
 )]
-pub enum KeyCodeWrapper {
+pub(crate) enum KeyCodeWrapper {
     // Letters
     KeyA,
     KeyB,
@@ -210,7 +210,7 @@ impl KeyCodeWrapper {
     ///
     /// Returns `None` for non-printable keys (modifiers, function keys, etc.)
     #[must_use]
-    pub const fn to_char(self) -> Option<char> {
+    pub(crate) const fn to_char(self) -> Option<char> {
         match self {
             // Letters (lowercase)
             Self::KeyA => Some('a'),
@@ -280,7 +280,7 @@ impl KeyCodeWrapper {
         clippy::too_many_lines,
         reason = "trivial 1:1 exhaustive variant mapping"
     )]
-    pub const fn to_key_code(self) -> KeyCode {
+    pub(crate) const fn to_key_code(self) -> KeyCode {
         match self {
             // Letters
             Self::KeyA => KeyCode::KeyA,
@@ -424,7 +424,7 @@ impl KeyCodeWrapper {
 
 /// Request structure for `send_keys`
 #[derive(Debug, Deserialize)]
-pub struct SendKeysRequest {
+pub(crate) struct SendKeysRequest {
     /// Array of key codes to send
     pub keys:        Vec<String>,
     /// Duration in milliseconds to hold the keys before releasing
@@ -436,7 +436,7 @@ const fn default_duration() -> u32 { DEFAULT_KEY_DURATION_MS }
 
 /// Response structure for `send_keys`
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SendKeysResponse {
+pub(crate) struct SendKeysResponse {
     /// Whether the operation was successful
     pub success:     bool,
     /// List of keys that were sent
@@ -558,7 +558,7 @@ fn create_keyboard_events_with_text(
 /// - Request parameters are missing
 /// - Request format is invalid
 /// - Any key code is invalid or unknown
-pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Parse the request
     let request: SendKeysRequest = if let Some(params) = params {
         serde_json::from_value(params).map_err(|e| BrpError {
@@ -646,14 +646,14 @@ pub(super) fn process_timed_key_releases(
 
 /// Request structure for `type_text`
 #[derive(Debug, Deserialize)]
-pub struct TypeTextRequest {
+pub(crate) struct TypeTextRequest {
     /// Text to type (supports letters, numbers, symbols, newlines, tabs)
     pub text: String,
 }
 
 /// Response structure for `type_text`
 #[derive(Debug, Serialize, Deserialize)]
-pub struct TypeTextResponse {
+pub(crate) struct TypeTextResponse {
     /// Whether the operation was initiated successfully
     pub success:      bool,
     /// Number of characters queued for typing
@@ -731,7 +731,7 @@ fn char_to_keys(c: char) -> Option<Vec<KeyCodeWrapper>> {
 
 /// Handler for the `type_text` BRP method.
 /// Types text one character per frame, simulating realistic keyboard input.
-pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: TypeTextRequest = if let Some(params) = params {
         serde_json::from_value(params).map_err(|e| BrpError {
             code:    INVALID_PARAMS,

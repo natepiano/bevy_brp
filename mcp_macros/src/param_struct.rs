@@ -12,7 +12,7 @@ use syn::parse_macro_input;
 use crate::shared;
 
 /// Implementation of the `ParamStruct` derive macro
-pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 

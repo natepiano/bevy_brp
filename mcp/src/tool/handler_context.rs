@@ -65,7 +65,7 @@ impl HandlerContext {
         };
 
         serde_json::from_value(args_value).map_err(|e| {
-            tracing::debug!("Serde deserialization error: {}", e);
+            tracing::debug!("Serde deserialization error: {e}");
 
             // Extract simplified type name (last component after ::)
             let type_name = std::any::type_name::<T>()

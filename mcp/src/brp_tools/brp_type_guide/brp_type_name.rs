@@ -127,10 +127,6 @@ impl From<String> for BrpTypeName {
     fn from(s: String) -> Self { Self(s) }
 }
 
-impl From<&String> for BrpTypeName {
-    fn from(s: &String) -> Self { Self(s.clone()) }
-}
-
 // this one is because in `type_knowledge` we allow
 // passing in an impl Into<BrpTypeName>
 // useful for passing in &str and String

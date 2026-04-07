@@ -32,7 +32,13 @@ async fn handle_impl(params: ListComponentsWatchParams) -> Result<WatchStartResu
     // Start the watch task
     let result = super::start_list_watch_task(params.entity, params.port)
         .await
-        .map_err(|e| super::wrap_watch_error("Failed to start list watch", Some(params.entity), e));
+        .map_err(|e| {
+            super::wrap_watch_error::wrap_watch_error(
+                "Failed to start list watch",
+                Some(params.entity),
+                e,
+            )
+        });
 
     match result {
         Ok((watch_id, log_path)) => Ok(WatchStartResult::new(

@@ -36,7 +36,11 @@ async fn handle_impl(params: GetComponentsWatchParams) -> Result<WatchStartResul
     let result = super::start_entity_watch_task(params.entity, Some(params.types), params.port)
         .await
         .map_err(|e| {
-            super::wrap_watch_error("Failed to start entity watch", Some(params.entity), e)
+            super::wrap_watch_error::wrap_watch_error(
+                "Failed to start entity watch",
+                Some(params.entity),
+                e,
+            )
         });
 
     match result {

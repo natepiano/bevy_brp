@@ -481,7 +481,7 @@ fn main() {
     let brp_plugin = BrpExtrasPlugin::new().port_in_title(PortDisplay::Always);
     let (port, _) = brp_plugin.get_effective_port();
 
-    info!("Starting BRP Extras Test on port {}", port);
+    info!("Starting BRP Extras Test on port {port}");
 
     App::new()
         .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {

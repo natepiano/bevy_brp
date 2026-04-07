@@ -65,12 +65,15 @@ use crate::support::SchemaField;
 
 /// Extension trait for sorting variant groups deterministically
 trait SortedVariantGroups {
-    fn sorted(&self) -> Vec<(&VariantSignature, &Vec<VariantName>)>;
+    fn sorted(&self) -> Vec<(&VariantSignature, &[VariantName])>;
 }
 
 impl SortedVariantGroups for HashMap<VariantSignature, Vec<VariantName>> {
-    fn sorted(&self) -> Vec<(&VariantSignature, &Vec<VariantName>)> {
-        let mut sorted_groups: Vec<_> = self.iter().collect();
+    fn sorted(&self) -> Vec<(&VariantSignature, &[VariantName])> {
+        let mut sorted_groups: Vec<(&VariantSignature, &[VariantName])> = self
+            .iter()
+            .map(|(sig, names)| (sig, names.as_slice()))
+            .collect();
         sorted_groups.sort_by_key(|(signature, _)| *signature);
         sorted_groups
     }
@@ -449,7 +452,7 @@ fn process_signature_groups(
         // Collect THIS signature's children separately to avoid mixing with other variants
         let mut signature_child_paths = Vec::new();
 
-        let applicable_variants: Vec<VariantName> = variant_names.clone();
+        let applicable_variants: Vec<VariantName> = variant_names.to_vec();
 
         // Create paths for this signature group
         let path_kinds = create_paths_for_signature(variant_signature, ctx);

@@ -174,7 +174,7 @@ impl BrpClient {
         match response.json().await {
             Ok(json_resp) => Ok(json_resp),
             Err(e) => {
-                warn!("BRP execute_brp_method: JSON parsing failed - error={}", e);
+                warn!("BRP execute_brp_method: JSON parsing failed - error={e}");
                 Err(
                     error_stack::Report::new(Error::JsonRpc("JSON parsing failed".to_string()))
                         .attach("Failed to parse BRP response JSON")

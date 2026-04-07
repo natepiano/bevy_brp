@@ -245,8 +245,11 @@ impl RecursionContext {
     }
 
     /// Helper to get a schema field as an array
-    fn get_schema_field_as_array(schema: &Value, field: SchemaField) -> Option<&Vec<Value>> {
-        schema.get_field(field).and_then(Value::as_array)
+    fn get_schema_field_as_array(schema: &Value, field: SchemaField) -> Option<&[Value]> {
+        schema
+            .get_field(field)
+            .and_then(Value::as_array)
+            .map(Vec::as_slice)
     }
 
     /// Find mutation knowledge for this context

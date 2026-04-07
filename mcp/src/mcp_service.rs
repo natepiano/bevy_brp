@@ -20,7 +20,7 @@ use crate::tool::ToolDef;
 ///
 /// This service provides tools for interacting with Bevy applications through BRP,
 /// including entity manipulation, component management, and resource access.
-pub struct McpService {
+pub(crate) struct McpService {
     /// Tool definitions `HashMap` for O(1) lookup by name
     tool_defs: HashMap<String, ToolDef>,
     /// Pre-converted MCP tools for list operations
@@ -28,7 +28,7 @@ pub struct McpService {
 }
 
 impl McpService {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let all_defs = crate::tool::get_all_tool_definitions();
 
         // Initialize tool_defs HashMap

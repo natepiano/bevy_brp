@@ -35,7 +35,7 @@ use syn::parse2;
 ///   - Without context: `async fn handle_impl(params: MyParams) -> Result<MyOutput>`
 ///   - With context: `async fn handle_impl(ctx: HandlerContext, params: MyParams) ->
 ///     Result<MyOutput>`
-pub fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
+pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
     let input: DeriveInput = parse2(input)?;
 
     // Extract the struct name

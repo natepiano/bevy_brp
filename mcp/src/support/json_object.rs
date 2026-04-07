@@ -27,8 +27,10 @@ pub trait JsonObjectAccess {
     }
 
     /// Get field value as array
-    fn get_field_array<T: AsRef<str>>(&self, field: T) -> Option<&Vec<Value>> {
-        self.get_field(field).and_then(Value::as_array)
+    fn get_field_array<T: AsRef<str>>(&self, field: T) -> Option<&[Value]> {
+        self.get_field(field)
+            .and_then(Value::as_array)
+            .map(Vec::as_slice)
     }
 
     /// Insert field with value using any type that converts to `String` and any value that can

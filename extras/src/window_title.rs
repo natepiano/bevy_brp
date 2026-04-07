@@ -10,7 +10,7 @@ use serde_json::Value;
 use serde_json::json;
 
 /// Handler for `set_window_title` requests
-pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Extract title from params
     let title = params
         .as_ref()

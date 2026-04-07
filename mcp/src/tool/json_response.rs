@@ -53,7 +53,7 @@ impl ToolCallJsonResponse {
         let value = serde_json::to_value(self).unwrap_or_else(|e| {
             serde_json::json!({
                 "status": "error",
-                "message": format!("Failed to serialize response: {}", e),
+                "message": format!("Failed to serialize response: {e}"),
                 "call_info": self.call_info
             })
         });

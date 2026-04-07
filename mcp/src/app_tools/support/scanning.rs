@@ -564,7 +564,13 @@ pub(super) fn find_required_target_with_package_name(
 )]
 #[allow(clippy::panic, reason = "tests should panic on unexpected values")]
 mod tests {
+    use std::collections::HashMap;
+    use std::fs;
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
     use std::path::PathBuf;
+
+    use tempfile::TempDir;
 
     use super::*;
 
@@ -644,10 +650,6 @@ mod tests {
 
     #[test]
     fn test_recursive_scan_with_hidden_directories() {
-        use std::fs;
-
-        use tempfile::TempDir;
-
         // Create a temporary directory structure
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let temp_path = temp_dir.path();
@@ -724,11 +726,6 @@ path = "src/main.rs"
     #[test]
     #[cfg(unix)]
     fn test_recursive_scan_cycle_detection() {
-        use std::fs;
-        use std::os::unix::fs::symlink;
-
-        use tempfile::TempDir;
-
         // Create a temporary directory structure
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let temp_path = temp_dir.path();
@@ -810,10 +807,6 @@ path = "src/main.rs"
 
     #[test]
     fn test_nested_workspace_discovery() {
-        use std::fs;
-
-        use tempfile::TempDir;
-
         // Create a temporary directory structure
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let temp_path = temp_dir.path();
@@ -903,11 +896,6 @@ path = "src/main.rs"
     #[test]
     #[allow(clippy::too_many_lines, reason = "complex workspace test setup")]
     fn test_process_cargo_toml_workspace_detection() {
-        use std::collections::HashMap;
-        use std::fs;
-
-        use tempfile::TempDir;
-
         // Create separate temp directories to avoid workspace interference
         let workspace_temp_dir = TempDir::new().expect("Failed to create workspace temp directory");
         let workspace_path = workspace_temp_dir.path();

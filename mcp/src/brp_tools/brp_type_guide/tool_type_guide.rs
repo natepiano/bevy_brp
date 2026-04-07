@@ -98,7 +98,7 @@ impl TypeGuideEngine {
 
                 if let Some(obj) = registry_data.as_object() {
                     for (key, value) in obj {
-                        let brp_type_name = BrpTypeName::from(key);
+                        let brp_type_name = BrpTypeName::from(key.as_str());
                         registry_map.insert(brp_type_name, value.clone());
                     }
                 }
@@ -117,7 +117,7 @@ impl TypeGuideEngine {
         // Build the type_guide HashMap functionally
         let type_guide: HashMap<BrpTypeName, TypeGuide> = requested_types
             .iter()
-            .map(BrpTypeName::from)
+            .map(|s| BrpTypeName::from(s.as_str()))
             .map(|brp_type_name| {
                 let type_info = TypeGuide::build(brp_type_name.clone(), Arc::clone(&self.registry))
                     .unwrap_or_else(|e| {
@@ -158,7 +158,7 @@ impl TypeGuideEngine {
 ///
 /// The parent `brp_type_guide` module uses this wrapper so sibling modules do not
 /// depend on the engine type itself.
-pub(super) async fn generate_type_guide_response(
+pub async fn generate_type_guide_response(
     port: Port,
     requested_types: &[String],
 ) -> Result<TypeGuideResponse> {

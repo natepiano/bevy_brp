@@ -9,11 +9,11 @@ const MSG_INVALID_PREFIX: &str = "Invalid";
 const MSG_MISSING_PREFIX: &str = "Missing";
 
 /// Result type for the `bevy_brp_mcp` library
-pub type Result<T> = core::result::Result<T, Report<Error>>;
+pub(crate) type Result<T> = core::result::Result<T, Report<Error>>;
 
 // Internal error types for detailed error categorization
 #[derive(Error)]
-pub enum Error {
+pub(crate) enum Error {
     #[error("BRP communication failed: {0}")]
     BrpCommunication(String),
 
@@ -112,22 +112,22 @@ impl Error {
     // Builder methods for common patterns
 
     /// Create a "Failed to X" error
-    pub fn failed_to(action: &str, details: impl std::fmt::Display) -> Self {
+    pub(crate) fn failed_to(action: &str, details: impl std::fmt::Display) -> Self {
         Self::General(format!("{MSG_FAILED_TO_PREFIX} {action}: {details}"))
     }
 
     /// Create an "Invalid X" error
-    pub fn invalid(what: &str, details: impl std::fmt::Display) -> Self {
+    pub(crate) fn invalid(what: &str, details: impl std::fmt::Display) -> Self {
         Self::InvalidArgument(format!("{MSG_INVALID_PREFIX} {what}: {details}"))
     }
 
     /// Create a "Missing X" error
-    pub fn missing(what: &str) -> Self {
+    pub(crate) fn missing(what: &str) -> Self {
         Self::InvalidArgument(format!("{MSG_MISSING_PREFIX} {what}"))
     }
 
     /// Create error for IO operations
-    pub fn io_failed(
+    pub(crate) fn io_failed(
         operation: &str,
         path: &std::path::Path,
         error: impl std::fmt::Display,
@@ -139,7 +139,7 @@ impl Error {
     }
 
     /// Create a tool error with just a message
-    pub fn tool_call_failed(message: impl Into<String>) -> Self {
+    pub(crate) fn tool_call_failed(message: impl Into<String>) -> Self {
         Self::ToolCall {
             message: message.into(),
             details: None,
@@ -147,7 +147,7 @@ impl Error {
     }
 
     /// Create a tool error with message and details
-    pub fn tool_call_failed_with_details(
+    pub(crate) fn tool_call_failed_with_details(
         message: impl Into<String>,
         details: serde_json::Value,
     ) -> Self {
@@ -158,7 +158,7 @@ impl Error {
     }
 
     /// Create a schema processing error for a specific type
-    pub fn schema_processing_for_type(
+    pub(crate) fn schema_processing_for_type(
         type_name: impl Into<String>,
         operation: impl Into<String>,
         details: impl Into<String>,
