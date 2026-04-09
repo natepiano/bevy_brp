@@ -377,7 +377,7 @@ fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
                 if ref_str.contains("Value") {
                     continue;
                 }
-                // For other $ref types (like BrpQueryFilter), treat as Object
+                // For other $ref types (like `BrpQueryFilter`), treat as Object
                 // since they're references to custom structs
                 return ParameterType::Object;
             }
@@ -410,12 +410,12 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
         };
     }
 
-    // Handle objects with additionalProperties (HashMap pattern)
+    // Handle objects with `additionalProperties` (`HashMap` pattern)
     if obj.get_field(SchemaField::AdditionalProperties).is_some() {
         return ParameterType::Object;
     }
 
-    // Handle objects with only description (typically serde_json::Value that has no type field)
+    // Handle objects with only description (typically `serde_json::Value` that has no type field)
     // This should be Any since Value can hold any JSON type
     if obj.get_field(SchemaField::Description).is_some()
         && !obj.contains_key("type")
@@ -425,7 +425,7 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
         return ParameterType::Any;
     }
 
-    // Handle "oneOf" schemas (enums like BrpMethod)
+    // Handle "oneOf" schemas (enums like `BrpMethod`)
     if let Some(one_of) = obj.get_field(SchemaField::OneOf).and_then(|v| v.as_array())
         && let Some(param_type) = handle_one_of_schema(one_of)
     {

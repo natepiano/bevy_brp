@@ -93,7 +93,7 @@ impl TypeGuideEngine {
 
         match client.execute_direct_internal_no_enhancement().await {
             Ok(ResponseStatus::Success(Some(registry_data))) => {
-                // Convert to HashMap with BrpTypeName keys
+                // Convert to `HashMap` with `BrpTypeName` keys
                 let mut registry_map = HashMap::new();
 
                 if let Some(obj) = registry_data.as_object() {
@@ -114,7 +114,7 @@ impl TypeGuideEngine {
 
     /// Generate response for requested types
     fn generate_response(&self, requested_types: &[String]) -> TypeGuideResponse {
-        // Build the type_guide HashMap functionally
+        // Build the type_guide `HashMap` functionally
         let type_guide: HashMap<BrpTypeName, TypeGuide> = requested_types
             .iter()
             .map(|s| BrpTypeName::from(s.as_str()))

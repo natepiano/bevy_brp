@@ -10,6 +10,10 @@ use tokio::sync::oneshot;
 use tracing::debug;
 use tracing::error;
 
+use super::constants::BUFFER_FLUSH_SIZE;
+use super::constants::WATCH_LOG_BUFFER_CAPACITY;
+use super::constants::WATCH_LOG_BUFFER_SIZE;
+use super::constants::WATCH_LOG_FLUSH_INTERVAL;
 use crate::log_tools::TracingLevel;
 
 /// Log entry to be written
@@ -29,7 +33,7 @@ pub(super) struct BufferedWatchLogger {
 impl BufferedWatchLogger {
     /// Create a new buffered logger and spawn the writer task
     pub(super) fn new(log_path: PathBuf) -> Self {
-        let (tx, rx) = mpsc::channel(super::constants::WATCH_LOG_BUFFER_SIZE);
+        let (tx, rx) = mpsc::channel(WATCH_LOG_BUFFER_SIZE);
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
         // Spawn the writer task
@@ -133,9 +137,9 @@ async fn write_task(
         .await?;
 
     // Buffer for batching writes
-    let mut buffer = String::with_capacity(8192); // 8KB buffer
+    let mut buffer = String::with_capacity(WATCH_LOG_BUFFER_CAPACITY);
     let mut last_flush = tokio::time::Instant::now();
-    let flush_interval = super::constants::WATCH_LOG_FLUSH_INTERVAL;
+    let flush_interval = WATCH_LOG_FLUSH_INTERVAL;
 
     loop {
         // Try to receive with timeout, but also check for shutdown signal
@@ -161,7 +165,7 @@ async fn write_task(
                         }
 
                         // Check if we should flush (buffer size or time)
-                        if buffer.len() > super::constants::BUFFER_FLUSH_SIZE
+                        if buffer.len() > BUFFER_FLUSH_SIZE
                             || last_flush.elapsed() > flush_interval
                         {
                             flush_buffer(&mut file, &mut buffer, &mut last_flush).await?;

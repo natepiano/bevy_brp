@@ -9,6 +9,7 @@ use tracing::error;
 use tracing::info;
 use tracing::warn;
 
+use super::constants::MAX_PREVIEW_BYTES;
 use super::logger::BufferedWatchLogger;
 use super::manager::WATCH_MANAGER;
 use super::manager::WatchInfo;
@@ -286,12 +287,12 @@ async fn log_first_chunk(
     watch_type: &str,
     logger: &BufferedWatchLogger,
 ) {
-    let preview = if bytes.len() <= super::constants::MAX_PREVIEW_BYTES {
+    let preview = if bytes.len() <= MAX_PREVIEW_BYTES {
         String::from_utf8_lossy(bytes).to_string()
     } else {
         format!(
             "{}... (truncated from {} bytes)",
-            String::from_utf8_lossy(&bytes[..super::constants::MAX_PREVIEW_BYTES]),
+            String::from_utf8_lossy(&bytes[..MAX_PREVIEW_BYTES]),
             bytes.len()
         )
     };

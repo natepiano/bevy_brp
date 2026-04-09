@@ -11,7 +11,7 @@ use std::error::Error;
 use log_tools::TracingLevel;
 use mcp_service::McpService;
 use rmcp::ServiceExt;
-use rmcp::transport::stdio;
+use rmcp::transport;
 
 mod app_tools;
 mod brp_tools;
@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let service = McpService::new();
 
-    let server = service.serve(stdio()).await?;
+    let server = service.serve(transport::stdio()).await?;
     server.waiting().await?;
 
     Ok(())

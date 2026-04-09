@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use sysinfo::System;
 
+use super::constants::STATUS_POLL_INTERVAL;
 use super::support;
 use crate::brp_tools::Port;
 use crate::brp_tools::ResponseStatus;
@@ -308,7 +309,7 @@ async fn check_brp_on_port(port: Port) -> Result<bool> {
             },
             Ok(ResponseStatus::Error(_)) | Err(_) => {
                 // BRP not responding or returned an error, wait and retry
-                tokio::time::sleep(super::constants::STATUS_POLL_INTERVAL).await;
+                tokio::time::sleep(STATUS_POLL_INTERVAL).await;
             },
         }
     }

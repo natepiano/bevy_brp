@@ -39,11 +39,11 @@ impl ToolDef {
         // Create HandlerContext - all tools use the same context
         let ctx = HandlerContext::new(self.clone(), request, roots);
 
-        // Tools now always return CallToolResult - errors are already formatted as responses
+        // Tools now always return `CallToolResult` - errors are already formatted as responses
         Ok(self.handler.call_erased(ctx).await)
     }
 
-    /// Generate unified output schema from the actual `ToolCallJsonResponse` struct
+    /// Generate unified output schema from the actual [`ToolCallJsonResponse`] struct
     fn generate_output_schema() -> Arc<rmcp::model::JsonObject> {
         let mut settings = SchemaSettings::default();
         settings.inline_subschemas = true;

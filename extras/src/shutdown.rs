@@ -5,6 +5,9 @@ use bevy_remote::BrpResult;
 use serde_json::Value;
 use serde_json::json;
 
+/// Number of frames to defer shutdown to allow the response to be sent
+const DEFERRED_SHUTDOWN_FRAMES: u32 = 10;
+
 /// Resource to track pending shutdown
 #[derive(Resource)]
 pub(crate) struct PendingShutdown {
@@ -22,12 +25,12 @@ pub(crate) fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult 
     info!("BRP EXTRAS SHUTDOWN METHOD CALLED - scheduling deferred shutdown");
     info!("Call stack: {:?}", std::backtrace::Backtrace::capture());
 
-    // Schedule shutdown for 10 frames from now (about 167ms at 60fps)
+    // Schedule shutdown for a few frames from now to allow the response to be sent
     world.insert_resource(PendingShutdown {
-        frames_remaining: 10,
+        frames_remaining: DEFERRED_SHUTDOWN_FRAMES,
     });
 
-    info!("Shutdown scheduled - will exit in 10 frames");
+    info!("Shutdown scheduled - will exit in {DEFERRED_SHUTDOWN_FRAMES} frames");
 
     Ok(json!({
         "success": true,

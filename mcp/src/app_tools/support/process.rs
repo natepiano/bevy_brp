@@ -9,7 +9,6 @@ use error_stack::ResultExt;
 use netstat2::AddressFamilyFlags;
 use netstat2::ProtocolFlags;
 use netstat2::ProtocolSocketInfo;
-use netstat2::get_sockets_info;
 
 use crate::brp_tools::Port;
 use crate::error::Error;
@@ -141,7 +140,7 @@ pub fn get_pid_for_port(port: Port) -> Option<u32> {
     let af_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
     let proto_flags = ProtocolFlags::TCP;
 
-    get_sockets_info(af_flags, proto_flags)
+    netstat2::get_sockets_info(af_flags, proto_flags)
         .ok()?
         .into_iter()
         .find_map(|si| {

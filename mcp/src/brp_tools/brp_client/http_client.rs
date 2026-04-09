@@ -11,6 +11,8 @@ use tracing::warn;
 use super::constants::BRP_DEFAULT_HOST;
 use super::constants::BRP_HTTP_PROTOCOL;
 use super::constants::BRP_JSONRPC_PATH;
+use super::constants::ERROR_BODY_PREVIEW_CHARS;
+use super::constants::HTTP_REQUEST_TIMEOUT;
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::Port;
 use crate::error::Error;
@@ -69,7 +71,7 @@ impl BrpHttpClient {
             .post(&url)
             .header("Content-Type", "application/json")
             .body(body.clone())
-            .timeout(super::constants::HTTP_REQUEST_TIMEOUT)
+            .timeout(HTTP_REQUEST_TIMEOUT)
             .send()
             .await;
 
@@ -220,7 +222,7 @@ impl BrpHttpClient {
                 "Request body (first 500 chars): {}",
                 &request_body
                     .chars()
-                    .take(super::constants::ERROR_BODY_PREVIEW_CHARS)
+                    .take(ERROR_BODY_PREVIEW_CHARS)
                     .collect::<String>()
             )))
     }

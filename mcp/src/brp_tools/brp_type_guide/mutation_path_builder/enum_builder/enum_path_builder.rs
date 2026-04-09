@@ -245,7 +245,7 @@ fn group_variants_by_signature(
 
     // the first map gets a VariantKind which contains the variant signature and name
     // the second map iterates over the result and then groups them by signature
-    // returning the HashMap via .into_group_map()
+    // returning the `HashMap` via `.into_group_map()`
     Ok(one_of_array
         .iter()
         .map(|v| VariantKind::from_schema_variant(v, &ctx.registry, ctx.type_name()))
@@ -865,7 +865,7 @@ fn propagate_partial_root_examples_to_children(
     ctx: &RecursionContext,
 ) {
     if ctx.variant_chain.is_empty() {
-        // Propagate HashMap to children
+        // Propagate `HashMap` to children
         for child in child_paths.iter_mut() {
             child.partial_root_examples = Some(partial_root_examples.clone());
         }
