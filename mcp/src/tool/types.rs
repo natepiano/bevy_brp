@@ -145,8 +145,8 @@ pub trait ToolFn: Send + Sync {
 }
 
 /// Type-erased version for heterogeneous storage
-/// Provides consistent formatting the Result for all tool calls - reducing potential bugs
-/// Also allows us to pass the typed Result to the formatter although
+/// Provides consistent formatting the `Result` for all tool calls - reducing potential bugs
+/// Also allows us to pass the typed `Result` to the formatter although
 /// the formatter does serialize it right away so this may be of dubious value
 ///
 /// Without some kind of type erasure, we can't use the associated types on `ToolFn`

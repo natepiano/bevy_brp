@@ -395,7 +395,6 @@ fn generate_builder_pattern(
 
         impl #struct_name {
             /// Create a new instance - requires setting message template
-            #[allow(clippy::too_many_arguments)]
             #[must_use = "This returns a builder that must be completed with .with_message_template()"]
             pub fn new(#(#constructor_params),*) -> #builder_name {
                 #builder_name {
@@ -422,7 +421,6 @@ fn generate_direct_constructor(
     quote! {
         impl #struct_name {
             /// Create a new instance with default message template
-            #[allow(clippy::too_many_arguments)]
             pub fn new(#(#constructor_params),*) -> Self {
                 Self {
                     #(#field_initializers,)*

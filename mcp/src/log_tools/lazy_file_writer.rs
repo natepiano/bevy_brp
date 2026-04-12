@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::fs::OpenOptions;
+use std::io;
 use std::io::Write;
-use std::io::{self};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;

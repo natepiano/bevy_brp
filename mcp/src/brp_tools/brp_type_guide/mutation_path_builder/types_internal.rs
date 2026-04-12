@@ -23,7 +23,7 @@ pub enum Example {
 }
 
 impl Example {
-    /// Convert to Value for JSON operations (assembly, serialization)
+    /// Convert to `Value` for JSON operations (assembly, serialization)
     pub fn to_value(&self) -> Value {
         match self {
             Self::Json(v) => v.clone(),

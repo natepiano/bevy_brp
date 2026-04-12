@@ -59,7 +59,7 @@ pub(super) enum PathKind {
         parent_type: BrpTypeName,
     },
     /// Mutate an element in a tuple by index
-    /// Applies to tuple elements, enums variants, including generics such as Option<T>
+    /// Applies to tuple elements, enums variants, including generics such as `Option<T>`
     IndexedElement {
         index:       usize,
         type_name:   BrpTypeName,

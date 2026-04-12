@@ -24,23 +24,6 @@ fn create_builds_json(item: &BevyTarget) -> serde_json::Value {
     builds
 }
 
-/// Strategy trait for collecting and serializing different types of items
-pub(super) trait CollectionStrategy {
-    type Item;
-
-    /// Collect items from the detector
-    fn collect_items(&self, detector: &CargoDetector) -> Vec<Self::Item>;
-
-    /// Create a unique key for deduplication
-    fn create_unique_key(&self, item: &Self::Item) -> String;
-
-    /// Get the path to use for relative path computation (typically manifest directory)
-    fn get_path_for_relative(&self, item: &Self::Item) -> std::path::PathBuf;
-
-    /// Serialize an item to JSON with relative path
-    fn serialize_item(&self, item: &Self::Item, relative_path: String) -> serde_json::Value;
-}
-
 /// Unified strategy for collecting all Bevy targets (apps and examples)
 /// with `kind` and `brp_level` fields on each item.
 ///
@@ -56,10 +39,8 @@ pub(super) struct EnrichedTarget {
     pub(super) brp_level: BrpLevel,
 }
 
-impl CollectionStrategy for AllBevyTargetsStrategy {
-    type Item = EnrichedTarget;
-
-    fn collect_items(&self, detector: &CargoDetector) -> Vec<Self::Item> {
+impl AllBevyTargetsStrategy {
+    pub(super) fn collect_items(detector: &CargoDetector) -> Vec<EnrichedTarget> {
         let all_targets = detector.find_bevy_targets();
 
         // Build a package-level BRP lookup for bins (requires deep `src/` scan)
@@ -92,7 +73,7 @@ impl CollectionStrategy for AllBevyTargetsStrategy {
             .collect()
     }
 
-    fn create_unique_key(&self, item: &Self::Item) -> String {
+    pub(super) fn create_unique_key(item: &EnrichedTarget) -> String {
         format!(
             "{}::{}::{}",
             item.target.manifest_path.display(),
@@ -101,7 +82,7 @@ impl CollectionStrategy for AllBevyTargetsStrategy {
         )
     }
 
-    fn get_path_for_relative(&self, item: &Self::Item) -> std::path::PathBuf {
+    pub(super) fn get_path_for_relative(item: &EnrichedTarget) -> std::path::PathBuf {
         item.target
             .manifest_path
             .parent()
@@ -109,7 +90,10 @@ impl CollectionStrategy for AllBevyTargetsStrategy {
             .to_path_buf()
     }
 
-    fn serialize_item(&self, item: &Self::Item, relative_path: String) -> serde_json::Value {
+    pub(super) fn serialize_item(
+        item: &EnrichedTarget,
+        relative_path: String,
+    ) -> serde_json::Value {
         json!({
             "name": item.target.name,
             "kind": item.target.target_type.as_ref(),

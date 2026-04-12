@@ -355,7 +355,7 @@ fn handle_one_of_schema(one_of: &[Value]) -> Option<ParameterType> {
     }
 }
 
-/// Handle anyOf schemas (typically Option<T> types)
+/// Handle `anyOf` schemas (typically `Option<T>` types)
 fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
     for variant in any_of {
         if let Some(variant_obj) = variant.as_object() {

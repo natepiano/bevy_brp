@@ -7,7 +7,6 @@ use serde::Serialize;
 
 use super::instance_count::InstanceCount;
 use super::support::LaunchParams;
-use super::support::ToLaunchParams;
 use crate::brp_tools::Port;
 
 /// Search order for target resolution: "app" searches apps first (default), "example" searches
@@ -58,8 +57,9 @@ pub struct LaunchBevyBinaryParams {
     pub args:           Option<Vec<String>>,
 }
 
-impl ToLaunchParams for LaunchBevyBinaryParams {
-    fn to_launch_params(&self, default_profile: &str) -> LaunchParams {
+impl LaunchBevyBinaryParams {
+    /// Convert to `LaunchParams` with the given default profile
+    pub fn to_launch_params(&self, default_profile: &str) -> LaunchParams {
         LaunchParams {
             target_name:    self.target_name.clone(),
             profile:        self

@@ -142,12 +142,6 @@ pub struct LaunchParams {
     pub args:           Option<Vec<String>>,
 }
 
-/// Trait for converting typed parameters to `LaunchParams`
-pub trait ToLaunchParams: Send + Sync {
-    /// Convert to `LaunchParams` with the given default profile
-    fn to_launch_params(&self, default_profile: &str) -> LaunchParams;
-}
-
 /// Trait for creating launch configs from params
 trait FromLaunchParams: LaunchConfigTrait + Sized + Send + Sync {
     /// Create a new instance from launch parameters

@@ -117,7 +117,7 @@ pub(super) enum Operation {
     /// Serializes as: `spawn_insert`
     SpawnInsert {
         /// Which parameter name to use when building requests
-        /// Components for `BevySpawn`/`BevyInsert`, Value for `BevyInsertResource`
+        /// Components for `BevySpawn`/`BevyInsert`, `Value` for `BevyInsertResource`
         #[serde(skip)]
         parameter_name: ParameterName,
     },
@@ -244,6 +244,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+    use crate::brp_tools::JSON_RPC_ERROR_METHOD_NOT_FOUND;
     use crate::tool::ParameterName;
 
     #[test]
@@ -434,7 +435,7 @@ mod tests {
     #[test]
     fn test_brp_client_error_display() {
         let error = BrpClientError {
-            code:    -32602,
+            code:    JSON_RPC_ERROR_INVALID_PARAMS,
             message: "Invalid params".to_string(),
             data:    None,
         };
@@ -458,7 +459,7 @@ mod tests {
         assert!(unknown_component_error.has_format_error_code());
 
         let non_format_error = BrpClientError {
-            code:    -32601, // Method not found
+            code:    JSON_RPC_ERROR_METHOD_NOT_FOUND,
             message: "Method not found".to_string(),
             data:    None,
         };

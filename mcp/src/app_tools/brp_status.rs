@@ -6,11 +6,12 @@ use serde::Deserialize;
 use serde::Serialize;
 use sysinfo::System;
 
+use super::constants::STATUS_MAX_RETRIES;
 use super::constants::STATUS_POLL_INTERVAL;
 use super::support;
+use crate::brp_tools;
 use crate::brp_tools::Port;
 use crate::brp_tools::ResponseStatus;
-use crate::brp_tools::{self};
 use crate::error::Error;
 use crate::error::Result;
 use crate::tool::BrpMethod;
@@ -299,8 +300,8 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
 
 /// Check if BRP is responding on the given port
 async fn check_brp_on_port(port: Port) -> Result<bool> {
-    // Try up to 5 times with 500ms delays to account for BRP initialization timing
-    for _attempt in 0..5 {
+    // Retry with delays to account for BRP initialization timing
+    for _attempt in 0..STATUS_MAX_RETRIES {
         let client = brp_tools::BrpClient::new(BrpMethod::WorldListComponents, port, None);
         match client.execute_raw().await {
             Ok(ResponseStatus::Success(_)) => {
