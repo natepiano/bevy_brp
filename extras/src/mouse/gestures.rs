@@ -7,8 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::parse_request;
-use super::serialize_response;
+use super::support;
 use crate::window_event;
 
 // ============================================================================
@@ -60,12 +59,12 @@ pub struct DoubleTapGestureResponse {
 // ============================================================================
 
 /// Handler for `pinch_gesture` BRP method
-pub(crate) fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: PinchGestureRequest = parse_request(params, false)?;
+pub fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: PinchGestureRequest = support::parse_request(params, false)?;
 
     window_event::write_input_event(world, bevy::input::gestures::PinchGesture(request.delta));
 
-    serialize_response(
+    support::serialize_response(
         PinchGestureResponse {
             delta: request.delta,
         },
@@ -74,15 +73,12 @@ pub(crate) fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut W
 }
 
 /// Handler for `rotation_gesture` BRP method
-pub(crate) fn rotation_gesture_handler(
-    In(params): In<Option<Value>>,
-    world: &mut World,
-) -> BrpResult {
-    let request: RotationGestureRequest = parse_request(params, false)?;
+pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: RotationGestureRequest = support::parse_request(params, false)?;
 
     window_event::write_input_event(world, bevy::input::gestures::RotationGesture(request.delta));
 
-    serialize_response(
+    support::serialize_response(
         RotationGestureResponse {
             delta: request.delta,
         },
@@ -91,13 +87,10 @@ pub(crate) fn rotation_gesture_handler(
 }
 
 /// Handler for `double_tap_gesture` BRP method
-pub(crate) fn double_tap_gesture_handler(
-    In(params): In<Option<Value>>,
-    world: &mut World,
-) -> BrpResult {
-    let _request: DoubleTapGestureRequest = parse_request(params, true)?;
+pub fn double_tap_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let _request: DoubleTapGestureRequest = support::parse_request(params, true)?;
 
     window_event::write_input_event(world, bevy::input::gestures::DoubleTapGesture);
 
-    serialize_response(DoubleTapGestureResponse {}, "double_tap_gesture")
+    support::serialize_response(DoubleTapGestureResponse {}, "double_tap_gesture")
 }

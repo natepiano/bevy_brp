@@ -15,6 +15,7 @@ use bevy_remote::http::RemoteHttpPlugin;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::DEFAULT_REMOTE_PORT;
+use crate::constants::EXTRAS_COMMAND_PREFIX;
 #[cfg(feature = "diagnostics")]
 use crate::diagnostics;
 use crate::keyboard;
@@ -22,9 +23,6 @@ use crate::mouse;
 use crate::screenshot;
 use crate::shutdown;
 use crate::window_title;
-
-/// Command prefix for `brp_extras` methods
-const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
 
 // ---------------------------------------------------------------------------
 // Port display configuration

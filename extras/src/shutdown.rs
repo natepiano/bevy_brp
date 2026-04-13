@@ -5,8 +5,7 @@ use bevy_remote::BrpResult;
 use serde_json::Value;
 use serde_json::json;
 
-/// Number of frames to defer shutdown to allow the response to be sent
-const DEFERRED_SHUTDOWN_FRAMES: u32 = 10;
+use crate::constants::DEFERRED_SHUTDOWN_FRAMES;
 
 /// Resource to track pending shutdown
 #[derive(Resource)]

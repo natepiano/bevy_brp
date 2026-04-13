@@ -9,9 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::parse_request;
-use super::resolve_window;
-use super::serialize_response;
+use super::support;
 use crate::window_event;
 
 // ============================================================================
@@ -48,9 +46,9 @@ pub struct ScrollMouseResponse {
 // ============================================================================
 
 /// Handler for `scroll_mouse` BRP method
-pub(crate) fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: ScrollMouseRequest = parse_request(params, false)?;
-    let window = resolve_window(world, request.window)?;
+pub fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: ScrollMouseRequest = support::parse_request(params, false)?;
+    let window = support::resolve_window(world, request.window)?;
 
     window_event::write_input_event(
         world,
@@ -62,7 +60,7 @@ pub(crate) fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut Wo
         },
     );
 
-    serialize_response(
+    support::serialize_response(
         ScrollMouseResponse {
             x:    request.x,
             y:    request.y,

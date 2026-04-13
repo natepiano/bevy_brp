@@ -11,10 +11,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::parse_request;
-use super::resolve_window;
-use super::send_motion_events;
-use super::serialize_response;
+use super::support;
 
 // ============================================================================
 // Types
@@ -80,7 +77,7 @@ impl SimulatedCursorPosition {
     ///
     /// # Returns
     /// Current cursor position or `Vec2::ZERO` if no position stored
-    pub(crate) fn get_position(&self, window: Entity) -> Vec2 {
+    pub(super) fn get_position(&self, window: Entity) -> Vec2 {
         self.positions.get(&window).copied().unwrap_or(Vec2::ZERO)
     }
 
@@ -92,7 +89,7 @@ impl SimulatedCursorPosition {
     ///
     /// # Returns
     /// Delta from previous position (or from origin if no previous position)
-    pub(crate) fn update_position(&mut self, window: Entity, new_pos: Vec2) -> Vec2 {
+    pub(super) fn update_position(&mut self, window: Entity, new_pos: Vec2) -> Vec2 {
         let old_pos = self.get_position(window);
         self.positions.insert(window, new_pos);
         new_pos - old_pos
@@ -104,8 +101,8 @@ impl SimulatedCursorPosition {
 // ============================================================================
 
 /// Handler for `move_mouse` BRP method
-pub(crate) fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: MoveMouseRequest = parse_request(params, false)?;
+pub fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: MoveMouseRequest = support::parse_request(params, false)?;
 
     // Validate that exactly one of delta or position is provided
     if request.delta.is_none() && request.position.is_none() {
@@ -125,7 +122,7 @@ pub(crate) fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
     }
 
     // Resolve window entity
-    let window = resolve_window(world, request.window)?;
+    let window = support::resolve_window(world, request.window)?;
 
     // Get or create simulated cursor position resource
     if !world.contains_resource::<SimulatedCursorPosition>() {
@@ -154,9 +151,9 @@ pub(crate) fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
     // Update resource and send motion events
     cursor_res.positions.insert(window, new_position);
     cursor_res.last_window = Some(window);
-    send_motion_events(world, window, new_position, delta);
+    support::send_motion_events(world, window, new_position, delta);
 
-    serialize_response(
+    support::serialize_response(
         MoveMouseResponse {
             new_position,
             delta,
@@ -201,7 +198,7 @@ pub(crate) fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
 /// - **Hybrid testing**: BRP automation mixed with manual interaction
 /// - **Debugging**: Developer moves mouse while running BRP commands
 /// - **Recovery**: Syncs state after unexpected manual input
-pub(crate) fn sync_cursor_position(
+pub fn sync_cursor_position(
     mut cursor_res: ResMut<SimulatedCursorPosition>,
     mut cursor_events: MessageReader<CursorMoved>,
 ) {

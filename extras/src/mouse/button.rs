@@ -11,13 +11,9 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::DEFAULT_MOUSE_DURATION_MS;
-use super::MAX_MOUSE_DURATION_MS;
-use super::parse_request;
-use super::resolve_window;
-use super::resolve_window_entity;
-use super::send_timed_button_press;
-use super::serialize_response;
+use super::constants::DEFAULT_MOUSE_DURATION_MS;
+use super::constants::MAX_MOUSE_DURATION_MS;
+use super::support;
 
 // ============================================================================
 // Types
@@ -70,11 +66,8 @@ pub struct TimedButtonRelease {
 /// Handler for `send_mouse_button` BRP method
 ///
 /// Sends a mouse button press with configurable hold duration before automatic release
-pub(crate) fn send_mouse_button_handler(
-    In(params): In<Option<Value>>,
-    world: &mut World,
-) -> BrpResult {
-    let request: SendMouseButtonRequest = parse_request(params, false)?;
+pub fn send_mouse_button_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: SendMouseButtonRequest = support::parse_request(params, false)?;
 
     // Validate duration
     let duration_ms = request.duration_ms.unwrap_or(DEFAULT_MOUSE_DURATION_MS);
@@ -88,10 +81,10 @@ pub(crate) fn send_mouse_button_handler(
         });
     }
 
-    let window = resolve_window(world, request.window)?;
-    send_timed_button_press(world, request.button, window, duration_ms);
+    let window = support::resolve_window(world, request.window)?;
+    support::send_timed_button_press(world, request.button, window, duration_ms);
 
-    serialize_response(
+    support::serialize_response(
         SendMouseButtonResponse {
             button: request.button,
             duration_ms,
@@ -108,7 +101,7 @@ pub(crate) fn send_mouse_button_handler(
 ///
 /// Ticks timers on `TimedButtonRelease` components. When a timer finishes,
 /// sends the button release event and despawns the entity.
-pub(crate) fn process_timed_button_releases(
+pub fn process_timed_button_releases(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedButtonRelease)>,
@@ -122,7 +115,7 @@ pub(crate) fn process_timed_button_releases(
             let event = MouseButtonInput {
                 button: release.button,
                 state:  ButtonState::Released,
-                window: resolve_window_entity(release.window),
+                window: support::resolve_window_entity(release.window),
             };
             window_events.write(WindowEvent::from(event));
             button_events.write(event);

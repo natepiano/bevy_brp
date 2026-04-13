@@ -12,7 +12,7 @@ use strum_macros::EnumString;
     missing_docs,
     reason = "variants mirror Bevy KeyCode and are self-describing"
 )]
-pub(crate) enum KeyCodeWrapper {
+pub(super) enum KeyCodeWrapper {
     // Letters
     KeyA,
     KeyB,
@@ -164,7 +164,7 @@ impl KeyCodeWrapper {
     ///
     /// Returns `None` for non-printable keys (modifiers, function keys, etc.)
     #[must_use]
-    pub(crate) const fn to_char(self) -> Option<char> {
+    pub(super) const fn to_char(self) -> Option<char> {
         match self {
             // Letters (lowercase)
             Self::KeyA => Some('a'),
@@ -234,7 +234,7 @@ impl KeyCodeWrapper {
         clippy::too_many_lines,
         reason = "trivial 1:1 exhaustive variant mapping"
     )]
-    pub(crate) const fn to_key_code(self) -> KeyCode {
+    pub(super) const fn to_key_code(self) -> KeyCode {
         match self {
             // Letters
             Self::KeyA => KeyCode::KeyA,

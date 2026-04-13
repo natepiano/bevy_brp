@@ -13,14 +13,10 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::DEFAULT_DOUBLE_CLICK_DELAY_MS;
-use super::DEFAULT_MOUSE_DURATION_MS;
 use super::button::TimedButtonRelease;
-use super::parse_request;
-use super::resolve_window;
-use super::resolve_window_entity;
-use super::send_timed_button_press;
-use super::serialize_response;
+use super::constants::DEFAULT_DOUBLE_CLICK_DELAY_MS;
+use super::constants::DEFAULT_MOUSE_DURATION_MS;
+use super::support;
 use crate::window_event;
 
 // ============================================================================
@@ -93,13 +89,13 @@ pub struct ScheduledClick {
 /// Handler for `click_mouse` BRP method
 ///
 /// Performs a simple click (press and release) with default timing
-pub(crate) fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: ClickMouseRequest = parse_request(params, false)?;
-    let window = resolve_window(world, request.window)?;
+pub fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: ClickMouseRequest = support::parse_request(params, false)?;
+    let window = support::resolve_window(world, request.window)?;
 
-    send_timed_button_press(world, request.button, window, DEFAULT_MOUSE_DURATION_MS);
+    support::send_timed_button_press(world, request.button, window, DEFAULT_MOUSE_DURATION_MS);
 
-    serialize_response(
+    support::serialize_response(
         ClickMouseResponse {
             button: request.button,
         },
@@ -108,13 +104,10 @@ pub(crate) fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut Wor
 }
 
 /// Handler for `double_click_mouse` BRP method
-pub(crate) fn double_click_mouse_handler(
-    In(params): In<Option<Value>>,
-    world: &mut World,
-) -> BrpResult {
-    let request: DoubleClickMouseRequest = parse_request(params, false)?;
+pub fn double_click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: DoubleClickMouseRequest = support::parse_request(params, false)?;
     let delay_ms = request.delay_ms.unwrap_or(DEFAULT_DOUBLE_CLICK_DELAY_MS);
-    let window = resolve_window(world, request.window)?;
+    let window = support::resolve_window(world, request.window)?;
 
     // First click: press + immediate release
     window_event::write_input_event(
@@ -142,7 +135,7 @@ pub(crate) fn double_click_mouse_handler(
         click_duration: DEFAULT_MOUSE_DURATION_MS,
     });
 
-    serialize_response(
+    support::serialize_response(
         DoubleClickMouseResponse {
             button: request.button,
             delay_ms,
@@ -161,7 +154,7 @@ pub(crate) fn double_click_mouse_handler(
 /// - Sends the second press event
 /// - Spawns a `TimedButtonRelease` for the release
 /// - Despawns the scheduled click entity
-pub(crate) fn process_scheduled_clicks(
+pub fn process_scheduled_clicks(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut ScheduledClick)>,
@@ -175,7 +168,7 @@ pub(crate) fn process_scheduled_clicks(
             let event = MouseButtonInput {
                 button: scheduled.button,
                 state:  ButtonState::Pressed,
-                window: resolve_window_entity(scheduled.window),
+                window: support::resolve_window_entity(scheduled.window),
             };
             window_events.write(WindowEvent::from(event));
             button_events.write(event);

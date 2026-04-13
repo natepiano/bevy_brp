@@ -14,15 +14,15 @@ use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
 
-use super::DEFAULT_KEY_DURATION_MS;
-use super::MAX_KEY_DURATION_MS;
-use super::create_keyboard_events;
+use super::constants::DEFAULT_KEY_DURATION_MS;
+use super::constants::MAX_KEY_DURATION_MS;
+use super::events;
 use super::key_code::KeyCodeWrapper;
 use crate::window_event;
 
 /// Component that tracks keys that need to be released after a duration
 #[derive(Component)]
-pub(crate) struct TimedKeyRelease {
+pub struct TimedKeyRelease {
     /// The key code wrappers to release (stores wrapper for text field generation)
     pub keys:  Vec<KeyCodeWrapper>,
     /// Timer tracking the remaining duration
@@ -31,7 +31,7 @@ pub(crate) struct TimedKeyRelease {
 
 /// Request structure for `send_keys`
 #[derive(Debug, Deserialize)]
-pub(crate) struct SendKeysRequest {
+pub(super) struct SendKeysRequest {
     /// Array of key codes to send
     pub keys:        Vec<String>,
     /// Duration in milliseconds to hold the keys before releasing
@@ -43,7 +43,7 @@ const fn default_duration() -> u32 { DEFAULT_KEY_DURATION_MS }
 
 /// Response structure for `send_keys`
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct SendKeysResponse {
+pub(super) struct SendKeysResponse {
     /// Whether the operation was successful
     pub success:     bool,
     /// List of keys that were sent
@@ -84,7 +84,7 @@ fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCodeWrapper)>, BrpEr
 /// - Request parameters are missing
 /// - Request format is invalid
 /// - Any key code is invalid or unknown
-pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Parse the request
     let request: SendKeysRequest = if let Some(params) = params {
         serde_json::from_value(params).map_err(|e| BrpError {
@@ -118,7 +118,7 @@ pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World
     }
 
     // Always send press events first
-    let press_events = create_keyboard_events(&wrappers, ButtonState::Pressed);
+    let press_events = events::create_keyboard_events(&wrappers, ButtonState::Pressed);
     for event in press_events {
         window_event::write_input_event(world, event);
     }
@@ -142,7 +142,7 @@ pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World
 }
 
 /// System that processes timed key releases
-pub(crate) fn process_timed_key_releases(
+pub fn process_timed_key_releases(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedKeyRelease)>,
@@ -154,7 +154,8 @@ pub(crate) fn process_timed_key_releases(
 
         if timed_release.timer.is_finished() {
             // Send release events for all keys (text is None for release events)
-            let release_events = create_keyboard_events(&timed_release.keys, ButtonState::Released);
+            let release_events =
+                events::create_keyboard_events(&timed_release.keys, ButtonState::Released);
             for event in release_events {
                 window_events.write(WindowEvent::from(event.clone()));
                 keyboard_events.write(event);

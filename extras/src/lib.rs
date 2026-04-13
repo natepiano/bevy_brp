@@ -135,6 +135,7 @@
 //! Sends a rotation gesture.
 //! - `delta` (f32, required): rotation in radians
 
+mod constants;
 #[cfg(feature = "diagnostics")]
 mod diagnostics;
 mod keyboard;

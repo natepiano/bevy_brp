@@ -13,13 +13,12 @@ use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
 
-use super::create_keyboard_events;
-use super::create_keyboard_events_with_text;
+use super::events;
 use super::key_code::KeyCodeWrapper;
 
 /// Phase of the text typing state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TypingPhase {
+pub(super) enum TypingPhase {
     /// Ready to press the next character's keys
     PressNext,
     /// Need to release the currently held keys before pressing the next character
@@ -29,7 +28,7 @@ pub(crate) enum TypingPhase {
 /// Component for sequential text typing (one character per frame).
 /// Used by `type_text` RPC to simulate realistic typing.
 #[derive(Component)]
-pub(crate) struct TextTypingQueue {
+pub struct TextTypingQueue {
     /// Characters remaining to type
     pub chars:        std::collections::VecDeque<char>,
     /// Currently pressed keys (waiting for release next frame)
@@ -42,14 +41,14 @@ pub(crate) struct TextTypingQueue {
 
 /// Request structure for `type_text`
 #[derive(Debug, Deserialize)]
-pub(crate) struct TypeTextRequest {
+pub(super) struct TypeTextRequest {
     /// Text to type (supports letters, numbers, symbols, newlines, tabs)
     pub text: String,
 }
 
 /// Response structure for `type_text`
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct TypeTextResponse {
+pub(super) struct TypeTextResponse {
     /// Whether the operation was initiated successfully
     pub success:      bool,
     /// Number of characters queued for typing
@@ -127,7 +126,7 @@ fn char_to_keys(c: char) -> Option<Vec<KeyCodeWrapper>> {
 
 /// Handler for the `type_text` BRP method.
 /// Types text one character per frame, simulating realistic keyboard input.
-pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: TypeTextRequest = if let Some(params) = params {
         serde_json::from_value(params).map_err(|e| BrpError {
             code:    INVALID_PARAMS,
@@ -182,7 +181,7 @@ pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World
 }
 
 /// System that processes text typing queues (one character per frame).
-pub(crate) fn process_text_typing(
+pub fn process_text_typing(
     mut commands: Commands,
     mut query: Query<(Entity, &mut TextTypingQueue)>,
     mut keyboard_events: MessageWriter<bevy::input::keyboard::KeyboardInput>,
@@ -194,7 +193,7 @@ pub(crate) fn process_text_typing(
                 // Release the current keys
                 if !queue.current_keys.is_empty() {
                     let release_events =
-                        create_keyboard_events(&queue.current_keys, ButtonState::Released);
+                        events::create_keyboard_events(&queue.current_keys, ButtonState::Released);
                     for event in release_events {
                         window_events.write(WindowEvent::from(event.clone()));
                         keyboard_events.write(event);
@@ -209,8 +208,11 @@ pub(crate) fn process_text_typing(
                 if let Some(c) = queue.chars.pop_front() {
                     if let Some(keys) = char_to_keys(c) {
                         // Pass the actual character so shifted chars get correct text field
-                        let press_events =
-                            create_keyboard_events_with_text(&keys, ButtonState::Pressed, Some(c));
+                        let press_events = events::create_keyboard_events_with_text(
+                            &keys,
+                            ButtonState::Pressed,
+                            Some(c),
+                        );
                         for event in press_events {
                             window_events.write(WindowEvent::from(event.clone()));
                             keyboard_events.write(event);

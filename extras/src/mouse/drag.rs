@@ -15,10 +15,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::cursor::SimulatedCursorPosition;
-use super::parse_request;
-use super::resolve_window;
-use super::resolve_window_entity;
-use super::serialize_response;
+use super::support;
 
 // ============================================================================
 // Types
@@ -95,8 +92,8 @@ pub struct DragOperation {
 // ============================================================================
 
 /// Handler for `drag_mouse` BRP method
-pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: DragMouseRequest = parse_request(params, false)?;
+pub fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: DragMouseRequest = support::parse_request(params, false)?;
 
     // Validate frames
     if request.frames == 0 {
@@ -107,7 +104,7 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
         });
     }
 
-    let window = resolve_window(world, request.window)?;
+    let window = support::resolve_window(world, request.window)?;
 
     // Spawn drag operation component
     world.spawn(DragOperation {
@@ -120,7 +117,7 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
         state:         DragState::Pressed,
     });
 
-    serialize_response(
+    support::serialize_response(
         DragMouseResponse {
             button: request.button,
             start:  request.start,
@@ -141,7 +138,7 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
 /// - Pressed: Send button press, move to start, transition to Dragging
 /// - Dragging: Interpolate position, send motion events, advance frame
 /// - Released: Send button release, despawn entity
-pub(crate) fn process_drag_operations(
+pub fn process_drag_operations(
     mut commands: Commands,
     mut query: Query<(Entity, &mut DragOperation)>,
     mut cursor_res: ResMut<SimulatedCursorPosition>,
@@ -152,7 +149,7 @@ pub(crate) fn process_drag_operations(
     mut windows: Query<&mut Window>,
 ) {
     for (entity, mut drag) in &mut query {
-        let window = resolve_window_entity(drag.window);
+        let window = support::resolve_window_entity(drag.window);
 
         match drag.state {
             DragState::Pressed => {
