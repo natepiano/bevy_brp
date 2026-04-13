@@ -18,7 +18,7 @@ use super::key_code::KeyCodeWrapper;
 
 /// Phase of the text typing state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum TypingPhase {
+pub enum TypingPhase {
     /// Ready to press the next character's keys
     PressNext,
     /// Need to release the currently held keys before pressing the next character
