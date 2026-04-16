@@ -6,6 +6,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::task;
 use super::types::WatchStartResult;
 use crate::brp_tools::Port;
 use crate::error::Error;
@@ -33,7 +34,7 @@ pub struct WorldGetComponentsWatch;
 
 async fn handle_impl(params: GetComponentsWatchParams) -> Result<WatchStartResult> {
     // Start the watch task
-    let result = super::start_entity_watch_task(params.entity, Some(params.types), params.port)
+    let result = task::start_entity_watch_task(params.entity, Some(params.types), params.port)
         .await
         .map_err(|e| {
             super::wrap_watch_error::wrap_watch_error(

@@ -33,7 +33,7 @@ pub(crate) fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult 
 
     Ok(json!({
         "success": true,
-        "message": "Shutdown initiated - will exit in 10 frames",
+        "message": format!("Shutdown initiated - will exit in {DEFERRED_SHUTDOWN_FRAMES} frames"),
         "pid": std::process::id()
     }))
 }

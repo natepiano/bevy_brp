@@ -1,5 +1,6 @@
 //! FPS diagnostics handler for BRP extras
 
+use bevy::diagnostic::Diagnostic;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
@@ -28,20 +29,18 @@ pub(crate) fn handler(In(_params): In<Option<Value>>, world: &mut World) -> BrpR
     let frame_time = store.get(&FrameTimeDiagnosticsPlugin::FRAME_TIME);
     let frame_count = store.get(&FrameTimeDiagnosticsPlugin::FRAME_COUNT);
 
-    let fps_value = fps.and_then(bevy::diagnostic::Diagnostic::value);
-    let fps_avg = fps.and_then(bevy::diagnostic::Diagnostic::average);
-    let fps_smoothed = fps.and_then(bevy::diagnostic::Diagnostic::smoothed);
-    let fps_history_len = fps.map_or(0, bevy::diagnostic::Diagnostic::history_len);
-    let fps_max_history = fps.map_or(0, bevy::diagnostic::Diagnostic::get_max_history_length);
-    let fps_duration_secs = fps
-        .and_then(bevy::diagnostic::Diagnostic::duration)
-        .map(|d| d.as_secs_f64());
+    let fps_value = fps.and_then(Diagnostic::value);
+    let fps_avg = fps.and_then(Diagnostic::average);
+    let fps_smoothed = fps.and_then(Diagnostic::smoothed);
+    let fps_history_len = fps.map_or(0, Diagnostic::history_len);
+    let fps_max_history = fps.map_or(0, Diagnostic::get_max_history_length);
+    let fps_duration_secs = fps.and_then(Diagnostic::duration).map(|d| d.as_secs_f64());
 
-    let frame_time_value = frame_time.and_then(bevy::diagnostic::Diagnostic::value);
-    let frame_time_avg = frame_time.and_then(bevy::diagnostic::Diagnostic::average);
-    let frame_time_smoothed = frame_time.and_then(bevy::diagnostic::Diagnostic::smoothed);
+    let frame_time_value = frame_time.and_then(Diagnostic::value);
+    let frame_time_avg = frame_time.and_then(Diagnostic::average);
+    let frame_time_smoothed = frame_time.and_then(Diagnostic::smoothed);
 
-    let total_frames = frame_count.and_then(bevy::diagnostic::Diagnostic::value);
+    let total_frames = frame_count.and_then(Diagnostic::value);
 
     Ok(json!({
         "fps": {

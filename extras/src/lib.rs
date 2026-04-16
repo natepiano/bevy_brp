@@ -146,6 +146,7 @@ mod shutdown;
 mod window_event;
 mod window_title;
 
+pub use constants::DEFAULT_REMOTE_PORT;
 pub use plugin::BrpExtrasPlugin;
 #[cfg(not(target_arch = "wasm32"))]
 pub use plugin::HasEffectivePort;
@@ -156,8 +157,3 @@ pub use plugin::PortConfigured;
 #[cfg(not(target_arch = "wasm32"))]
 pub use plugin::PortDisplay;
 pub use plugin::Unconfigured;
-
-/// Default port for remote control connections
-///
-/// This matches Bevy's `RemoteHttpPlugin` default port to ensure compatibility.
-pub const DEFAULT_REMOTE_PORT: u16 = 15702;
