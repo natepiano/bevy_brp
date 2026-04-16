@@ -87,8 +87,7 @@ impl BufferedWatchLogger {
     pub(super) fn get_watch_log_path(watch_id: u32, entity_id: u64, watch_type: &str) -> PathBuf {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+            .map_or(0, |d| d.as_secs());
 
         let filename =
             format!("bevy_brp_mcp_watch_{watch_id}_{watch_type}_{entity_id}_{timestamp}.log");

@@ -151,8 +151,7 @@ impl BrpHttpClient {
             "HTTP Error at {}\nMethod: {}\nPort: {}\nURL: {}\nError: {:?}\n",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0),
+                .map_or(0, |d| d.as_secs()),
             self.method.as_str(),
             self.port,
             url,
