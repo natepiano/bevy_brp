@@ -19,11 +19,11 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
+use bevy::animation::graph::AnimationGraph;
+use bevy::animation::graph::AnimationGraphHandle;
 use bevy::animation::AnimatedBy;
 use bevy::animation::AnimationPlayer;
 use bevy::animation::AnimationTargetId;
-use bevy::animation::graph::AnimationGraph;
-use bevy::animation::graph::AnimationGraphHandle;
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
 use bevy::anti_alias::fxaa::Fxaa;
 use bevy::anti_alias::smaa::Smaa;
@@ -31,27 +31,28 @@ use bevy::anti_alias::taa::TemporalAntiAliasing;
 use bevy::asset::RenderAssetUsages;
 use bevy::audio::PlaybackSettings;
 use bevy::audio::SpatialListener;
-use bevy::camera::ManualTextureViewHandle;
 use bevy::camera::primitives::Aabb;
 use bevy::camera::primitives::CascadesFrusta;
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::camera::visibility::RenderLayers;
 use bevy::camera::visibility::VisibilityRange;
-use bevy::core_pipeline::Skybox;
+use bevy::camera::ManualTextureViewHandle;
 use bevy::core_pipeline::prepass::MotionVectorPrepass;
+use bevy::core_pipeline::Skybox;
 use bevy::ecs::relationship::RelatedSpawnerCommands;
-use bevy::gizmos::GizmoAsset;
 use bevy::gizmos::aabb::ShowAabbGizmo;
 use bevy::gizmos::config::GizmoLineConfig;
 use bevy::gizmos::light::ShowLightGizmo;
 use bevy::gizmos::retained::Gizmo;
+use bevy::gizmos::GizmoAsset;
 use bevy::input::gamepad::Gamepad;
 use bevy::input::gamepad::GamepadSettings;
 use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
-use bevy::input_focus::InputFocus;
 use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::input_focus::tab_navigation::TabIndex;
+use bevy::input_focus::InputFocus;
+use bevy::light::cluster::ClusterConfig;
 use bevy::light::CascadeShadowConfig;
 use bevy::light::Cascades;
 use bevy::light::ClusteredDecal;
@@ -66,19 +67,18 @@ use bevy::light::ShadowFilteringMethod;
 use bevy::light::SpotLightTexture;
 use bevy::light::VolumetricFog;
 use bevy::light::VolumetricLight;
-use bevy::light::cluster::ClusterConfig;
 use bevy::mesh::morph::MeshMorphWeights;
 use bevy::mesh::morph::MorphWeights;
 use bevy::mesh::skinning::SkinnedMesh;
+use bevy::pbr::decal::ForwardDecalMaterialExt;
+use bevy::pbr::wireframe::WireframeConfig;
 use bevy::pbr::ExtendedMaterial;
 use bevy::pbr::Lightmap;
 use bevy::pbr::ScreenSpaceAmbientOcclusion;
 use bevy::pbr::ScreenSpaceReflections;
-use bevy::pbr::decal::ForwardDecalMaterialExt;
-use bevy::pbr::wireframe::WireframeConfig;
+use bevy::picking::mesh_picking::ray_cast::RayCastVisibility;
 use bevy::picking::mesh_picking::MeshPickingPlugin;
 use bevy::picking::mesh_picking::MeshPickingSettings;
-use bevy::picking::mesh_picking::ray_cast::RayCastVisibility;
 use bevy::post_process::auto_exposure::AutoExposure;
 use bevy::post_process::bloom::Bloom;
 use bevy::post_process::dof::DepthOfField;
@@ -92,9 +92,9 @@ use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::globals::GlobalsUniform;
 use bevy::render::render_resource::TextureViewDescriptor;
 use bevy::render::render_resource::TextureViewDimension;
+use bevy::render::view::window::screenshot::Screenshot;
 use bevy::render::view::ColorGrading;
 use bevy::render::view::Msaa;
-use bevy::render::view::window::screenshot::Screenshot;
 use bevy::scene::Scene;
 use bevy::scene::SceneRoot;
 use bevy::sprite::SpritePickingMode;
@@ -102,6 +102,8 @@ use bevy::sprite::SpritePickingSettings;
 use bevy::sprite::Text2dShadow;
 use bevy::sprite_render::Wireframe2dColor;
 use bevy::sprite_render::Wireframe2dConfig;
+use bevy::ui::widget::Button;
+use bevy::ui::widget::Label;
 use bevy::ui::BoxShadow;
 use bevy::ui::CalculatedClip;
 use bevy::ui::FocusPolicy;
@@ -109,8 +111,6 @@ use bevy::ui::Interaction;
 use bevy::ui::Outline;
 use bevy::ui::UiTargetCamera;
 use bevy::ui::ZIndex;
-use bevy::ui::widget::Button;
-use bevy::ui::widget::Label;
 use bevy::window::CursorIcon;
 use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
@@ -485,7 +485,7 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
-            primary_window: Some(bevy::window::Window {
+            primary_window: Some(Window {
                 title: "BRP Extras Test".to_string(),
                 resolution: (800, 600).into(),
                 focused: false,
@@ -1477,7 +1477,8 @@ fn spawn_cameras(commands: &mut Commands) {
                                                      * Msaa causes crashes with the deferred
                                                      * rendering setup - test separately */
         ))
-        .insert(MotionBlur::default()); // For testing mutations (added separately due to bundle size limit)
+        .insert(MotionBlur::default()); // For testing mutations (added separately due to bundle
+                                        // size limit)
 }
 
 fn spawn_ui_elements(commands: &mut Commands, port: &Res<CurrentPort>) {
@@ -1682,10 +1683,8 @@ fn handle_text_input(
             (Key::Backspace, _) => {
                 content.text.pop();
             },
-            (_, Some(inserted_text)) => {
-                if inserted_text.chars().all(is_printable_char) {
-                    content.text.push_str(inserted_text);
-                }
+            (_, Some(inserted_text)) if inserted_text.chars().all(is_printable_char) => {
+                content.text.push_str(inserted_text);
             },
             _ => {},
         }
