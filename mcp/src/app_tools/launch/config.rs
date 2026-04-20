@@ -9,10 +9,10 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::build;
-use crate::app_tools::instance_count::InstanceCount;
-use crate::app_tools::launch_params::SearchOrder;
 use super::build_freshness;
 use super::build_freshness::FreshnessCheckResult;
+use crate::app_tools::instance_count::InstanceCount;
+use crate::app_tools::launch_params::SearchOrder;
 use crate::app_tools::targets::BevyTarget;
 use crate::app_tools::targets::TargetType;
 use crate::brp_tools::Port;

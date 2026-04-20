@@ -391,10 +391,7 @@ pub(super) fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> Pa
 /// `cargo metadata` may expand the search to the full workspace. This post-filter
 /// restricts results to only targets whose manifest directory is actually under the
 /// user-specified path.
-pub fn filter_targets_by_path_scope(
-    targets: Vec<BevyTarget>,
-    scope: &Path,
-) -> Vec<BevyTarget> {
+pub fn filter_targets_by_path_scope(targets: Vec<BevyTarget>, scope: &Path) -> Vec<BevyTarget> {
     let canonical_scope = safe_canonicalize(scope);
     targets
         .into_iter()
