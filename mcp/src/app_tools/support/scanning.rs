@@ -129,26 +129,27 @@ fn discover_workspace_members(
         if metadata.workspace_members.contains(&package.id) {
             let manifest_path =
                 safe_canonicalize(&PathBuf::from(&package.manifest_path.as_std_path()));
-            if let Some(member_dir) = manifest_path.parent() {
-                if member_dir.exists() {
-                    let member_canonical = safe_canonicalize(member_dir);
+            let Some(member_dir) = manifest_path.parent() else {
+                continue;
+            };
+            if member_dir.exists() {
+                let member_canonical = safe_canonicalize(member_dir);
 
-                    discovered_projects.insert(
-                        member_canonical.clone(),
-                        DiscoveredProject {
-                            path:         member_canonical,
-                            project_type: ProjectType::Workspace {
-                                workspace_root: workspace_root.to_path_buf(),
-                            },
+                discovered_projects.insert(
+                    member_canonical.clone(),
+                    DiscoveredProject {
+                        path:         member_canonical,
+                        project_type: ProjectType::Workspace {
+                            workspace_root: workspace_root.to_path_buf(),
                         },
-                    );
-                } else {
-                    debug!(
-                        "Skipping workspace member '{}': directory does not exist at '{}'",
-                        package.name,
-                        member_dir.display()
-                    );
-                }
+                    },
+                );
+            } else {
+                debug!(
+                    "Skipping workspace member '{}': directory does not exist at '{}'",
+                    package.name,
+                    member_dir.display()
+                );
             }
         }
     }
@@ -249,7 +250,18 @@ fn shallow_scan(
     visited_canonical: &mut HashSet<PathBuf>,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
 ) {
-    shallow_scan_internal(dir, visited_canonical, discovered_projects, false);
+    shallow_scan_internal(
+        dir,
+        visited_canonical,
+        discovered_projects,
+        RootDirectorySkipPolicy::Bypass,
+    );
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RootDirectorySkipPolicy {
+    Apply,
+    Bypass,
 }
 
 /// Internal shallow scan that can skip the `should_skip` check for root paths
@@ -258,7 +270,7 @@ fn shallow_scan_internal(
     dir: &Path,
     visited_canonical: &mut HashSet<PathBuf>,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
-    check_skip: bool,
+    root_skip_policy: RootDirectorySkipPolicy,
 ) {
     let scan_start = Instant::now();
     debug!("shallow_scan_internal: {}", dir.display());
@@ -271,7 +283,7 @@ fn shallow_scan_internal(
     }
 
     // Skip hidden directories and target directories (but not for root search paths)
-    if check_skip && should_skip_directory(dir) {
+    if root_skip_policy == RootDirectorySkipPolicy::Apply && should_skip_directory(dir) {
         debug!("  Skipping directory (hidden or target)");
         return;
     }

@@ -6,10 +6,19 @@ mod key_code;
 mod keys;
 mod typing;
 
-pub(crate) use self::keys::process_timed_key_releases;
+use bevy::prelude::*;
+
 pub(crate) use self::keys::send_keys_handler;
-pub(crate) use self::typing::process_text_typing;
 pub(crate) use self::typing::type_text_handler;
+
+pub(super) struct KeyboardPlugin;
+
+impl Plugin for KeyboardPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, keys::process_timed_key_releases);
+        app.add_systems(Update, typing::process_text_typing);
+    }
+}
 
 #[cfg(test)]
 #[allow(

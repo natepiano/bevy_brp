@@ -18,17 +18,26 @@ mod gestures;
 mod scroll;
 mod support;
 
-pub(crate) use self::button::process_timed_button_releases;
+use bevy::prelude::*;
+
 pub(crate) use self::button::send_mouse_button_handler;
 pub(crate) use self::click::click_mouse_handler;
 pub(crate) use self::click::double_click_mouse_handler;
-pub(crate) use self::click::process_scheduled_clicks;
-pub(crate) use self::cursor::SimulatedCursorPosition;
 pub(crate) use self::cursor::move_mouse_handler;
-pub(crate) use self::cursor::sync_cursor_position;
 pub(crate) use self::drag::drag_mouse_handler;
-pub(crate) use self::drag::process_drag_operations;
 pub(crate) use self::gestures::double_tap_gesture_handler;
 pub(crate) use self::gestures::pinch_gesture_handler;
 pub(crate) use self::gestures::rotation_gesture_handler;
 pub(crate) use self::scroll::scroll_mouse_handler;
+
+pub(super) struct MousePlugin;
+
+impl Plugin for MousePlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<cursor::SimulatedCursorPosition>();
+        app.add_systems(Update, cursor::sync_cursor_position);
+        app.add_systems(Update, button::process_timed_button_releases);
+        app.add_systems(Update, click::process_scheduled_clicks);
+        app.add_systems(Update, drag::process_drag_operations);
+    }
+}

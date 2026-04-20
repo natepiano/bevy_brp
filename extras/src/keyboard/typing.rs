@@ -205,22 +205,22 @@ pub fn process_text_typing(
             },
             TypingPhase::PressNext => {
                 // Press the next character's keys
-                if let Some(c) = queue.chars.pop_front() {
-                    if let Some(keys) = char_to_keys(c) {
-                        // Pass the actual character so shifted chars get correct text field
-                        let press_events = events::create_keyboard_events_with_text(
-                            &keys,
-                            ButtonState::Pressed,
-                            Some(c),
-                        );
-                        for event in press_events {
-                            window_events.write(WindowEvent::from(event.clone()));
-                            keyboard_events.write(event);
-                        }
-                        queue.current_keys = keys;
-                        queue.current_char = Some(c);
-                        queue.phase = TypingPhase::ReleaseCurrentKeys;
+                if let Some(c) = queue.chars.pop_front()
+                    && let Some(keys) = char_to_keys(c)
+                {
+                    // Pass the actual character so shifted chars get correct text field
+                    let press_events = events::create_keyboard_events_with_text(
+                        &keys,
+                        ButtonState::Pressed,
+                        Some(c),
+                    );
+                    for event in press_events {
+                        window_events.write(WindowEvent::from(event.clone()));
+                        keyboard_events.write(event);
                     }
+                    queue.current_keys = keys;
+                    queue.current_char = Some(c);
+                    queue.phase = TypingPhase::ReleaseCurrentKeys;
                 } else {
                     // All done, despawn
                     commands.entity(entity).despawn();

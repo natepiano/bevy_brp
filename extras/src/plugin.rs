@@ -333,18 +333,8 @@ fn build_shared(app: &mut App) {
         app.add_plugins(FrameTimeDiagnosticsPlugin::default());
     }
 
-    // Initialize mouse resources
-    app.init_resource::<mouse::SimulatedCursorPosition>();
-
-    // Add systems for keyboard input simulation
-    app.add_systems(Update, keyboard::process_timed_key_releases);
-    app.add_systems(Update, keyboard::process_text_typing);
-
-    // Add systems for mouse input simulation
-    app.add_systems(Update, mouse::sync_cursor_position);
-    app.add_systems(Update, mouse::process_timed_button_releases);
-    app.add_systems(Update, mouse::process_scheduled_clicks);
-    app.add_systems(Update, mouse::process_drag_operations);
+    app.add_plugins(keyboard::KeyboardPlugin);
+    app.add_plugins(mouse::MousePlugin);
 
     // Add the system to handle deferred shutdown
     app.add_systems(Update, shutdown::deferred_shutdown_system);

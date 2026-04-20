@@ -59,71 +59,73 @@ async fn parse_sse_line(
         .await;
 
     // Handle SSE format: "data: {json}"
-    if let Some(json_str) = line.strip_prefix("data: ") {
-        if let Ok(data) = serde_json::from_str::<Value>(json_str) {
-            debug!(
-                "[{}] Received watch update for entity {}: {:?}",
-                watch_type, entity_id, data
-            );
+    let Some(json_str) = line.strip_prefix("data: ") else {
+        debug!("[{}] Received non-SSE line: {}", watch_type, line);
+        return Ok(());
+    };
 
-            // Log successful JSON parsing
-            let _ = logger.write_debug_update(
-                "DEBUG_JSON_PARSED",
+    let Ok(data) = serde_json::from_str::<Value>(json_str) else {
+        debug!(
+            "[{}] Failed to parse SSE data as JSON: {}",
+            watch_type, json_str
+        );
+
+        // Log parse failure
+        let _ = logger
+            .write_debug_update(
+                "DEBUG_JSON_PARSE_FAILED",
                 serde_json::json!({
                     "watch_type": watch_type,
                     ParameterName::Entity: entity_id,
-                    "has_result": data.get("result").is_some(),
-                    "has_error": data.get("error").is_some(),
-                    "has_id": data.get("id").is_some(),
-                    "json_keys": data.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()).unwrap_or_default(),
+                    "raw_data": json_str,
+                    "data_length": json_str.len(),
                     "timestamp": chrono::Local::now().to_rfc3339()
-                })
-            ).await;
+                }),
+            )
+            .await;
+        return Ok(());
+    };
 
-            // Extract the result from JSON-RPC response
-            if let Some(result) = data.get("result") {
-                log_update(logger, result.clone()).await?;
-            } else {
-                debug!(
-                    "[{}] No result in JSON-RPC response: {:?}",
-                    watch_type, data
-                );
+    debug!(
+        "[{}] Received watch update for entity {}: {:?}",
+        watch_type, entity_id, data
+    );
 
-                // Log missing result field
-                let _ = logger
-                    .write_debug_update(
-                        "DEBUG_NO_RESULT",
-                        serde_json::json!({
-                            "watch_type": watch_type,
-                            ParameterName::Entity: entity_id,
-                            "full_data": data,
-                            "timestamp": chrono::Local::now().to_rfc3339()
-                        }),
-                    )
-                    .await;
-            }
-        } else {
-            debug!(
-                "[{}] Failed to parse SSE data as JSON: {}",
-                watch_type, json_str
-            );
+    // Log successful JSON parsing
+    let _ = logger.write_debug_update(
+        "DEBUG_JSON_PARSED",
+        serde_json::json!({
+            "watch_type": watch_type,
+            ParameterName::Entity: entity_id,
+            "has_result": data.get("result").is_some(),
+            "has_error": data.get("error").is_some(),
+            "has_id": data.get("id").is_some(),
+            "json_keys": data.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()).unwrap_or_default(),
+            "timestamp": chrono::Local::now().to_rfc3339()
+        })
+    ).await;
 
-            // Log parse failure
-            let _ = logger
-                .write_debug_update(
-                    "DEBUG_JSON_PARSE_FAILED",
-                    serde_json::json!({
-                        "watch_type": watch_type,
-                        ParameterName::Entity: entity_id,
-                        "raw_data": json_str,
-                        "data_length": json_str.len(),
-                        "timestamp": chrono::Local::now().to_rfc3339()
-                    }),
-                )
-                .await;
-        }
+    // Extract the result from JSON-RPC response
+    if let Some(result) = data.get("result") {
+        log_update(logger, result.clone()).await?;
     } else {
-        debug!("[{}] Received non-SSE line: {}", watch_type, line);
+        debug!(
+            "[{}] No result in JSON-RPC response: {:?}",
+            watch_type, data
+        );
+
+        // Log missing result field
+        let _ = logger
+            .write_debug_update(
+                "DEBUG_NO_RESULT",
+                serde_json::json!({
+                    "watch_type": watch_type,
+                    ParameterName::Entity: entity_id,
+                    "full_data": data,
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                }),
+            )
+            .await;
     }
     Ok(())
 }

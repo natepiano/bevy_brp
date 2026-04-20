@@ -136,7 +136,7 @@ fn compare_input_to_binary(input_path: &Path, binary_mtime: SystemTime) -> Resul
     compare_path_to_binary(
         input_path,
         binary_mtime,
-        true,
+        MissingInputPolicy::TreatAsStale,
         "dependency listed in dep-info is missing",
         "dependency is newer than binary",
     )
@@ -149,21 +149,28 @@ fn compare_optional_input_to_binary(
     compare_path_to_binary(
         input_path,
         binary_mtime,
-        false,
+        MissingInputPolicy::Ignore,
         "",
         "build input is newer than binary",
     )
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MissingInputPolicy {
+    Ignore,
+    TreatAsStale,
+}
+
 fn compare_path_to_binary(
     input_path: &Path,
     binary_mtime: SystemTime,
-    missing_is_stale: bool,
+    missing_input_policy: MissingInputPolicy,
     missing_reason: &str,
     stale_reason: &str,
 ) -> Result<Option<String>> {
     if !input_path.exists() {
-        return Ok(missing_is_stale.then(|| format!("{missing_reason}: {}", input_path.display())));
+        return Ok((missing_input_policy == MissingInputPolicy::TreatAsStale)
+            .then(|| format!("{missing_reason}: {}", input_path.display())));
     }
 
     let input_mtime = file_modified_time(input_path)?;

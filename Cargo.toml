@@ -51,7 +51,7 @@ syn = { version = "2.0.117", features = ["extra-traits", "full"] }
 sysinfo = "0.38.4"
 tempfile = "3.27.0"
 thiserror = "2.0"
-tokio = { version = "1.51.0", features = ["full", "signal"] }
+tokio = { version = "1.52.1", features = ["full", "signal"] }
 tokio-stream = "0.1.18"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = { version = "0.1.44", features = [
@@ -60,7 +60,7 @@ tracing = { version = "0.1.44", features = [
 ] }
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "1.23.0", features = ["v4"] }
+uuid = { version = "1.23.1", features = ["v4"] }
 
 # Shared lints configuration
 [workspace.lints.rust]

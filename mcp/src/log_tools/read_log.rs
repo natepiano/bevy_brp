@@ -145,13 +145,12 @@ fn read_log_file(
     }
 
     // Apply tail mode if requested
-    let final_lines = if let Some(tail_count) = tail_lines {
-        if tail_count > 0 && tail_count < lines.len() {
-            let skip_amount = lines.len() - tail_count;
-            lines.into_iter().skip(skip_amount).collect()
-        } else {
-            lines
-        }
+    let final_lines = if let Some(tail_count) = tail_lines
+        && tail_count > 0
+        && tail_count < lines.len()
+    {
+        let skip_amount = lines.len() - tail_count;
+        lines.into_iter().skip(skip_amount).collect()
     } else {
         lines
     };
