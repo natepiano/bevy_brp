@@ -56,12 +56,11 @@ Each test entry has one of two formats:
 
 **IMPORTANT**: Count the number of test objects in test_config.json to determine the total number of tests. Do NOT assume it matches ${PARALLEL_TESTS}.
 
-**CRITICAL COUNTING INSTRUCTION**: You MUST use the following commands to count tests accurately:
+**CRITICAL COUNTING INSTRUCTION**: You MUST use the `test_config.sh` helper so the calls hit a permanent allowlist entry instead of triggering one-off permission prompts:
 ```bash
-jq '.tests | length' ${TEST_CONFIG_FILE}                                    # total tests
-jq '[.tests[] | select(.individual_only == true)] | length' ${TEST_CONFIG_FILE}  # individual-only tests
+bash .claude/scripts/integration_tests/test_config.sh counts
+# Output: total=N individual_only=M batch=K
 ```
-Note: Replace ${TEST_CONFIG_FILE} with the actual path from the configuration section above.
 In batch modes (All Tests / Multiple Tests), report both counts: total tests in config and how many were excluded as `individual_only`. In Single Test Mode, just report the single test.
 
 ## App Management Strategy
@@ -392,10 +391,17 @@ Use only the exact types, values, and tool parameters specified in the test file
 
 ### Execution Instructions
 
-1. **Load Configuration**: Read test configuration from ${TEST_CONFIG_FILE}
-2. **Find Test**: Search for test configuration where `test_name` matches the test name
-3. **Validate**: If test not found, report error and list available test names
-4. **Execute Test**: If found, run the single test using appropriate strategy
+1. **Find Test**: Use the helper to look up the test entry:
+   ```bash
+   bash .claude/scripts/integration_tests/test_config.sh find-test <test_name>
+   ```
+   The helper exits 1 if the test is not found. On not-found, also run:
+   ```bash
+   bash .claude/scripts/integration_tests/test_config.sh list-all-names
+   ```
+   to surface the available test names in the error message.
+2. **Validate**: If test not found, report error and list available test names.
+3. **Execute Test**: If found, run the single test using the appropriate strategy below (fields `app_name`, `app_type`, `apps` come from the helper's JSON output).
 
 ### Single Test Execution
 
@@ -447,13 +453,18 @@ Examples:
 
 ### Execution Instructions
 
-1. **Load Configuration**: Read test configuration from ${TEST_CONFIG_FILE}
-2. **Parse Test Names**: Split `$ARGUMENTS` on commas and trim whitespace from each name
-3. **Validate All Tests**: For each test name, search for matching test configuration
-   - If ANY test not found, report error listing all missing tests and available test names
-   - If all found, continue to execution
-4. **Filter Test List**: Build test list containing only the specified tests (preserve config order). If any specified test has `individual_only: true`, warn the user that it was skipped (e.g., "Skipping 'mouse' — individual_only test, run separately with `/test mouse`") and exclude it from the batch. If ALL specified tests are `individual_only`, report that no tests remain and exit.
-5. **Execute Tests**: Use the same batched parallel execution as "All Tests Mode" (see below), but with filtered test list
+1. **Parse Test Names**: Split `$ARGUMENTS` on commas and trim whitespace from each name.
+2. **Validate All Tests**: For each test name, look it up with:
+   ```bash
+   bash .claude/scripts/integration_tests/test_config.sh find-test <test_name>
+   ```
+   - If ANY test's `find-test` call exits 1, report error listing all missing tests. For the available-names list in the error message, use:
+     ```bash
+     bash .claude/scripts/integration_tests/test_config.sh list-all-names
+     ```
+   - If all found, continue to execution.
+3. **Filter Test List**: Build test list containing only the specified tests (preserve config order — `test_config.sh batch-entries` gives config order; intersect against the parsed names). If any specified test has `individual_only: true` (visible in its `find-test` JSON), warn the user that it was skipped (e.g., "Skipping 'mouse' — individual_only test, run separately with `/test mouse`") and exclude it from the batch. If ALL specified tests are `individual_only`, report that no tests remain and exit.
+4. **Execute Tests**: Use the same batched parallel execution as "All Tests Mode" (see below), but with the filtered test list.
 
 ### Error Handling
 
@@ -492,9 +503,14 @@ Examples:
 
 4. **Extract Test List**: Execute this EXACT command:
    ```bash
-   jq -c '.tests[] | select(.individual_only != true) | {test_name, test_file, app_name, app_type, apps}' ${TEST_CONFIG_FILE}
+   bash .claude/scripts/integration_tests/test_config.sh batch-entries
    ```
    This produces one JSON object per line, in config order. Tests with `individual_only: true` are excluded from batch execution. Tests with `apps` array will have `app_name: null` and `app_type: null`.
+
+   To list only batch test names (useful for checking whether `wasm` is in the run before WASM prebuild):
+   ```bash
+   bash .claude/scripts/integration_tests/test_config.sh batch-names
+   ```
 
 5. **Extract Objectives and Build Test List**:
    - Collect all test_file paths from step 3 into a space-separated list
