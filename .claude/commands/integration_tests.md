@@ -131,14 +131,6 @@ bash .claude/scripts/integration_tests/prebuild_workspace.sh
 - Script uses strict error handling and preserves Cargo exit status
 - If the build fails, STOP and report the build error
 
-**WASM Prebuild** (conditional):
-- Check if "wasm" is in the current test list (either running all tests or explicitly specified)
-- If yes, additionally run:
-```bash
-bash .claude/scripts/integration_tests/prebuild_workspace.sh --include-wasm
-```
-- This MUST complete before the wasm test starts to avoid Cargo lock contention
-- If the WASM build fails, STOP and report the build error
 </PrebuildWorkspace>
 
 <RetryNoOutputAgent>
@@ -507,7 +499,7 @@ Examples:
    ```
    This produces one JSON object per line, in config order. Tests with `individual_only: true` are excluded from batch execution. Tests with `apps` array will have `app_name: null` and `app_type: null`.
 
-   To list only batch test names (useful for checking whether `wasm` is in the run before WASM prebuild):
+   To list only batch test names:
    ```bash
    bash .claude/scripts/integration_tests/test_config.sh batch-names
    ```

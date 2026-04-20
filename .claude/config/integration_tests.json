@@ -38,12 +38,6 @@
       "app_type": "example"
     },
     {
-      "test_name": "wasm",
-      "test_file": ".claude/integration_tests/wasm.md",
-      "app_name": "various",
-      "app_type": null
-    },
-    {
       "test_name": "query_basic",
       "test_file": ".claude/integration_tests/query_basic.md",
       "app_name": "extras_plugin",

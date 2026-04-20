@@ -39,6 +39,7 @@ EOF
 **Bash Usage:**
 - Bash is ONLY for: reading files with the poll scripts, cleanup operations
 - Bash is NEVER for: creating test data, calling BRP methods, writing scripts
+- When invoking a helper script, use the EXACT path written in the test file (e.g., `bash .claude/scripts/integration_tests/extras_test_poll_screenshot.sh`). Do NOT convert relative paths to absolute paths — the permission allowlist only matches the relative form.
 
 **Port Requirement:**
 - Every MCP tool call MUST include the port parameter from your prompt
