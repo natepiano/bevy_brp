@@ -8,8 +8,8 @@ use serde_json::Value;
 use tracing::debug;
 use tracing::info;
 
-use crate::app_tools::support::cargo_detector::TargetType;
-use crate::app_tools::support::logging;
+use super::logging;
+use crate::app_tools::targets::TargetType;
 use crate::brp_tools::BRP_EXTRAS_PORT_ENV_VAR;
 use crate::brp_tools::Port;
 use crate::error::Error;

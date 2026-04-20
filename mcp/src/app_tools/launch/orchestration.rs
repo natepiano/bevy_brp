@@ -10,12 +10,12 @@ use super::build;
 use super::config;
 use crate::app_tools::launch_params::LaunchBevyBinaryParams;
 use crate::app_tools::launch_params::SearchOrder;
-use crate::app_tools::support::cargo_detector::BevyTarget;
-use crate::app_tools::support::cargo_detector::TargetType;
-use crate::app_tools::support::errors::AvailableTarget;
-use crate::app_tools::support::errors::UnifiedTargetNotFoundError;
-use crate::app_tools::support::process;
-use crate::app_tools::support::scanning;
+use crate::app_tools::process;
+use crate::app_tools::targets::AvailableTarget;
+use crate::app_tools::targets::BevyTarget;
+use crate::app_tools::targets::TargetType;
+use crate::app_tools::targets::UnifiedTargetNotFoundError;
+use crate::app_tools::targets;
 use crate::brp_tools::MAX_VALID_PORT;
 use crate::brp_tools::Port;
 use crate::error::Error;
@@ -122,26 +122,26 @@ pub fn launch_bevy_target(
     let scope_path: Option<PathBuf> = params.path.as_ref().map(PathBuf::from);
 
     let mut first_targets =
-        scanning::find_all_targets_by_name(&params.target_name, Some(first), &search_roots);
+        targets::find_all_targets_by_name(&params.target_name, Some(first), &search_roots);
     if let Some(ref scope) = scope_path {
-        first_targets = scanning::filter_targets_by_path_scope(first_targets, scope);
+        first_targets = targets::filter_targets_by_path_scope(first_targets, scope);
     }
     if !first_targets.is_empty() {
         return launch_found_target(first, first_targets, &params, &search_roots);
     }
 
     let mut second_targets =
-        scanning::find_all_targets_by_name(&params.target_name, Some(second), &search_roots);
+        targets::find_all_targets_by_name(&params.target_name, Some(second), &search_roots);
     if let Some(ref scope) = scope_path {
-        second_targets = scanning::filter_targets_by_path_scope(second_targets, scope);
+        second_targets = targets::filter_targets_by_path_scope(second_targets, scope);
     }
     if !second_targets.is_empty() {
         return launch_found_target(second, second_targets, &params, &search_roots);
     }
 
-    let mut all_targets = scanning::collect_all_bevy_targets(&search_roots);
+    let mut all_targets = targets::scan_bevy_targets(&search_roots);
     if let Some(ref scope) = scope_path {
-        all_targets = scanning::filter_targets_by_path_scope(all_targets, scope);
+        all_targets = targets::filter_targets_by_path_scope(all_targets, scope);
     }
     let available: Vec<AvailableTarget> = all_targets
         .into_iter()
@@ -227,7 +227,7 @@ fn find_and_validate_target_with_cache<T: config::LaunchConfigTrait>(
     search_paths: &[PathBuf],
     cached_targets: Vec<BevyTarget>,
 ) -> Result<BevyTarget> {
-    scanning::find_required_target_with_package_name(
+    targets::find_required_target_with_package_name(
         config.target_name(),
         T::TARGET_TYPE,
         config.package_name(),

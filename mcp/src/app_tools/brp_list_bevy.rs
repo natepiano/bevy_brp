@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::support;
+use super::targets;
 use crate::error::Result;
 use crate::tool::HandlerContext;
 use crate::tool::HandlerResult;
@@ -52,7 +52,7 @@ async fn handle_impl(ctx: HandlerContext, params: ListBevyParams) -> Result<List
         .path
         .as_ref()
         .map_or(ctx.roots, |path| vec![PathBuf::from(path)]);
-    let mut items = support::collect_all_bevy_targets(&search_paths);
+    let mut items = targets::collect_all_bevy_targets(&search_paths);
 
     // When a user-specified path is provided, post-filter to only targets whose
     // manifest directory is under that path. This is needed because cargo metadata

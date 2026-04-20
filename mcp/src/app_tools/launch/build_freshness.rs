@@ -3,7 +3,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-use super::cargo_detector::BevyTarget;
+use crate::app_tools::targets::BevyTarget;
 use crate::error::Error;
 use crate::error::Result;
 
@@ -254,7 +254,7 @@ mod tests {
     use tempfile::tempdir;
 
     use super::*;
-    use crate::app_tools::support::cargo_detector::TargetType;
+    use crate::app_tools::targets::TargetType;
 
     fn test_target(workspace_root: &Path, manifest_path: &Path, name: &str) -> BevyTarget {
         BevyTarget {

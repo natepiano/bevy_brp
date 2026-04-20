@@ -18,7 +18,7 @@ use strum::EnumString;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, EnumString, Serialize)]
 #[strum(serialize_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
-pub(super) enum TargetType {
+pub enum TargetType {
     /// A binary application target
     App,
     /// An example target
@@ -50,7 +50,7 @@ impl BrpLevel {
 
 impl TargetType {
     /// Add cargo-specific arguments for this target type
-    pub(super) fn add_cargo_args(self, cmd: &mut Command, target_name: &str) {
+    pub fn add_cargo_args(self, cmd: &mut Command, target_name: &str) {
         match self {
             Self::App => {
                 cmd.arg("--bin").arg(target_name);
@@ -64,26 +64,26 @@ impl TargetType {
 
 /// Unified information about a Bevy target (app or example)
 #[derive(Debug, Clone)]
-pub(super) struct BevyTarget {
+pub struct BevyTarget {
     /// Name of the target
-    pub(super) name:           String,
+    pub name:           String,
     /// Type of target (App or Example)
-    pub(super) target_type:    TargetType,
+    pub target_type:    TargetType,
     /// Package name (for examples, this is the package containing the example)
-    pub(super) package_name:   String,
+    pub package_name:   String,
     /// Workspace root (for apps)
-    pub(super) workspace_root: PathBuf,
+    pub workspace_root: PathBuf,
     /// Path to the package's Cargo.toml
-    pub(super) manifest_path:  PathBuf,
+    pub manifest_path:  PathBuf,
     /// Relative path from scan root to this item
-    pub(super) relative_path:  PathBuf,
+    pub relative_path:  PathBuf,
     /// Path to the target's source file (from `cargo metadata`)
-    pub(super) source_path:    PathBuf,
+    pub source_path:    PathBuf,
 }
 
 impl BevyTarget {
     /// Get the path to the binary for a given profile
-    pub(super) fn get_binary_path(&self, profile: &str) -> PathBuf {
+    pub fn get_binary_path(&self, profile: &str) -> PathBuf {
         match self.target_type {
             TargetType::App => self
                 .workspace_root
@@ -100,7 +100,7 @@ impl BevyTarget {
     }
 
     /// Check if this target is an app
-    pub(super) fn is_app(&self) -> bool { self.target_type == TargetType::App }
+    pub fn is_app(&self) -> bool { self.target_type == TargetType::App }
 }
 
 /// Detects binary targets in a project or workspace

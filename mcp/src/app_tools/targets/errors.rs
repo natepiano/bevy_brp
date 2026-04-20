@@ -56,15 +56,15 @@ pub(super) struct NoTargetsFoundError {
 
 /// An available target for enriched not-found errors
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(super) struct AvailableTarget {
-    pub(super) name: String,
-    pub(super) kind: String,
-    pub(super) path: String,
+pub struct AvailableTarget {
+    pub name: String,
+    pub kind: String,
+    pub path: String,
 }
 
 /// Error when no app or example with the given name was found across all target types
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub(super) struct UnifiedTargetNotFoundError {
+pub struct UnifiedTargetNotFoundError {
     #[to_error_info]
     target_name: String,
 

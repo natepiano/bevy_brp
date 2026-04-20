@@ -8,7 +8,7 @@ use sysinfo::System;
 
 use super::constants::STATUS_MAX_RETRIES;
 use super::constants::STATUS_POLL_INTERVAL;
-use super::support;
+use super::process;
 use crate::brp_tools;
 use crate::brp_tools::Port;
 use crate::brp_tools::ResponseStatus;
@@ -95,11 +95,11 @@ struct BrpNotRespondingError {
 
 /// Check if process matches the target app name with substring match
 fn process_matches_app_substring(process: &sysinfo::Process, target_app: &str) -> bool {
-    let normalized_target = support::normalize_process_name(target_app);
+    let normalized_target = process::normalize_process_name(target_app);
 
     // Check process name
     let process_name = process.name().to_string_lossy();
-    let normalized_process_name = support::normalize_process_name(&process_name);
+    let normalized_process_name = process::normalize_process_name(&process_name);
 
     if normalized_process_name.contains(&normalized_target) {
         return true;
@@ -109,7 +109,7 @@ fn process_matches_app_substring(process: &sysinfo::Process, target_app: &str) -
     // but skip generic process names that wouldn't be helpful
     if let Some(cmd) = process.cmd().first() {
         let cmd_str = cmd.to_string_lossy();
-        let cmd_normalized = support::normalize_process_name(&cmd_str);
+        let cmd_normalized = process::normalize_process_name(&cmd_str);
 
         // Skip if it's a generic utility that happens to have the target in its args
         let generic_utils = ["tail", "grep", "cat", "less", "more", "head", "sed", "awk"];
@@ -159,7 +159,7 @@ fn extract_app_name(process: &sysinfo::Process) -> String {
 
     // If the process name looks like a path to a binary, extract just the binary name
     if process_name.contains("target/debug") || process_name.contains("target/release") {
-        return support::normalize_process_name(&process_name);
+        return process::normalize_process_name(&process_name);
     }
 
     // For processes run directly, check the first command argument
@@ -169,11 +169,11 @@ fn extract_app_name(process: &sysinfo::Process) -> String {
             || cmd_str.contains("target/release")
             || cmd_str.contains("/examples/")
         {
-            return support::normalize_process_name(&cmd_str);
+            return process::normalize_process_name(&cmd_str);
         }
     }
 
-    support::normalize_process_name(&process_name)
+    process::normalize_process_name(&process_name)
 }
 
 async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
@@ -181,7 +181,7 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
     let brp_responsive = check_brp_on_port(port).await?;
 
     // Try to get PID from port for more reliable process identification
-    let pid_from_port = support::get_pid_for_port(port);
+    let pid_from_port = process::get_pid_for_port(port);
 
     // Initialize system for process lookups
     let mut system = System::new_all();
@@ -192,7 +192,7 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
     if let Some(pid) = pid_from_port {
         // We found a process on this port - verify the name if possible
         if let Some(process) = system.process(sysinfo::Pid::from_u32(pid))
-            && support::process_matches_name_exact(process, app_name)
+            && process::process_matches_name_exact(process, app_name)
         {
             // SUCCESS: Found process on port with matching name
             if brp_responsive {
@@ -236,7 +236,7 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
     // Check if process exists by exact name match (running on different port)
     let exact_match_by_name = system.processes().values().find(|process| {
         !matches!(process.status(), sysinfo::ProcessStatus::Zombie)
-            && support::process_matches_name_exact(process, app_name)
+            && process::process_matches_name_exact(process, app_name)
     });
 
     if let Some(process) = exact_match_by_name {

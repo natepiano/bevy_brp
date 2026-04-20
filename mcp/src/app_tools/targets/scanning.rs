@@ -391,7 +391,7 @@ pub(super) fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> Pa
 /// `cargo metadata` may expand the search to the full workspace. This post-filter
 /// restricts results to only targets whose manifest directory is actually under the
 /// user-specified path.
-pub(super) fn filter_targets_by_path_scope(
+pub fn filter_targets_by_path_scope(
     targets: Vec<BevyTarget>,
     scope: &Path,
 ) -> Vec<BevyTarget> {
@@ -408,7 +408,7 @@ pub(super) fn filter_targets_by_path_scope(
 
 /// Collect all Bevy targets (apps and examples) across search paths without name filtering.
 /// Used for enriched not-found errors to show all available targets.
-pub(super) fn collect_all_bevy_targets(search_paths: &[PathBuf]) -> Vec<BevyTarget> {
+pub fn collect_all_bevy_targets(search_paths: &[PathBuf]) -> Vec<BevyTarget> {
     let mut targets = Vec::new();
     for path in iter_cargo_project_paths(search_paths) {
         if let Ok(detector) = CargoDetector::from_path(&path) {
@@ -428,7 +428,7 @@ pub(super) fn collect_all_bevy_targets(search_paths: &[PathBuf]) -> Vec<BevyTarg
 
 /// Find all targets (apps and examples) by name across search paths, filtered by target type if
 /// specified This allows detection of duplicates across workspaces
-pub(super) fn find_all_targets_by_name(
+pub fn find_all_targets_by_name(
     target_name: &str,
     target_type: Option<TargetType>,
     search_paths: &[PathBuf],
@@ -469,7 +469,7 @@ pub(super) fn find_all_targets_by_name(
 ///
 /// If `cached_targets` is provided, uses those instead of scanning again (performance
 /// optimization).
-pub(super) fn find_required_target_with_package_name(
+pub fn find_required_target_with_package_name(
     target_name: &str,
     target_type: TargetType,
     package_name: Option<&str>,

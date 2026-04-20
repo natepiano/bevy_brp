@@ -5,8 +5,7 @@ use std::path::PathBuf;
 
 use error_stack::ResultExt;
 
-/// Create a log file for a Bevy app launch
-use super::cargo_detector::TargetType;
+use crate::app_tools::targets::TargetType;
 use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;

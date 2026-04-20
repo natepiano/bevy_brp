@@ -6,7 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::instance_count::InstanceCount;
-use super::support::LaunchParams;
+use super::launch::LaunchParams;
 use crate::brp_tools::Port;
 
 /// Search order for target resolution: "app" searches apps first (default), "example" searches

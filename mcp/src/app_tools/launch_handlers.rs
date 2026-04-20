@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 
 use super::constants::DEFAULT_PROFILE;
+use super::launch;
+use super::launch::LaunchResult;
 use super::launch_params::LaunchBevyBinaryParams;
-use super::support;
-use super::support::LaunchResult;
 use crate::error::Error;
 use crate::error::Result;
 use crate::tool;
@@ -25,7 +25,7 @@ impl ToolFn for LaunchBevyTarget {
         ctx: HandlerContext,
     ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
         tool::call_with_typed_params(ctx, |ctx, params: LaunchBevyBinaryParams| async move {
-            support::launch_bevy_target(params, ctx.roots, DEFAULT_PROFILE)
+            launch::launch_bevy_target(params, ctx.roots, DEFAULT_PROFILE)
         })
     }
 
