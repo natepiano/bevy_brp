@@ -570,11 +570,6 @@ pub(super) fn find_required_target_with_package_name(
     clippy::expect_used,
     reason = "tests should panic on unexpected values"
 )]
-#[allow(
-    clippy::unwrap_used,
-    reason = "tests should panic on unexpected values"
-)]
-#[allow(clippy::panic, reason = "tests should panic on unexpected values")]
 mod tests {
     use std::collections::HashMap;
     use std::fs;

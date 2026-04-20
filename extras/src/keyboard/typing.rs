@@ -18,7 +18,7 @@ use super::key_code::KeyCodeWrapper;
 
 /// Phase of the text typing state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TypingPhase {
+pub(super) enum TypingPhase {
     /// Ready to press the next character's keys
     PressNext,
     /// Need to release the currently held keys before pressing the next character
@@ -28,33 +28,33 @@ pub enum TypingPhase {
 /// Component for sequential text typing (one character per frame).
 /// Used by `type_text` RPC to simulate realistic typing.
 #[derive(Component)]
-pub struct TextTypingQueue {
+pub(super) struct TextTypingQueue {
     /// Characters remaining to type
-    pub chars:        std::collections::VecDeque<char>,
+    chars:        std::collections::VecDeque<char>,
     /// Currently pressed keys (waiting for release next frame)
-    pub current_keys: Vec<KeyCodeWrapper>,
+    current_keys: Vec<KeyCodeWrapper>,
     /// The character we're currently typing (for proper text field on shifted chars)
-    pub current_char: Option<char>,
+    current_char: Option<char>,
     /// Current phase of the typing state machine
-    pub phase:        TypingPhase,
+    phase:        TypingPhase,
 }
 
 /// Request structure for `type_text`
 #[derive(Debug, Deserialize)]
 pub(super) struct TypeTextRequest {
     /// Text to type (supports letters, numbers, symbols, newlines, tabs)
-    pub text: String,
+    text: String,
 }
 
 /// Response structure for `type_text`
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct TypeTextResponse {
     /// Whether the operation was initiated successfully
-    pub success:      bool,
+    success:      bool,
     /// Number of characters queued for typing
-    pub chars_queued: usize,
+    chars_queued: usize,
     /// Characters that couldn't be mapped to keys (skipped)
-    pub skipped:      Vec<char>,
+    skipped:      Vec<char>,
 }
 
 /// Convert a character to the key(s) needed to type it.
@@ -181,7 +181,7 @@ pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
 }
 
 /// System that processes text typing queues (one character per frame).
-pub fn process_text_typing(
+pub(super) fn process_text_typing(
     mut commands: Commands,
     mut query: Query<(Entity, &mut TextTypingQueue)>,
     mut keyboard_events: MessageWriter<bevy::input::keyboard::KeyboardInput>,

@@ -10,10 +10,10 @@ use schemars::generate::SchemaSettings;
 
 use super::HandlerContext;
 use super::annotations::Annotation;
+use super::handler::ErasedToolFn;
 use super::json_response::ToolCallJsonResponse;
 use super::parameters::ParameterBuilder;
 use super::tool_name::ToolName;
-use super::types::ErasedToolFn;
 
 /// Unified tool definition that can handle both BRP and Local tools
 #[derive(Clone)]

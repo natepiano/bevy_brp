@@ -82,7 +82,7 @@ impl TypeKindBuilder for StructMutationBuilder {
 
     fn assemble_from_children(
         &self,
-        _ctx: &RecursionContext,
+        _: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         if children.is_empty() {

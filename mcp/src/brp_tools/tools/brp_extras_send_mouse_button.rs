@@ -8,7 +8,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::brp_tools::Port;
-use crate::brp_tools::types::MouseButtonWrapper;
+use crate::brp_tools::mouse::MouseButtonWrapper;
 
 /// Parameters for the `brp_extras/send_mouse_button` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]

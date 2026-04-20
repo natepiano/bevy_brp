@@ -1,9 +1,9 @@
 mod brp_client;
 mod brp_type_guide;
 mod constants;
+mod mouse;
 mod port;
 mod tools;
-mod types;
 mod watch_tools;
 
 // Public exports

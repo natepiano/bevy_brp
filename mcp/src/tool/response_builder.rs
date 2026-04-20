@@ -140,7 +140,7 @@ impl ResponseBuilder {
                     .filter(|(_, v)| !v.is_null())
                     .fold(self, |builder, (key, value)| {
                         builder.clone().add_field(key, value).unwrap_or_else(|_| {
-                            tracing::warn!("Failed to add detail field '{}'", key);
+                            tracing::warn!("Failed to add detail field '{key}'");
                             builder // Keep the original builder if add_field fails
                         })
                     })
@@ -299,9 +299,9 @@ impl ResponseBuilder {
 
         // Perform template substitution
         let template_str = result.get_message_template()?;
-        tracing::debug!("Template before substitution: '{}'", template_str);
+        tracing::debug!("Template before substitution: '{template_str}'");
         let message = Self::substitute_dynamic_template(template_str, &self, handler_context);
-        tracing::debug!("Template after substitution: '{}'", message);
+        tracing::debug!("Template after substitution: '{message}'");
         self = self.message(message);
 
         Ok(self.build())
@@ -356,7 +356,7 @@ impl ResponseBuilder {
         builder: &Self,
         handler_context: &HandlerContext,
     ) -> Option<String> {
-        tracing::debug!("Looking for placeholder: '{}'", placeholder);
+        tracing::debug!("Looking for placeholder: '{placeholder}'");
         // First check error_info (for error fields)
         if let Some(AnySchemaValue(Value::Object(error_info))) = &builder.error_info {
             tracing::debug!(
@@ -365,7 +365,7 @@ impl ResponseBuilder {
             );
             if let Some(value) = error_info.get(placeholder) {
                 let result = Self::value_to_string(value);
-                tracing::debug!("Found '{}' in error_info: '{}'", placeholder, result);
+                tracing::debug!("Found '{placeholder}' in error_info: '{result}'");
                 return Some(result);
             }
         }

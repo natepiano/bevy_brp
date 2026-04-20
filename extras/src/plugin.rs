@@ -371,7 +371,7 @@ fn add_managed_http_transport(app: &mut App, configured_port: Option<u16>) {
 
     let http_plugin = RemoteHttpPlugin::default().with_port(effective_port);
     app.add_plugins(http_plugin);
-    app.add_systems(Startup, move |_world: &mut World| {
+    app.add_systems(Startup, move |_: &mut World| {
         log_initialization(effective_port, &source_description);
     });
 }

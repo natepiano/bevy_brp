@@ -246,11 +246,6 @@ fn push_dependency(dependencies: &mut Vec<PathBuf>, current: &mut String, base_d
     clippy::expect_used,
     reason = "tests should panic on unexpected values"
 )]
-#[allow(
-    clippy::unwrap_used,
-    reason = "tests should panic on unexpected values"
-)]
-#[allow(clippy::panic, reason = "tests should panic on unexpected values")]
 mod tests {
     use std::fs;
     use std::thread;

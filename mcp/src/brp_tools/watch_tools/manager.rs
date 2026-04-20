@@ -51,7 +51,7 @@ impl WatchManager {
     /// Stop a watch by ID
     pub(super) fn stop_watch(&mut self, watch_id: u32) -> Result<()> {
         if let Some((info, handle)) = self.active_watches.remove(&watch_id) {
-            info!("Stopping watch {} for entity {}", watch_id, info.entity_id);
+            info!("Stopping watch {watch_id} for entity {}", info.entity_id);
             handle.abort();
             Ok(())
         } else {

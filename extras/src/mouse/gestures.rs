@@ -88,7 +88,7 @@ pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World
 
 /// Handler for `double_tap_gesture` BRP method
 pub fn double_tap_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let _request: DoubleTapGestureRequest = support::parse_request(params, true)?;
+    let _: DoubleTapGestureRequest = support::parse_request(params, true)?;
 
     window_event::write_input_event(world, bevy::input::gestures::DoubleTapGesture);
 

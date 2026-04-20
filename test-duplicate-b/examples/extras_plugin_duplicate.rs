@@ -32,6 +32,39 @@ struct KeyboardInputHistory {
     completed:        bool,
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum ModifierKey {
+    Alt,
+    Control,
+    Shift,
+    Super,
+}
+
+impl ModifierKey {
+    fn from_key_name(key: &str) -> Option<Self> {
+        if key.contains("Control") {
+            Some(Self::Control)
+        } else if key.contains("Shift") {
+            Some(Self::Shift)
+        } else if key.contains("Alt") {
+            Some(Self::Alt)
+        } else if key.contains("Super") {
+            Some(Self::Super)
+        } else {
+            None
+        }
+    }
+
+    const fn label(self) -> &'static str {
+        match self {
+            Self::Alt => "Alt",
+            Self::Control => "Ctrl",
+            Self::Shift => "Shift",
+            Self::Super => "Cmd",
+        }
+    }
+}
+
 /// Marker component for the keyboard input display text
 #[derive(Component)]
 struct KeyboardDisplayText;
@@ -184,15 +217,11 @@ fn track_keyboard_input(
                 }
 
                 // Track modifiers
-                if key_str.contains("Control") && !history.modifiers.contains(&"Ctrl".to_string()) {
-                    history.modifiers.push("Ctrl".to_string());
-                } else if key_str.contains("Shift")
-                    && !history.modifiers.contains(&"Shift".to_string())
-                {
-                    history.modifiers.push("Shift".to_string());
-                } else if key_str.contains("Alt") && !history.modifiers.contains(&"Alt".to_string())
-                {
-                    history.modifiers.push("Alt".to_string());
+                if let Some(modifier) = ModifierKey::from_key_name(&key_str) {
+                    let label = modifier.label();
+                    if !history.modifiers.iter().any(|existing| existing == label) {
+                        history.modifiers.push(label.to_string());
+                    }
                 }
             },
             bevy::input::ButtonState::Released => {
@@ -206,12 +235,10 @@ fn track_keyboard_input(
                 history.active_keys.retain(|k| k != &key_str);
 
                 // Update modifiers
-                if key_str.contains("Control") {
-                    history.modifiers.retain(|m| m != "Ctrl");
-                } else if key_str.contains("Shift") {
-                    history.modifiers.retain(|m| m != "Shift");
-                } else if key_str.contains("Alt") {
-                    history.modifiers.retain(|m| m != "Alt");
+                if let Some(modifier) = ModifierKey::from_key_name(&key_str) {
+                    history
+                        .modifiers
+                        .retain(|existing| existing != modifier.label());
                 }
 
                 if history.active_keys.is_empty() && !history.last_keys.is_empty() {

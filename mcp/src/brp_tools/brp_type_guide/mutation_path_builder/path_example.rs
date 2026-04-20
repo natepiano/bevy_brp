@@ -93,7 +93,7 @@ impl Serialize for PathExample {
 /// This is required by serde's flatten attribute but never actually used
 /// since we only serialize `MutationPathExternal`, never deserialize it.
 impl<'de> Deserialize<'de> for PathExample {
-    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    fn deserialize<D>(_: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {

@@ -113,7 +113,7 @@ pub trait ToolFn: Send + Sync {
     /// Handle the request with just parameters (most common case)
     /// Default implementation panics - tools must implement either this or
     /// `handle_impl_with_context`
-    async fn handle_impl(&self, _params: Self::Params) -> Result<Self::Output> {
+    async fn handle_impl(&self, _: Self::Params) -> Result<Self::Output> {
         unimplemented!("Must implement either handle_impl or handle_impl_with_context")
     }
 
@@ -121,7 +121,7 @@ pub trait ToolFn: Send + Sync {
     /// Default implementation ignores context and calls `handle_impl`
     async fn handle_impl_with_context(
         &self,
-        _ctx: HandlerContext,
+        _: HandlerContext,
         params: Self::Params,
     ) -> Result<Self::Output> {
         self.handle_impl(params).await

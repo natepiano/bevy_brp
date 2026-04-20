@@ -45,7 +45,7 @@ pub struct ListActiveWatchesResult {
 #[tool_fn(params = "NoParams", output = "ListActiveWatchesResult")]
 pub struct BrpListActiveWatches;
 
-async fn handle_impl(_params: NoParams) -> Result<ListActiveWatchesResult> {
+async fn handle_impl(_: NoParams) -> Result<ListActiveWatchesResult> {
     // Get active watches from manager and release lock immediately
     let active_watches = {
         let manager = WATCH_MANAGER.lock().await;

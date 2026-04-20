@@ -566,8 +566,8 @@ fn generate_count_computation(
     source: &proc_macro2::TokenStream,
     operation: &str,
 ) -> Option<proc_macro2::TokenStream> {
-    let tokens = match operation {
-        "count" => quote! {
+    match operation {
+        "count" => Some(quote! {
             #source.as_ref()
                 .map(|v| {
                     if let Some(arr) = v.as_array() {
@@ -579,15 +579,15 @@ fn generate_count_computation(
                     }
                 })
                 .unwrap_or(0)
-        },
-        "count_type_guide" => quote! {
+        }),
+        "count_type_guide" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.get("type_guide"))
                 .and_then(|v| v.as_object())
                 .map(|obj| obj.len())
                 .unwrap_or(0)
-        },
-        "count_components" => quote! {
+        }),
+        "count_components" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .map(|obj| {
@@ -600,15 +600,15 @@ fn generate_count_computation(
                     }
                 })
                 .unwrap_or(0)
-        },
-        "count_errors" => quote! {
+        }),
+        "count_errors" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("errors"))
                 .and_then(|v| v.as_array())
                 .map(|arr| arr.len())
-        },
-        "count_query_components" => quote! {
+        }),
+        "count_query_components" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_array())
                 .map(|entities| {
@@ -619,26 +619,25 @@ fn generate_count_computation(
                         .sum()
                 })
                 .unwrap_or(0)
-        },
-        "count_methods" => quote! {
+        }),
+        "count_methods" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("methods"))
                 .and_then(|v| v.as_array())
                 .map(|arr| arr.len())
                 .unwrap_or(0)
-        },
-        "count_keys_sent" => quote! {
+        }),
+        "count_keys_sent" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("keys_sent"))
                 .and_then(|v| v.as_array())
                 .map(|arr| arr.len())
                 .unwrap_or(0)
-        },
-        _ => return None,
-    };
-    Some(tokens)
+        }),
+        _ => None,
+    }
 }
 
 /// Generate token streams for `extract_*` operations.
@@ -648,15 +647,15 @@ fn generate_extract_computation(
     source: &proc_macro2::TokenStream,
     operation: &str,
 ) -> Option<proc_macro2::TokenStream> {
-    let tokens = match operation {
-        "extract_entity" => quote! {
+    match operation {
+        "extract_entity" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("entity"))
                 .and_then(|v| v.as_u64())
                 .unwrap_or(0)
-        },
-        "extract_keys_sent" => quote! {
+        }),
+        "extract_keys_sent" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("keys_sent"))
@@ -667,57 +666,57 @@ fn generate_extract_computation(
                         .collect()
                 })
                 .unwrap_or_else(Vec::new)
-        },
-        "extract_duration_ms" => quote! {
+        }),
+        "extract_duration_ms" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("duration_ms"))
                 .and_then(|v| v.as_u64())
                 .map(|v| v as u32)
                 .unwrap_or(100)
-        },
-        "extract_debug_enabled" => quote! {
+        }),
+        "extract_debug_enabled" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("debug_enabled"))
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false)
-        },
-        "extract_message" => quote! {
+        }),
+        "extract_message" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("message"))
                 .and_then(|v| v.as_str())
                 .map(String::from)
-        },
-        "extract_status" => quote! {
+        }),
+        "extract_status" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("status"))
                 .and_then(|v| v.as_str())
                 .map_or_else(|| "unknown".to_string(), String::from)
-        },
+        }),
         "extract_old_title" | "extract_new_title" => {
             let json_key = operation
                 .strip_prefix("extract_")
                 .expect("has extract_ prefix");
-            quote! {
+            Some(quote! {
                 #source.as_ref()
                     .and_then(|v| v.as_object())
                     .and_then(|obj| obj.get(#json_key))
                     .and_then(|v| v.as_str())
                     .map_or_else(String::new, String::from)
-            }
+            })
         },
-        "extract_chars_queued" => quote! {
+        "extract_chars_queued" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("chars_queued"))
                 .and_then(|v| v.as_u64())
                 .map(|v| v as usize)
                 .unwrap_or(0)
-        },
-        "extract_skipped" => quote! {
+        }),
+        "extract_skipped" => Some(quote! {
             #source.as_ref()
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get("skipped"))
@@ -728,10 +727,9 @@ fn generate_extract_computation(
                         .collect()
                 })
                 .unwrap_or_else(Vec::new)
-        },
-        _ => return None,
-    };
-    Some(tokens)
+        }),
+        _ => None,
+    }
 }
 
 /// Default value for a computed field operation used in constructors and builders.

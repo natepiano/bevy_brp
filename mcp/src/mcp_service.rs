@@ -144,8 +144,8 @@ impl ServerHandler for McpService {
 
     async fn list_tools(
         &self,
-        _request: Option<PaginatedRequestParams>,
-        _context: RequestContext<RoleServer>,
+        _: Option<PaginatedRequestParams>,
+        _: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
         Ok(self.list_mcp_tools())
     }

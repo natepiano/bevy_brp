@@ -1,6 +1,4 @@
-//! Shared types for BRP tools
-//!
-//! These types are used across multiple BRP tools for parameter serialization.
+//! Mouse input wrappers used by the `brp_extras/*_mouse` tools.
 
 use schemars::JsonSchema;
 use serde::Deserialize;

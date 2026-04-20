@@ -24,7 +24,7 @@ where
     fn enabled(
         &self,
         metadata: &tracing::Metadata<'_>,
-        _ctx: tracing_subscriber::layer::Context<'_, S>,
+        _: tracing_subscriber::layer::Context<'_, S>,
     ) -> bool {
         // Suppress third-party HTTP connection logs that are noise for BRP debugging
         let target = metadata.target();

@@ -60,15 +60,12 @@ async fn parse_sse_line(
 
     // Handle SSE format: "data: {json}"
     let Some(json_str) = line.strip_prefix("data: ") else {
-        debug!("[{}] Received non-SSE line: {}", watch_type, line);
+        debug!("[{watch_type}] Received non-SSE line: {line}");
         return Ok(());
     };
 
     let Ok(data) = serde_json::from_str::<Value>(json_str) else {
-        debug!(
-            "[{}] Failed to parse SSE data as JSON: {}",
-            watch_type, json_str
-        );
+        debug!("[{watch_type}] Failed to parse SSE data as JSON: {json_str}");
 
         // Log parse failure
         let _ = logger
@@ -86,10 +83,7 @@ async fn parse_sse_line(
         return Ok(());
     };
 
-    debug!(
-        "[{}] Received watch update for entity {}: {:?}",
-        watch_type, entity_id, data
-    );
+    debug!("[{watch_type}] Received watch update for entity {entity_id}: {data:?}");
 
     // Log successful JSON parsing
     let _ = logger.write_debug_update(
@@ -109,10 +103,7 @@ async fn parse_sse_line(
     if let Some(result) = data.get("result") {
         log_update(logger, result.clone()).await?;
     } else {
-        debug!(
-            "[{}] No result in JSON-RPC response: {:?}",
-            watch_type, data
-        );
+        debug!("[{watch_type}] No result in JSON-RPC response: {data:?}");
 
         // Log missing result field
         let _ = logger
@@ -179,7 +170,7 @@ async fn process_chunk(
     let text = match std::str::from_utf8(bytes) {
         Ok(text) => text,
         Err(e) => {
-            debug!("[{}] Invalid UTF-8 in stream chunk: {}", watch_type, e);
+            debug!("[{watch_type}] Invalid UTF-8 in stream chunk: {e}");
             return Ok(());
         },
     };
@@ -351,10 +342,7 @@ async fn process_watch_stream(
     let total_chunks =
         consume_stream_chunks(response, entity_id, watch_type, logger, start_time).await?;
 
-    info!(
-        "[{}] Watch stream ended for entity {} ({total_chunks} chunks)",
-        watch_type, entity_id
-    );
+    info!("[{watch_type}] Watch stream ended for entity {entity_id} ({total_chunks} chunks)");
     Ok(())
 }
 
@@ -402,8 +390,7 @@ async fn consume_stream_chunks(
     // Process any remaining incomplete line in the buffer
     if !line_buffer.trim().is_empty() {
         debug!(
-            "[{}] Processing remaining incomplete line: {}",
-            watch_type,
+            "[{watch_type}] Processing remaining incomplete line: {}",
             line_buffer.trim()
         );
         parse_sse_line(line_buffer.trim(), entity_id, watch_type, logger).await?;

@@ -226,14 +226,9 @@ pub(super) fn extract_simplified_variant_name(type_path: &str) -> String {
 
 #[cfg(test)]
 #[allow(
-    clippy::expect_used,
-    reason = "tests should panic on unexpected values"
-)]
-#[allow(
     clippy::unwrap_used,
     reason = "tests should panic on unexpected values"
 )]
-#[allow(clippy::panic, reason = "tests should panic on unexpected values")]
 mod tests {
     use super::*;
 

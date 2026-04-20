@@ -26,14 +26,14 @@ impl TypeKindBuilder for ValueMutationBuilder {
     where
         Self: 'a;
 
-    fn collect_children(&self, _ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
+    fn collect_children(&self, _: &RecursionContext) -> Result<Self::Iter<'_>> {
         Ok(vec![].into_iter()) // Leaf type - no children
     }
 
     fn assemble_from_children(
         &self,
         ctx: &RecursionContext,
-        _children: HashMap<MutationPathDescriptor, Example>,
+        _: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         // For leaf types without mutation knowledge, return appropriate reason
         Err(BuilderError::NotMutable(

@@ -403,11 +403,12 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
 
     // Handle direct "type" field
     if let Some(type_value) = obj.get_field(SchemaField::Type) {
-        return match type_value {
+        let parameter_type = match type_value {
             Value::String(type_str) => handle_string_type(type_str, obj),
             Value::Array(types) => handle_type_array(types, obj),
             _ => ParameterType::Any,
         };
+        return parameter_type;
     }
 
     // Handle objects with `additionalProperties` (`HashMap` pattern)

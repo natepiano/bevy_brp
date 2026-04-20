@@ -141,7 +141,7 @@ fn extract_app_name(process: &sysinfo::Process) -> String {
             .iter()
             .map(|arg| arg.to_string_lossy().to_string())
             .collect();
-        if let Some(_run_pos) = args.iter().position(|arg| arg == "run") {
+        if args.iter().any(|arg| arg == "run") {
             // Check for --bin argument
             if let Some(bin_pos) = args.iter().position(|arg| arg == "--bin")
                 && let Some(bin_name) = args.get(bin_pos + 1)
@@ -301,7 +301,7 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
 /// Check if BRP is responding on the given port
 async fn check_brp_on_port(port: Port) -> Result<bool> {
     // Retry with delays to account for BRP initialization timing
-    for _attempt in 0..STATUS_MAX_RETRIES {
+    for _ in 0..STATUS_MAX_RETRIES {
         let client = brp_tools::BrpClient::new(BrpMethod::WorldListComponents, port, None);
         match client.execute_raw().await {
             Ok(ResponseStatus::Success(_)) => {

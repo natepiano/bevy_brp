@@ -8,7 +8,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::brp_tools::Port;
-use crate::brp_tools::types::ScrollUnitWrapper;
+use crate::brp_tools::mouse::ScrollUnitWrapper;
 
 /// Parameters for the `brp_extras/scroll_mouse` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]

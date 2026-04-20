@@ -22,21 +22,21 @@ use crate::window_event;
 
 /// Component that tracks keys that need to be released after a duration
 #[derive(Component)]
-pub struct TimedKeyRelease {
+pub(super) struct TimedKeyRelease {
     /// The key code wrappers to release (stores wrapper for text field generation)
-    pub keys:  Vec<KeyCodeWrapper>,
+    pub(super) keys:  Vec<KeyCodeWrapper>,
     /// Timer tracking the remaining duration
-    pub timer: Timer,
+    pub(super) timer: Timer,
 }
 
 /// Request structure for `send_keys`
 #[derive(Debug, Deserialize)]
 pub(super) struct SendKeysRequest {
     /// Array of key codes to send
-    pub keys:        Vec<String>,
+    keys:        Vec<String>,
     /// Duration in milliseconds to hold the keys before releasing
     #[serde(default = "default_duration")]
-    pub duration_ms: u32,
+    duration_ms: u32,
 }
 
 const fn default_duration() -> u32 { DEFAULT_KEY_DURATION_MS }
@@ -45,11 +45,11 @@ const fn default_duration() -> u32 { DEFAULT_KEY_DURATION_MS }
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct SendKeysResponse {
     /// Whether the operation was successful
-    pub success:     bool,
+    pub(super) success:     bool,
     /// List of keys that were sent
-    pub keys_sent:   Vec<String>,
+    pub(super) keys_sent:   Vec<String>,
     /// Duration in milliseconds the keys were held
-    pub duration_ms: u32,
+    pub(super) duration_ms: u32,
 }
 
 /// Validate key codes and return the parsed key code wrappers
@@ -142,7 +142,7 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
 }
 
 /// System that processes timed key releases
-pub fn process_timed_key_releases(
+pub(super) fn process_timed_key_releases(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedKeyRelease)>,

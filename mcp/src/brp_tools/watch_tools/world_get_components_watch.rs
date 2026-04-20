@@ -7,7 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::task;
-use super::types::WatchStartResult;
+use super::watch_start_result::WatchStartResult;
 use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;

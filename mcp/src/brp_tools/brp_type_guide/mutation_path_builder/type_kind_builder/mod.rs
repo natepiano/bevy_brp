@@ -53,7 +53,7 @@ pub(super) trait TypeKindBuilder {
     /// all possible mutation paths, or a `BuilderError` if path building failed.
     fn build_paths(
         &self,
-        _ctx: &RecursionContext,
+        _: &RecursionContext,
     ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
         Ok(vec![])
     }
@@ -67,8 +67,8 @@ pub(super) trait TypeKindBuilder {
     /// Assemble a parent value from child examples.
     fn assemble_from_children(
         &self,
-        _ctx: &RecursionContext,
-        _children: HashMap<MutationPathDescriptor, Example>,
+        _: &RecursionContext,
+        _: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         Ok(json!(null))
     }

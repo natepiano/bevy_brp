@@ -6,7 +6,7 @@ mod constants;
 mod logger;
 mod manager;
 mod task;
-mod types;
+mod watch_start_result;
 mod world_get_components_watch;
 mod world_list_components_watch;
 mod wrap_watch_error;

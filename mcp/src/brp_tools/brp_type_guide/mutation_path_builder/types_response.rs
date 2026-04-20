@@ -206,7 +206,7 @@ impl Serialize for SpawnInsertExample {
 ///
 /// Required by serde's flatten attribute but never actually used.
 impl<'de> Deserialize<'de> for SpawnInsertExample {
-    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    fn deserialize<D>(_: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {

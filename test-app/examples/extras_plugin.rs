@@ -139,6 +139,54 @@ struct KeyboardInputHistory {
     completed:            bool,
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum ModifierKey {
+    Alt,
+    Control,
+    Shift,
+    Super,
+}
+
+impl ModifierKey {
+    fn from_key_name(key: &str) -> Option<Self> {
+        if key.contains("Control") {
+            Some(Self::Control)
+        } else if key.contains("Shift") {
+            Some(Self::Shift)
+        } else if key.contains("Alt") {
+            Some(Self::Alt)
+        } else if key.contains("Super") {
+            Some(Self::Super)
+        } else {
+            None
+        }
+    }
+
+    const fn label(self) -> &'static str {
+        match self {
+            Self::Alt => "Alt",
+            Self::Control => "Ctrl",
+            Self::Shift => "Shift",
+            Self::Super => "Cmd",
+        }
+    }
+}
+
+fn collect_modifier_labels(keys: &[String]) -> Vec<String> {
+    let mut modifiers = Vec::new();
+
+    for key in keys {
+        if let Some(modifier) = ModifierKey::from_key_name(key) {
+            let label = modifier.label();
+            if !modifiers.iter().any(|existing| existing == label) {
+                modifiers.push(label.to_string());
+            }
+        }
+    }
+
+    modifiers
+}
+
 /// Marker component for the keyboard input display text
 #[derive(Component)]
 struct KeyboardDisplayText;
@@ -1749,20 +1797,8 @@ fn track_keyboard_input(
                     history.last_keys = combination;
 
                     // Extract modifiers from the complete combination
-                    let mut modifiers = Vec::new();
-                    for key in &history.complete_combination {
-                        if key.contains("Control") && !modifiers.contains(&"Ctrl".to_string()) {
-                            modifiers.push("Ctrl".to_string());
-                        } else if key.contains("Shift") && !modifiers.contains(&"Shift".to_string())
-                        {
-                            modifiers.push("Shift".to_string());
-                        } else if key.contains("Alt") && !modifiers.contains(&"Alt".to_string()) {
-                            modifiers.push("Alt".to_string());
-                        } else if key.contains("Super") && !modifiers.contains(&"Cmd".to_string()) {
-                            modifiers.push("Cmd".to_string());
-                        }
-                    }
-                    history.complete_modifiers = modifiers;
+                    history.complete_modifiers =
+                        collect_modifier_labels(&history.complete_combination);
 
                     history.completed = true;
                 }
@@ -1773,19 +1809,7 @@ fn track_keyboard_input(
     }
 
     // Update modifiers based on currently active keys
-    let mut new_modifiers = Vec::new();
-    for key in &history.active_keys {
-        if key.contains("Control") && !new_modifiers.contains(&"Ctrl".to_string()) {
-            new_modifiers.push("Ctrl".to_string());
-        } else if key.contains("Shift") && !new_modifiers.contains(&"Shift".to_string()) {
-            new_modifiers.push("Shift".to_string());
-        } else if key.contains("Alt") && !new_modifiers.contains(&"Alt".to_string()) {
-            new_modifiers.push("Alt".to_string());
-        } else if key.contains("Super") && !new_modifiers.contains(&"Cmd".to_string()) {
-            new_modifiers.push("Cmd".to_string());
-        }
-    }
-    history.modifiers = new_modifiers;
+    history.modifiers = collect_modifier_labels(&history.active_keys);
 }
 
 /// Update the keyboard display

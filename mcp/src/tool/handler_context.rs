@@ -103,28 +103,24 @@ impl HandlerContext {
         let call_info = tool_name.get_call_info();
 
         match tool_result.result {
-            Ok(data) => {
-                let response =
-                    match Response::success(&data, tool_result.params, call_info.clone(), self) {
-                        Ok(response) => response,
-                        Err(report) => {
-                            return Response::error_message(
-                                format!("Internal error: {}", report.current_context()),
-                                call_info,
-                            )
-                            .to_call_tool_result();
-                        },
-                    };
-
-                // Handle large response here with access to tool_name
-                match self.handle_large_response_if_needed(response) {
-                    Ok(processed) => processed.to_call_tool_result(),
-                    Err(e) => Response::error_message(
-                        format!("Failed to process response: {}", e.current_context()),
-                        call_info,
-                    )
-                    .to_call_tool_result(),
-                }
+            Ok(data) => match Response::success(&data, tool_result.params, call_info.clone(), self)
+            {
+                Ok(response) => {
+                    // Handle large response here with access to tool_name
+                    match self.handle_large_response_if_needed(response) {
+                        Ok(processed) => processed.to_call_tool_result(),
+                        Err(e) => Response::error_message(
+                            format!("Failed to process response: {}", e.current_context()),
+                            call_info,
+                        )
+                        .to_call_tool_result(),
+                    }
+                },
+                Err(report) => Response::error_message(
+                    format!("Internal error: {}", report.current_context()),
+                    call_info,
+                )
+                .to_call_tool_result(),
             },
             Err(report) => match report.current_context() {
                 Error::Structured { result } => {

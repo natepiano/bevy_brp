@@ -76,7 +76,7 @@ impl VariantKind {
 /// Extract tuple variant signature from schema if it matches tuple pattern
 fn extract_tuple_variant_signature(
     v: &Value,
-    _registry: &HashMap<BrpTypeName, Value>,
+    _: &HashMap<BrpTypeName, Value>,
 ) -> Option<VariantSignature> {
     let prefix_items = v.get_field(SchemaField::PrefixItems)?;
     let prefix_array = prefix_items.as_array()?;
@@ -92,7 +92,7 @@ fn extract_tuple_variant_signature(
 /// Extract struct variant signature from schema if it matches struct pattern
 fn extract_struct_variant_signature(
     v: &Value,
-    _registry: &HashMap<BrpTypeName, Value>,
+    _: &HashMap<BrpTypeName, Value>,
 ) -> Option<VariantSignature> {
     let properties = v.get_field(SchemaField::Properties)?;
     let props_map = properties.as_object()?;

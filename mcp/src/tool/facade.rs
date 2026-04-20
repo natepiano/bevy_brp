@@ -4,8 +4,8 @@ use super::ParamStruct;
 use super::ResultStruct;
 use super::ToolDef;
 use super::ToolResult;
+use super::handler;
 use super::registry;
-use super::types;
 use crate::error::Result;
 
 /// Visibility facade for the tool catalog.
@@ -39,5 +39,5 @@ where
     F: FnOnce(HandlerContext, P) -> Fut + Send + 'static,
     Fut: std::future::Future<Output = Result<O>> + Send + 'static,
 {
-    types::call_with_typed_params(ctx, f)
+    handler::call_with_typed_params(ctx, f)
 }

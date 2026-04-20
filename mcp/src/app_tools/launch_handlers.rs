@@ -29,7 +29,7 @@ impl ToolFn for LaunchBevyTarget {
         })
     }
 
-    async fn handle_impl(&self, _params: Self::Params) -> Result<Self::Output> {
+    async fn handle_impl(&self, _: Self::Params) -> Result<Self::Output> {
         Err(
             Error::InvalidState("LaunchBevyTarget uses its custom call implementation".to_string())
                 .into(),
