@@ -15,7 +15,7 @@ use serde_json::json;
 /// Returns FPS and frame time diagnostics from Bevy's `DiagnosticsStore`.
 /// Requires `FrameTimeDiagnosticsPlugin` to be installed (done automatically
 /// by `BrpExtrasPlugin` when the `diagnostics` feature is enabled).
-pub(crate) fn handler(In(_params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult {
     let Some(store) = world.get_resource::<DiagnosticsStore>() else {
         return Err(BrpError {
             code:    INTERNAL_ERROR,

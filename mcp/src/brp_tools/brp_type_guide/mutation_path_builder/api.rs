@@ -42,7 +42,7 @@ pub fn build_mutation_paths(
         .get(type_name)
         .ok_or_else(|| Error::General(format!("Type {type_name} not found in registry")))?;
 
-    let type_kind = TypeKind::from_schema(schema);
+    let type_kind: TypeKind = schema.into();
 
     // Create internal context (hidden from caller)
     let path_kind = PathKind::new_root_value(type_name.clone());

@@ -37,7 +37,7 @@ pub enum TypeKind {
     Value,
 }
 
-impl TypeKind {
+impl From<&Value> for TypeKind {
     /// Extract `TypeKind` from a registry schema with fallback to `Value`
     ///
     /// Some types don't have a `kind` field in their schema because Bevy's reflection
@@ -47,14 +47,16 @@ impl TypeKind {
     /// - `NonZero*` types and other primitives without complete reflection data
     ///
     /// These types are safely treated as `TypeKind::Value` (leaf/primitive types).
-    pub fn from_schema(schema: &Value) -> Self {
+    fn from(schema: &Value) -> Self {
         schema
             .get_field(SchemaField::Kind)
             .and_then(Value::as_str)
             .and_then(|s| s.parse().ok())
             .unwrap_or(Self::Value)
     }
+}
 
+impl TypeKind {
     /// Returns appropriate terminology for child elements of this type
     ///
     /// Used in descriptions to provide type-specific language instead of generic "descendants".

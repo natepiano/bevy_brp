@@ -252,7 +252,7 @@ pub(super) fn determine_parent_mutability(
 ) -> (Mutability, Option<NotMutableReason>) {
     // Get TypeKind for special case handling
     let schema = ctx.registry.get(ctx.type_name()).unwrap_or(&Value::Null);
-    let type_kind = TypeKind::from_schema(schema);
+    let type_kind: TypeKind = schema.into();
 
     // SPECIAL CASE: Map and Set require ALL children to be mutable
     // Maps need both key AND value mutable for operations like insert(key, value)
@@ -388,7 +388,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             return Ok((vec![not_mutable_path], Example::NotApplicable));
         };
 
-        let child_kind = TypeKind::from_schema(child_schema);
+        let child_kind: TypeKind = child_schema.into();
 
         tracing::debug!(
             "PROCESS_CHILD: calling recurse_mutation_paths, type_kind={:?}",
@@ -474,7 +474,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         // These collections require ALL children to be present for assembly, but our
         // filter excludes NotMutable children, causing assembly validation errors
         let schema = ctx.registry.get(ctx.type_name()).unwrap_or(&Value::Null);
-        let type_kind = TypeKind::from_schema(schema);
+        let type_kind: TypeKind = schema.into();
 
         if matches!(type_kind, TypeKind::Map | TypeKind::Set) {
             let has_not_mutable = child_paths

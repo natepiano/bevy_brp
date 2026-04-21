@@ -156,11 +156,11 @@ impl PathKind {
         type_kind: &TypeKind,
         enum_path_info: Option<&EnumPathInfo>,
     ) -> String {
-        // Handle redundancy case: parent_type matches single variant's short name
+        // Integrated description (no suffix): parent_type matches single variant's short name.
         // Example: ".0.z" where parent="Xyza" and variants=["Color::Xyza"]
-        // Generate: "Mutate the z field of Color::Xyza variant" (integrated, no suffix)
+        // → "Mutate the z field of Color::Xyza variant"
         if let Some(variant) = self.single_variant_matching_parent(enum_path_info) {
-            return match self {
+            match self {
                 Self::StructField { field_name, .. } => {
                     format!("Mutate the {field_name} field of {variant} variant")
                 },
@@ -173,10 +173,29 @@ impl PathKind {
                 Self::RootValue { .. } => {
                     format!("Mutate the root value of {variant} variant")
                 },
-            };
+            }
+        } else if let Self::IndexedElement {
+            index: 0,
+            parent_type,
+            type_name,
+            ..
+        } = self
+            && let OptionClassification::Option { .. } = parent_type.into()
+        {
+            // Integrated description (no suffix): Option<T> element at index 0.
+            let value_short = type_name.short_name();
+            format!("Mutate the {value_short} value inside Some variant")
+        } else {
+            self.describe_normal(type_kind, enum_path_info)
         }
+    }
 
-        // Normal case: generate base description with type_kind suffix
+    /// Normal case: base description with `type_kind` suffix plus enum variant suffix.
+    fn describe_normal(
+        &self,
+        type_kind: &TypeKind,
+        enum_path_info: Option<&EnumPathInfo>,
+    ) -> String {
         let type_kind_str = if matches!(type_kind, TypeKind::Value) {
             String::new()
         } else {
@@ -194,10 +213,7 @@ impl PathKind {
                 type_name,
                 ..
             } => {
-                // Check if field type is Option<T>
-                if let OptionClassification::Option { inner_type } =
-                    OptionClassification::from_type_name(type_name)
-                {
+                if let OptionClassification::Option { inner_type } = type_name.into() {
                     let inner_short = inner_type.short_name();
                     format!("Set {field_name} to None or Some({inner_short})")
                 } else {
@@ -206,19 +222,8 @@ impl PathKind {
                 }
             },
             Self::IndexedElement {
-                index,
-                parent_type,
-                type_name,
-                ..
+                index, parent_type, ..
             } => {
-                // Check if parent is Option<T> and index is 0
-                if *index == 0
-                    && let OptionClassification::Option { .. } =
-                        OptionClassification::from_type_name(parent_type)
-                {
-                    let value_short = type_name.short_name();
-                    return format!("Mutate the {value_short} value inside Some variant");
-                }
                 let short_parent = parent_type.short_name();
                 format!("Mutate element {index} of {short_parent}{type_kind_str}")
             },
@@ -230,7 +235,6 @@ impl PathKind {
             },
         };
 
-        // Add variant suffix if applicable
         let suffix = enum_path_info.map_or_else(String::new, |enum_data| {
             match &enum_data.applicable_variants {
                 variants if variants.is_empty() => String::new(),

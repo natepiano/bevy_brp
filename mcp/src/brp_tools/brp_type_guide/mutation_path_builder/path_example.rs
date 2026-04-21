@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde::ser::SerializeMap;
 
+use super::enum_builder;
 use super::types_internal::Example;
 use super::types_internal::ExampleGroup;
 
@@ -51,8 +52,9 @@ impl PathExample {
     pub(super) fn preferred_example(&self) -> Example {
         match self {
             Self::Simple(ex) => ex.clone(),
-            Self::EnumRoot { groups, .. } => super::enum_builder::select_preferred_example(groups)
-                .unwrap_or(Example::NotApplicable),
+            Self::EnumRoot { groups, .. } => {
+                enum_builder::select_preferred_example(groups).unwrap_or(Example::NotApplicable)
+            },
         }
     }
 }

@@ -287,7 +287,7 @@ impl RecursionContext {
                 // Check if we're a child of an enum variant signature
                 if let Some(signature) = &self.parent_variant_signature {
                     match signature {
-                        VariantSignature::Tuple(_types) => {
+                        VariantSignature::Tuple(_) => {
                             // Architectural guarantee: The index was created by enumerating
                             // this signature's types, so bounds are guaranteed valid
 

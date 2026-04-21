@@ -77,7 +77,7 @@ impl BrpHttpClient {
 
         let response = match response {
             Ok(resp) => resp,
-            Err(e) => return self.handle_error(e, &url, &body),
+            Err(e) => self.handle_error(e, &url, &body)?,
         };
 
         // Check HTTP status before returning
@@ -101,7 +101,7 @@ impl BrpHttpClient {
 
         let response = match response {
             Ok(resp) => resp,
-            Err(e) => return self.handle_error(e, &url, &body),
+            Err(e) => self.handle_error(e, &url, &body)?,
         };
 
         // Check HTTP status before returning

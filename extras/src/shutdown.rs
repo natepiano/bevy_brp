@@ -5,7 +5,7 @@ use bevy_remote::BrpResult;
 use serde_json::Value;
 use serde_json::json;
 
-use crate::constants::DEFERRED_SHUTDOWN_FRAMES;
+use super::constants::DEFERRED_SHUTDOWN_FRAMES;
 
 /// Resource to track pending shutdown
 #[derive(Resource)]

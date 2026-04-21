@@ -90,7 +90,7 @@ impl MutationPathInternal {
     ) -> MutationPathExternal {
         // Get schema and derive TypeKind for the field type
         let field_schema = registry.get(&self.type_name).unwrap_or(&Value::Null);
-        let type_kind = TypeKind::from_schema(field_schema);
+        let type_kind: TypeKind = field_schema.into();
 
         // Check for Default trait once at the top for root paths
         let has_default_for_root = self.has_default_for_root(field_schema);

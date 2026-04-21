@@ -41,10 +41,6 @@ fn main() {
             ..default()
         }))
         .add_plugins(BrpExtrasPlugin::new().port_in_title(PortDisplay::Always))
-        // Register types with BRP for discovery and triggering
-        .register_type::<TestUnitEvent>()
-        .register_type::<TestPayloadEvent>()
-        .register_type::<EventTriggerTracker>()
         .init_resource::<EventTriggerTracker>()
         .add_observer(on_unit_event)
         .add_observer(on_payload_event)

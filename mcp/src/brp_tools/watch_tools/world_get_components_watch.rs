@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use super::task;
 use super::watch_start_result::WatchStartResult;
+use super::wrap_watch_error;
 use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
@@ -37,7 +38,7 @@ async fn handle_impl(params: GetComponentsWatchParams) -> Result<WatchStartResul
     let result = task::start_entity_watch_task(params.entity, Some(params.types), params.port)
         .await
         .map_err(|e| {
-            super::wrap_watch_error::wrap_watch_error(
+            wrap_watch_error::wrap_watch_error(
                 "Failed to start entity watch",
                 Some(params.entity),
                 e,

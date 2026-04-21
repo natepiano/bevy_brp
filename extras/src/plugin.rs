@@ -14,15 +14,15 @@ use bevy_remote::RemotePlugin;
 use bevy_remote::http::RemoteHttpPlugin;
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::DEFAULT_REMOTE_PORT;
-use crate::constants::EXTRAS_COMMAND_PREFIX;
+use super::DEFAULT_REMOTE_PORT;
+use super::constants::EXTRAS_COMMAND_PREFIX;
 #[cfg(feature = "diagnostics")]
-use crate::diagnostics;
-use crate::keyboard;
-use crate::mouse;
-use crate::screenshot;
-use crate::shutdown;
-use crate::window_title;
+use super::diagnostics;
+use super::keyboard;
+use super::mouse;
+use super::screenshot;
+use super::shutdown;
+use super::window_title;
 
 // ---------------------------------------------------------------------------
 // Port display configuration

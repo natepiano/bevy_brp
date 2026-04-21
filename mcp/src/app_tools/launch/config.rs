@@ -151,22 +151,22 @@ pub(super) trait LaunchConfigTrait: Clone {
 
     fn ensure_built(&self, target: &BevyTarget) -> Result<build::BuildState> {
         if Self::TARGET_TYPE == TargetType::App {
-            match build_freshness::check_target_freshness(target, self.profile()) {
-                FreshnessCheckResult::Fresh => return Ok(build::BuildState::Fresh),
-                FreshnessCheckResult::Stale(reason) => {
-                    tracing::debug!(
-                        "Lock-free freshness check marked {} '{}' stale: {reason}",
-                        Self::TARGET_TYPE,
-                        self.target_name(),
-                    );
-                },
-                FreshnessCheckResult::Unknown(reason) => {
-                    tracing::debug!(
-                        "Lock-free freshness check was inconclusive for {} '{}': {reason}",
-                        Self::TARGET_TYPE,
-                        self.target_name(),
-                    );
-                },
+            let freshness = build_freshness::check_target_freshness(target, self.profile());
+            match &freshness {
+                FreshnessCheckResult::Fresh => {},
+                FreshnessCheckResult::Stale(reason) => tracing::debug!(
+                    "Lock-free freshness check marked {} '{}' stale: {reason}",
+                    Self::TARGET_TYPE,
+                    self.target_name(),
+                ),
+                FreshnessCheckResult::Unknown(reason) => tracing::debug!(
+                    "Lock-free freshness check was inconclusive for {} '{}': {reason}",
+                    Self::TARGET_TYPE,
+                    self.target_name(),
+                ),
+            }
+            if matches!(freshness, FreshnessCheckResult::Fresh) {
+                return Ok(build::BuildState::Fresh);
             }
         }
 

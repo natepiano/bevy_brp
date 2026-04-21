@@ -41,26 +41,30 @@ enum ModifierKey {
 }
 
 impl ModifierKey {
-    fn from_key_name(key: &str) -> Option<Self> {
-        if key.contains("Control") {
-            Some(Self::Control)
-        } else if key.contains("Shift") {
-            Some(Self::Shift)
-        } else if key.contains("Alt") {
-            Some(Self::Alt)
-        } else if key.contains("Super") {
-            Some(Self::Super)
-        } else {
-            None
-        }
-    }
-
     const fn label(self) -> &'static str {
         match self {
             Self::Alt => "Alt",
             Self::Control => "Ctrl",
             Self::Shift => "Shift",
             Self::Super => "Cmd",
+        }
+    }
+}
+
+impl TryFrom<&str> for ModifierKey {
+    type Error = ();
+
+    fn try_from(key: &str) -> Result<Self, Self::Error> {
+        if key.contains("Control") {
+            Ok(Self::Control)
+        } else if key.contains("Shift") {
+            Ok(Self::Shift)
+        } else if key.contains("Alt") {
+            Ok(Self::Alt)
+        } else if key.contains("Super") {
+            Ok(Self::Super)
+        } else {
+            Err(())
         }
     }
 }
@@ -217,7 +221,7 @@ fn track_keyboard_input(
                 }
 
                 // Track modifiers
-                if let Some(modifier) = ModifierKey::from_key_name(&key_str) {
+                if let Ok(modifier) = ModifierKey::try_from(key_str.as_str()) {
                     let label = modifier.label();
                     if !history.modifiers.iter().any(|existing| existing == label) {
                         history.modifiers.push(label.to_string());
@@ -235,7 +239,7 @@ fn track_keyboard_input(
                 history.active_keys.retain(|k| k != &key_str);
 
                 // Update modifiers
-                if let Some(modifier) = ModifierKey::from_key_name(&key_str) {
+                if let Ok(modifier) = ModifierKey::try_from(key_str.as_str()) {
                     history
                         .modifiers
                         .retain(|existing| existing != modifier.label());

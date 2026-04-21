@@ -1,7 +1,7 @@
 use error_stack::Report;
 use thiserror::Error;
 
-use crate::tool::ResultStruct;
+use super::tool::ResultStruct;
 
 // Error message prefixes
 const MSG_FAILED_TO_PREFIX: &str = "Failed to";

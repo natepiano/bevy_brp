@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use super::task;
 use super::watch_start_result::WatchStartResult;
+use super::wrap_watch_error;
 use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
@@ -34,11 +35,7 @@ async fn handle_impl(params: ListComponentsWatchParams) -> Result<WatchStartResu
     let result = task::start_list_watch_task(params.entity, params.port)
         .await
         .map_err(|e| {
-            super::wrap_watch_error::wrap_watch_error(
-                "Failed to start list watch",
-                Some(params.entity),
-                e,
-            )
+            wrap_watch_error::wrap_watch_error("Failed to start list watch", Some(params.entity), e)
         });
 
     match result {

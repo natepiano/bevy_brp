@@ -16,13 +16,6 @@ pub(super) enum OptionClassification {
 }
 
 impl OptionClassification {
-    pub(super) fn from_type_name(type_name: &BrpTypeName) -> Self {
-        Self::extract_option_inner(type_name).map_or_else(
-            || Self::Regular(type_name.clone()),
-            |inner_type| Self::Option { inner_type },
-        )
-    }
-
     pub(super) const fn is_option(&self) -> bool { matches!(self, Self::Option { .. }) }
 
     fn extract_option_inner(type_name: &BrpTypeName) -> Option<BrpTypeName> {
@@ -40,13 +33,22 @@ impl OptionClassification {
     }
 }
 
+impl From<&BrpTypeName> for OptionClassification {
+    fn from(type_name: &BrpTypeName) -> Self {
+        Self::extract_option_inner(type_name).map_or_else(
+            || Self::Regular(type_name.clone()),
+            |inner_type| Self::Option { inner_type },
+        )
+    }
+}
+
 /// Apply `Option<T>` transformation if needed: `{"Some": value}` -> `value`, `"None"` -> `null`
 pub(super) fn apply_option_transformation(
     example: Example,
     variant_name: &VariantName,
     enum_type: &BrpTypeName,
 ) -> Example {
-    let type_category = OptionClassification::from_type_name(enum_type);
+    let type_category: OptionClassification = enum_type.into();
 
     if !type_category.is_option() {
         return example;

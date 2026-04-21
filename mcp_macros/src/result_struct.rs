@@ -9,8 +9,8 @@ use syn::Data;
 use syn::DeriveInput;
 use syn::parse_macro_input;
 
-use crate::shared;
-use crate::shared::ComputedField;
+use super::shared;
+use super::shared::ComputedField;
 
 /// Attributes for #[`brp_result`(...)]
 #[derive(Default)]

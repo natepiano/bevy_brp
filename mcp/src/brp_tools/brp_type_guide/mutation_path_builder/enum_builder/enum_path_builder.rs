@@ -277,7 +277,7 @@ fn process_signature_path(
     // Recursively process child and collect paths
     let child_descriptor = path.to_mutation_path_descriptor();
     let child_schema = child_ctx.require_registry_schema()?;
-    let child_type_kind = TypeKind::from_schema(child_schema);
+    let child_type_kind: TypeKind = child_schema.into();
 
     // Use the same recursion function as `MutationPathBuilder`
     let mut child_paths = path_builder::recurse_mutation_paths(child_type_kind, &child_ctx)?;
@@ -423,7 +423,7 @@ fn build_variant_example(
                 Example::Json(json!({ variant_name.short_name(): tuple_values }))
             }
         },
-        VariantSignature::Struct(_field_types) => {
+        VariantSignature::Struct(_) => {
             // Use shared function to assemble struct from children (only includes mutable fields)
             let field_values = support::assemble_struct_from_children(children);
             Example::Json(json!({ variant_name.short_name(): field_values }))

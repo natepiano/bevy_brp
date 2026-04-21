@@ -825,7 +825,7 @@ fn track_gestures(
         }
     }
 
-    for _event in double_tap_events.read() {
+    for _ in double_tap_events.read() {
         if is_primary {
             tracker.primary_double_tap_timestamp = current_time;
         } else {
