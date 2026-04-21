@@ -12,13 +12,13 @@ Validate brp_extras screenshot capture and FPS diagnostics.
 - Do not launch or shutdown the app in this test
 
 ### 2. Screenshot Capture
-- Execute `mcp__brp__brp_extras_screenshot` with absolute path (use current working directory + filename)
+- Execute `mcp__brp__brp_extras_screenshot` with absolute path `<cwd>/test_screenshot_{{PORT}}.png` (current working directory + that exact filename)
 - **IMPORTANT**: Poll for file completion using `.claude/scripts/integration_tests/extras_test_poll_screenshot.sh <absolute_path_to_screenshot>`
   - Screenshot I/O is asynchronous, this script waits up to 5 seconds for file to be ready
   - Script exits with success (0) if file exists and has non-zero size
   - Script exits with failure (1) if timeout or file not ready
 - Verify screenshot file exists and has non-zero size
-- **IMPORTANT**: Clean up screenshot files by running: `bash .claude/scripts/integration_tests/cleanup_screenshots.sh`
+- **IMPORTANT**: Clean up by passing the same absolute path to: `bash .claude/scripts/integration_tests/cleanup_screenshots.sh <absolute_path_to_screenshot>`
 
 ### 3. FPS Diagnostics Test
 - Execute `mcp__brp__brp_execute` with method `brp_extras/get_diagnostics` and no params
