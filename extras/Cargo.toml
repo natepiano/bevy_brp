@@ -26,6 +26,7 @@ bevy = { workspace = true, features = [
   "png",
   "serialize",
 ] }
+bevy_kana.workspace = true
 
 # Direct dependency to control default features (bevy/bevy_remote pulls in HTTP transport
 # which requires async-io and doesn't compile on wasm32)

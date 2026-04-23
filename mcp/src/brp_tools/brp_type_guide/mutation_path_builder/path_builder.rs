@@ -26,8 +26,8 @@ use serde_json::json;
 
 use super::BuilderError;
 use super::enum_builder;
+use super::mutation_path_internal;
 use super::mutation_path_internal::MutationPathInternal;
-use super::mutation_path_internal::MutationPathSliceExt;
 use super::new_types::VariantName;
 use super::not_mutable_reason::NotMutableReason;
 use super::path_example::PathExample;
@@ -488,7 +488,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
 
         // Collect all unique variant chains from all children
-        let all_chains = child_paths.child_variant_chains(*ctx.depth);
+        let all_chains = mutation_path_internal::child_variant_chains(child_paths, *ctx.depth);
 
         if all_chains.is_empty() {
             return Ok(None);

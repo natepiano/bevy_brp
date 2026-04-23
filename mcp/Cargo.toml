@@ -21,6 +21,7 @@ bevy = { workspace = true, default-features = false, features = [
   "mouse",
   "serialize",
 ] }
+bevy_kana.workspace = true
 
 # All other dependencies use workspace
 anyhow.workspace              = true

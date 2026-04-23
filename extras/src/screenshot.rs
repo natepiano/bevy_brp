@@ -30,7 +30,7 @@ pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpRe
     let path = params
         .as_ref()
         .and_then(|v| v.get("path"))
-        .and_then(|v| v.as_str())
+        .and_then(Value::as_str)
         .ok_or_else(|| BrpError {
             code:    INVALID_PARAMS,
             message: "Missing 'path' parameter".to_string(),

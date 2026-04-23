@@ -16,6 +16,7 @@ repository = "https://github.com/natepiano/bevy_brp"
 # Bevy with no default features - each crate specifies what it needs
 bevy            = { version = "0.18.1", default-features = false }
 bevy_brp_extras = { path = "extras" }
+bevy_kana       = "0.0.5"
 bevy_mesh       = { version = "0.18.1" }
 bevy_remote     = { version = "0.18.1", default-features = false }
 bevy_winit      = { version = "0.18.1" }

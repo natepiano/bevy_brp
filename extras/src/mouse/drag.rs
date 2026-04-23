@@ -9,6 +9,7 @@ use bevy::math::Vec2;
 use bevy::prelude::*;
 use bevy::window::CursorMoved;
 use bevy::window::WindowEvent;
+use bevy_kana::ToF32;
 use bevy_remote::BrpResult;
 use serde::Deserialize;
 use serde::Serialize;
@@ -187,11 +188,7 @@ pub fn process_drag_operations(
             },
             DragState::Dragging => {
                 // Calculate interpolation factor
-                #[allow(
-                    clippy::cast_precision_loss,
-                    reason = "precision loss acceptable for interpolation factor"
-                )]
-                let t = drag.current_frame as f32 / drag.total_frames as f32;
+                let t = drag.current_frame.to_f32() / drag.total_frames.to_f32();
                 let new_position = drag.start.lerp(drag.end, t);
 
                 // Update position

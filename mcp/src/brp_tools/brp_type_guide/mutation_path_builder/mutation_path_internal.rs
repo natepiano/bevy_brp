@@ -266,26 +266,20 @@ impl MutationPathInternal {
     }
 }
 
-/// Extension trait for collecting variant chains from slices of `MutationPathInternal`
-pub(super) trait MutationPathSliceExt {
-    /// Collect all unique variant chains from direct children at the given depth
-    ///
-    /// Extracts variant chains from `partial_root_examples` for all direct children,
-    /// enabling variant-specific root example assembly during enum processing.
-    fn child_variant_chains(&self, depth: usize) -> HashSet<Vec<VariantName>>;
-}
-
-impl MutationPathSliceExt for [&MutationPathInternal] {
-    fn child_variant_chains(&self, depth: usize) -> HashSet<Vec<VariantName>> {
-        self.iter()
-            .filter(|child| child.is_direct_child_at_depth(depth))
-            .flat_map(|child| {
-                child
-                    .partial_root_examples
-                    .as_ref()
-                    .into_iter()
-                    .flat_map(|partials| partials.keys().cloned())
-            })
-            .collect()
-    }
+/// Collect all unique variant chains from direct children at the given depth.
+pub(super) fn child_variant_chains(
+    children: &[&MutationPathInternal],
+    depth: usize,
+) -> HashSet<Vec<VariantName>> {
+    children
+        .iter()
+        .filter(|child| child.is_direct_child_at_depth(depth))
+        .flat_map(|child| {
+            child
+                .partial_root_examples
+                .as_ref()
+                .into_iter()
+                .flat_map(|partials| partials.keys().cloned())
+        })
+        .collect()
 }

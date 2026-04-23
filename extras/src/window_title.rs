@@ -15,7 +15,7 @@ pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpRe
     let title = params
         .as_ref()
         .and_then(|p| p.get("title"))
-        .and_then(|t| t.as_str())
+        .and_then(Value::as_str)
         .ok_or_else(|| BrpError {
             code:    INVALID_PARAMS,
             message: "Missing or invalid 'title' parameter".to_string(),
@@ -36,7 +36,7 @@ pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpRe
     let old_title = window.title.clone();
 
     // Set new title
-    window.title = title.to_string();
+    window.title = String::from(title);
 
     Ok(json!({
         "status": "success",

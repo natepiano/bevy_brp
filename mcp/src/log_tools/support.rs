@@ -1,7 +1,9 @@
+use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
+use bevy_kana::ToF64;
 use error_stack::ResultExt;
 use regex::Regex;
 
@@ -77,13 +79,9 @@ pub(super) fn parse_log_filename(filename: &str) -> Option<(String, String)> {
 }
 
 /// Formats bytes into human-readable string with appropriate unit
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "precision loss acceptable for display formatting"
-)]
 pub(super) fn format_bytes(bytes: u64) -> String {
     const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
-    let mut size = bytes as f64;
+    let mut size = bytes.to_f64();
     let mut unit_index = 0;
 
     while size >= BYTES_PER_UNIT && unit_index < UNITS.len() - 1 {
@@ -140,7 +138,7 @@ where
             .attach(format!("Directory: {}", temp_dir.display()))?;
 
         let path = entry.path();
-        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let filename = path.file_name().and_then(OsStr::to_str).unwrap_or("");
 
         // Parse only app log filenames (with port pattern)
         if let Some((app_name, timestamp)) = parse_app_log_filename(filename) {
@@ -195,7 +193,7 @@ where
             .attach(format!("Directory: {}", temp_dir.display()))?;
 
         let path = entry.path();
-        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let filename = path.file_name().and_then(OsStr::to_str).unwrap_or("");
 
         // Parse the filename
         if let Some((app_name, timestamp)) = parse_log_filename(filename) {

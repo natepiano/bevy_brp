@@ -76,145 +76,211 @@ fn main() {
 }
 
 /// Resource tracking all mouse input state for testing purposes
-#[derive(Resource, Reflect)]
+#[derive(Resource, Default, Reflect)]
 #[reflect(Resource)]
-#[allow(
-    clippy::struct_excessive_bools,
-    reason = "test tracker mirrors all mouse button states"
-)]
 struct MouseStateTracker {
-    // Cursor positions per window with timestamps
-    primary_window_position:    Vec2,
-    primary_cursor_timestamp:   f32,
-    secondary_window_position:  Vec2,
-    secondary_cursor_timestamp: f32,
-
-    // Motion tracking with timestamp
-    motion_delta_total: Vec2,
-    motion_timestamp:   f32,
-
-    // Button states with timestamps and durations
-    left_pressed:      bool,
-    left_timestamp:    f32,
-    left_duration:     f32,
-    right_pressed:     bool,
-    right_timestamp:   f32,
-    right_duration:    f32,
-    middle_pressed:    bool,
-    middle_timestamp:  f32,
-    middle_duration:   f32,
-    back_pressed:      bool,
-    back_timestamp:    f32,
-    back_duration:     f32,
-    forward_pressed:   bool,
-    forward_timestamp: f32,
-    forward_duration:  f32,
-
-    // Scroll per window with timestamps
-    primary_scroll_x_total:     f32,
-    primary_scroll_y_total:     f32,
-    primary_scroll_unit:        String,
-    primary_scroll_timestamp:   f32,
-    secondary_scroll_x_total:   f32,
-    secondary_scroll_y_total:   f32,
-    secondary_scroll_unit:      String,
-    secondary_scroll_timestamp: f32,
-
-    // Gestures per window with timestamps
-    primary_pinch_total:            f32,
-    primary_pinch_timestamp:        f32,
-    primary_rotation_total:         f32,
-    primary_rotation_timestamp:     f32,
-    primary_double_tap_timestamp:   f32,
-    secondary_pinch_total:          f32,
-    secondary_pinch_timestamp:      f32,
-    secondary_rotation_total:       f32,
-    secondary_rotation_timestamp:   f32,
-    secondary_double_tap_timestamp: f32,
-
-    // Click tracking per window with timestamps and positions
-    primary_click_timestamp:         f32,
-    primary_click_position:          Vec2,
-    primary_doubleclick_timestamp:   f32,
-    primary_doubleclick_position:    Vec2,
-    secondary_click_timestamp:       f32,
-    secondary_click_position:        Vec2,
-    secondary_doubleclick_timestamp: f32,
-    secondary_doubleclick_position:  Vec2,
-
-    // Track which window cursor is currently in
+    buttons:       ButtonStates,
+    clicks:        WindowClicks,
+    cursor:        WindowCursorState,
     cursor_window: Option<Entity>,
-
-    // Picking state per window
-    primary_picking_click_count:         u32,
-    primary_picking_doubleclick_count:   u32,
-    primary_picking_gizmo_active:        bool,
-    primary_picking_last_click_time:     f32,
-    secondary_picking_click_count:       u32,
-    secondary_picking_doubleclick_count: u32,
-    secondary_picking_gizmo_active:      bool,
-    secondary_picking_last_click_time:   f32,
+    gestures:      WindowGestures,
+    motion:        MotionState,
+    picking:       WindowPickingState,
+    scroll:        WindowScrollState,
 }
 
-impl Default for MouseStateTracker {
-    fn default() -> Self {
-        Self {
-            primary_window_position:             Vec2::ZERO,
-            primary_cursor_timestamp:            0.0,
-            secondary_window_position:           Vec2::ZERO,
-            secondary_cursor_timestamp:          0.0,
-            motion_delta_total:                  Vec2::ZERO,
-            motion_timestamp:                    0.0,
-            left_pressed:                        false,
-            left_timestamp:                      0.0,
-            left_duration:                       0.0,
-            right_pressed:                       false,
-            right_timestamp:                     0.0,
-            right_duration:                      0.0,
-            middle_pressed:                      false,
-            middle_timestamp:                    0.0,
-            middle_duration:                     0.0,
-            back_pressed:                        false,
-            back_timestamp:                      0.0,
-            back_duration:                       0.0,
-            forward_pressed:                     false,
-            forward_timestamp:                   0.0,
-            forward_duration:                    0.0,
-            primary_scroll_x_total:              0.0,
-            primary_scroll_y_total:              0.0,
-            primary_scroll_unit:                 String::new(),
-            primary_scroll_timestamp:            0.0,
-            secondary_scroll_x_total:            0.0,
-            secondary_scroll_y_total:            0.0,
-            secondary_scroll_unit:               String::new(),
-            secondary_scroll_timestamp:          0.0,
-            primary_pinch_total:                 0.0,
-            primary_pinch_timestamp:             0.0,
-            primary_rotation_total:              0.0,
-            primary_rotation_timestamp:          0.0,
-            primary_double_tap_timestamp:        0.0,
-            secondary_pinch_total:               0.0,
-            secondary_pinch_timestamp:           0.0,
-            secondary_rotation_total:            0.0,
-            secondary_rotation_timestamp:        0.0,
-            secondary_double_tap_timestamp:      0.0,
-            primary_click_timestamp:             0.0,
-            primary_click_position:              Vec2::ZERO,
-            primary_doubleclick_timestamp:       0.0,
-            primary_doubleclick_position:        Vec2::ZERO,
-            secondary_click_timestamp:           0.0,
-            secondary_click_position:            Vec2::ZERO,
-            secondary_doubleclick_timestamp:     0.0,
-            secondary_doubleclick_position:      Vec2::ZERO,
-            cursor_window:                       None,
-            primary_picking_click_count:         0,
-            primary_picking_doubleclick_count:   0,
-            primary_picking_gizmo_active:        false,
-            primary_picking_last_click_time:     0.0,
-            secondary_picking_click_count:       0,
-            secondary_picking_doubleclick_count: 0,
-            secondary_picking_gizmo_active:      false,
-            secondary_picking_last_click_time:   0.0,
+#[derive(Clone, Copy)]
+enum WindowSlot {
+    Primary,
+    Secondary,
+}
+
+#[derive(Default, Reflect)]
+struct ButtonState {
+    duration:  f32,
+    pressed:   bool,
+    timestamp: f32,
+}
+
+impl ButtonState {
+    const fn set_pressed(&mut self, pressed: bool, current_time: f32) {
+        self.pressed = pressed;
+        self.timestamp = current_time;
+        if !pressed {
+            self.duration = 0.0;
+        }
+    }
+
+    fn update_duration(&mut self, current_time: f32) {
+        if self.pressed {
+            self.duration = current_time - self.timestamp;
+        }
+    }
+}
+
+#[derive(Default, Reflect)]
+struct ButtonStates {
+    back:    ButtonState,
+    forward: ButtonState,
+    left:    ButtonState,
+    middle:  ButtonState,
+    right:   ButtonState,
+}
+
+#[derive(Default, Reflect)]
+struct ClickState {
+    double_position:  Vec2,
+    double_timestamp: f32,
+    position:         Vec2,
+    timestamp:        f32,
+}
+
+#[derive(Default, Reflect)]
+struct CursorState {
+    position:  Vec2,
+    timestamp: f32,
+}
+
+#[derive(Default, Reflect)]
+struct GestureState {
+    double_tap_timestamp: f32,
+    pinch_timestamp:      f32,
+    pinch_total:          f32,
+    rotation_timestamp:   f32,
+    rotation_total:       f32,
+}
+
+#[derive(Default, Reflect)]
+struct MotionState {
+    delta_total: Vec2,
+    timestamp:   f32,
+}
+
+#[derive(Default, Reflect)]
+struct PickingState {
+    clicks:          u32,
+    double_clicks:   u32,
+    gizmo_active:    bool,
+    last_click_time: f32,
+}
+
+#[derive(Default, Reflect)]
+struct ScrollState {
+    timestamp: f32,
+    unit:      String,
+    x_total:   f32,
+    y_total:   f32,
+}
+
+#[derive(Default, Reflect)]
+struct WindowClicks {
+    primary:   ClickState,
+    secondary: ClickState,
+}
+
+#[derive(Default, Reflect)]
+struct WindowCursorState {
+    primary:   CursorState,
+    secondary: CursorState,
+}
+
+#[derive(Default, Reflect)]
+struct WindowGestures {
+    primary:   GestureState,
+    secondary: GestureState,
+}
+
+#[derive(Default, Reflect)]
+struct WindowPickingState {
+    primary:   PickingState,
+    secondary: PickingState,
+}
+
+#[derive(Default, Reflect)]
+struct WindowScrollState {
+    primary:   ScrollState,
+    secondary: ScrollState,
+}
+
+impl MouseStateTracker {
+    const fn button_mut(&mut self, button: MouseButton) -> Option<&mut ButtonState> {
+        match button {
+            MouseButton::Back => Some(&mut self.buttons.back),
+            MouseButton::Forward => Some(&mut self.buttons.forward),
+            MouseButton::Left => Some(&mut self.buttons.left),
+            MouseButton::Middle => Some(&mut self.buttons.middle),
+            MouseButton::Right => Some(&mut self.buttons.right),
+            MouseButton::Other(_) => None,
+        }
+    }
+
+    const fn clicks(&self, slot: WindowSlot) -> &ClickState {
+        match slot {
+            WindowSlot::Primary => &self.clicks.primary,
+            WindowSlot::Secondary => &self.clicks.secondary,
+        }
+    }
+
+    const fn clicks_mut(&mut self, slot: WindowSlot) -> &mut ClickState {
+        match slot {
+            WindowSlot::Primary => &mut self.clicks.primary,
+            WindowSlot::Secondary => &mut self.clicks.secondary,
+        }
+    }
+
+    const fn cursor(&self, slot: WindowSlot) -> &CursorState {
+        match slot {
+            WindowSlot::Primary => &self.cursor.primary,
+            WindowSlot::Secondary => &self.cursor.secondary,
+        }
+    }
+
+    const fn cursor_mut(&mut self, slot: WindowSlot) -> &mut CursorState {
+        match slot {
+            WindowSlot::Primary => &mut self.cursor.primary,
+            WindowSlot::Secondary => &mut self.cursor.secondary,
+        }
+    }
+
+    const fn gestures(&self, slot: WindowSlot) -> &GestureState {
+        match slot {
+            WindowSlot::Primary => &self.gestures.primary,
+            WindowSlot::Secondary => &self.gestures.secondary,
+        }
+    }
+
+    const fn gestures_mut(&mut self, slot: WindowSlot) -> &mut GestureState {
+        match slot {
+            WindowSlot::Primary => &mut self.gestures.primary,
+            WindowSlot::Secondary => &mut self.gestures.secondary,
+        }
+    }
+
+    const fn picking(&self, slot: WindowSlot) -> &PickingState {
+        match slot {
+            WindowSlot::Primary => &self.picking.primary,
+            WindowSlot::Secondary => &self.picking.secondary,
+        }
+    }
+
+    const fn picking_mut(&mut self, slot: WindowSlot) -> &mut PickingState {
+        match slot {
+            WindowSlot::Primary => &mut self.picking.primary,
+            WindowSlot::Secondary => &mut self.picking.secondary,
+        }
+    }
+
+    const fn scroll(&self, slot: WindowSlot) -> &ScrollState {
+        match slot {
+            WindowSlot::Primary => &self.scroll.primary,
+            WindowSlot::Secondary => &self.scroll.secondary,
+        }
+    }
+
+    const fn scroll_mut(&mut self, slot: WindowSlot) -> &mut ScrollState {
+        match slot {
+            WindowSlot::Primary => &mut self.scroll.primary,
+            WindowSlot::Secondary => &mut self.scroll.secondary,
         }
     }
 }
@@ -501,19 +567,20 @@ fn on_primary_cuboid_click(
         return;
     };
 
-    if current - tracker.primary_picking_last_click_time < DOUBLE_CLICK_THRESHOLD {
-        tracker.primary_picking_doubleclick_count += 1;
+    let picking = tracker.picking_mut(WindowSlot::Primary);
+    if current - picking.last_click_time < DOUBLE_CLICK_THRESHOLD {
+        picking.double_clicks += 1;
         commands.entity(cuboid_entity).insert(GizmoOutline {
             color: Color::from(css::YELLOW),
         });
     } else {
-        tracker.primary_picking_click_count += 1;
+        picking.clicks += 1;
         commands.entity(cuboid_entity).insert(GizmoOutline {
             color: Color::from(css::LIME),
         });
     }
-    tracker.primary_picking_gizmo_active = true;
-    tracker.primary_picking_last_click_time = current;
+    picking.gizmo_active = true;
+    picking.last_click_time = current;
 }
 
 fn on_secondary_cuboid_click(
@@ -531,19 +598,20 @@ fn on_secondary_cuboid_click(
         return;
     };
 
-    if current - tracker.secondary_picking_last_click_time < DOUBLE_CLICK_THRESHOLD {
-        tracker.secondary_picking_doubleclick_count += 1;
+    let picking = tracker.picking_mut(WindowSlot::Secondary);
+    if current - picking.last_click_time < DOUBLE_CLICK_THRESHOLD {
+        picking.double_clicks += 1;
         commands.entity(cuboid_entity).insert(GizmoOutline {
             color: Color::from(css::YELLOW),
         });
     } else {
-        tracker.secondary_picking_click_count += 1;
+        picking.clicks += 1;
         commands.entity(cuboid_entity).insert(GizmoOutline {
             color: Color::from(css::LIME),
         });
     }
-    tracker.secondary_picking_gizmo_active = true;
-    tracker.secondary_picking_last_click_time = current;
+    picking.gizmo_active = true;
+    picking.last_click_time = current;
 }
 
 fn on_primary_background_click(
@@ -555,7 +623,7 @@ fn on_primary_background_click(
     if trigger.button != PointerButton::Primary {
         return;
     }
-    tracker.primary_picking_gizmo_active = false;
+    tracker.picking_mut(WindowSlot::Primary).gizmo_active = false;
     if let Ok(cuboid_entity) = cuboids.single() {
         commands.entity(cuboid_entity).remove::<GizmoOutline>();
     }
@@ -570,7 +638,7 @@ fn on_secondary_background_click(
     if trigger.button != PointerButton::Primary {
         return;
     }
-    tracker.secondary_picking_gizmo_active = false;
+    tracker.picking_mut(WindowSlot::Secondary).gizmo_active = false;
     if let Ok(cuboid_entity) = cuboids.single() {
         commands.entity(cuboid_entity).remove::<GizmoOutline>();
     }
@@ -611,46 +679,10 @@ fn track_mouse_buttons(
     time: Res<Time>,
 ) {
     for event in button_events.read() {
-        let pressed = event.state.is_pressed();
         let current_time = time.elapsed_secs();
 
-        match event.button {
-            MouseButton::Left => {
-                tracker.left_pressed = pressed;
-                tracker.left_timestamp = current_time;
-                if !pressed {
-                    tracker.left_duration = 0.0;
-                }
-            },
-            MouseButton::Right => {
-                tracker.right_pressed = pressed;
-                tracker.right_timestamp = current_time;
-                if !pressed {
-                    tracker.right_duration = 0.0;
-                }
-            },
-            MouseButton::Middle => {
-                tracker.middle_pressed = pressed;
-                tracker.middle_timestamp = current_time;
-                if !pressed {
-                    tracker.middle_duration = 0.0;
-                }
-            },
-            MouseButton::Back => {
-                tracker.back_pressed = pressed;
-                tracker.back_timestamp = current_time;
-                if !pressed {
-                    tracker.back_duration = 0.0;
-                }
-            },
-            MouseButton::Forward => {
-                tracker.forward_pressed = pressed;
-                tracker.forward_timestamp = current_time;
-                if !pressed {
-                    tracker.forward_duration = 0.0;
-                }
-            },
-            MouseButton::Other(_) => {},
+        if let Some(button) = tracker.button_mut(event.button) {
+            button.set_pressed(event.state.is_pressed(), current_time);
         }
     }
 }
@@ -667,37 +699,26 @@ fn track_click_events(
     };
     let current_time = time.elapsed_secs();
 
-    // Track last click times per window for double-click detection
-    let mut last_primary_click = tracker.primary_click_timestamp;
-    let mut last_secondary_click = tracker.secondary_click_timestamp;
-
     for event in button_events.read() {
-        // Only track left button clicks for simplicity
-        if event.button == MouseButton::Left && !event.state.is_pressed() {
-            let is_primary = event.window == primary_window;
-
-            if is_primary {
-                let click_position = tracker.primary_window_position;
-                // Detect double-click (two clicks within 400ms)
-                if current_time - last_primary_click < 0.4 {
-                    tracker.primary_doubleclick_timestamp = current_time;
-                    tracker.primary_doubleclick_position = click_position;
-                }
-                tracker.primary_click_timestamp = current_time;
-                tracker.primary_click_position = click_position;
-                last_primary_click = current_time;
-            } else {
-                let click_position = tracker.secondary_window_position;
-                // Detect double-click (two clicks within 400ms)
-                if current_time - last_secondary_click < 0.4 {
-                    tracker.secondary_doubleclick_timestamp = current_time;
-                    tracker.secondary_doubleclick_position = click_position;
-                }
-                tracker.secondary_click_timestamp = current_time;
-                tracker.secondary_click_position = click_position;
-                last_secondary_click = current_time;
-            }
+        if event.button != MouseButton::Left || event.state.is_pressed() {
+            continue;
         }
+
+        let slot = if event.window == primary_window {
+            WindowSlot::Primary
+        } else {
+            WindowSlot::Secondary
+        };
+        let click_position = tracker.cursor(slot).position;
+        let click = tracker.clicks_mut(slot);
+
+        if current_time - click.timestamp < DOUBLE_CLICK_THRESHOLD {
+            click.double_timestamp = current_time;
+            click.double_position = click_position;
+        }
+
+        click.timestamp = current_time;
+        click.position = click_position;
     }
 }
 
@@ -705,21 +726,11 @@ fn track_click_events(
 fn update_button_durations(mut tracker: ResMut<MouseStateTracker>, time: Res<Time>) {
     let current_time = time.elapsed_secs();
 
-    if tracker.left_pressed {
-        tracker.left_duration = current_time - tracker.left_timestamp;
-    }
-    if tracker.right_pressed {
-        tracker.right_duration = current_time - tracker.right_timestamp;
-    }
-    if tracker.middle_pressed {
-        tracker.middle_duration = current_time - tracker.middle_timestamp;
-    }
-    if tracker.back_pressed {
-        tracker.back_duration = current_time - tracker.back_timestamp;
-    }
-    if tracker.forward_pressed {
-        tracker.forward_duration = current_time - tracker.forward_timestamp;
-    }
+    tracker.buttons.back.update_duration(current_time);
+    tracker.buttons.forward.update_duration(current_time);
+    tracker.buttons.left.update_duration(current_time);
+    tracker.buttons.middle.update_duration(current_time);
+    tracker.buttons.right.update_duration(current_time);
 }
 
 fn track_cursor_position(
@@ -731,15 +742,15 @@ fn track_cursor_position(
     for event in cursor_events.read() {
         let current_time = time.elapsed_secs();
 
-        // Determine which window received the event and track cursor location
         if let Ok(primary_entity) = primary_query.single() {
-            if event.window == primary_entity {
-                tracker.primary_window_position = event.position;
-                tracker.primary_cursor_timestamp = current_time;
+            let slot = if event.window == primary_entity {
+                WindowSlot::Primary
             } else {
-                tracker.secondary_window_position = event.position;
-                tracker.secondary_cursor_timestamp = current_time;
-            }
+                WindowSlot::Secondary
+            };
+            let cursor = tracker.cursor_mut(slot);
+            cursor.position = event.position;
+            cursor.timestamp = current_time;
             tracker.cursor_window = Some(event.window);
         }
     }
@@ -761,17 +772,20 @@ fn track_mouse_wheel(
 
     for event in wheel_events.read() {
         let current_time = time.elapsed_secs();
-
-        if event.window == primary_window {
-            tracker.primary_scroll_x_total += event.x;
-            tracker.primary_scroll_y_total += event.y;
-            tracker.primary_scroll_unit = format!("{:?}", event.unit);
-            tracker.primary_scroll_timestamp = current_time;
+        let slot = if event.window == primary_window {
+            Some(WindowSlot::Primary)
         } else if event.window == secondary_window {
-            tracker.secondary_scroll_x_total += event.x;
-            tracker.secondary_scroll_y_total += event.y;
-            tracker.secondary_scroll_unit = format!("{:?}", event.unit);
-            tracker.secondary_scroll_timestamp = current_time;
+            Some(WindowSlot::Secondary)
+        } else {
+            None
+        };
+
+        if let Some(slot) = slot {
+            let scroll = tracker.scroll_mut(slot);
+            scroll.x_total += event.x;
+            scroll.y_total += event.y;
+            scroll.unit = format!("{:?}", event.unit);
+            scroll.timestamp = current_time;
         }
     }
 }
@@ -782,8 +796,8 @@ fn track_mouse_motion(
     time: Res<Time>,
 ) {
     for event in motion_events.read() {
-        tracker.motion_delta_total += event.delta;
-        tracker.motion_timestamp = time.elapsed_secs();
+        tracker.motion.delta_total += event.delta;
+        tracker.motion.timestamp = time.elapsed_secs();
     }
 }
 
@@ -797,40 +811,33 @@ fn track_gestures(
 ) {
     let current_time = time.elapsed_secs();
 
-    // Get primary window entity to determine which window gestures apply to
     let Ok(primary_window) = primary_windows.single() else {
         return;
     };
 
-    // Gestures don't have window fields, so use cursor_window to determine target
-    let is_primary = tracker.cursor_window.is_none_or(|w| w == primary_window);
+    let slot = if tracker
+        .cursor_window
+        .is_none_or(|window| window == primary_window)
+    {
+        WindowSlot::Primary
+    } else {
+        WindowSlot::Secondary
+    };
 
     for event in pinch_events.read() {
-        if is_primary {
-            tracker.primary_pinch_total += event.0;
-            tracker.primary_pinch_timestamp = current_time;
-        } else {
-            tracker.secondary_pinch_total += event.0;
-            tracker.secondary_pinch_timestamp = current_time;
-        }
+        let gestures = tracker.gestures_mut(slot);
+        gestures.pinch_total += event.0;
+        gestures.pinch_timestamp = current_time;
     }
 
     for event in rotation_events.read() {
-        if is_primary {
-            tracker.primary_rotation_total += event.0;
-            tracker.primary_rotation_timestamp = current_time;
-        } else {
-            tracker.secondary_rotation_total += event.0;
-            tracker.secondary_rotation_timestamp = current_time;
-        }
+        let gestures = tracker.gestures_mut(slot);
+        gestures.rotation_total += event.0;
+        gestures.rotation_timestamp = current_time;
     }
 
     for _ in double_tap_events.read() {
-        if is_primary {
-            tracker.primary_double_tap_timestamp = current_time;
-        } else {
-            tracker.secondary_double_tap_timestamp = current_time;
-        }
+        tracker.gestures_mut(slot).double_tap_timestamp = current_time;
     }
 }
 
@@ -846,18 +853,25 @@ fn format_timestamp(current_time: f32, timestamp: f32) -> String {
     }
 }
 
-fn format_button(current_time: f32, pressed: bool, timestamp: f32, duration: f32) -> String {
-    if pressed {
-        if duration > 0.0 {
+fn format_button(current_time: f32, button: &ButtonState) -> String {
+    if button.pressed {
+        if button.duration > 0.0 {
             format!(
-                "PRESSED {} [{duration:.1}s]",
-                format_timestamp(current_time, timestamp)
+                "PRESSED {} [{:.1}s]",
+                format_timestamp(current_time, button.timestamp),
+                button.duration
             )
         } else {
-            format!("PRESSED {}", format_timestamp(current_time, timestamp))
+            format!(
+                "PRESSED {}",
+                format_timestamp(current_time, button.timestamp)
+            )
         }
     } else {
-        format!("released {}", format_timestamp(current_time, timestamp))
+        format!(
+            "released {}",
+            format_timestamp(current_time, button.timestamp)
+        )
     }
 }
 
@@ -871,14 +885,22 @@ fn format_click(current_time: f32, timestamp: f32, position: Vec2) -> String {
     }
 }
 
-fn format_picking(click_count: u32, doubleclick_count: u32, gizmo_active: bool) -> String {
+fn format_picking(picking: &PickingState) -> String {
     format!(
-        "Clicks: {click_count}  DblClk: {doubleclick_count}  Gizmo: {}",
-        if gizmo_active { "ON" } else { "off" }
+        "Clicks: {}  DblClk: {}  Gizmo: {}",
+        picking.clicks,
+        picking.double_clicks,
+        if picking.gizmo_active { "ON" } else { "off" }
     )
 }
 
 fn format_primary_display(tracker: &MouseStateTracker, current_time: f32) -> String {
+    let primary_cursor = tracker.cursor(WindowSlot::Primary);
+    let primary_clicks = tracker.clicks(WindowSlot::Primary);
+    let primary_picking = tracker.picking(WindowSlot::Primary);
+    let primary_scroll = tracker.scroll(WindowSlot::Primary);
+    let primary_gestures = tracker.gestures(WindowSlot::Primary);
+
     format!(
         "=== PRIMARY WINDOW ===\n\
         Cursor: ({:.1}, {:.1}) {}\n\n\
@@ -895,67 +917,44 @@ fn format_primary_display(tracker: &MouseStateTracker, current_time: f32) -> Str
         Left:    {}      Middle: {}\n\
         Right:   {}      Back:   {}\n\
         Forward: {}",
-        tracker.primary_window_position.x,
-        tracker.primary_window_position.y,
-        format_timestamp(current_time, tracker.primary_cursor_timestamp),
+        primary_cursor.position.x,
+        primary_cursor.position.y,
+        format_timestamp(current_time, primary_cursor.timestamp),
         format_click(
             current_time,
-            tracker.primary_click_timestamp,
-            tracker.primary_click_position
+            primary_clicks.timestamp,
+            primary_clicks.position
         ),
         format_click(
             current_time,
-            tracker.primary_doubleclick_timestamp,
-            tracker.primary_doubleclick_position
+            primary_clicks.double_timestamp,
+            primary_clicks.double_position
         ),
-        format_picking(
-            tracker.primary_picking_click_count,
-            tracker.primary_picking_doubleclick_count,
-            tracker.primary_picking_gizmo_active,
-        ),
-        tracker.primary_scroll_x_total,
-        tracker.primary_scroll_y_total,
-        tracker.primary_scroll_unit,
-        format_timestamp(current_time, tracker.primary_scroll_timestamp),
-        tracker.primary_pinch_total,
-        format_timestamp(current_time, tracker.primary_pinch_timestamp),
-        tracker.primary_rotation_total,
-        format_timestamp(current_time, tracker.primary_rotation_timestamp),
-        format_timestamp(current_time, tracker.primary_double_tap_timestamp),
-        format_button(
-            current_time,
-            tracker.left_pressed,
-            tracker.left_timestamp,
-            tracker.left_duration
-        ),
-        format_button(
-            current_time,
-            tracker.middle_pressed,
-            tracker.middle_timestamp,
-            tracker.middle_duration
-        ),
-        format_button(
-            current_time,
-            tracker.right_pressed,
-            tracker.right_timestamp,
-            tracker.right_duration
-        ),
-        format_button(
-            current_time,
-            tracker.back_pressed,
-            tracker.back_timestamp,
-            tracker.back_duration
-        ),
-        format_button(
-            current_time,
-            tracker.forward_pressed,
-            tracker.forward_timestamp,
-            tracker.forward_duration
-        ),
+        format_picking(primary_picking),
+        primary_scroll.x_total,
+        primary_scroll.y_total,
+        primary_scroll.unit,
+        format_timestamp(current_time, primary_scroll.timestamp),
+        primary_gestures.pinch_total,
+        format_timestamp(current_time, primary_gestures.pinch_timestamp),
+        primary_gestures.rotation_total,
+        format_timestamp(current_time, primary_gestures.rotation_timestamp),
+        format_timestamp(current_time, primary_gestures.double_tap_timestamp),
+        format_button(current_time, &tracker.buttons.left),
+        format_button(current_time, &tracker.buttons.middle),
+        format_button(current_time, &tracker.buttons.right),
+        format_button(current_time, &tracker.buttons.back),
+        format_button(current_time, &tracker.buttons.forward),
     )
 }
 
 fn format_secondary_display(tracker: &MouseStateTracker, current_time: f32) -> String {
+    let secondary_cursor = tracker.cursor(WindowSlot::Secondary);
+    let secondary_clicks = tracker.clicks(WindowSlot::Secondary);
+    let secondary_picking = tracker.picking(WindowSlot::Secondary);
+    let secondary_scroll = tracker.scroll(WindowSlot::Secondary);
+    let secondary_gestures = tracker.gestures(WindowSlot::Secondary);
+
     format!(
         "=== SECONDARY WINDOW ===\n\
         Cursor: ({:.1}, {:.1}) {}\n\n\
@@ -967,33 +966,29 @@ fn format_secondary_display(tracker: &MouseStateTracker, current_time: f32) -> S
         X: {:.1}  Y: {:.1}  [{}] {}\n\n\
         GESTURES:\n\
         Pinch: {:.2} {}     Rotation: {:.2} {}     DoubleTap: {}",
-        tracker.secondary_window_position.x,
-        tracker.secondary_window_position.y,
-        format_timestamp(current_time, tracker.secondary_cursor_timestamp),
+        secondary_cursor.position.x,
+        secondary_cursor.position.y,
+        format_timestamp(current_time, secondary_cursor.timestamp),
         format_click(
             current_time,
-            tracker.secondary_click_timestamp,
-            tracker.secondary_click_position
+            secondary_clicks.timestamp,
+            secondary_clicks.position
         ),
         format_click(
             current_time,
-            tracker.secondary_doubleclick_timestamp,
-            tracker.secondary_doubleclick_position
+            secondary_clicks.double_timestamp,
+            secondary_clicks.double_position
         ),
-        format_picking(
-            tracker.secondary_picking_click_count,
-            tracker.secondary_picking_doubleclick_count,
-            tracker.secondary_picking_gizmo_active,
-        ),
-        tracker.secondary_scroll_x_total,
-        tracker.secondary_scroll_y_total,
-        tracker.secondary_scroll_unit,
-        format_timestamp(current_time, tracker.secondary_scroll_timestamp),
-        tracker.secondary_pinch_total,
-        format_timestamp(current_time, tracker.secondary_pinch_timestamp),
-        tracker.secondary_rotation_total,
-        format_timestamp(current_time, tracker.secondary_rotation_timestamp),
-        format_timestamp(current_time, tracker.secondary_double_tap_timestamp),
+        format_picking(secondary_picking),
+        secondary_scroll.x_total,
+        secondary_scroll.y_total,
+        secondary_scroll.unit,
+        format_timestamp(current_time, secondary_scroll.timestamp),
+        secondary_gestures.pinch_total,
+        format_timestamp(current_time, secondary_gestures.pinch_timestamp),
+        secondary_gestures.rotation_total,
+        format_timestamp(current_time, secondary_gestures.rotation_timestamp),
+        format_timestamp(current_time, secondary_gestures.double_tap_timestamp),
     )
 }
 

@@ -38,8 +38,8 @@ use super::variant_kind::VariantKind;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::BuilderError;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::NotMutableReason;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::mutation_path_internal;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::mutation_path_internal::MutationPathInternal;
-use crate::brp_tools::brp_type_guide::mutation_path_builder::mutation_path_internal::MutationPathSliceExt;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::new_types::VariantName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::option_classification;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_builder;
@@ -63,20 +63,15 @@ use crate::error::Result;
 use crate::support::JsonObjectAccess;
 use crate::support::SchemaField;
 
-/// Extension trait for sorting variant groups deterministically
-trait SortedVariantGroups {
-    fn sorted(&self) -> Vec<(&VariantSignature, &[VariantName])>;
-}
-
-impl SortedVariantGroups for HashMap<VariantSignature, Vec<VariantName>> {
-    fn sorted(&self) -> Vec<(&VariantSignature, &[VariantName])> {
-        let mut sorted_groups: Vec<(&VariantSignature, &[VariantName])> = self
-            .iter()
-            .map(|(sig, names)| (sig, names.as_slice()))
-            .collect();
-        sorted_groups.sort_by_key(|(signature, _)| *signature);
-        sorted_groups
-    }
+fn sorted_variant_groups(
+    variant_groups: &HashMap<VariantSignature, Vec<VariantName>>,
+) -> Vec<(&VariantSignature, &[VariantName])> {
+    let mut sorted_groups: Vec<(&VariantSignature, &[VariantName])> = variant_groups
+        .iter()
+        .map(|(signature, names)| (signature, names.as_slice()))
+        .collect();
+    sorted_groups.sort_by_key(|(signature, _)| *signature);
+    sorted_groups
 }
 
 /// Result type for `process_children` containing example groups, child paths, and partial roots
@@ -446,7 +441,7 @@ fn process_signature_groups(
     let mut child_mutation_paths = Vec::new();
 
     // Process each variant group in deterministic order
-    for (variant_signature, variant_names) in variant_groups.sorted() {
+    for (variant_signature, variant_names) in sorted_variant_groups(variant_groups) {
         // Create FRESH child_examples `HashMap` for each variant group to avoid overwrites
         let mut child_examples = HashMap::new();
         // Collect THIS signature's children separately to avoid mixing with other variants
@@ -570,7 +565,7 @@ fn build_partial_root_examples(
     let mut partial_root_examples = HashMap::new();
 
     // For each variant at THIS level in deterministic order
-    for (signature, variants) in variant_groups.sorted() {
+    for (signature, variants) in sorted_variant_groups(variant_groups) {
         for variant_name in variants {
             // Build the chain for this variant by extending parent's chain
             let mut this_variant_chain = ctx.variant_chain.clone();
@@ -606,11 +601,11 @@ fn build_partial_root_examples(
 
             // Find all deeper nested chains that extend this variant
             let child_refs: Vec<_> = child_mutation_paths.iter().collect();
-            let nested_enum_chains: HashSet<_> = child_refs
-                .child_variant_chains(*ctx.depth)
-                .into_iter()
-                .filter(|chain| chain.starts_with(&this_variant_chain))
-                .collect();
+            let nested_enum_chains: HashSet<_> =
+                mutation_path_internal::child_variant_chains(&child_refs, *ctx.depth)
+                    .into_iter()
+                    .filter(|chain| chain.starts_with(&this_variant_chain))
+                    .collect();
 
             // Build root examples for each nested enum chain
             for nested_chain in &nested_enum_chains {

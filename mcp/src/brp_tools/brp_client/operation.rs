@@ -105,7 +105,7 @@ impl Operation {
 fn extract_from_components_object(params: &Value) -> Vec<String> {
     params
         .get("components")
-        .and_then(|v| v.as_object())
+        .and_then(Value::as_object)
         .map(|obj| obj.keys().cloned().collect())
         .unwrap_or_default()
 }
@@ -114,8 +114,8 @@ fn extract_from_components_object(params: &Value) -> Vec<String> {
 fn extract_from_resource_field(params: &Value) -> Vec<String> {
     params
         .get("resource")
-        .and_then(|v| v.as_str())
-        .map(|s| vec![s.to_string()])
+        .and_then(Value::as_str)
+        .map(|value| vec![String::from(value)])
         .unwrap_or_default()
 }
 
@@ -123,8 +123,8 @@ fn extract_from_resource_field(params: &Value) -> Vec<String> {
 fn extract_single_component_type(params: &Value) -> Vec<String> {
     params
         .get("component")
-        .and_then(|v| v.as_str())
-        .map(|s| vec![s.to_string()])
+        .and_then(Value::as_str)
+        .map(|value| vec![String::from(value)])
         .unwrap_or_default()
 }
 
@@ -132,8 +132,8 @@ fn extract_single_component_type(params: &Value) -> Vec<String> {
 fn extract_single_resource_type(params: &Value) -> Vec<String> {
     params
         .get("resource")
-        .and_then(|v| v.as_str())
-        .map(|s| vec![s.to_string()])
+        .and_then(Value::as_str)
+        .map(|value| vec![String::from(value)])
         .unwrap_or_default()
 }
 

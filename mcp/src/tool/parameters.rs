@@ -283,7 +283,7 @@ fn handle_array_type(obj: &Map<String, Value>) -> ParameterType {
     obj.get_field(SchemaField::Items)
         .and_then(|items| items.as_object())
         .and_then(|items_obj| items_obj.get_field(SchemaField::Type))
-        .and_then(|item_type| item_type.as_str())
+        .and_then(Value::as_str)
         .map_or(ParameterType::Any, |item_type_str| match item_type_str {
             s if s == JsonSchemaType::String.as_ref() => ParameterType::StringArray,
             s if s == JsonSchemaType::Integer.as_ref() || s == JsonSchemaType::Number.as_ref() => {
@@ -311,7 +311,7 @@ fn handle_string_type(type_str: &str, obj: &Map<String, Value>) -> ParameterType
 fn handle_type_array(types: &[Value], obj: &Map<String, Value>) -> ParameterType {
     let non_null_types: Vec<&str> = types
         .iter()
-        .filter_map(|v| v.as_str())
+        .filter_map(Value::as_str)
         .filter(|&t| t != JsonSchemaType::Null.as_ref())
         .collect();
 
@@ -340,7 +340,7 @@ fn handle_one_of_schema(one_of: &[Value]) -> Option<ParameterType> {
         variant
             .as_object()
             .and_then(|v| v.get_field(SchemaField::Type))
-            .and_then(|t| t.as_str())
+            .and_then(Value::as_str)
             .is_some_and(|t| t == JsonSchemaType::String.as_ref())
             && variant
                 .as_object()
@@ -362,7 +362,7 @@ fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
             // Skip null variants (from Option<T>)
             if variant_obj
                 .get_field(SchemaField::Type)
-                .and_then(|t| t.as_str())
+                .and_then(Value::as_str)
                 .is_some_and(|t| t == JsonSchemaType::Null.as_ref())
             {
                 continue;
@@ -371,7 +371,7 @@ fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
             // Check if this is a $ref type
             if let Some(ref_str) = variant_obj
                 .get_field(SchemaField::Ref)
-                .and_then(|r| r.as_str())
+                .and_then(Value::as_str)
             {
                 // serde_json::Value refs should fall through to Any
                 if ref_str.contains("Value") {
@@ -427,14 +427,14 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
     }
 
     // Handle "oneOf" schemas (enums like `BrpMethod`)
-    if let Some(one_of) = obj.get_field(SchemaField::OneOf).and_then(|v| v.as_array())
+    if let Some(one_of) = obj.get_field(SchemaField::OneOf).and_then(Value::as_array)
         && let Some(param_type) = handle_one_of_schema(one_of)
     {
         return param_type;
     }
 
     // Handle "anyOf" schemas (typically Option<T> types)
-    if let Some(any_of) = obj.get_field(SchemaField::AnyOf).and_then(|v| v.as_array()) {
+    if let Some(any_of) = obj.get_field(SchemaField::AnyOf).and_then(Value::as_array) {
         return handle_any_of_schema(any_of);
     }
 
@@ -471,7 +471,7 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         .and_then(|r| r.as_array())
         .map(|arr| {
             arr.iter()
-                .filter_map(|v| v.as_str())
+                .filter_map(Value::as_str)
                 .into_strings()
                 .into_iter()
                 .collect()
@@ -485,10 +485,10 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         let resolved_value = field_value
             .as_object()
             .and_then(|o| o.get_field(SchemaField::Ref))
-            .and_then(|r| r.as_str())
+            .and_then(Value::as_str)
             .and_then(|ref_path| {
                 ref_path.strip_prefix("#/$defs/").and_then(|type_name| {
-                    defs.and_then(|d| d.as_object())
+                    defs.and_then(Value::as_object)
                         .and_then(|d| d.get(type_name))
                 })
             })
@@ -508,7 +508,7 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         let description = resolved_value
             .as_object()
             .and_then(|obj| obj.get_field(SchemaField::Description))
-            .and_then(|d| d.as_str())
+            .and_then(Value::as_str)
             .unwrap_or(field_name.as_str());
 
         // Add to builder based on type
@@ -557,7 +557,7 @@ mod tests {
 
         let array_branch = any_of
             .iter()
-            .find(|v| v.get("type").and_then(|t| t.as_str()) == Some("array"))
+            .find(|v| v.get("type").and_then(Value::as_str) == Some("array"))
             .ok_or("anyOf must contain an array branch")?;
 
         assert!(
