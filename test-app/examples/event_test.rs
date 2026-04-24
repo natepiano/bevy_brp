@@ -4,6 +4,7 @@
 
 use bevy::ecs::observer::On;
 use bevy::prelude::*;
+use bevy::window::WindowPlugin;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
@@ -32,8 +33,8 @@ struct EventTriggerTracker {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
-            primary_window: Some(bevy::window::Window {
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
                 title: "Event Test".to_string(),
                 resolution: (400, 300).into(),
                 ..default()

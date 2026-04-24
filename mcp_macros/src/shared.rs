@@ -5,13 +5,77 @@ use quote::quote;
 use syn::Attribute;
 use syn::Field;
 use syn::Ident;
+use syn::LitStr;
 use syn::Type;
+use syn::meta::ParseNestedMeta;
 
 /// Information about a computed field
 pub(crate) struct ComputedField {
     pub field_name: Ident,
     pub from_field: String,
     pub operation:  String,
+}
+
+#[derive(Clone, Copy)]
+enum PlacementAttrKey {
+    FieldType,
+    From,
+    ResultOperation,
+    SkipIfNone,
+}
+
+impl PlacementAttrKey {
+    fn parse(meta: &ParseNestedMeta<'_>) -> syn::Result<Self> {
+        [
+            ("field_type", Self::FieldType),
+            ("from", Self::From),
+            ("result_operation", Self::ResultOperation),
+            ("skip_if_none", Self::SkipIfNone),
+        ]
+        .into_iter()
+        .find_map(|(ident, key)| meta.path.is_ident(ident).then_some(key))
+        .ok_or_else(|| meta.error("unsupported attribute"))
+    }
+}
+
+#[derive(Clone, Copy)]
+enum PlacementKind {
+    ErrorInfo,
+    Metadata,
+    Result,
+}
+
+impl PlacementKind {
+    fn tokens(self) -> TokenStream {
+        match self {
+            Self::ErrorInfo => quote! { crate::tool::FieldPlacement::ErrorInfo },
+            Self::Metadata => quote! { crate::tool::FieldPlacement::Metadata },
+            Self::Result => quote! { crate::tool::FieldPlacement::Result },
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum FieldAttributeKind {
+    CallInfo,
+    Computed,
+    Message,
+    Placement(PlacementKind),
+}
+
+impl FieldAttributeKind {
+    fn parse(attr: &Attribute) -> Option<Self> {
+        [
+            ("computed", Self::Computed),
+            ("to_call_info", Self::CallInfo),
+            ("to_error_info", Self::Placement(PlacementKind::ErrorInfo)),
+            ("to_message", Self::Message),
+            ("to_metadata", Self::Placement(PlacementKind::Metadata)),
+            ("to_result", Self::Placement(PlacementKind::Result)),
+        ]
+        .into_iter()
+        .find_map(|(ident, kind)| attr.path().is_ident(ident).then_some(kind))
+    }
 }
 
 /// Parse placement attribute arguments
@@ -22,28 +86,29 @@ pub(crate) fn parse_placement_attr(
     skip_if_none: &mut bool,
     result_operation: &mut Option<String>,
 ) {
-    let _ = attr.parse_nested_meta(|meta| {
-        if meta.path.is_ident("from") {
+    let _ = attr.parse_nested_meta(|meta| match PlacementAttrKey::parse(&meta)? {
+        PlacementAttrKey::From => {
             let value = meta.value()?;
-            let s: syn::LitStr = value.parse()?;
-            *source_path = Some(s.value());
+            let string: LitStr = value.parse()?;
+            *source_path = Some(string.value());
             Ok(())
-        } else if meta.path.is_ident("field_type") {
+        },
+        PlacementAttrKey::FieldType => {
             let value = meta.value()?;
-            let s: syn::LitStr = value.parse()?;
-            *field_type = Some(s.value());
+            let string: LitStr = value.parse()?;
+            *field_type = Some(string.value());
             Ok(())
-        } else if meta.path.is_ident("skip_if_none") {
+        },
+        PlacementAttrKey::SkipIfNone => {
             *skip_if_none = true;
             Ok(())
-        } else if meta.path.is_ident("result_operation") {
+        },
+        PlacementAttrKey::ResultOperation => {
             let value = meta.value()?;
-            let s: syn::LitStr = value.parse()?;
-            *result_operation = Some(s.value());
+            let string: LitStr = value.parse()?;
+            *result_operation = Some(string.value());
             Ok(())
-        } else {
-            Err(meta.error("unsupported attribute"))
-        }
+        },
     });
 }
 
@@ -52,8 +117,8 @@ pub(crate) fn parse_computed_attr(attr: &Attribute, result_operation: &mut Optio
     let _ = attr.parse_nested_meta(|meta| {
         if meta.path.is_ident("operation") {
             let value = meta.value()?;
-            let s: syn::LitStr = value.parse()?;
-            *result_operation = Some(s.value());
+            let string: LitStr = value.parse()?;
+            *result_operation = Some(string.value());
             Ok(())
         } else {
             Err(meta.error("unsupported computed attribute"))
@@ -67,8 +132,8 @@ pub(crate) fn parse_to_message_attr(attr: &Attribute) -> Option<String> {
     let _ = attr.parse_nested_meta(|meta| {
         if meta.path.is_ident("message_template") {
             let value = meta.value()?;
-            let s: syn::LitStr = value.parse()?;
-            message_template = Some(s.value());
+            let string: LitStr = value.parse()?;
+            message_template = Some(string.value());
             Ok(())
         } else {
             Err(meta.error("unsupported to_message attribute"))
@@ -123,42 +188,33 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
         let mut result_operation = None;
 
         for attr in &field.attrs {
-            if attr.path().is_ident("to_metadata") {
-                placement = Some(quote! { crate::tool::FieldPlacement::Metadata });
-                parse_placement_attr(
-                    attr,
-                    &mut source_path,
-                    &mut field_type_override,
-                    &mut skip_if_none,
-                    &mut result_operation,
-                );
-            } else if attr.path().is_ident("to_result") {
-                placement = Some(quote! { crate::tool::FieldPlacement::Result });
-                parse_placement_attr(
-                    attr,
-                    &mut source_path,
-                    &mut field_type_override,
-                    &mut skip_if_none,
-                    &mut result_operation,
-                );
-            } else if attr.path().is_ident("to_error_info") {
-                placement = Some(quote! { crate::tool::FieldPlacement::ErrorInfo });
-                parse_placement_attr(
-                    attr,
-                    &mut source_path,
-                    &mut field_type_override,
-                    &mut skip_if_none,
-                    &mut result_operation,
-                );
-            } else if attr.path().is_ident("to_call_info") {
-                // Skip fields marked with to_call_info as we no longer need them
-            } else if attr.path().is_ident("computed") {
-                is_computed = true;
-                parse_computed_attr(attr, &mut result_operation);
-            } else if attr.path().is_ident("to_message") {
-                let template = parse_to_message_attr(attr);
-                message_template_field = Some((field_name.clone(), template));
-                // Skip adding to other collections
+            let Some(attr_kind) = FieldAttributeKind::parse(attr) else {
+                continue;
+            };
+
+            match attr_kind {
+                FieldAttributeKind::Placement(placement_kind) => {
+                    placement = Some(placement_kind.tokens());
+                    parse_placement_attr(
+                        attr,
+                        &mut source_path,
+                        &mut field_type_override,
+                        &mut skip_if_none,
+                        &mut result_operation,
+                    );
+                },
+                FieldAttributeKind::CallInfo => {
+                    // Skip fields marked with to_call_info as we no longer need them
+                },
+                FieldAttributeKind::Computed => {
+                    is_computed = true;
+                    parse_computed_attr(attr, &mut result_operation);
+                },
+                FieldAttributeKind::Message => {
+                    let template = parse_to_message_attr(attr);
+                    message_template_field = Some((field_name.clone(), template));
+                    // Skip adding to other collections
+                },
             }
         }
 

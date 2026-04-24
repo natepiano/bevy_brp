@@ -107,24 +107,22 @@ impl MutationPathExternal {
 /// Root example for an enum variant, either available for construction or unavailable with reason
 ///
 /// Serializes to JSON as either:
-/// - `{"root_example": <value>}` for Available variant
-/// - `{"root_example_unavailable_reason": "<reason>"}` for Unavailable variant
+/// - `{"example": <value>}` for Available variant
+/// - `{"unavailable_reason": "<reason>"}` for Unavailable variant
 #[derive(Debug, Clone, Serialize)]
 #[serde(untagged)]
 pub enum RootExample {
     /// Variant can be constructed via BRP spawn/insert operations
-    Available { root_example: Value },
+    Available { example: Value },
     /// Variant cannot be constructed via BRP, with explanation
-    Unavailable {
-        root_example_unavailable_reason: String,
-    },
+    Unavailable { unavailable_reason: String },
 }
 
 /// Spawn/insert example with educational guidance for AI agents
 ///
 /// Serializes differently based on variant:
-/// - `SpawnExample` → `{"spawn_example": {"agent_guidance": "...", "example": <value>}}`
-/// - `ResourceExample` → `{"resource_example": {"agent_guidance": "...", "example": <value>}}`
+/// - `Spawn` → `{"spawn": {"agent_guidance": "...", "example": <value>}}`
+/// - `Resource` → `{"resource": {"agent_guidance": "...", "example": <value>}}`
 ///
 /// When `example` is `Example::NotApplicable`, only `agent_guidance` is included.
 ///
@@ -132,11 +130,11 @@ pub enum RootExample {
 /// Deserialize manually below with a stub that returns an error.
 #[derive(Debug, Clone)]
 pub enum SpawnInsertExample {
-    SpawnExample {
+    Spawn {
         agent_guidance: String,
         example:        Example,
     },
-    ResourceExample {
+    Resource {
         agent_guidance: String,
         example:        Example,
     },
@@ -148,14 +146,14 @@ impl Serialize for SpawnInsertExample {
         S: serde::Serializer,
     {
         match self {
-            Self::SpawnExample {
+            Self::Spawn {
                 agent_guidance,
                 example,
             } => {
                 if example.is_null_equivalent() {
                     let mut map = serializer.serialize_map(Some(1))?;
                     map.serialize_entry(
-                        "spawn_example",
+                        "spawn",
                         &serde_json::json!({
                             "agent_guidance": agent_guidance
                         }),
@@ -164,7 +162,7 @@ impl Serialize for SpawnInsertExample {
                 } else {
                     let mut map = serializer.serialize_map(Some(1))?;
                     map.serialize_entry(
-                        "spawn_example",
+                        "spawn",
                         &serde_json::json!({
                             "agent_guidance": agent_guidance,
                             "example": example.to_value()
@@ -173,14 +171,14 @@ impl Serialize for SpawnInsertExample {
                     map.end()
                 }
             },
-            Self::ResourceExample {
+            Self::Resource {
                 agent_guidance,
                 example,
             } => {
                 if example.is_null_equivalent() {
                     let mut map = serializer.serialize_map(Some(1))?;
                     map.serialize_entry(
-                        "resource_example",
+                        "resource",
                         &serde_json::json!({
                             "agent_guidance": agent_guidance
                         }),
@@ -189,7 +187,7 @@ impl Serialize for SpawnInsertExample {
                 } else {
                     let mut map = serializer.serialize_map(Some(1))?;
                     map.serialize_entry(
-                        "resource_example",
+                        "resource",
                         &serde_json::json!({
                             "agent_guidance": agent_guidance,
                             "example": example.to_value()

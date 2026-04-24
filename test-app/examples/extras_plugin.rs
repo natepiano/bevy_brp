@@ -102,17 +102,30 @@ use bevy::sprite::SpritePickingSettings;
 use bevy::sprite::Text2dShadow;
 use bevy::sprite_render::Wireframe2dColor;
 use bevy::sprite_render::Wireframe2dConfig;
+use bevy::ui::BackgroundGradient;
+use bevy::ui::BorderGradient;
 use bevy::ui::BoxShadow;
 use bevy::ui::CalculatedClip;
 use bevy::ui::FocusPolicy;
+use bevy::ui::Gradient;
 use bevy::ui::Interaction;
+use bevy::ui::InterpolationColorSpace;
+use bevy::ui::LinearGradient;
+use bevy::ui::MaxTrackSizingFunction;
+use bevy::ui::MinTrackSizingFunction;
 use bevy::ui::Outline;
+use bevy::ui::RepeatedGridTrack;
 use bevy::ui::UiTargetCamera;
 use bevy::ui::ZIndex;
+use bevy::ui::gradients::ColorStop;
 use bevy::ui::widget::Button;
 use bevy::ui::widget::Label;
 use bevy::window::CursorIcon;
+use bevy::window::MonitorSelection;
 use bevy::window::PrimaryWindow;
+use bevy::window::SystemCursorIcon;
+use bevy::window::WindowPlugin;
+use bevy::window::WindowPosition;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
@@ -536,14 +549,12 @@ fn main() {
     info!("Starting BRP Extras Test on port {port}");
 
     App::new()
-        .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "BRP Extras Test".to_string(),
                 resolution: (800, 600).into(),
                 focused: false,
-                position: bevy::window::WindowPosition::Centered(
-                    bevy::window::MonitorSelection::Primary,
-                ),
+                position: WindowPosition::Centered(MonitorSelection::Primary),
                 ..default()
             }),
             ..default()
@@ -788,18 +799,18 @@ fn spawn_sprite_and_ui_components(commands: &mut Commands) {
 
     // Entity with CursorIcon for testing mutations
     commands.spawn((
-        CursorIcon::System(bevy::window::SystemCursorIcon::Default),
+        CursorIcon::System(SystemCursorIcon::Default),
         Name::new("CursorIconTestEntity"),
     ));
 
     // Entity with BorderGradient for testing mutations
     commands.spawn((
-        bevy::ui::BorderGradient(vec![bevy::ui::Gradient::Linear(bevy::ui::LinearGradient {
-            color_space: bevy::ui::InterpolationColorSpace::Srgba,
+        BorderGradient(vec![Gradient::Linear(LinearGradient {
+            color_space: InterpolationColorSpace::Srgba,
             angle:       std::f32::consts::FRAC_PI_4,
             stops:       vec![
-                bevy::ui::gradients::ColorStop::percent(Color::srgb(1.0, 0.0, 0.0), 0.0),
-                bevy::ui::gradients::ColorStop::percent(Color::srgb(0.0, 0.0, 1.0), 100.0),
+                ColorStop::percent(Color::srgb(1.0, 0.0, 0.0), 0.0),
+                ColorStop::percent(Color::srgb(0.0, 0.0, 1.0), 100.0),
             ],
         })]),
         Name::new("BorderGradientTestEntity"),
@@ -810,24 +821,24 @@ fn spawn_sprite_and_ui_components(commands: &mut Commands) {
         Node {
             width: Val::Px(200.0),
             height: Val::Px(200.0),
-            grid_template_rows: vec![bevy::ui::RepeatedGridTrack::minmax(
+            grid_template_rows: vec![RepeatedGridTrack::minmax(
                 2,
-                bevy::ui::MinTrackSizingFunction::Auto,
-                bevy::ui::MaxTrackSizingFunction::MaxContent,
+                MinTrackSizingFunction::Auto,
+                MaxTrackSizingFunction::MaxContent,
             )],
-            grid_template_columns: vec![bevy::ui::RepeatedGridTrack::minmax(
+            grid_template_columns: vec![RepeatedGridTrack::minmax(
                 1,
-                bevy::ui::MinTrackSizingFunction::Px(50.0),
-                bevy::ui::MaxTrackSizingFunction::Px(100.0),
+                MinTrackSizingFunction::Px(50.0),
+                MaxTrackSizingFunction::Px(100.0),
             )],
             ..default()
         },
-        bevy::ui::BackgroundGradient(vec![bevy::ui::Gradient::Linear(bevy::ui::LinearGradient {
-            color_space: bevy::ui::InterpolationColorSpace::Srgba,
+        BackgroundGradient(vec![Gradient::Linear(LinearGradient {
+            color_space: InterpolationColorSpace::Srgba,
             angle:       std::f32::consts::FRAC_PI_2,
             stops:       vec![
-                bevy::ui::gradients::ColorStop::percent(Color::srgb(0.0, 1.0, 0.0), 0.0),
-                bevy::ui::gradients::ColorStop::percent(Color::srgb(1.0, 0.0, 1.0), 100.0),
+                ColorStop::percent(Color::srgb(0.0, 1.0, 0.0), 0.0),
+                ColorStop::percent(Color::srgb(1.0, 0.0, 1.0), 100.0),
             ],
         })]),
         Name::new("BackgroundGradientTestEntity"),
@@ -1542,15 +1553,15 @@ fn spawn_ui_elements(commands: &mut Commands, port: &Res<CurrentPort>) {
                 height: Val::Percent(100.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
-                grid_template_rows: vec![bevy::ui::RepeatedGridTrack::minmax(
+                grid_template_rows: vec![RepeatedGridTrack::minmax(
                     2,
-                    bevy::ui::MinTrackSizingFunction::Auto,
-                    bevy::ui::MaxTrackSizingFunction::MaxContent,
+                    MinTrackSizingFunction::Auto,
+                    MaxTrackSizingFunction::MaxContent,
                 )],
-                grid_template_columns: vec![bevy::ui::RepeatedGridTrack::minmax(
+                grid_template_columns: vec![RepeatedGridTrack::minmax(
                     1,
-                    bevy::ui::MinTrackSizingFunction::Px(50.0),
-                    bevy::ui::MaxTrackSizingFunction::Px(100.0),
+                    MinTrackSizingFunction::Px(50.0),
+                    MaxTrackSizingFunction::Px(100.0),
                 )],
                 ..default()
             },
@@ -1567,15 +1578,15 @@ fn spawn_text_container(parent: &mut RelatedSpawnerCommands<ChildOf>, port: &Res
         .spawn((
             Node {
                 padding: UiRect::all(Val::Px(20.0)),
-                grid_template_rows: vec![bevy::ui::RepeatedGridTrack::minmax(
+                grid_template_rows: vec![RepeatedGridTrack::minmax(
                     2,
-                    bevy::ui::MinTrackSizingFunction::Auto,
-                    bevy::ui::MaxTrackSizingFunction::MaxContent,
+                    MinTrackSizingFunction::Auto,
+                    MaxTrackSizingFunction::MaxContent,
                 )],
-                grid_template_columns: vec![bevy::ui::RepeatedGridTrack::minmax(
+                grid_template_columns: vec![RepeatedGridTrack::minmax(
                     1,
-                    bevy::ui::MinTrackSizingFunction::Px(50.0),
-                    bevy::ui::MaxTrackSizingFunction::Px(100.0),
+                    MinTrackSizingFunction::Px(50.0),
+                    MaxTrackSizingFunction::Px(100.0),
                 )],
                 ..default()
             },
@@ -1643,15 +1654,15 @@ fn spawn_button_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
             width: Val::Px(100.0),
             height: Val::Px(40.0),
             margin: UiRect::all(Val::Px(10.0)),
-            grid_template_rows: vec![bevy::ui::RepeatedGridTrack::minmax(
+            grid_template_rows: vec![RepeatedGridTrack::minmax(
                 2,
-                bevy::ui::MinTrackSizingFunction::Auto,
-                bevy::ui::MaxTrackSizingFunction::MaxContent,
+                MinTrackSizingFunction::Auto,
+                MaxTrackSizingFunction::MaxContent,
             )],
-            grid_template_columns: vec![bevy::ui::RepeatedGridTrack::minmax(
+            grid_template_columns: vec![RepeatedGridTrack::minmax(
                 1,
-                bevy::ui::MinTrackSizingFunction::Px(50.0),
-                bevy::ui::MaxTrackSizingFunction::Px(100.0),
+                MinTrackSizingFunction::Px(50.0),
+                MaxTrackSizingFunction::Px(100.0),
             )],
             ..default()
         },

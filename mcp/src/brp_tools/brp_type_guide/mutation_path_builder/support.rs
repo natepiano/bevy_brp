@@ -82,8 +82,8 @@ fn extract_child_value_for_chain(
             .and_then(|partials| {
                 // Helper to extract Value from RootExample
                 let get_value = |root_ex: &RootExample| match root_ex {
-                    RootExample::Available { root_example } if !root_example.is_null() => {
-                        Some(Example::Json(root_example.clone()))
+                    RootExample::Available { example } if !example.is_null() => {
+                        Some(Example::Json(example.clone()))
                     }, // Skip null to prefer data-filled variants
                     _ => None,
                 };
@@ -209,9 +209,9 @@ pub(super) fn wrap_example_with_availability(
                 .as_ref()
                 .and_then(|examples| examples.get(chain))
                 .and_then(|root_example| match root_example {
-                    RootExample::Unavailable {
-                        root_example_unavailable_reason,
-                    } => Some(root_example_unavailable_reason.clone()),
+                    RootExample::Unavailable { unavailable_reason } => {
+                        Some(unavailable_reason.clone())
+                    },
                     RootExample::Available { .. } => None,
                 })
         })
@@ -219,10 +219,10 @@ pub(super) fn wrap_example_with_availability(
 
     unavailable_reason.map_or(
         RootExample::Available {
-            root_example: example.to_value(),
+            example: example.to_value(),
         },
         |reason| RootExample::Unavailable {
-            root_example_unavailable_reason: reason,
+            unavailable_reason: reason,
         },
     )
 }

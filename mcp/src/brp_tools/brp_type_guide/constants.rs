@@ -47,7 +47,7 @@ pub(super) const TYPE_GLAM_VEC3A: &str = "glam::Vec3A";
 pub(super) const TYPE_GLAM_VEC4: &str = "glam::Vec4";
 
 // Operation guidance constants
-/// Guidance for `resource_example` when type is a Resource
+/// Guidance for `resource` when type is a Resource
 pub(super) const INSERT_RESOURCE_GUIDANCE: &str =
     "The 'example' below can be used to insert this resource.";
 /// Template for Component without spawn example (use with `OPERATION_SPAWN`)
@@ -56,7 +56,7 @@ pub(super) const NO_COMPONENT_EXAMPLE_TEMPLATE: &str =
 /// Template for Resource without insert example (use with `OPERATION_INSERT`)
 pub(super) const NO_RESOURCE_EXAMPLE_TEMPLATE: &str =
     "This resource does not have an {} example because the root mutation path is not 'mutable'.";
-/// Guidance for `spawn_example` when type is a Component
+/// Guidance for `spawn` when type is a Component
 pub(super) const SPAWN_COMPONENT_GUIDANCE: &str =
     "The 'example' below can be used to spawn this component on an entity.";
 

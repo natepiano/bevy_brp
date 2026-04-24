@@ -16,41 +16,41 @@ use crate::window_event;
 
 /// Request structure for `pinch_gesture`
 #[derive(Deserialize)]
-pub struct PinchGestureRequest {
+struct PinchGestureRequest {
     /// Pinch delta (positive = zoom in, negative = zoom out)
     pub delta: f32,
 }
 
 /// Response structure for `pinch_gesture`
 #[derive(Serialize)]
-pub struct PinchGestureResponse {
+struct PinchGestureResponse {
     /// Pinch delta that was applied
     pub delta: f32,
 }
 
 /// Request structure for `rotation_gesture`
 #[derive(Deserialize)]
-pub struct RotationGestureRequest {
+struct RotationGestureRequest {
     /// Rotation delta in radians
     pub delta: f32,
 }
 
 /// Response structure for `rotation_gesture`
 #[derive(Serialize)]
-pub struct RotationGestureResponse {
+struct RotationGestureResponse {
     /// Rotation delta that was applied
     pub delta: f32,
 }
 
 /// Request structure for `double_tap_gesture`
 #[derive(Deserialize)]
-pub struct DoubleTapGestureRequest {
+struct DoubleTapGestureRequest {
     // No parameters needed
 }
 
 /// Response structure for `double_tap_gesture`
 #[derive(Serialize)]
-pub struct DoubleTapGestureResponse {
+struct DoubleTapGestureResponse {
     // No fields needed - success is indicated by Ok result
 }
 

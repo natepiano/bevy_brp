@@ -19,7 +19,7 @@ use super::support;
 
 /// Request structure for `move_mouse`
 #[derive(Deserialize)]
-pub struct MoveMouseRequest {
+struct MoveMouseRequest {
     /// Delta movement (mutually exclusive with position)
     #[serde(default)]
     pub delta:    Option<Vec2>,
@@ -33,7 +33,7 @@ pub struct MoveMouseRequest {
 
 /// Response structure for `move_mouse`
 #[derive(Serialize)]
-pub struct MoveMouseResponse {
+struct MoveMouseResponse {
     /// New cursor position
     pub new_position: Vec2,
     /// Delta that was applied
@@ -62,7 +62,7 @@ pub struct MoveMouseResponse {
 /// real input sync, delta commands could cause unexpected jumps after physical
 /// mouse movement.
 #[derive(Resource, Default)]
-pub struct SimulatedCursorPosition {
+pub(super) struct SimulatedCursorPosition {
     /// Per-window cursor positions
     pub positions:   std::collections::HashMap<Entity, Vec2>,
     /// The last window the cursor was moved to (used as default for click/scroll operations)
@@ -198,7 +198,7 @@ pub fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
 /// - **Hybrid testing**: BRP automation mixed with manual interaction
 /// - **Debugging**: Developer moves mouse while running BRP commands
 /// - **Recovery**: Syncs state after unexpected manual input
-pub fn sync_cursor_position(
+pub(super) fn sync_cursor_position(
     mut cursor_res: ResMut<SimulatedCursorPosition>,
     mut cursor_events: MessageReader<CursorMoved>,
 ) {

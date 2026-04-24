@@ -18,7 +18,7 @@ use crate::window_event;
 
 /// Request structure for `scroll_mouse`
 #[derive(Deserialize)]
-pub struct ScrollMouseRequest {
+struct ScrollMouseRequest {
     /// Horizontal scroll amount
     pub x:      f32,
     /// Vertical scroll amount
@@ -32,7 +32,7 @@ pub struct ScrollMouseRequest {
 
 /// Response structure for `scroll_mouse`
 #[derive(Serialize)]
-pub struct ScrollMouseResponse {
+struct ScrollMouseResponse {
     /// Horizontal scroll amount
     pub x:    f32,
     /// Vertical scroll amount

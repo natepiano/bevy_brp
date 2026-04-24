@@ -92,7 +92,7 @@ pub fn extract_spawn_insert_example(
             SPAWN_COMPONENT_GUIDANCE.to_string()
         };
 
-        Some(SpawnInsertExample::SpawnExample {
+        Some(SpawnInsertExample::Spawn {
             agent_guidance,
             example,
         })
@@ -103,7 +103,7 @@ pub fn extract_spawn_insert_example(
             INSERT_RESOURCE_GUIDANCE.to_string()
         };
 
-        Some(SpawnInsertExample::ResourceExample {
+        Some(SpawnInsertExample::Resource {
             agent_guidance,
             example,
         })

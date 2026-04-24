@@ -2,7 +2,9 @@
 
 use bevy::log::debug;
 use bevy::prelude::*;
+use bevy::window::MonitorSelection;
 use bevy::window::PrimaryWindow;
+use bevy::window::WindowPosition;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
@@ -13,9 +15,7 @@ fn main() {
                 title: "Test Extras Plugin App".to_string(),
                 resolution: (400, 300).into(),
                 focused: false,
-                position: bevy::window::WindowPosition::Centered(
-                    bevy::window::MonitorSelection::Primary,
-                ),
+                position: WindowPosition::Centered(MonitorSelection::Primary),
                 ..default()
             }),
             ..default()

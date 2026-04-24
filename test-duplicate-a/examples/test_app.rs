@@ -12,6 +12,9 @@
 //! `target/<profile>/test_app` and examples in `target/<profile>/examples/test_app`.
 
 use bevy::prelude::*;
+use bevy::window::MonitorSelection;
+use bevy::window::PrimaryWindow;
+use bevy::window::WindowPosition;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
@@ -25,9 +28,7 @@ fn main() {
                 title: format!("search_order test example - Port {port}"),
                 resolution: (400, 300).into(),
                 focused: false,
-                position: bevy::window::WindowPosition::Centered(
-                    bevy::window::MonitorSelection::Primary,
-                ),
+                position: WindowPosition::Centered(MonitorSelection::Primary),
                 ..default()
             }),
             ..default()
@@ -39,13 +40,13 @@ fn main() {
 
 /// Minimize the window immediately on startup (no-op on Linux/Wayland)
 #[cfg(target_os = "linux")]
-fn minimize_window_on_start(windows: Query<&mut Window, With<bevy::window::PrimaryWindow>>) {
+fn minimize_window_on_start(windows: Query<&mut Window, With<PrimaryWindow>>) {
     let _ = windows.iter().count();
 }
 
 /// Minimize the window immediately on startup
 #[cfg(not(target_os = "linux"))]
-fn minimize_window_on_start(mut windows: Query<&mut Window, With<bevy::window::PrimaryWindow>>) {
+fn minimize_window_on_start(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
     for mut window in &mut windows {
         window.set_minimized(true);
     }

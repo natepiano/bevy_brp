@@ -21,7 +21,7 @@ use super::support;
 
 /// Request structure for `send_mouse_button`
 #[derive(Deserialize)]
-pub struct SendMouseButtonRequest {
+struct SendMouseButtonRequest {
     /// Mouse button to press
     pub button:      MouseButton,
     /// Duration in milliseconds to hold button (default: 100ms, max: 60000ms)
@@ -34,7 +34,7 @@ pub struct SendMouseButtonRequest {
 
 /// Response structure for `send_mouse_button`
 #[derive(Serialize)]
-pub struct SendMouseButtonResponse {
+struct SendMouseButtonResponse {
     /// Button that was pressed
     pub button:      MouseButton,
     /// Duration in milliseconds the button was held
@@ -50,7 +50,7 @@ pub struct SendMouseButtonResponse {
 /// Attached to entities to track button press duration. When the timer expires,
 /// the button release event is sent and the entity is despawned.
 #[derive(Component)]
-pub struct TimedButtonRelease {
+pub(super) struct TimedButtonRelease {
     /// Which button to release
     pub button: MouseButton,
     /// Which window the button was pressed in (None = primary)
@@ -101,7 +101,7 @@ pub fn send_mouse_button_handler(In(params): In<Option<Value>>, world: &mut Worl
 ///
 /// Ticks timers on `TimedButtonRelease` components. When a timer finishes,
 /// sends the button release event and despawns the entity.
-pub fn process_timed_button_releases(
+pub(super) fn process_timed_button_releases(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedButtonRelease)>,

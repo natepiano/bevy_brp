@@ -25,7 +25,7 @@ use crate::window_event;
 
 /// Request structure for `click_mouse`
 #[derive(Deserialize)]
-pub struct ClickMouseRequest {
+struct ClickMouseRequest {
     /// Mouse button to click
     pub button: MouseButton,
     /// Target window entity (None = primary window)
@@ -35,14 +35,14 @@ pub struct ClickMouseRequest {
 
 /// Response structure for `click_mouse`
 #[derive(Serialize)]
-pub struct ClickMouseResponse {
+struct ClickMouseResponse {
     /// Button that was clicked
     pub button: MouseButton,
 }
 
 /// Request structure for `double_click_mouse`
 #[derive(Deserialize)]
-pub struct DoubleClickMouseRequest {
+struct DoubleClickMouseRequest {
     /// Mouse button to double click
     pub button:   MouseButton,
     /// Delay between clicks in milliseconds (default: 250ms)
@@ -55,7 +55,7 @@ pub struct DoubleClickMouseRequest {
 
 /// Response structure for `double_click_mouse`
 #[derive(Serialize)]
-pub struct DoubleClickMouseResponse {
+struct DoubleClickMouseResponse {
     /// Button that was double-clicked
     pub button:   MouseButton,
     /// Delay between clicks in milliseconds
@@ -71,7 +71,7 @@ pub struct DoubleClickMouseResponse {
 /// Delays the second click in a double-click operation to ensure proper
 /// temporal separation between the two clicks.
 #[derive(Component)]
-pub struct ScheduledClick {
+pub(super) struct ScheduledClick {
     /// Which button to click
     pub button:         MouseButton,
     /// Which window to target (None = primary)
@@ -154,7 +154,7 @@ pub fn double_click_mouse_handler(In(params): In<Option<Value>>, world: &mut Wor
 /// - Sends the second press event
 /// - Spawns a `TimedButtonRelease` for the release
 /// - Despawns the scheduled click entity
-pub fn process_scheduled_clicks(
+pub(super) fn process_scheduled_clicks(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut ScheduledClick)>,

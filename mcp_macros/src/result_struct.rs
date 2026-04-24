@@ -483,27 +483,22 @@ fn generate_regular_field_initializer(
     field_type: &syn::Type,
     message_template_field: Option<&(syn::Ident, Option<String>)>,
 ) -> Option<proc_macro2::TokenStream> {
-    let type_str = quote!(#field_type).to_string();
-
-    if field_name == "result" && type_str.contains("Option < Value >") {
-        Some(quote! { result: value.clone() })
-    } else if field_name == "format_corrections" {
-        Some(quote! {
+    match classify_generated_field(field_name, field_type, message_template_field) {
+        Some(GeneratedFieldKind::ResultValue) => Some(quote! { result: value.clone() }),
+        Some(GeneratedFieldKind::FormatCorrections) => Some(quote! {
             format_corrections: if format_corrections.as_ref().map_or(true, |v| v.is_empty()) {
                 None
             } else {
                 format_corrections.clone()
             }
-        })
-    } else if field_name == "format_corrected" {
-        Some(quote! {
+        }),
+        Some(GeneratedFieldKind::FormatCorrected) => Some(quote! {
             format_corrected: match format_corrected {
                 Some(crate::brp_tools::FormatCorrectionStatus::NotAttempted) | None => None,
                 other => other,
             }
-        })
-    } else if field_name == "warning" && type_str.contains("Option < String >") {
-        Some(quote! {
+        }),
+        Some(GeneratedFieldKind::Warning) => Some(quote! {
             warning: format_corrections.as_ref().and_then(|corrections| {
                 if corrections.is_empty() {
                     None
@@ -514,17 +509,42 @@ fn generate_regular_field_initializer(
                     ))
                 }
             })
-        })
-    } else if let Some((template_field_name, template_default)) = message_template_field
+        }),
+        Some(GeneratedFieldKind::MessageTemplate(default_template)) => Some(
+            template_field_initializer(field_name, field_type, default_template),
+        ),
+        None => None,
+    }
+}
+
+enum GeneratedFieldKind<'a> {
+    FormatCorrections,
+    FormatCorrected,
+    MessageTemplate(Option<&'a str>),
+    ResultValue,
+    Warning,
+}
+
+fn classify_generated_field<'a>(
+    field_name: &syn::Ident,
+    field_type: &syn::Type,
+    message_template_field: Option<&'a (syn::Ident, Option<String>)>,
+) -> Option<GeneratedFieldKind<'a>> {
+    if let Some((template_field_name, template_default)) = message_template_field
         && field_name == template_field_name
     {
-        Some(template_field_initializer(
-            field_name,
-            field_type,
+        return Some(GeneratedFieldKind::MessageTemplate(
             template_default.as_deref(),
-        ))
-    } else {
-        None
+        ));
+    }
+
+    let type_str = quote!(#field_type).to_string();
+    match field_name.to_string().as_str() {
+        "result" if type_str.contains("Option < Value >") => Some(GeneratedFieldKind::ResultValue),
+        "format_corrections" => Some(GeneratedFieldKind::FormatCorrections),
+        "format_corrected" => Some(GeneratedFieldKind::FormatCorrected),
+        "warning" if type_str.contains("Option < String >") => Some(GeneratedFieldKind::Warning),
+        _ => None,
     }
 }
 

@@ -231,8 +231,8 @@ impl MutationPathInternal {
 
     /// Extract enum-specific metadata for paths nested within enums
     ///
-    /// Returns `(instructions, applicable_variants, root_example, root_example_unavailable_reason)`
-    /// only for mutable/partially mutable paths. Returns `(None, None, None, None)` for
+    /// Returns `(instructions, applicable_variants, root_example)` only for mutable/partially
+    /// mutable paths. Returns `(None, None, None)` for
     /// `NotMutable` paths to avoid showing contradictory mutation instructions for paths that
     /// cannot be mutated.
     fn resolve_enum_path_info(&mut self) -> ResolvedEnumPathInfo {

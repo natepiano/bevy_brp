@@ -24,7 +24,7 @@ use super::support;
 
 /// Drag operation state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DragState {
+pub(super) enum DragState {
     /// Button pressed, cursor moved to start position
     Pressed,
     /// Actively dragging, interpolating between start and end
@@ -35,7 +35,7 @@ pub enum DragState {
 
 /// Request structure for `drag_mouse`
 #[derive(Deserialize)]
-pub struct DragMouseRequest {
+struct DragMouseRequest {
     /// Button to hold during drag
     pub button: MouseButton,
     /// Starting position
@@ -51,7 +51,7 @@ pub struct DragMouseRequest {
 
 /// Response structure for `drag_mouse`
 #[derive(Serialize)]
-pub struct DragMouseResponse {
+struct DragMouseResponse {
     /// Button that was used for dragging
     pub button: MouseButton,
     /// Starting position
@@ -71,7 +71,7 @@ pub struct DragMouseResponse {
 /// Manages multi-frame drag operations with linear interpolation between
 /// start and end positions. Runs a state machine: Pressed -> Dragging -> Released.
 #[derive(Component)]
-pub struct DragOperation {
+pub(super) struct DragOperation {
     /// Which button is pressed during drag
     pub button:        MouseButton,
     /// Which window to target (None = primary)
@@ -139,7 +139,7 @@ pub fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
 /// - Pressed: Send button press, move to start, transition to Dragging
 /// - Dragging: Interpolate position, send motion events, advance frame
 /// - Released: Send button release, despawn entity
-pub fn process_drag_operations(
+pub(super) fn process_drag_operations(
     mut commands: Commands,
     mut query: Query<(Entity, &mut DragOperation)>,
     mut cursor_res: ResMut<SimulatedCursorPosition>,

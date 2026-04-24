@@ -6,7 +6,10 @@
 //! Run with: cargo run --example `no_extras_plugin`
 
 use bevy::prelude::*;
+use bevy::window::MonitorSelection;
 use bevy::window::PrimaryWindow;
+use bevy::window::WindowPlugin;
+use bevy::window::WindowPosition;
 use bevy_remote::RemotePlugin;
 use bevy_remote::http::RemoteHttpPlugin;
 
@@ -17,14 +20,12 @@ fn main() {
     info!("Starting BRP No Plugin Test on port {FIXED_PORT}");
 
     App::new()
-        .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
-            primary_window: Some(bevy::window::Window {
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
                 title: format!("BRP No Plugin Test - Port {FIXED_PORT}"),
                 resolution: (800, 600).into(),
                 focused: false,
-                position: bevy::window::WindowPosition::Centered(
-                    bevy::window::MonitorSelection::Primary,
-                ),
+                position: WindowPosition::Centered(MonitorSelection::Primary),
                 ..default()
             }),
             ..default()

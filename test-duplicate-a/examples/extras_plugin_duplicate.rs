@@ -12,6 +12,8 @@ use std::time::Instant;
 
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
+use bevy::window::WindowPlugin;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
@@ -80,8 +82,8 @@ fn main() {
     info!("Starting BRP Extras Test on port {port}");
 
     App::new()
-        .add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
-            primary_window: Some(bevy::window::Window {
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
                 title: format!("BRP Extras Test - Port {port}"),
                 resolution: (800, 600).into(),
                 ..default()
@@ -101,17 +103,13 @@ fn main() {
 
 /// Minimize the window immediately on startup (no-op on Linux/Wayland)
 #[cfg(target_os = "linux")]
-fn minimize_window_on_start(
-    windows: Query<&mut bevy::window::Window, With<bevy::window::PrimaryWindow>>,
-) {
+fn minimize_window_on_start(windows: Query<&mut Window, With<PrimaryWindow>>) {
     let _ = windows.iter().count();
 }
 
 /// Minimize the window immediately on startup
 #[cfg(not(target_os = "linux"))]
-fn minimize_window_on_start(
-    mut windows: Query<&mut bevy::window::Window, With<bevy::window::PrimaryWindow>>,
-) {
+fn minimize_window_on_start(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
     for mut window in &mut windows {
         window.set_minimized(true);
     }
