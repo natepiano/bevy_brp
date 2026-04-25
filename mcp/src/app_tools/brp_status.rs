@@ -108,13 +108,13 @@ fn process_matches_app_substring(process: &sysinfo::Process, target_app: &str) -
     // Check first command argument (usually the binary path) for substring matches
     // but skip generic process names that wouldn't be helpful
     if let Some(cmd) = process.cmd().first() {
-        let cmd_str = cmd.to_string_lossy();
-        let cmd_normalized = process::normalize_process_name(&cmd_str);
+        let command_string = cmd.to_string_lossy();
+        let normalized_command = process::normalize_process_name(&command_string);
 
         // Skip if it's a generic utility that happens to have the target in its args
         let generic_utils = ["tail", "grep", "cat", "less", "more", "head", "sed", "awk"];
         if !generic_utils.contains(&normalized_process_name.as_str())
-            && cmd_normalized.contains(&normalized_target)
+            && normalized_command.contains(&normalized_target)
         {
             return true;
         }
@@ -143,16 +143,16 @@ fn extract_app_name(process: &sysinfo::Process) -> String {
             .collect();
         if args.iter().any(|arg| arg == "run") {
             // Check for --bin argument
-            if let Some(bin_pos) = args.iter().position(|arg| arg == "--bin")
-                && let Some(bin_name) = args.get(bin_pos + 1)
+            if let Some(binary_position) = args.iter().position(|arg| arg == "--bin")
+                && let Some(binary_name) = args.get(binary_position + 1)
             {
-                return bin_name.clone();
+                return binary_name.clone();
             }
             // Check for --example argument
-            if let Some(ex_pos) = args.iter().position(|arg| arg == "--example")
-                && let Some(ex_name) = args.get(ex_pos + 1)
+            if let Some(example_position) = args.iter().position(|arg| arg == "--example")
+                && let Some(example_name) = args.get(example_position + 1)
             {
-                return ex_name.clone();
+                return example_name.clone();
             }
         }
     }
@@ -164,12 +164,12 @@ fn extract_app_name(process: &sysinfo::Process) -> String {
 
     // For processes run directly, check the first command argument
     if let Some(cmd) = process.cmd().first() {
-        let cmd_str = cmd.to_string_lossy();
-        if cmd_str.contains("target/debug")
-            || cmd_str.contains("target/release")
-            || cmd_str.contains("/examples/")
+        let command_string = cmd.to_string_lossy();
+        if command_string.contains("target/debug")
+            || command_string.contains("target/release")
+            || command_string.contains("/examples/")
         {
-            return process::normalize_process_name(&cmd_str);
+            return process::normalize_process_name(&command_string);
         }
     }
 

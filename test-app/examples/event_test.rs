@@ -49,7 +49,7 @@ fn main() {
         .run();
 }
 
-fn on_unit_event(_on: On<TestUnitEvent>, mut tracker: ResMut<EventTriggerTracker>) {
+fn on_unit_event(_unit_event: On<TestUnitEvent>, mut tracker: ResMut<EventTriggerTracker>) {
     tracker.unit_event_count += 1;
 }
 

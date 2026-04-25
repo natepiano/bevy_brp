@@ -1,8 +1,10 @@
 mod api;
 mod builder_error;
 mod enum_builder;
+mod mutability;
+mod mutation_path;
+mod mutation_path_external;
 mod mutation_path_internal;
-mod new_types;
 mod not_mutable_reason;
 mod option_classification;
 mod path_builder;
@@ -12,12 +14,11 @@ mod recursion_context;
 mod support;
 mod type_kind_builder;
 mod type_parser;
-mod types_internal;
-mod types_response;
+mod variant_name;
 
+pub(super) use api::SpawnInsertExample;
 pub(super) use api::build_mutation_paths;
 pub(super) use api::extract_spawn_insert_example;
 use builder_error::BuilderError;
+pub(super) use mutation_path_external::MutationPathExternal;
 use not_mutable_reason::NotMutableReason;
-pub(super) use types_response::MutationPathExternal;
-pub(super) use types_response::SpawnInsertExample;

@@ -6,10 +6,10 @@ use serde_json::json;
 use super::BuilderError;
 use super::NotMutableReason;
 use super::mutation_path_internal::MutationPathInternal;
+use super::path_example::Example;
 use super::path_kind::MutationPathDescriptor;
+use super::recursion_context::PathAction;
 use super::recursion_context::RecursionContext;
-use super::types_internal::Example;
-use super::types_internal::PathAction;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;
 

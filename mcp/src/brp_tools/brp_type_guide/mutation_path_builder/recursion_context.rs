@@ -81,10 +81,9 @@ use serde_json::Value;
 
 use super::BuilderError;
 use super::NotMutableReason;
-use super::new_types::MutationPath;
-use super::new_types::VariantName;
+use super::mutation_path::MutationPath;
 use super::path_kind::PathKind;
-use super::types_internal::PathAction;
+use super::variant_name::VariantName;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::brp_tools::brp_type_guide::constants::MAX_TYPE_RECURSION_DEPTH;
 use crate::brp_tools::brp_type_guide::type_knowledge::BRP_TYPE_KNOWLEDGE;
@@ -95,6 +94,15 @@ use crate::brp_tools::brp_type_guide::variant_signature::VariantSignature;
 use crate::error::Error;
 use crate::support::JsonObjectAccess;
 use crate::support::SchemaField;
+
+/// Action to take regarding path creation during recursion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum PathAction {
+    /// Create mutation paths during recursion
+    Create,
+    /// Skip path creation during recursion
+    Skip,
+}
 
 /// Type-safe wrapper for recursion depth tracking
 ///

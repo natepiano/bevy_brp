@@ -5,8 +5,8 @@
 //! - `None` -> `null`
 //! - `Some(value)` -> `value` (unwrapped)
 
-use super::new_types::VariantName;
-use super::types_internal::Example;
+use super::path_example::Example;
+use super::variant_name::VariantName;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

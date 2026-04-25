@@ -29,8 +29,8 @@ use std::fmt::Display;
 use serde_json::Value;
 use serde_json::json;
 
-use super::types_internal::Mutability;
-use super::types_internal::MutabilityIssue;
+use super::mutability::Mutability;
+use super::mutability::MutabilityIssue;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 
 /// Represents detailed mutation support status for a type

@@ -60,11 +60,11 @@ impl ToolFn for SetTracingLevel {
 
         // Get the actual trace log path
         let log_path = TracingLevel::get_trace_log_path();
-        let log_path_str = log_path.to_string_lossy().to_string();
+        let tracing_log_file = log_path.to_string_lossy().to_string();
 
         Ok(SetTracingLevelResult::new(
             tracing_level.as_str().to_string(),
-            log_path_str,
+            tracing_log_file,
         ))
     }
 }

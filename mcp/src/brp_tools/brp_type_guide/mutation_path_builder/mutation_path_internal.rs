@@ -10,19 +10,19 @@ use std::collections::HashSet;
 use serde_json::Value;
 use serde_json::json;
 
-use super::new_types::MutationPath;
-use super::new_types::VariantName;
+use super::enum_builder::EnumPathInfo;
+use super::mutability::Mutability;
+use super::mutability::MutabilityIssue;
+use super::mutability::MutabilityIssueTarget;
+use super::mutation_path::MutationPath;
+use super::mutation_path_external::MutationPathExternal;
+use super::mutation_path_external::PathInfo;
+use super::mutation_path_external::RootExample;
 use super::not_mutable_reason::NotMutableReason;
+use super::path_example::Example;
 use super::path_example::PathExample;
 use super::path_kind::PathKind;
-use super::types_internal::EnumPathInfo;
-use super::types_internal::Example;
-use super::types_internal::Mutability;
-use super::types_internal::MutabilityIssue;
-use super::types_internal::MutabilityIssueTarget;
-use super::types_response::MutationPathExternal;
-use super::types_response::PathInfoParams;
-use super::types_response::RootExample;
+use super::variant_name::VariantName;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::brp_tools::brp_type_guide::constants::OPERATION_INSERT;
 use crate::brp_tools::brp_type_guide::constants::OPERATION_SPAWN;
@@ -38,6 +38,33 @@ type ResolvedEnumPathInfo = (
     Option<Vec<VariantName>>,
     Option<RootExample>,
 );
+
+/// Parameters for constructing a `PathInfo`.
+struct PathInfoParams {
+    path_kind:           PathKind,
+    type_name:           BrpTypeName,
+    type_kind:           TypeKind,
+    mutability:          Mutability,
+    mutability_reason:   Option<Value>,
+    applicable_variants: Option<Vec<VariantName>>,
+    enum_instructions:   Option<String>,
+    root_example:        Option<RootExample>,
+}
+
+impl From<PathInfoParams> for PathInfo {
+    fn from(params: PathInfoParams) -> Self {
+        Self {
+            path_kind:           params.path_kind,
+            type_name:           params.type_name,
+            type_kind:           params.type_kind,
+            mutability:          params.mutability,
+            mutability_reason:   params.mutability_reason,
+            applicable_variants: params.applicable_variants,
+            enum_instructions:   params.enum_instructions,
+            root_example:        params.root_example,
+        }
+    }
+}
 
 /// Mutation path information (internal representation)
 #[derive(Debug, Clone)]

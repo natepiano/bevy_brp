@@ -9,13 +9,13 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use serde_json::Value;
 
+use super::mutability::Mutability;
+use super::mutation_path_external::RootExample;
 use super::mutation_path_internal::MutationPathInternal;
-use super::new_types::VariantName;
+use super::path_example::Example;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
-use super::types_internal::Example;
-use super::types_internal::Mutability;
-use super::types_response::RootExample;
+use super::variant_name::VariantName;
 
 /// Aggregate multiple mutation statuses into a single status
 ///

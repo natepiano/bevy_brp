@@ -6,9 +6,9 @@ use std::ops::Deref;
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::new_types::VariantName;
+use super::enum_builder::EnumPathInfo;
 use super::option_classification::OptionClassification;
-use super::types_internal::EnumPathInfo;
+use super::variant_name::VariantName;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::brp_tools::brp_type_guide::struct_field_name::StructFieldName;
 use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
