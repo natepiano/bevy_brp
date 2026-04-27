@@ -69,6 +69,7 @@ missing_docs = "deny"
 [workspace.lints.clippy]
 allow_attributes_without_reason = "deny"
 expect_used                     = "deny"
+self_named_module_files         = "deny" # use module/mod.rs (directory form) when a module has submodules
 panic                           = "deny"
 unreachable                     = "deny"
 unwrap_used                     = "deny"
