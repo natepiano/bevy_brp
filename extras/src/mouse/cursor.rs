@@ -73,7 +73,7 @@ impl SimulatedCursorPosition {
     /// Get cursor position for window, defaulting to origin if not set
     ///
     /// # Arguments
-    /// * `window` - Window entity to get position for
+    /// * `window` - `Window` entity to get position for
     ///
     /// # Returns
     /// Current cursor position or `Vec2::ZERO` if no position stored
@@ -84,7 +84,7 @@ impl SimulatedCursorPosition {
     /// Update cursor position and return the delta from previous position
     ///
     /// # Arguments
-    /// * `window` - Window entity to update
+    /// * `window` - `Window` entity to update
     /// * `new_pos` - New cursor position
     ///
     /// # Returns

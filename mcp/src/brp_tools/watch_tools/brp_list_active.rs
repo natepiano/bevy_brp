@@ -19,7 +19,7 @@ use crate::tool::ToolResult;
 struct WatchInfo {
     /// Watch ID
     pub watch_id:   u32,
-    /// Entity ID being watched
+    /// `Entity` ID being watched
     pub entity_id:  u64,
     /// Type of watch (get/list)
     pub watch_type: String,

@@ -187,8 +187,8 @@ impl TypeKnowledge {
 
     /// Get the example value for `bevy_ecs::entity::Entity` type from type knowledge
     ///
-    /// This is used for generating agent guidance messages that reference Entity IDs.
-    /// Returns an error if the Entity type knowledge is missing or invalid.
+    /// This is used for generating agent guidance messages that reference `Entity` IDs.
+    /// Returns an error if the `Entity` type knowledge is missing or invalid.
     pub(super) fn get_entity_example_value() -> Result<u64> {
         BRP_TYPE_KNOWLEDGE
             .get(&KnowledgeKey::exact(TYPE_BEVY_ENTITY))

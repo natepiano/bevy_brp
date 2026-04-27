@@ -212,7 +212,7 @@ impl BrpClient {
     /// Enhance error messages with additional context when available
     ///
     /// Currently enhances:
-    /// - Entity deserialization errors: Adds entity ID from parameters
+    /// - `Entity` deserialization errors: Adds `Entity` IDs from parameters
     fn enhance_error_message(&self, original_message: &str, error_code: i32) -> String {
         // Check for entity deserialization errors
         if original_message.contains("Attempting to deserialize an invalid entity") {

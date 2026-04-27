@@ -154,7 +154,7 @@ fn generate_get_template_impl(
         if is_option_type {
             quote! {
                 self.#field_name.as_ref()
-                    .map(|s| s.as_str())
+                    .map(String::as_str)
                     .ok_or_else(|| {
                         error_stack::Report::new(crate::error::Error::MissingMessageTemplate(
                             "Message template not set. Use .with_message_template() to provide a template.".to_string()
@@ -604,7 +604,7 @@ fn generate_count_computation(
             #source.as_ref()
                 .and_then(|v| v.get("type_guide"))
                 .and_then(serde_json::Value::as_object)
-                .map(|obj| obj.len())
+                .map(serde_json::Map::len)
                 .unwrap_or(0)
         }),
         "count_components" => Some(quote! {
@@ -626,7 +626,7 @@ fn generate_count_computation(
                 .and_then(serde_json::Value::as_object)
                 .and_then(|obj| obj.get("errors"))
                 .and_then(serde_json::Value::as_array)
-                .map(|arr| arr.len())
+                .map(Vec::len)
         }),
         "count_query_components" => Some(quote! {
             #source.as_ref()
@@ -635,7 +635,7 @@ fn generate_count_computation(
                     entities
                         .iter()
                         .filter_map(|e| e.as_object())
-                        .map(|obj| obj.len())
+                        .map(serde_json::Map::len)
                         .sum()
                 })
                 .unwrap_or(0)
@@ -645,7 +645,7 @@ fn generate_count_computation(
                 .and_then(serde_json::Value::as_object)
                 .and_then(|obj| obj.get("methods"))
                 .and_then(serde_json::Value::as_array)
-                .map(|arr| arr.len())
+                .map(Vec::len)
                 .unwrap_or(0)
         }),
         "count_keys_sent" => Some(quote! {
@@ -653,7 +653,7 @@ fn generate_count_computation(
                 .and_then(serde_json::Value::as_object)
                 .and_then(|obj| obj.get("keys_sent"))
                 .and_then(serde_json::Value::as_array)
-                .map(|arr| arr.len())
+                .map(Vec::len)
                 .unwrap_or(0)
         }),
         _ => None,

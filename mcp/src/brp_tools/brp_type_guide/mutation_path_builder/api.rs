@@ -68,7 +68,7 @@ pub fn build_mutation_paths(
 
 /// Extract spawn/insert example with guidance for AI agents
 ///
-/// Returns `None` if the type is neither a Component nor a Resource.
+/// Returns `None` if the type is neither a `Component` nor a `Resource`.
 /// Otherwise, returns a `SpawnInsertExample` with appropriate guidance and example.
 pub fn extract_spawn_insert_example(
     mutation_paths: &[MutationPathExternal],

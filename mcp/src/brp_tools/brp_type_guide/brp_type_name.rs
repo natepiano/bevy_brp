@@ -33,7 +33,7 @@ impl BrpTypeName {
     /// For example: `Vec<String>` returns `Some("Vec")`
     pub fn base_type(&self) -> Option<&str> { self.0.split('<').next() }
 
-    /// Check if this type is a Handle wrapper type
+    /// Check if this type is a `Handle` wrapper type
     /// Returns true for types like `bevy_asset::handle::Handle<...>`
     pub fn is_handle(&self) -> bool { self.0.starts_with("bevy_asset::handle::Handle<") }
 

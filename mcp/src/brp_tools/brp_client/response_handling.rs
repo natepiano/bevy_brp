@@ -42,8 +42,8 @@ impl BrpClientError {
     /// Check if this error indicates a format issue that can be recovered
     /// This function was constructed through trial and error via vibe coding with claude
     /// There is a bug in `bevy_remote` right now that we get a spurious "Unknown component type"
-    /// when a Component doesn't have Serialize/Deserialize traits - this doesn't affect
-    /// Resources so the first section is probably correct.
+    /// when a `Component` doesn't have `Serialize`/`Deserialize` traits - this doesn't affect
+    /// `Resource`s so the first section is probably correct.
     /// the second section I think is less correct but it will take some time to validate that
     /// moving to an "error codes only" approach doesn't have other issues
     pub const fn has_format_error_code(&self) -> bool {

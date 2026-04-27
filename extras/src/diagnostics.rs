@@ -1,5 +1,7 @@
 //! FPS diagnostics handler for BRP extras
 
+use std::time::Duration;
+
 use bevy::diagnostic::Diagnostic;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
@@ -34,7 +36,10 @@ pub(crate) fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult 
     let fps_smoothed = fps.and_then(Diagnostic::smoothed);
     let fps_history_len = fps.map_or(0, Diagnostic::history_len);
     let fps_max_history = fps.map_or(0, Diagnostic::get_max_history_length);
-    let fps_duration_secs = fps.and_then(Diagnostic::duration).map(|d| d.as_secs_f64());
+    let fps_duration_secs = fps
+        .and_then(Diagnostic::duration)
+        .as_ref()
+        .map(Duration::as_secs_f64);
 
     let frame_time_value = frame_time.and_then(Diagnostic::value);
     let frame_time_avg = frame_time.and_then(Diagnostic::average);

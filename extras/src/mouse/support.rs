@@ -87,7 +87,7 @@ pub(super) fn serialize_response<T: Serialize>(
 /// * `window` - Optional window entity
 ///
 /// # Returns
-/// Window entity or `Entity::PLACEHOLDER` if None
+/// `Window` entity or `Entity::PLACEHOLDER` if None
 pub(super) fn resolve_window_entity(window: Option<Entity>) -> Entity {
     window.unwrap_or(Entity::PLACEHOLDER)
 }

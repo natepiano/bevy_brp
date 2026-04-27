@@ -248,11 +248,11 @@ struct SimpleSetComponent {
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct TestMapComponent {
-    /// String to String map
+    /// `String` to `String` map
     pub strings:    HashMap<String, String>,
-    /// String to f32 map
+    /// `String` to `f32` map
     pub values:     HashMap<String, f32>,
-    /// String to Transform map (complex nested type)
+    /// `String` to `Transform` map (complex nested type)
     pub transforms: HashMap<String, Transform>,
 }
 
@@ -294,15 +294,15 @@ enum NestedConfigEnum {
     Conditional(u32),
 }
 
-/// Simple nested enum for testing enum recursion - like Option<Vec2>
+/// Simple nested enum for testing enum recursion - like `Option<Vec2>`
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 enum SimpleNestedEnum {
     #[default]
     None,
-    /// This variant contains a Vec2 - should generate nested paths
+    /// This variant contains a `Vec2` - should generate nested paths
     WithVec2(Vec2),
-    /// This variant contains a Transform - should generate deeply nested paths
+    /// This variant contains a `Transform` - should generate deeply nested paths
     WithTransform(Transform),
     /// Struct variant - should generate field-based nested paths
     WithStruct { position: Vec3, scale: f32 },
@@ -314,9 +314,9 @@ enum SimpleNestedEnum {
 enum OptionTestEnum {
     #[default]
     Nothing,
-    /// Option<Vec2> - should generate nested paths through Some variant
+    /// `Option<Vec2>` - should generate nested paths through `Some` variant
     MaybeVec2(Option<Vec2>),
-    /// Option<Transform> - should generate deeply nested paths through Some variant
+    /// `Option<Transform>` - should generate deeply nested paths through `Some` variant
     MaybeTransform(Option<Transform>),
 }
 
@@ -374,9 +374,9 @@ enum BottomEnum {
 enum TestEnumWithArray {
     #[default]
     Empty,
-    /// Variant with array of Vec2
+    /// Variant with array of `Vec2`
     WithVec2Array([Vec2; 3]),
-    /// Variant with array of f32
+    /// Variant with array of `f32`
     WithFloatArray([f32; 4]),
     /// Struct variant with array field
     WithStructArray { points: [Vec3; 2], scale: f32 },
@@ -396,7 +396,7 @@ struct TestArrayField {
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct TestArrayTransforms {
-    /// Array of Transform components
+    /// Array of `Transform` components
     pub transforms: [Transform; 2],
 }
 
@@ -420,9 +420,9 @@ struct TestTupleStruct(pub f32, pub String, pub bool);
 #[reflect(Component)]
 struct TestComplexTuple {
     /// Tuple with complex types that should recurse
-    pub complex_tuple: (Transform, Vec3),
+    pub complex: (Transform, Vec3),
     /// Nested tuple with both simple and complex types
-    pub nested_tuple:  (Vec2, (f32, String)),
+    pub nested:  (Vec2, (f32, String)),
 }
 
 /// Core type with mixed mutability for `mutability_reason` testing
@@ -483,17 +483,17 @@ enum TestMixedMutabilityEnum {
 #[derive(Default, Reflect)]
 struct TestPartiallyMutableNested {
     /// Mutable field in nested struct
-    pub nested_mutable_value: f32,
+    pub mutable_value: f32,
 
     /// Not mutable - Arc type without serialization
-    pub nested_not_mutable_arc: std::sync::Arc<Vec<u8>>,
+    pub not_mutable_arc: std::sync::Arc<Vec<u8>>,
 }
 
 impl Default for TestComplexTuple {
     fn default() -> Self {
         Self {
-            complex_tuple: (Transform::default(), Vec3::ZERO),
-            nested_tuple:  (Vec2::ZERO, (0.0, String::new())),
+            complex: (Transform::default(), Vec3::ZERO),
+            nested:  (Vec2::ZERO, (0.0, String::new())),
         }
     }
 }
@@ -518,9 +518,9 @@ struct TestComplexComponent {
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 struct TestCollectionComponent {
-    /// Vec<Transform> - should trigger `ListMutationBuilder` with complex recursion
+    /// `Vec<Transform>` - should trigger `ListMutationBuilder` with complex recursion
     pub transform_list: Vec<Transform>,
-    /// `HashSet`<String> - should trigger `SetMutationBuilder`
+    /// `HashSet<String>` - should trigger `SetMutationBuilder`
     pub struct_set:     HashSet<String>,
 }
 
@@ -1022,11 +1022,11 @@ fn spawn_array_and_tuple_test_entities(commands: &mut Commands) {
 
     commands.spawn((
         TestComplexTuple {
-            complex_tuple: (
+            complex: (
                 Transform::from_xyz(10.0, 20.0, 30.0),
                 Vec3::new(1.0, 2.0, 3.0),
             ),
-            nested_tuple:  (Vec2::new(5.0, 10.0), (3.0, "nested".to_string())),
+            nested:  (Vec2::new(5.0, 10.0), (3.0, "nested".to_string())),
         },
         Name::new("TestComplexTupleEntity"),
     ));
@@ -1238,8 +1238,8 @@ fn spawn_mixed_mutability_test_entities(commands: &mut Commands) {
         mutable_float:            42.5,
         not_mutable_arc:          Arc::new(format!("arc_string_{suffix}")),
         partially_mutable_nested: TestPartiallyMutableNested {
-            nested_mutable_value:   100.0,
-            nested_not_mutable_arc: Arc::new(vec![1, 2, 3, 4, 5]),
+            mutable_value:   100.0,
+            not_mutable_arc: Arc::new(vec![1, 2, 3, 4, 5]),
         },
     };
 

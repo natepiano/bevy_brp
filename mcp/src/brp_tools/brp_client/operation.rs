@@ -24,7 +24,7 @@ pub(super) enum Operation {
     /// Serializes as: `mutate`
     Mutate {
         /// Which parameter name to use when building requests
-        /// Component for `BevyMutateComponent`, Resource for `BevyMutateResource`
+        /// `Component` for `BevyMutateComponent`, `Resource` for `BevyMutateResource`
         #[serde(skip)]
         parameter_name: ParameterName,
     },

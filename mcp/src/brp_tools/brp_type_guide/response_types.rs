@@ -24,13 +24,13 @@ use super::type_kind::TypeKind;
 pub enum BrpSupportedOperation {
     /// Get operation - requires type in registry
     Get,
-    /// Insert operation - requires Reflect trait
+    /// Insert operation - requires `Reflect` trait
     Insert,
     /// Mutate operation - requires mutable type (struct/tuple)
     Mutate,
     /// Query operation - requires type in registry
     Query,
-    /// Spawn operation - requires Reflect trait
+    /// Spawn operation - requires `Reflect` trait
     Spawn,
 }
 
@@ -56,11 +56,11 @@ pub struct SchemaInfo {
     /// Crate name of the type
     #[serde(skip_serializing_if = "Option::is_none")]
     pub crate_name:     Option<String>,
-    /// Reflection traits available on this type (Component, Resource, Serialize, Deserialize,
-    /// Default, `FromReflect`, etc.) Clients can check this array to determine supported
-    /// operations:
-    /// - Contains "Component" → supports Query, Get, Spawn, Insert (+ Mutate if mutable)
-    /// - Contains "Resource" → supports Query, Get, Insert (+ Mutate if mutable)
+    /// Reflection traits available on this type (`Component`, `Resource`, `Serialize`,
+    /// `Deserialize`, `Default`, `FromReflect`, etc.) Clients can check this array to determine
+    /// supported operations:
+    /// - Contains "Component" → supports `Query`, `Get`, `Spawn`, `Insert` (+ `Mutate` if mutable)
+    /// - Contains "Resource" → supports `Query`, `Get`, `Insert` (+ `Mutate` if mutable)
     /// - Contains "Serialize"/"Deserialize" → type can be serialized (informational only)
     /// - Other traits are informational and preserved from Bevy's reflection system
     #[serde(skip_serializing_if = "Option::is_none")]

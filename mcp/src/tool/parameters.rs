@@ -65,7 +65,7 @@ pub enum ParameterName {
     Enabled,
     /// Multiple entities for batch operations
     Entities,
-    /// Entity ID parameter
+    /// `Entity` ID parameter
     Entity,
     /// Example name
     ExampleName,
