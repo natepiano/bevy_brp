@@ -29,6 +29,7 @@ use bevy::window::WindowResolution;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
+// Mouse test constants
 /// Size of the pickable cuboid (used for both mesh and gizmo outline)
 const CUBOID_SIZE: f32 = 1.5;
 

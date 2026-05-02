@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking Changes
 - Renamed JSON fields inside `RootExample` entries in `brp_type_guide` mutation-path responses: `root_example` → `example` and `root_example_unavailable_reason` → `unavailable_reason`. Clients parsing these inner fields must update to the new names; the outer `root_example: { ... }` field on a mutation path is unchanged.
 - Renamed the flattened spawn/resource-example keys in `brp_type_guide` responses: `spawn_example` → `spawn` and `resource_example` → `resource`. The inner payload (`agent_guidance`, `example`) is unchanged.
+- Numeric parameters (e.g. `port`, `instance_count`, `entity`) no longer accept stringified numbers. Send JSON numbers (`15702`), not strings (`"15702"`). Clients sending numeric strings will receive a serde type error. This removes a compatibility coercion that has existed since July 2025 to work around limitations in older MCP clients that have since been resolved.
 
 ## [0.19.0] - 2026-03-22
 

@@ -8,37 +8,34 @@ use std::ops::RangeInclusive;
 
 use schemars::JsonSchema;
 use serde::Deserialize;
-use serde::Deserializer;
 use serde::Serialize;
 
-use crate::support;
-
-/// Minimum number of instances (1)
-const MIN_INSTANCE_COUNT: u16 = 1;
+// Instance count constants
 /// Maximum number of instances (100)
 const MAX_INSTANCE_COUNT: u16 = 100;
+/// Minimum number of instances (1)
+const MIN_INSTANCE_COUNT: u16 = 1;
 /// Valid range for instance count
 const VALID_INSTANCE_RANGE: RangeInclusive<u16> = MIN_INSTANCE_COUNT..=MAX_INSTANCE_COUNT;
 
 /// Count of instances to launch in sequence
 /// Validates count is within 1-100 - defaults to 1
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize, Deserialize)]
+#[serde(try_from = "u16")]
 pub struct InstanceCount(pub u16);
 
-impl<'de> Deserialize<'de> for InstanceCount {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let count: u16 = support::deserialize_number_or_string(deserializer)?;
+impl TryFrom<u16> for InstanceCount {
+    type Error = String;
+
+    fn try_from(count: u16) -> Result<Self, Self::Error> {
         if VALID_INSTANCE_RANGE.contains(&count) {
             Ok(Self(count))
         } else {
-            Err(serde::de::Error::custom(format!(
+            Err(format!(
                 "Invalid instance count {count}: must be in range {}-{}",
                 VALID_INSTANCE_RANGE.start(),
                 VALID_INSTANCE_RANGE.end()
-            )))
+            ))
         }
     }
 }

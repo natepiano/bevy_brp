@@ -14,7 +14,7 @@ Tests in `.claude/integration_tests/` are not bash scripts but structured test s
 Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `WorldSpawnEntity`) map to snake_case MCP tool names (`world_spawn_entity`) and BRP methods (`world.spawn_entity`). The `#[brp_tool]` attribute connects MCP tools to BRP protocol methods, with parameter/result types automatically deriving field placement for proper JSON serialization between MCP and BRP layers.
 
 ## MCP Tool Execution Constraints
-**CRITICAL**: After modifying MCP tool code, you cannot test it until the user reloads the MCP server because MCP tools run as subprocesses. The tool in use is always the OLD version until reloaded. You need to follow <McpEditProcedure/>.
+**CRITICAL**: After modifying MCP tool code, you can build and `cargo install --path mcp` the new binary yourself, but the user has to reload (exit and re-enter the session) for the running MCP subprocess to pick it up. Until they do, any MCP tool you invoke is still the OLD version. You need to follow <McpEditProcedure/>.
 
 ## getting an example to test with
 - use `mcp__brp__brp_launch_example` with extras_plugin if you want to test something, always launch it with debug profile

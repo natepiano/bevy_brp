@@ -26,7 +26,10 @@ use crate::support::SchemaField;
 ///
 /// The trait is automatically implemented by the `ParamStruct` derive macro
 /// for parameter structs.
-pub trait ParamStruct: Send + Sync + serde::Serialize + serde::de::DeserializeOwned {}
+pub trait ParamStruct:
+    Send + Sync + serde::Serialize + serde::de::DeserializeOwned + JsonSchema
+{
+}
 
 /// Shared parameter struct for tools that have no parameters
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
@@ -441,6 +444,87 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
     ParameterType::Any
 }
 
+fn resolve_schema_value<'a>(
+    field_value: &'a Value,
+    defs: Option<&'a Map<String, Value>>,
+) -> &'a Value {
+    field_value
+        .as_object()
+        .and_then(|obj| obj.get_field(SchemaField::Ref))
+        .and_then(Value::as_str)
+        .and_then(|ref_path| {
+            ref_path
+                .strip_prefix("#/$defs/")
+                .and_then(|type_name| defs.and_then(|definitions| definitions.get(type_name)))
+        })
+        .unwrap_or(field_value)
+}
+
+fn schema_from_value(value: &Value) -> Option<Schema> {
+    match value {
+        Value::Object(obj) => Some(Schema::from(obj.clone())),
+        Value::Bool(boolean) => Some(Schema::from(*boolean)),
+        _ => None,
+    }
+}
+
+fn normalize_stringified_json(value: &mut Value, accepts_object: bool, accepts_array: bool) {
+    let Value::String(string) = value else {
+        return;
+    };
+
+    let trimmed = string.trim();
+    let looks_like_object = accepts_object && trimmed.starts_with('{') && trimmed.ends_with('}');
+    let looks_like_array = accepts_array && trimmed.starts_with('[') && trimmed.ends_with(']');
+
+    if !(looks_like_object || looks_like_array) {
+        return;
+    }
+
+    if let Ok(parsed) = serde_json::from_str::<Value>(trimmed) {
+        *value = parsed;
+    }
+}
+
+fn normalize_argument_value(value: &mut Value, schema: &Schema) {
+    match map_schema_type_to_parameter_type(schema) {
+        ParameterType::Object => normalize_stringified_json(value, true, false),
+        ParameterType::StringArray | ParameterType::NumberArray => {
+            normalize_stringified_json(value, false, true);
+        },
+        ParameterType::Any => normalize_stringified_json(value, true, true),
+        ParameterType::Number | ParameterType::String | ParameterType::Boolean => {},
+    }
+}
+
+/// Parse stringified JSON values at the MCP boundary for fields whose schema
+/// accepts structured JSON. Numeric, string, and boolean fields are left as-is
+/// so type mismatches surface as serde errors rather than being silently coerced.
+pub(super) fn normalize_arguments_for<T: JsonSchema>(args: &mut Map<String, Value>) {
+    let schema = schemars::schema_for!(T);
+    let Some(root_obj) = schema.as_object() else {
+        return;
+    };
+    let Some(properties) = root_obj.get_properties() else {
+        return;
+    };
+    let defs = root_obj
+        .get_field(SchemaField::Defs)
+        .and_then(Value::as_object);
+
+    for (field_name, value) in args {
+        let Some(field_schema_value) = properties.get(field_name) else {
+            continue;
+        };
+        let resolved_schema_value = resolve_schema_value(field_schema_value, defs);
+        let Some(field_schema) = schema_from_value(resolved_schema_value) else {
+            continue;
+        };
+
+        normalize_argument_value(value, &field_schema);
+    }
+}
+
 /// Build parameters from a `JsonSchema` type directly into a `ParameterBuilder`
 /// All tools with parameters derive `JsonSchema` making it possible for us
 /// to build the parameters from the schema
@@ -481,25 +565,9 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
     for (field_name, field_value) in properties {
         let required = required_fields.contains(field_name);
 
-        // Resolve $ref if present
-        let resolved_value = field_value
-            .as_object()
-            .and_then(|o| o.get_field(SchemaField::Ref))
-            .and_then(Value::as_str)
-            .and_then(|ref_path| {
-                ref_path.strip_prefix("#/$defs/").and_then(|type_name| {
-                    defs.and_then(Value::as_object)
-                        .and_then(|d| d.get(type_name))
-                })
-            })
-            .unwrap_or(field_value);
+        let resolved_value = resolve_schema_value(field_value, defs.and_then(Value::as_object));
 
-        // Convert the resolved JSON value to a Schema for processing
-        let field_schema = if let Value::Object(obj) = resolved_value {
-            Schema::from(obj.clone())
-        } else if let Value::Bool(b) = resolved_value {
-            Schema::from(*b)
-        } else {
+        let Some(field_schema) = schema_from_value(resolved_value) else {
             continue; // Skip non-schema values
         };
         let param_type = map_schema_type_to_parameter_type(&field_schema);
@@ -540,6 +608,61 @@ mod tests {
     use std::error::Error;
 
     use super::*;
+    use crate::app_tools::LaunchBevyBinaryParams;
+    use crate::brp_tools::MutateComponentsParams;
+
+    #[test]
+    fn normalize_arguments_for_does_not_coerce_numeric_strings() {
+        let mut args = Map::new();
+        args.insert(
+            String::from("instance_count"),
+            Value::String(String::from("3")),
+        );
+        args.insert(String::from("port"), Value::String(String::from("15702")));
+        args.insert(
+            String::from("target_name"),
+            Value::String(String::from("42")),
+        );
+
+        normalize_arguments_for::<LaunchBevyBinaryParams>(&mut args);
+
+        assert_eq!(
+            args.get("instance_count"),
+            Some(&Value::String(String::from("3")))
+        );
+        assert_eq!(
+            args.get("port"),
+            Some(&Value::String(String::from("15702")))
+        );
+        assert_eq!(
+            args.get("target_name"),
+            Some(&Value::String(String::from("42")))
+        );
+    }
+
+    #[test]
+    fn normalize_arguments_for_mutation_params_parses_stringified_json() {
+        let mut args = Map::new();
+        args.insert(String::from("entity"), serde_json::json!(1));
+        args.insert(String::from("component"), Value::String(String::from("42")));
+        args.insert(
+            String::from("value"),
+            Value::String(String::from(r#"{"nested":true}"#)),
+        );
+        args.insert(String::from("port"), serde_json::json!(15702));
+
+        normalize_arguments_for::<MutateComponentsParams>(&mut args);
+
+        assert_eq!(
+            args.get("component"),
+            Some(&Value::String(String::from("42")))
+        );
+        assert_eq!(
+            args.get("value"),
+            Some(&serde_json::json!({ "nested": true }))
+        );
+        assert_eq!(args.get("port"), Some(&serde_json::json!(15702)));
+    }
 
     /// Regression test: `add_any_property` must emit anyOf where the array branch
     /// includes an "items" key. Without this, Copilot rejects the schema with:

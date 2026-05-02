@@ -20,11 +20,11 @@ use crate::error::Result;
 use crate::tool::BrpMethod;
 use crate::tool::ParameterName;
 
-/// Maximum size for a single chunk in the SSE stream (1MB)
-const MAX_CHUNK_SIZE: usize = 1024 * 1024;
-
+// Watch task constants
 /// Maximum size for the total buffer when processing incomplete lines (10MB)
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
+/// Maximum size for a single chunk in the SSE stream (1MB)
+const MAX_CHUNK_SIZE: usize = 1024 * 1024;
 
 /// Parameters for a watch connection
 struct WatchConnectionParams {

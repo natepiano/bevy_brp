@@ -20,7 +20,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> { registry::get_all_tool_defin
 /// `HandlerContext`'s parsing method across sibling modules.
 pub fn extract_parameter_values<T>(ctx: &HandlerContext) -> Result<T>
 where
-    T: serde::de::DeserializeOwned,
+    T: serde::de::DeserializeOwned + schemars::JsonSchema,
 {
     ctx.extract_parameter_values()
 }

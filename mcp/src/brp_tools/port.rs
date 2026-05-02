@@ -7,31 +7,28 @@ use std::ops::Deref;
 
 use schemars::JsonSchema;
 use serde::Deserialize;
-use serde::Deserializer;
 use serde::Serialize;
 
 use super::constants::DEFAULT_BRP_EXTRAS_PORT;
 use super::constants::VALID_PORT_RANGE;
-use crate::support;
 
 /// Port number for BRP - defaults to 15702
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize, Deserialize)]
+#[serde(try_from = "u16")]
 pub struct Port(pub u16);
 
-impl<'de> Deserialize<'de> for Port {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let port: u16 = support::deserialize_number_or_string(deserializer)?;
+impl TryFrom<u16> for Port {
+    type Error = String;
+
+    fn try_from(port: u16) -> Result<Self, Self::Error> {
         if VALID_PORT_RANGE.contains(&port) {
             Ok(Self(port))
         } else {
-            Err(serde::de::Error::custom(format!(
+            Err(format!(
                 "Invalid port {port}: must be in range {}-{}",
                 VALID_PORT_RANGE.start(),
                 VALID_PORT_RANGE.end()
-            )))
+            ))
         }
     }
 }

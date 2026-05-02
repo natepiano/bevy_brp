@@ -6,6 +6,7 @@ use std::time::UNIX_EPOCH;
 use error_stack::ResultExt;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
+use schemars::JsonSchema;
 use serde_json::Map;
 use serde_json::Value;
 use serde_json::json;
@@ -18,6 +19,7 @@ use super::json_response::AnySchemaValue;
 use super::json_response::ToolCallJsonResponse;
 use super::large_response::CHARS_PER_TOKEN;
 use super::large_response::LargeResponseConfig;
+use super::parameters;
 use super::response_builder::Response;
 use crate::error::Error;
 use crate::error::Result;
@@ -47,7 +49,7 @@ impl HandlerContext {
     /// Common parameter extraction methods (used by both BRP and local handlers)
     pub(super) fn extract_parameter_values<T>(&self) -> Result<T>
     where
-        T: serde::de::DeserializeOwned,
+        T: serde::de::DeserializeOwned + JsonSchema,
     {
         // Get request arguments as JSON Value
         // Special case: if T is unit type, use null instead of empty object
@@ -58,7 +60,7 @@ impl HandlerContext {
                 || Value::Object(Map::new()),
                 |args| {
                     let mut args = args.clone();
-                    parse_stringified_json_values(&mut args);
+                    parameters::normalize_arguments_for::<T>(&mut args);
                     Value::Object(args)
                 },
             )
@@ -87,8 +89,7 @@ impl HandlerContext {
 
     /// Get a field value from the request arguments
     ///
-    /// Note: Arguments are preprocessed by `parse_stringified_json_values` to handle
-    /// MCP clients that stringify JSON objects/arrays for `Any`-typed parameters.
+    /// This returns the raw request value without schema-based normalization.
     pub(super) fn extract_optional_named_field(&self, field_name: &str) -> Option<&Value> {
         self.request.arguments.as_ref()?.get(field_name)
     }
@@ -218,27 +219,5 @@ impl HandlerContext {
         }
 
         Ok(response)
-    }
-}
-
-/// Pre-process MCP arguments to parse JSON-encoded strings back into native JSON values.
-///
-/// MCP clients may stringify JSON objects/arrays when a parameter schema uses
-/// `ParameterType::Any` (e.g., `serde_json::Value` fields). This function detects
-/// string values that contain valid JSON objects or arrays and replaces them with
-/// the parsed structure so serde deserialization produces the correct types.
-fn parse_stringified_json_values(args: &mut Map<String, Value>) {
-    for value in args.values_mut() {
-        if let Value::String(s) = value {
-            let trimmed = s.trim();
-            let looks_like_json_object = trimmed.starts_with('{') && trimmed.ends_with('}');
-            let looks_like_json_array = trimmed.starts_with('[') && trimmed.ends_with(']');
-
-            if (looks_like_json_object || looks_like_json_array)
-                && let Ok(parsed) = serde_json::from_str::<Value>(trimmed)
-            {
-                *value = parsed;
-            }
-        }
     }
 }

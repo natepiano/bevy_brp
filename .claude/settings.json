@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/mutation-tester-prevent-for-loop.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__brp__world_spawn_entity|mcp__brp__world_mutate_components|mcp__brp__world_mutate_resources|mcp__brp__world_insert_resources|mcp__brp__world_query",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-tool-mutation-update.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
