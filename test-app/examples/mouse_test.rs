@@ -10,7 +10,9 @@
 //! correctly flow through Bevy's picking system via the `WindowEvent` channel.
 
 use bevy::camera::RenderTarget;
-use bevy::color::palettes::css;
+use bevy::color::palettes::css::CORNFLOWER_BLUE;
+use bevy::color::palettes::css::LIME;
+use bevy::color::palettes::css::YELLOW;
 use bevy::input::gestures::DoubleTapGesture;
 use bevy::input::gestures::PinchGesture;
 use bevy::input::gestures::RotationGesture;
@@ -395,7 +397,7 @@ fn setup_scene(
     let cuboid = Cuboid::new(CUBOID_SIZE, CUBOID_SIZE, CUBOID_SIZE);
     let cuboid_mesh = meshes.add(cuboid);
     let cuboid_material = materials.add(StandardMaterial {
-        base_color: Color::from(css::CORNFLOWER_BLUE),
+        base_color: Color::from(CORNFLOWER_BLUE),
         ..default()
     });
     let background_mesh = meshes.add(Cuboid::new(20.0, 20.0, 0.1));
@@ -572,12 +574,12 @@ fn on_primary_cuboid_click(
     if current - picking.last_click_time < DOUBLE_CLICK_THRESHOLD {
         picking.double_clicks += 1;
         commands.entity(cuboid_entity).insert(GizmoOutline {
-            color: Color::from(css::YELLOW),
+            color: Color::from(YELLOW),
         });
     } else {
         picking.clicks += 1;
         commands.entity(cuboid_entity).insert(GizmoOutline {
-            color: Color::from(css::LIME),
+            color: Color::from(LIME),
         });
     }
     picking.gizmo_active = true;
@@ -603,12 +605,12 @@ fn on_secondary_cuboid_click(
     if current - picking.last_click_time < DOUBLE_CLICK_THRESHOLD {
         picking.double_clicks += 1;
         commands.entity(cuboid_entity).insert(GizmoOutline {
-            color: Color::from(css::YELLOW),
+            color: Color::from(YELLOW),
         });
     } else {
         picking.clicks += 1;
         commands.entity(cuboid_entity).insert(GizmoOutline {
-            color: Color::from(css::LIME),
+            color: Color::from(LIME),
         });
     }
     picking.gizmo_active = true;

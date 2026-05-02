@@ -11,6 +11,7 @@ use bevy::window::CursorMoved;
 use bevy::window::WindowEvent;
 use bevy_kana::ToF32;
 use bevy_remote::BrpResult;
+use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -99,7 +100,7 @@ pub fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> B
     // Validate frames
     if request.frames == 0 {
         return Err(bevy_remote::BrpError {
-            code:    bevy_remote::error_codes::INVALID_PARAMS,
+            code:    INVALID_PARAMS,
             message: "Frames must be greater than 0".to_string(),
             data:    None,
         });

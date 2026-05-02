@@ -124,11 +124,6 @@ pub struct LaunchParams {
     pub args:           Option<Vec<String>>,
 }
 
-/// Trait for creating launch configs from params
-pub(super) trait FromLaunchParams: LaunchConfigTrait + Sized + Send + Sync {
-    fn from_params(params: &LaunchParams) -> Self;
-}
-
 /// Trait for configuring launch behavior for different target types (app vs example)
 pub(super) trait LaunchConfigTrait: Clone {
     const TARGET_TYPE: TargetType;
@@ -250,8 +245,8 @@ pub(super) fn build_launch_result<T: LaunchConfigTrait>(
     }
 }
 
-impl FromLaunchParams for LaunchConfig<App> {
-    fn from_params(params: &LaunchParams) -> Self {
+impl From<&LaunchParams> for LaunchConfig<App> {
+    fn from(params: &LaunchParams) -> Self {
         Self::new(
             params.target_name.clone(),
             params.profile.clone(),
@@ -291,8 +286,8 @@ impl LaunchConfigTrait for LaunchConfig<App> {
     fn extra_log_info(&self, _: &BevyTarget) -> Option<String> { None }
 }
 
-impl FromLaunchParams for LaunchConfig<Example> {
-    fn from_params(params: &LaunchParams) -> Self {
+impl From<&LaunchParams> for LaunchConfig<Example> {
+    fn from(params: &LaunchParams) -> Self {
         Self::new(
             params.target_name.clone(),
             params.profile.clone(),

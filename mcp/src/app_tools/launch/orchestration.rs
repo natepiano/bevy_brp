@@ -167,17 +167,11 @@ fn launch_found_target(
 ) -> Result<config::LaunchResult> {
     match target_type {
         TargetType::App => {
-            let config =
-                <config::LaunchConfig<config::App> as config::FromLaunchParams>::from_params(
-                    params,
-                );
+            let config = config::LaunchConfig::<config::App>::from(params);
             launch_target_with_cached(&config, roots, cached_targets)
         },
         TargetType::Example => {
-            let config =
-                <config::LaunchConfig<config::Example> as config::FromLaunchParams>::from_params(
-                    params,
-                );
+            let config = config::LaunchConfig::<config::Example>::from(params);
             launch_target_with_cached(&config, roots, cached_targets)
         },
     }

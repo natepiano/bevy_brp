@@ -7,6 +7,7 @@ use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::*;
 use bevy::window::WindowEvent;
 use bevy_remote::BrpResult;
+use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -73,7 +74,7 @@ pub fn send_mouse_button_handler(In(params): In<Option<Value>>, world: &mut Worl
     let duration_ms = request.duration_ms.unwrap_or(DEFAULT_MOUSE_DURATION_MS);
     if duration_ms > MAX_MOUSE_DURATION_MS {
         return Err(bevy_remote::BrpError {
-            code:    bevy_remote::error_codes::INVALID_PARAMS,
+            code:    INVALID_PARAMS,
             message: format!(
                 "Duration exceeds maximum: {duration_ms}ms > {MAX_MOUSE_DURATION_MS}ms"
             ),

@@ -17,7 +17,7 @@ use crate::error::Error;
 pub fn collect_all_bevy_targets(search_paths: &[PathBuf]) -> Vec<BevyTarget> {
     let mut targets = Vec::new();
     for path in project_discovery::iter_cargo_project_paths(search_paths) {
-        if let Ok(detector) = CargoDetector::from_path(&path) {
+        if let Ok(detector) = CargoDetector::try_from(path.as_path()) {
             let mut found = detector.find_bevy_targets();
             for target in &mut found {
                 let manifest_dir = target
@@ -42,7 +42,7 @@ pub fn find_all_targets_by_name(
     let mut targets = Vec::new();
 
     for path in project_discovery::iter_cargo_project_paths(search_paths) {
-        if let Ok(detector) = CargoDetector::from_path(&path) {
+        if let Ok(detector) = CargoDetector::try_from(path.as_path()) {
             let found_targets = detector.find_bevy_targets();
             for mut target in found_targets {
                 if target.name == target_name {

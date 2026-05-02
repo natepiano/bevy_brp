@@ -108,17 +108,20 @@ pub(super) struct CargoDetector {
     metadata: Metadata,
 }
 
-impl CargoDetector {
-    /// Create a detector for a specific path
-    pub(super) fn from_path(path: impl AsRef<Path>) -> Result<Self> {
+impl TryFrom<&Path> for CargoDetector {
+    type Error = anyhow::Error;
+
+    fn try_from(path: &Path) -> Result<Self> {
         let metadata = MetadataCommand::new()
-            .current_dir(path.as_ref())
+            .current_dir(path)
             .exec()
             .context("Failed to execute cargo metadata")?;
 
         Ok(Self { metadata })
     }
+}
 
+impl CargoDetector {
     /// Check if a package is a workspace member
     fn is_workspace_member(&self, package: &Package) -> bool {
         self.metadata.workspace_members.contains(&package.id)

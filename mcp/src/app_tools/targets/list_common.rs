@@ -13,7 +13,7 @@ pub fn collect_all_bevy_targets(search_paths: &[std::path::PathBuf]) -> Vec<serd
 
     // Use the iterator to find all cargo projects
     for path in scanning::iter_cargo_project_paths(search_paths) {
-        if let Ok(detector) = CargoDetector::from_path(&path) {
+        if let Ok(detector) = CargoDetector::try_from(path.as_path()) {
             let items = AllBevyTargetsStrategy::collect_items(&detector);
             for item in items {
                 let key = AllBevyTargetsStrategy::create_unique_key(&item);
