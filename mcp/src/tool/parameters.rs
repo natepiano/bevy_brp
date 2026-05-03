@@ -139,6 +139,25 @@ enum ParameterType {
     Any,
 }
 
+/// Whether a property is required in the JSON schema.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Required {
+    Yes,
+    No,
+}
+
+impl From<bool> for Required {
+    fn from(value: bool) -> Self { if value { Self::Yes } else { Self::No } }
+}
+
+/// Which JSON containers a stringified value is allowed to be parsed into.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AcceptedJson {
+    ObjectOnly,
+    ArrayOnly,
+    ObjectOrArray,
+}
+
 /// Builder for creating JSON schemas for MCP tool registration in rmcp framework
 #[derive(Clone, Default)]
 pub struct ParameterBuilder {
@@ -150,21 +169,23 @@ impl ParameterBuilder {
     pub(super) fn new() -> Self { Self::default() }
 
     /// Add a string property to the schema
-    fn add_string_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_string_property(mut self, name: &str, description: &str, required: Required) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::String);
         prop.insert_field("description", description);
         self.properties.insert_field(name, prop);
 
-        if required {
-            self.required.push(name.to_string());
-        }
-
+        self.mark_required(name, required);
         self
     }
 
     /// Add a string array property to the schema
-    fn add_string_array_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_string_array_property(
+        mut self,
+        name: &str,
+        description: &str,
+        required: Required,
+    ) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::Array);
 
@@ -175,15 +196,17 @@ impl ParameterBuilder {
         prop.insert_field("description", description);
         self.properties.insert_field(name, prop);
 
-        if required {
-            self.required.push(name.to_string());
-        }
-
+        self.mark_required(name, required);
         self
     }
 
     /// Add a number array property to the schema
-    fn add_number_array_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_number_array_property(
+        mut self,
+        name: &str,
+        description: &str,
+        required: Required,
+    ) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::Array);
 
@@ -194,57 +217,45 @@ impl ParameterBuilder {
         prop.insert_field("description", description);
         self.properties.insert_field(name, prop);
 
-        if required {
-            self.required.push(name.to_string());
-        }
-
+        self.mark_required(name, required);
         self
     }
 
     /// Add a number property to the schema
-    fn add_number_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_number_property(mut self, name: &str, description: &str, required: Required) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::Number);
         prop.insert_field("description", description);
         self.properties.insert_field(name, prop);
 
-        if required {
-            self.required.push(name.to_string());
-        }
-
+        self.mark_required(name, required);
         self
     }
 
     /// Add a boolean property to the schema
-    fn add_boolean_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_boolean_property(mut self, name: &str, description: &str, required: Required) -> Self {
         let mut prop = Map::new();
         prop.insert_field("type", JsonSchemaType::Boolean);
         prop.insert_field("description", description);
         self.properties.insert_field(name, prop);
 
-        if required {
-            self.required.push(name.to_string());
-        }
-
+        self.mark_required(name, required);
         self
     }
 
     /// Add an object property to the schema
-    fn add_object_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_object_property(mut self, name: &str, description: &str, required: Required) -> Self {
         let mut prop = Map::new();
         prop.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Object);
         prop.insert_field(SchemaField::Description.as_ref(), description);
         self.properties.insert_field(name, prop);
 
-        if required {
-            self.required.push(name.to_string());
-        }
-
+        self.mark_required(name, required);
         self
     }
 
     /// Add a property that can be any JSON type (object, array, string, number, boolean, null)
-    fn add_any_property(mut self, name: &str, description: &str, required: bool) -> Self {
+    fn add_any_property(mut self, name: &str, description: &str, required: Required) -> Self {
         let mut prop = Map::new();
         // Use anyOf instead of type array to satisfy validators that require
         // array schemas to have an "items" field (e.g., Copilot).
@@ -260,11 +271,15 @@ impl ParameterBuilder {
         prop.insert_field("description", description);
         self.properties.insert_field(name, prop);
 
-        if required {
-            self.required.push(name.to_string());
-        }
-
+        self.mark_required(name, required);
         self
+    }
+
+    fn mark_required(&mut self, name: &str, required: Required) {
+        match required {
+            Required::Yes => self.required.push(name.to_string()),
+            Required::No => {},
+        }
     }
 
     /// Build the final schema
@@ -468,12 +483,20 @@ fn schema_from_value(value: &Value) -> Option<Schema> {
     }
 }
 
-fn normalize_stringified_json(value: &mut Value, accepts_object: bool, accepts_array: bool) {
+fn normalize_stringified_json(value: &mut Value, accepted: AcceptedJson) {
     let Value::String(string) = value else {
         return;
     };
 
     let trimmed = string.trim();
+    let accepts_object = matches!(
+        accepted,
+        AcceptedJson::ObjectOnly | AcceptedJson::ObjectOrArray
+    );
+    let accepts_array = matches!(
+        accepted,
+        AcceptedJson::ArrayOnly | AcceptedJson::ObjectOrArray
+    );
     let looks_like_object = accepts_object && trimmed.starts_with('{') && trimmed.ends_with('}');
     let looks_like_array = accepts_array && trimmed.starts_with('[') && trimmed.ends_with(']');
 
@@ -488,11 +511,11 @@ fn normalize_stringified_json(value: &mut Value, accepts_object: bool, accepts_a
 
 fn normalize_argument_value(value: &mut Value, schema: &Schema) {
     match map_schema_type_to_parameter_type(schema) {
-        ParameterType::Object => normalize_stringified_json(value, true, false),
+        ParameterType::Object => normalize_stringified_json(value, AcceptedJson::ObjectOnly),
         ParameterType::StringArray | ParameterType::NumberArray => {
-            normalize_stringified_json(value, false, true);
+            normalize_stringified_json(value, AcceptedJson::ArrayOnly);
         },
-        ParameterType::Any => normalize_stringified_json(value, true, true),
+        ParameterType::Any => normalize_stringified_json(value, AcceptedJson::ObjectOrArray),
         ParameterType::Number | ParameterType::String | ParameterType::Boolean => {},
     }
 }
@@ -563,7 +586,7 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         .unwrap_or_default();
 
     for (field_name, field_value) in properties {
-        let required = required_fields.contains(field_name);
+        let required = Required::from(required_fields.contains(field_name));
 
         let resolved_value = resolve_schema_value(field_value, defs.and_then(Value::as_object));
 
@@ -670,7 +693,7 @@ mod tests {
     #[test]
     fn add_any_property_array_branch_has_items() -> Result<(), Box<dyn Error>> {
         let schema = ParameterBuilder::new()
-            .add_any_property("value", "Any JSON value", true)
+            .add_any_property("value", "Any JSON value", Required::Yes)
             .build();
 
         // 使用 .ok_or(...)? 代替 .expect(...)
@@ -695,7 +718,7 @@ mod tests {
     #[test]
     fn add_any_property_covers_all_json_types() -> Result<(), Box<dyn Error>> {
         let schema = ParameterBuilder::new()
-            .add_any_property("value", "Any JSON value", true)
+            .add_any_property("value", "Any JSON value", Required::Yes)
             .build();
 
         let any_of = schema["properties"]["value"]["anyOf"]

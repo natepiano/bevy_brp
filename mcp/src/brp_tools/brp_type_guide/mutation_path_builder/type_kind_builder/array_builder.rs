@@ -16,6 +16,7 @@ use super::ArrayMutationBuilder;
 use super::TypeKindBuilder;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::BuilderError;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::constants::DEFAULT_ARRAY_EXAMPLE_LENGTH;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_example::Example;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::MutationPathDescriptor;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::PathKind;
@@ -80,7 +81,7 @@ impl TypeKindBuilder for ArrayMutationBuilder {
 
         // Create array with appropriate size
         let array_size = Self::extract_array_size(ctx.type_name());
-        let size = array_size.unwrap_or(2);
+        let size = array_size.unwrap_or(DEFAULT_ARRAY_EXAMPLE_LENGTH);
 
         // Create array filled with the element example
         let array = vec![element_example; size];

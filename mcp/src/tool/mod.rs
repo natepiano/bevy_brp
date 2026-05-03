@@ -1,4 +1,5 @@
 mod annotations;
+mod constants;
 mod facade;
 mod field_placement;
 mod handler;
@@ -17,6 +18,7 @@ pub use facade::get_all_tool_definitions;
 pub use field_placement::FieldPlacement;
 pub use field_placement::FieldPlacementInfo;
 pub use field_placement::HasFieldPlacement;
+pub use field_placement::SkipIfNone;
 pub use handler::HandlerResult;
 pub use handler::ResultStruct;
 pub use handler::ToolFn;

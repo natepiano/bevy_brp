@@ -95,7 +95,8 @@ pub(super) struct DragOperation {
 
 /// Handler for `drag_mouse` BRP method
 pub fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: DragMouseRequest = support::parse_request(params, false)?;
+    let request: DragMouseRequest =
+        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
 
     // Validate frames
     if request.frames == 0 {

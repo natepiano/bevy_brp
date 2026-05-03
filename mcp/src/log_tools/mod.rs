@@ -1,5 +1,6 @@
 // Log tools module
 
+mod constants;
 mod delete_logs;
 #[cfg(feature = "mcp-debug")]
 mod get_trace_log_path;

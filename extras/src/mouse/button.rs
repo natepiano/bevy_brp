@@ -68,7 +68,8 @@ pub(super) struct TimedButtonRelease {
 ///
 /// Sends a mouse button press with configurable hold duration before automatic release
 pub fn send_mouse_button_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: SendMouseButtonRequest = support::parse_request(params, false)?;
+    let request: SendMouseButtonRequest =
+        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
 
     // Validate duration
     let duration_ms = request.duration_ms.unwrap_or(DEFAULT_MOUSE_DURATION_MS);

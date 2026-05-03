@@ -39,6 +39,14 @@ type ResolvedEnumPathInfo = (
     Option<RootExample>,
 );
 
+/// Whether a root path's type implements `Default` (gates spawn-guidance and empty-object
+/// example fallback).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RootDefault {
+    Present,
+    Absent,
+}
+
 /// Parameters for constructing a `PathInfo`.
 struct PathInfoParams {
     path_kind:           PathKind,
@@ -120,13 +128,13 @@ impl MutationPathInternal {
         let type_kind: TypeKind = field_schema.into();
 
         // Check for Default trait once at the top for root paths
-        let has_default_for_root = self.has_default_for_root(field_schema);
+        let root_default = self.has_default_for_root(field_schema);
 
         // Generate description with proper handling of PartiallyMutable status
-        let description = self.resolve_description(&type_kind, has_default_for_root, field_schema);
+        let description = self.resolve_description(&type_kind, root_default, field_schema);
 
         // Resolve the appropriate path example based on mutability status
-        let path_example = self.resolve_path_example(has_default_for_root);
+        let path_example = self.resolve_path_example(root_default);
 
         // Extract enum-specific metadata only for mutable/partially mutable paths
         let (enum_instructions, applicable_variants, root_example) = self.resolve_enum_path_info();
@@ -153,18 +161,23 @@ impl MutationPathInternal {
     }
 
     /// Check if this path is a root path with Default trait support
-    fn has_default_for_root(&self, field_schema: &Value) -> bool {
+    fn has_default_for_root(&self, field_schema: &Value) -> RootDefault {
         if !matches!(self.path_kind, PathKind::RootValue { .. }) {
-            return false;
+            return RootDefault::Absent;
         }
 
-        field_schema
+        let has_default = field_schema
             .get_field_array(SchemaField::ReflectTypes)
             .is_some_and(|arr| {
                 arr.iter()
                     .filter_map(Value::as_str)
                     .any(|t| t == REFLECT_TRAIT_DEFAULT)
-            })
+            });
+        if has_default {
+            RootDefault::Present
+        } else {
+            RootDefault::Absent
+        }
     }
 
     /// Generate human-readable description for this mutation path
@@ -175,7 +188,7 @@ impl MutationPathInternal {
     fn resolve_description(
         &self,
         type_kind: &TypeKind,
-        has_default_for_root: bool,
+        root_default: RootDefault,
         field_schema: &Value,
     ) -> String {
         match self.mutability {
@@ -185,18 +198,19 @@ impl MutationPathInternal {
                     type_kind.as_ref().to_lowercase(),
                     type_kind.child_terminology()
                 );
-                if has_default_for_root {
-                    let guidance = Self::get_default_spawn_guidance(field_schema);
-                    format!("{base_msg}.{guidance}")
-                } else {
-                    format!("{base_msg}. No example is provided.")
+                match root_default {
+                    RootDefault::Present => {
+                        let guidance = Self::get_default_spawn_guidance(field_schema);
+                        format!("{base_msg}.{guidance}")
+                    },
+                    RootDefault::Absent => format!("{base_msg}. No example is provided."),
                 }
             },
             Mutability::NotMutable => {
                 let is_root = matches!(self.path_kind, PathKind::RootValue { .. });
                 let base_msg = format!("This {} is not mutable", type_kind.as_ref().to_lowercase());
 
-                if is_root && has_default_for_root {
+                if is_root && matches!(root_default, RootDefault::Present) {
                     let guidance = Self::get_default_spawn_guidance(field_schema);
                     format!("{base_msg}.{guidance}")
                 } else {
@@ -239,17 +253,14 @@ impl MutationPathInternal {
     /// - `NotMutable`: Returns `NotApplicable` (no example provided)
     /// - `PartiallyMutable`: Returns enum examples or empty object if Default trait exists
     /// - Mutable: Returns the original example
-    fn resolve_path_example(&self, has_default_for_root: bool) -> PathExample {
+    fn resolve_path_example(&self, root_default: RootDefault) -> PathExample {
         match self.mutability {
             Mutability::NotMutable => PathExample::Simple(Example::NotApplicable),
             Mutability::PartiallyMutable => match &self.example {
                 PathExample::EnumRoot { .. } => self.example.clone(),
-                PathExample::Simple(_) => {
-                    if has_default_for_root {
-                        PathExample::Simple(Example::Json(json!({})))
-                    } else {
-                        PathExample::Simple(Example::NotApplicable)
-                    }
+                PathExample::Simple(_) => match root_default {
+                    RootDefault::Present => PathExample::Simple(Example::Json(json!({}))),
+                    RootDefault::Absent => PathExample::Simple(Example::NotApplicable),
                 },
             },
             Mutability::Mutable => self.example.clone(),

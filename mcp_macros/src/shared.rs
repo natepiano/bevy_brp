@@ -249,7 +249,7 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
                     field_name: #field_name_str,
                     placement: #placement,
                     source_path: #source_path_token,
-                    skip_if_none: #skip_if_none,
+                    skip_if_none: crate::tool::SkipIfNone::from(#skip_if_none),
                 }
             });
 

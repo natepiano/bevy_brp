@@ -90,7 +90,8 @@ pub(super) struct ScheduledClick {
 ///
 /// Performs a simple click (press and release) with default timing
 pub fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: ClickMouseRequest = support::parse_request(params, false)?;
+    let request: ClickMouseRequest =
+        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
     let window = support::resolve_window(world, request.window)?;
 
     support::send_timed_button_press(world, request.button, window, DEFAULT_MOUSE_DURATION_MS);
@@ -105,7 +106,8 @@ pub fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> 
 
 /// Handler for `double_click_mouse` BRP method
 pub fn double_click_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: DoubleClickMouseRequest = support::parse_request(params, false)?;
+    let request: DoubleClickMouseRequest =
+        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
     let delay_ms = request.delay_ms.unwrap_or(DEFAULT_DOUBLE_CLICK_DELAY_MS);
     let window = support::resolve_window(world, request.window)?;
 

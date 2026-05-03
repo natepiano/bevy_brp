@@ -4,19 +4,12 @@
 //! with built-in validation and default values for parallel testing.
 
 use std::ops::Deref;
-use std::ops::RangeInclusive;
 
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 
-// Instance count constants
-/// Maximum number of instances (100)
-const MAX_INSTANCE_COUNT: u16 = 100;
-/// Minimum number of instances (1)
-const MIN_INSTANCE_COUNT: u16 = 1;
-/// Valid range for instance count
-const VALID_INSTANCE_RANGE: RangeInclusive<u16> = MIN_INSTANCE_COUNT..=MAX_INSTANCE_COUNT;
+use super::constants::VALID_INSTANCE_RANGE;
 
 /// Count of instances to launch in sequence
 /// Validates count is within 1-100 - defaults to 1

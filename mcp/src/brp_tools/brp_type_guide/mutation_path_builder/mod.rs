@@ -1,5 +1,6 @@
 mod api;
 mod builder_error;
+mod constants;
 mod enum_builder;
 mod mutability;
 mod mutation_path;

@@ -102,7 +102,8 @@ impl SimulatedCursorPosition {
 
 /// Handler for `move_mouse` BRP method
 pub fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: MoveMouseRequest = support::parse_request(params, false)?;
+    let request: MoveMouseRequest =
+        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
 
     // Validate that exactly one of delta or position is provided
     if request.delta.is_none() && request.position.is_none() {

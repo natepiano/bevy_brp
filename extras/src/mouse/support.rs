@@ -19,6 +19,13 @@ use super::button::TimedButtonRelease;
 use super::cursor::SimulatedCursorPosition;
 use crate::window_event;
 
+/// Whether `parse_request` should accept `None` params by treating them as an empty object.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum EmptyParamsPolicy {
+    Allow,
+    Reject,
+}
+
 /// Parse BRP request parameters into strongly typed request struct
 ///
 /// Handles parameter extraction, validation, and error conversion for all handlers.
@@ -26,15 +33,16 @@ use crate::window_event;
 ///
 /// # Arguments
 /// * `params` - Optional JSON value from BRP request
-/// * `allow_empty` - If true, allows None params (creates empty object for deserialization)
+/// * `empty_policy` - `Allow` permits None params (creates empty object for deserialization);
+///   `Reject` returns an error when params is None
 ///
 /// # Returns
 /// Parsed request struct or BRP error with `INVALID_PARAMS` code
 pub(super) fn parse_request<T: serde::de::DeserializeOwned>(
     params: Option<Value>,
-    allow_empty: bool,
+    empty_policy: EmptyParamsPolicy,
 ) -> Result<T, BrpError> {
-    if allow_empty && params.is_none() {
+    if matches!(empty_policy, EmptyParamsPolicy::Allow) && params.is_none() {
         // For requests with no required fields (e.g., `DoubleTapGestureRequest`)
         return serde_json::from_value(Value::Object(Map::default())).map_err(|e| BrpError {
             code:    INVALID_PARAMS,

@@ -7,13 +7,11 @@ use bevy_kana::ToF64;
 use error_stack::ResultExt;
 use regex::Regex;
 
+use super::constants::BYTES_PER_UNIT;
+use super::constants::LOG_EXTENSION;
+use super::constants::LOG_PREFIX;
 use crate::error::Error;
 use crate::error::Result;
-
-// Log file constants
-pub(super) const BYTES_PER_UNIT: f64 = 1024.0;
-pub(super) const LOG_EXTENSION: &str = ".log";
-pub(super) const LOG_PREFIX: &str = "bevy_brp_mcp_";
 
 // Static regex for parsing app log filenames
 static APP_LOG_REGEX: LazyLock<Option<Regex>> =

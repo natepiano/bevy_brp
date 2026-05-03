@@ -47,7 +47,8 @@ struct ScrollMouseResponse {
 
 /// Handler for `scroll_mouse` BRP method
 pub fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: ScrollMouseRequest = support::parse_request(params, false)?;
+    let request: ScrollMouseRequest =
+        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
     let window = support::resolve_window(world, request.window)?;
 
     window_event::write_input_event(
