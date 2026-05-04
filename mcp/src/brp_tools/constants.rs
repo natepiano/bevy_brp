@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-// Network constants
+// network constants
 /// Environment variable name for BRP port
 pub const BRP_EXTRAS_PORT_ENV_VAR: &str = "BRP_EXTRAS_PORT";
 pub(super) const DEFAULT_BRP_EXTRAS_PORT: u16 = 15702;

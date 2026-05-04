@@ -311,14 +311,14 @@ async fn process_watch_stream(
     start_time: std::time::Instant,
 ) -> Result<()> {
     if !response.status().is_success() {
-        let error_msg = format!(
+        let error_message = format!(
             "server returned {}: {}",
             response.status(),
             response.status().canonical_reason().unwrap_or("Unknown")
         );
-        error!("Failed to process watch stream: {error_msg}");
+        error!("Failed to process watch stream: {error_message}");
         return Err(error_stack::Report::new(Error::BrpCommunication(format!(
-            "Failed to process watch stream: {error_msg}"
+            "Failed to process watch stream: {error_message}"
         ))));
     }
 

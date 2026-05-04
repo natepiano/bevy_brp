@@ -193,7 +193,7 @@ impl MutationPathInternal {
     ) -> String {
         match self.mutability {
             Mutability::PartiallyMutable => {
-                let base_msg = format!(
+                let base_message = format!(
                     "This {} path is partially mutable due to some of its {} not being mutable",
                     type_kind.as_ref().to_lowercase(),
                     type_kind.child_terminology()
@@ -201,20 +201,21 @@ impl MutationPathInternal {
                 match root_default {
                     RootDefault::Present => {
                         let guidance = Self::get_default_spawn_guidance(field_schema);
-                        format!("{base_msg}.{guidance}")
+                        format!("{base_message}.{guidance}")
                     },
-                    RootDefault::Absent => format!("{base_msg}. No example is provided."),
+                    RootDefault::Absent => format!("{base_message}. No example is provided."),
                 }
             },
             Mutability::NotMutable => {
                 let is_root = matches!(self.path_kind, PathKind::RootValue { .. });
-                let base_msg = format!("This {} is not mutable", type_kind.as_ref().to_lowercase());
+                let base_message =
+                    format!("This {} is not mutable", type_kind.as_ref().to_lowercase());
 
                 if is_root && matches!(root_default, RootDefault::Present) {
                     let guidance = Self::get_default_spawn_guidance(field_schema);
-                    format!("{base_msg}.{guidance}")
+                    format!("{base_message}.{guidance}")
                 } else {
-                    format!("{base_msg}. No example is provided.")
+                    format!("{base_message}. No example is provided.")
                 }
             },
             Mutability::Mutable => self

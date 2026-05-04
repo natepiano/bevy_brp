@@ -209,12 +209,12 @@ impl BrpHttpClient {
         // Add port info
         context_info.push(format!("Port: ({})", self.port));
 
-        let error_msg = format!(
+        let error_message = format!(
             "HTTP request failed for {} operation - {error_type}: {e}",
             self.method.as_str()
         );
 
-        Err(error_stack::Report::new(Error::JsonRpc(error_msg))
+        Err(error_stack::Report::new(Error::JsonRpc(error_message))
             .attach(context_info.join(", "))
             .attach(format!("Full error: {e:?}"))
             .attach(format!(

@@ -191,7 +191,7 @@ impl BrpClient {
     }
 
     /// Extract type names from BRP error messages using regex patterns
-    fn extract_types_from_error_message(error_msg: &str) -> Vec<String> {
+    fn extract_types_from_error_message(error_message: &str) -> Vec<String> {
         const ERROR_PATTERNS: &[&str] = &[
             r"Unknown component type: `([^`]+)`",
             r"([a-zA-Z0-9_:]+) is invalid:",
@@ -202,7 +202,7 @@ impl BrpClient {
             .filter_map(|pattern| {
                 regex::Regex::new(pattern)
                     .ok()
-                    .and_then(|regex| regex.captures(error_msg))
+                    .and_then(|regex| regex.captures(error_message))
                     .and_then(|caps| caps.get(1))
                     .map(|m| (*m.as_str()).to_string())
             })

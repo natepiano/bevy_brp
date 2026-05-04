@@ -103,7 +103,7 @@ impl TypeGuide {
     }
 
     /// Builder method to create `TypeGuide` for type not found in registry
-    pub fn not_found_in_registry(type_name: BrpTypeName, error_msg: String) -> Self {
+    pub fn not_found_in_registry(type_name: BrpTypeName, error_message: String) -> Self {
         Self {
             type_name,
             in_registry: false,
@@ -111,7 +111,7 @@ impl TypeGuide {
             spawn_insert_example: None,
             schema_info: None,
             agent_guidance: AGENT_GUIDANCE.to_string(),
-            error: Some(error_msg),
+            error: Some(error_message),
         }
     }
 
@@ -119,7 +119,7 @@ impl TypeGuide {
     ///
     /// This is used when a type is found in the registry but `from_registry_schema()`
     /// fails during mutation path building or other processing steps.
-    pub fn processing_failed(type_name: BrpTypeName, error_msg: String) -> Self {
+    pub fn processing_failed(type_name: BrpTypeName, error_message: String) -> Self {
         Self {
             type_name,
             in_registry: true, // Type WAS found in registry
@@ -127,7 +127,7 @@ impl TypeGuide {
             spawn_insert_example: None,
             schema_info: None,
             agent_guidance: ERROR_GUIDANCE.to_string(),
-            error: Some(error_msg),
+            error: Some(error_message),
         }
     }
 

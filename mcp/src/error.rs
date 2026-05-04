@@ -2,11 +2,9 @@ use error_stack::Report;
 use thiserror::Error;
 
 use super::tool::ResultStruct;
-
-// Error message prefixes
-const MSG_FAILED_TO_PREFIX: &str = "Failed to";
-const MSG_INVALID_PREFIX: &str = "Invalid";
-const MSG_MISSING_PREFIX: &str = "Missing";
+use crate::constants::MSG_FAILED_TO_PREFIX;
+use crate::constants::MSG_INVALID_PREFIX;
+use crate::constants::MSG_MISSING_PREFIX;
 
 /// Result type for the `bevy_brp_mcp` library
 pub(crate) type Result<T> = core::result::Result<T, Report<Error>>;
@@ -109,8 +107,6 @@ impl std::fmt::Debug for Error {
 }
 
 impl Error {
-    // Builder methods for common patterns
-
     /// Create a "Failed to X" error
     pub(crate) fn failed_to(action: &str, details: impl std::fmt::Display) -> Self {
         Self::General(format!("{MSG_FAILED_TO_PREFIX} {action}: {details}"))

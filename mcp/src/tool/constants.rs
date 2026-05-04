@@ -1,4 +1,4 @@
-// Large response token calculation constants
+// large response token calculation constants
 /// Estimated characters per token for response size calculation
 pub(super) const CHARS_PER_TOKEN: usize = 4;
 /// Default maximum tokens before saving to file (Claude Code MCP limitation)

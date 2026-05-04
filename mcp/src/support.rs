@@ -8,9 +8,7 @@ use strum::Display;
 use strum::EnumString;
 
 use crate::brp_tools::BrpTypeName;
-
-/// JSON Schema reference prefix for type definitions.
-const SCHEMA_REF_PREFIX: &str = "#/$defs/";
+use crate::constants::SCHEMA_REF_PREFIX;
 
 /// JSON schema type names for type schema generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, Serialize, EnumString)]

@@ -1,6 +1,6 @@
 //! Constants for mouse input simulation
 
-// Mouse timing constants
+// mouse timing constants
 /// Default delay between clicks for double click (250 milliseconds)
 pub(super) const DEFAULT_DOUBLE_CLICK_DELAY_MS: u32 = 250;
 /// Default duration for mouse button presses (100 milliseconds)
