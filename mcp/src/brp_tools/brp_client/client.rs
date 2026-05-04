@@ -10,6 +10,7 @@ use serde_json::Value;
 use tracing::warn;
 
 use super::constants::BRP_EXTRAS_PREFIX;
+use super::constants::ERROR_PATTERNS;
 use super::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use super::http_client::BrpHttpClient;
 use super::operation::Operation;
@@ -192,11 +193,6 @@ impl BrpClient {
 
     /// Extract type names from BRP error messages using regex patterns
     fn extract_types_from_error_message(error_message: &str) -> Vec<String> {
-        const ERROR_PATTERNS: &[&str] = &[
-            r"Unknown component type: `([^`]+)`",
-            r"([a-zA-Z0-9_:]+) is invalid:",
-        ];
-
         ERROR_PATTERNS
             .iter()
             .filter_map(|pattern| {

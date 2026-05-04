@@ -85,7 +85,7 @@ pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpRe
             IoTaskPool::get()
                 .spawn(async move {
                     match img.try_into_dynamic() {
-                        Ok(dyn_img) => {
+                        Ok(dynamic_image) => {
                             // Create parent directory if needed
                             if let Some(parent) = std::path::Path::new(&path_clone).parent()
                                 && let Err(e) = std::fs::create_dir_all(parent)
@@ -97,7 +97,7 @@ pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpRe
                             }
 
                             // Save the image
-                            match dyn_img.save(&path_clone) {
+                            match dynamic_image.save(&path_clone) {
                                 Ok(()) => {
                                     info!("Screenshot successfully saved to: {path_clone}");
                                 },

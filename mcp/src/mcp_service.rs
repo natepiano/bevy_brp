@@ -126,8 +126,8 @@ impl McpService {
                 tracing::debug!("Using current directory as root: {}", cwd.display());
                 vec![cwd]
             })
-            .map_err(|cwd_err| {
-                tracing::error!("Failed to get current directory: {cwd_err}");
+            .map_err(|current_directory_error| {
+                tracing::error!("Failed to get current directory: {current_directory_error}");
                 McpError::internal_error(
                     "Failed to list roots and no current directory available".to_string(),
                     None,

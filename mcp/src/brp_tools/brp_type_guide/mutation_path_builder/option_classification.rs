@@ -5,6 +5,8 @@
 //! - `None` -> `null`
 //! - `Some(value)` -> `value` (unwrapped)
 
+use super::constants::OPTION_PREFIX;
+use super::constants::OPTION_SUFFIX;
 use super::path_example::Example;
 use super::variant_name::VariantName;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
@@ -19,9 +21,6 @@ impl OptionClassification {
     pub(super) const fn is_option(&self) -> bool { matches!(self, Self::Option { .. }) }
 
     fn extract_option_inner(type_name: &BrpTypeName) -> Option<BrpTypeName> {
-        const OPTION_PREFIX: &str = "core::option::Option<";
-        const OPTION_SUFFIX: char = '>';
-
         let type_str = type_name.as_str();
         type_str
             .strip_prefix(OPTION_PREFIX)

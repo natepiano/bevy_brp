@@ -10,6 +10,7 @@ use regex::Regex;
 use super::constants::BYTES_PER_UNIT;
 use super::constants::LOG_EXTENSION;
 use super::constants::LOG_PREFIX;
+use super::constants::UNITS;
 use crate::error::Error;
 use crate::error::Result;
 
@@ -78,7 +79,6 @@ pub(super) fn parse_log_filename(filename: &str) -> Option<(String, String)> {
 
 /// Formats bytes into human-readable string with appropriate unit
 pub(super) fn format_bytes(bytes: u64) -> String {
-    const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
     let mut size = bytes.to_f64();
     let mut unit_index = 0;
 

@@ -34,6 +34,12 @@ pub(super) const JSON_RPC_ERROR_INVALID_PARAMS: i32 = -32_602;
 /// Bevy app with the `BrpExtrasPlugin`"
 pub const JSON_RPC_ERROR_METHOD_NOT_FOUND: i32 = -32_601;
 
+// error parsing
+pub(super) const ERROR_PATTERNS: &[&str] = &[
+    r"Unknown component type: `([^`]+)`",
+    r"([a-zA-Z0-9_:]+) is invalid:",
+];
+
 // json-rpc constants
 pub(super) const JSONRPC_DEFAULT_ID: u64 = 1;
 pub(super) const JSONRPC_FIELD: &str = "jsonrpc";
