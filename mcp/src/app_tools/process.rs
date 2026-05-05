@@ -2,6 +2,7 @@ use std::fs::File;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::path::Path;
+use std::process::Command;
 use std::process::Stdio;
 
 use error_stack::Report;
@@ -9,6 +10,7 @@ use error_stack::ResultExt;
 use netstat2::AddressFamilyFlags;
 use netstat2::ProtocolFlags;
 use netstat2::ProtocolSocketInfo;
+use sysinfo::Process;
 
 use crate::brp_tools::Port;
 use crate::error::Error;
@@ -16,7 +18,7 @@ use crate::error::Result;
 
 /// Launch a detached process with proper setup
 pub(super) fn launch_detached_process(
-    cmd: &std::process::Command,
+    cmd: &Command,
     working_dir: &Path,
     log_file: File,
     process_name: &str,
@@ -120,7 +122,7 @@ pub fn normalize_process_name(name: &str) -> String {
 /// Checks `cmd[0]` (the full binary path) first since it is not subject to
 /// OS-level process name truncation (macOS truncates to 16 chars, Linux to 15).
 /// Falls back to the kernel-reported process name when `cmd` is unavailable.
-pub fn process_matches_name_exact(process: &sysinfo::Process, target: &str) -> bool {
+pub fn process_matches_name_exact(process: &Process, target: &str) -> bool {
     let normalized_target = normalize_process_name(target);
 
     // Prefer cmd[0] — full binary path, not subject to kernel truncation

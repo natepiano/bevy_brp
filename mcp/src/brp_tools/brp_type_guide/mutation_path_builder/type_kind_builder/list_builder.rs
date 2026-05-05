@@ -8,6 +8,7 @@
 //! Elements are addressable by index, though indices may change as list mutates.
 
 use std::collections::HashMap;
+use std::vec::IntoIter;
 
 use serde_json::Value;
 use serde_json::json;
@@ -27,7 +28,7 @@ use crate::support::SchemaField;
 impl TypeKindBuilder for ListMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
-        = std::vec::IntoIter<PathKind>
+        = IntoIter<PathKind>
     where
         Self: 'a;
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {

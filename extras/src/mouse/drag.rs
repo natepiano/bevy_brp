@@ -10,6 +10,7 @@ use bevy::prelude::*;
 use bevy::window::CursorMoved;
 use bevy::window::WindowEvent;
 use bevy_kana::ToF32;
+use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
 use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
@@ -18,6 +19,7 @@ use serde_json::Value;
 
 use super::cursor::SimulatedCursorPosition;
 use super::support;
+use super::support::EmptyParamsPolicy;
 
 // ============================================================================
 // Types
@@ -38,29 +40,29 @@ pub(super) enum DragState {
 #[derive(Deserialize)]
 struct DragMouseRequest {
     /// Button to hold during drag
-    pub button: MouseButton,
+    button: MouseButton,
     /// Starting position
-    pub start:  Vec2,
+    start:  Vec2,
     /// Ending position
-    pub end:    Vec2,
+    end:    Vec2,
     /// Number of frames to interpolate over
-    pub frames: u32,
+    frames: u32,
     /// Target window entity (None = primary window)
     #[serde(default)]
-    pub window: Option<u64>,
+    window: Option<u64>,
 }
 
 /// Response structure for `drag_mouse`
 #[derive(Serialize)]
 struct DragMouseResponse {
     /// Button that was used for dragging
-    pub button: MouseButton,
+    button: MouseButton,
     /// Starting position
-    pub start:  Vec2,
+    start:  Vec2,
     /// Ending position
-    pub end:    Vec2,
+    end:    Vec2,
     /// Number of frames for interpolation
-    pub frames: u32,
+    frames: u32,
 }
 
 // ============================================================================
@@ -95,12 +97,11 @@ pub(super) struct DragOperation {
 
 /// Handler for `drag_mouse` BRP method
 pub fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: DragMouseRequest =
-        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
+    let request: DragMouseRequest = support::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     // Validate frames
     if request.frames == 0 {
-        return Err(bevy_remote::BrpError {
+        return Err(BrpError {
             code:    INVALID_PARAMS,
             message: "Frames must be greater than 0".to_string(),
             data:    None,

@@ -1,4 +1,5 @@
 // brp network constants
+use std::time::Duration;
 /// Default host for BRP connections
 /// Using IPv4 address directly to avoid IPv6 connection issues
 pub(super) const BRP_DEFAULT_HOST: &str = "127.0.0.1";
@@ -11,7 +12,7 @@ pub(super) const BRP_JSONRPC_PATH: &str = "/jsonrpc";
 /// Maximum characters of the request body to include in error reports
 pub(super) const ERROR_BODY_PREVIEW_CHARS: usize = 500;
 /// Timeout for standard (non-streaming) HTTP requests
-pub(super) const HTTP_REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+pub(super) const HTTP_REQUEST_TIMEOUT: Duration = std::time::Duration::from_secs(30);
 
 // error constants
 /// Basically we're trying to to access a field of a struct or a resource with the wrong path - here

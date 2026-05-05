@@ -4,6 +4,7 @@
 //! It encapsulates all HTTP-related operations including URL building, request sending,
 //! status checking, and response parsing.
 
+use reqwest::Response;
 use serde_json::Value;
 use tracing::debug;
 use tracing::warn;
@@ -62,7 +63,7 @@ impl BrpHttpClient {
     }
 
     /// Send an HTTP request with timeout
-    pub(super) async fn send_request(&self) -> Result<reqwest::Response> {
+    pub(super) async fn send_request(&self) -> Result<Response> {
         let url = self.build_url();
         let body = self.build_request_body();
         let client = reqwest::Client::new();
@@ -86,7 +87,7 @@ impl BrpHttpClient {
     }
 
     /// Send an HTTP request for streaming (no timeout)
-    pub(super) async fn send_streaming_request(&self) -> Result<reqwest::Response> {
+    pub(super) async fn send_streaming_request(&self) -> Result<Response> {
         let url = self.build_url();
         let body = self.build_request_body();
         // Create client with no timeout for streaming
@@ -110,7 +111,7 @@ impl BrpHttpClient {
     }
 
     /// Check if the HTTP response status is successful
-    fn check_status(&self, response: &reqwest::Response) -> Result<()> {
+    fn check_status(&self, response: &Response) -> Result<()> {
         if !response.status().is_success() {
             warn!(
                 "BRP execute_brp_method: HTTP status error - status={}",
@@ -138,12 +139,7 @@ impl BrpHttpClient {
     }
 
     /// Handle HTTP errors with detailed context
-    fn handle_error(
-        &self,
-        e: reqwest::Error,
-        url: &str,
-        request_body: &str,
-    ) -> Result<reqwest::Response> {
+    fn handle_error(&self, e: reqwest::Error, url: &str, request_body: &str) -> Result<Response> {
         // Always log HTTP errors to help debug intermittent failures
         warn!("BRP execute_brp_method: HTTP request failed - error={e}");
 

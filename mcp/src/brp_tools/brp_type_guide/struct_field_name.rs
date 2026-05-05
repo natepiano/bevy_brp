@@ -1,3 +1,7 @@
+use std::borrow::Borrow;
+use std::fmt::Display;
+use std::fmt::Formatter;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -12,11 +16,11 @@ impl StructFieldName {
     pub(super) fn as_str(&self) -> &str { &self.0 }
 }
 
-impl std::fmt::Display for StructFieldName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+impl Display for StructFieldName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
 }
 
-impl std::borrow::Borrow<str> for StructFieldName {
+impl Borrow<str> for StructFieldName {
     fn borrow(&self) -> &str { &self.0 }
 }
 

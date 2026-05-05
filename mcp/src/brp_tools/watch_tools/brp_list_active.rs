@@ -18,15 +18,15 @@ use crate::tool::ToolResult;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct WatchInfo {
     /// Watch ID
-    pub watch_id:   u32,
+    watch_id:   u32,
     /// `Entity` ID being watched
-    pub entity_id:  u64,
+    entity_id:  u64,
     /// Type of watch (get/list)
-    pub watch_type: String,
+    watch_type: String,
     /// Log file path
-    pub log_path:   String,
+    log_path:   String,
     /// BRP port
-    pub port:       Port,
+    port:       Port,
 }
 
 /// Result from listing active watches

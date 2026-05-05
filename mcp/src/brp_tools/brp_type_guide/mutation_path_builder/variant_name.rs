@@ -1,5 +1,8 @@
 //! Variant-name newtype used throughout enum mutation-path handling.
 
+use std::fmt::Display;
+use std::fmt::Formatter;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -12,8 +15,8 @@ impl From<String> for VariantName {
     fn from(name: String) -> Self { Self(name) }
 }
 
-impl std::fmt::Display for VariantName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+impl Display for VariantName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
 }
 
 impl VariantName {

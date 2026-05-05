@@ -6,6 +6,7 @@
 //! which are leaf nodes in the type tree. These cannot be decomposed further and are
 //! mutated as atomic values.
 use std::collections::HashMap;
+use std::vec::IntoIter;
 
 use serde_json::Value;
 
@@ -22,7 +23,7 @@ use crate::error::Result;
 impl TypeKindBuilder for ValueMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
-        = std::vec::IntoIter<PathKind>
+        = IntoIter<PathKind>
     where
         Self: 'a;
 

@@ -1,11 +1,14 @@
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering;
 
 use tracing::Level;
+use tracing::Metadata;
 use tracing::Subscriber;
 use tracing_subscriber::Layer;
 use tracing_subscriber::Registry;
+use tracing_subscriber::layer::Context;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -21,11 +24,7 @@ impl<S> Layer<S> for DynamicFilter
 where
     S: Subscriber,
 {
-    fn enabled(
-        &self,
-        metadata: &tracing::Metadata<'_>,
-        _: tracing_subscriber::layer::Context<'_, S>,
-    ) -> bool {
+    fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         // Suppress third-party HTTP connection logs that are noise for BRP debugging
         let target = metadata.target();
         if target.starts_with("reqwest::")
@@ -158,7 +157,5 @@ impl TracingLevel {
 
     /// Get the path to the trace log file
     /// Useful for testing and troubleshooting
-    pub fn get_trace_log_path() -> std::path::PathBuf {
-        std::env::temp_dir().join("bevy_brp_mcp_trace.log")
-    }
+    pub fn get_trace_log_path() -> PathBuf { std::env::temp_dir().join("bevy_brp_mcp_trace.log") }
 }

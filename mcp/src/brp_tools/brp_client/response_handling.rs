@@ -1,5 +1,8 @@
 //! BRP JSON-RPC response, status, and error types.
 
+use std::fmt::Display;
+use std::fmt::Formatter;
+
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -58,10 +61,8 @@ impl BrpClientError {
     }
 }
 
-impl std::fmt::Display for BrpClientError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
+impl Display for BrpClientError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.message) }
 }
 
 /// Raw BRP JSON-RPC response structure

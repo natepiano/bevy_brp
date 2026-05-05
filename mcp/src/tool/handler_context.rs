@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
+use error_stack::Report;
 use error_stack::ResultExt;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
@@ -54,7 +55,7 @@ impl HandlerContext {
         // Get request arguments as JSON Value
         // Special case: if T is unit type, use null instead of empty object
         let args_value = if std::any::type_name::<T>() == "()" {
-            serde_json::Value::Null
+            Value::Null
         } else {
             self.request.arguments.as_ref().map_or_else(
                 || Value::Object(Map::new()),
@@ -155,10 +156,7 @@ impl HandlerContext {
     }
 
     /// Format framework errors
-    pub(super) fn format_framework_error(
-        &self,
-        error: error_stack::Report<Error>,
-    ) -> CallToolResult {
+    pub(super) fn format_framework_error(&self, error: Report<Error>) -> CallToolResult {
         let tool_name = self.tool_def.tool_name;
         let call_info = tool_name.get_call_info();
 

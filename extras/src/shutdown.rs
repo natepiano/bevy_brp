@@ -1,5 +1,6 @@
 //! Shutdown handler for BRP extras
 
+use bevy::app::AppExit;
 use bevy::prelude::*;
 use bevy_remote::BrpResult;
 use serde_json::Value;
@@ -41,14 +42,14 @@ pub(crate) fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult 
 /// System to handle deferred shutdown
 pub(super) fn deferred_shutdown_system(
     pending: Option<ResMut<PendingShutdown>>,
-    mut exit: MessageWriter<bevy::app::AppExit>,
+    mut exit: MessageWriter<AppExit>,
 ) {
     if let Some(mut shutdown) = pending {
         shutdown.frames_remaining = shutdown.frames_remaining.saturating_sub(1);
 
         if shutdown.frames_remaining == 0 {
             info!("Deferred shutdown triggered - sending AppExit::Success event");
-            exit.write(bevy::app::AppExit::Success);
+            exit.write(AppExit::Success);
         }
     }
 }

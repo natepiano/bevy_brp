@@ -1,8 +1,11 @@
 //! Background task management for watch connections
 
 use std::path::PathBuf;
+use std::time::Instant;
 
+use error_stack::Report;
 use futures::StreamExt;
+use reqwest::Response;
 use serde_json::Value;
 use tracing::debug;
 use tracing::error;
@@ -245,7 +248,7 @@ async fn handle_stream_error(
     entity_id: u64,
     watch_type: &str,
     logger: &BufferedWatchLogger,
-    start_time: std::time::Instant,
+    start_time: Instant,
     total_chunks: usize,
 ) {
     let elapsed = start_time.elapsed();
@@ -304,11 +307,11 @@ async fn log_first_chunk(
 
 /// Process the watch stream from the BRP server
 async fn process_watch_stream(
-    response: reqwest::Response,
+    response: Response,
     entity_id: u64,
     watch_type: &str,
     logger: &BufferedWatchLogger,
-    start_time: std::time::Instant,
+    start_time: Instant,
 ) -> Result<()> {
     if !response.status().is_success() {
         let error_message = format!(
@@ -344,11 +347,11 @@ async fn process_watch_stream(
 
 /// Read all chunks from the streaming response and process them
 async fn consume_stream_chunks(
-    response: reqwest::Response,
+    response: Response,
     entity_id: u64,
     watch_type: &str,
     logger: &BufferedWatchLogger,
-    start_time: std::time::Instant,
+    start_time: Instant,
 ) -> Result<usize> {
     let mut stream = response.bytes_stream();
     let mut line_buffer = String::new();
@@ -412,10 +415,10 @@ async fn consume_stream_chunks(
 
 /// Handle connection errors and log appropriately
 async fn handle_connection_error(
-    error: error_stack::Report<Error>,
+    error: Report<Error>,
     conn_params: &WatchConnectionParams,
     logger: &BufferedWatchLogger,
-    start_time: std::time::Instant,
+    start_time: Instant,
 ) {
     let elapsed = start_time.elapsed();
     let error_string = error.to_string();

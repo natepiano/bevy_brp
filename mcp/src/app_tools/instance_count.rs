@@ -3,6 +3,8 @@
 //! Provides a type-safe wrapper around the number of instances to launch
 //! with built-in validation and default values for parallel testing.
 
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::ops::Deref;
 
 use schemars::JsonSchema;
@@ -37,8 +39,8 @@ impl Default for InstanceCount {
     fn default() -> Self { Self(1) }
 }
 
-impl std::fmt::Display for InstanceCount {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { self.0.fmt(f) }
+impl Display for InstanceCount {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { self.0.fmt(f) }
 }
 
 impl Deref for InstanceCount {

@@ -1,5 +1,8 @@
 //! Mutability and diagnostic types used during mutation-path construction.
 
+use std::fmt::Display;
+use std::fmt::Formatter;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -27,8 +30,8 @@ pub(super) enum MutabilityIssueTarget {
     Variant(VariantName),
 }
 
-impl std::fmt::Display for MutabilityIssueTarget {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for MutabilityIssueTarget {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Path(path) => write!(f, "{path}"),
             Self::Variant(name) => write!(f, "{name}"),

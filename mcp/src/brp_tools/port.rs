@@ -3,6 +3,8 @@
 //! Provides a type-safe wrapper around port numbers with built-in validation
 //! and default values for BRP connections.
 
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::ops::Deref;
 
 use schemars::JsonSchema;
@@ -37,8 +39,8 @@ impl Default for Port {
     fn default() -> Self { Self(DEFAULT_BRP_EXTRAS_PORT) }
 }
 
-impl std::fmt::Display for Port {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { self.0.fmt(f) }
+impl Display for Port {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { self.0.fmt(f) }
 }
 
 impl Deref for Port {

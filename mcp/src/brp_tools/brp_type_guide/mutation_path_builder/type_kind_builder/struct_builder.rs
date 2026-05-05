@@ -8,6 +8,7 @@
 //! name that can be used in paths, allowing deep mutation of nested structures.
 
 use std::collections::HashMap;
+use std::vec::IntoIter;
 
 use serde_json::Value;
 use serde_json::json;
@@ -28,7 +29,7 @@ use crate::support::JsonObjectAccess;
 impl TypeKindBuilder for StructMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
-        = std::vec::IntoIter<PathKind>
+        = IntoIter<PathKind>
     where
         Self: 'a;
 

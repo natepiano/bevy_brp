@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
+use serde_json::Map;
 use serde_json::Value;
 
 use super::mutability::Mutability;
@@ -148,7 +149,7 @@ pub(super) fn collect_children_for_chain(
 /// variants.
 pub(super) fn assemble_struct_from_children(
     children: &HashMap<MutationPathDescriptor, Example>,
-) -> serde_json::Map<String, Value> {
+) -> Map<String, Value> {
     let mut struct_obj = serde_json::Map::new();
 
     // Sort keys by string representation for deterministic field ordering in output

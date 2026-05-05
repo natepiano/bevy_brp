@@ -9,6 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::build;
+use super::build::BuildState;
 use super::build_freshness;
 use super::build_freshness::FreshnessCheckResult;
 use crate::app_tools::instance_count::InstanceCount;
@@ -144,7 +145,7 @@ pub(super) trait LaunchConfigTrait: Clone {
 
     fn extra_log_info(&self, target: &BevyTarget) -> Option<String>;
 
-    fn ensure_built(&self, target: &BevyTarget) -> Result<build::BuildState> {
+    fn ensure_built(&self, target: &BevyTarget) -> Result<BuildState> {
         if Self::TARGET_TYPE == TargetType::App {
             let freshness = build_freshness::check_target_freshness(target, self.profile());
             match &freshness {
@@ -161,7 +162,7 @@ pub(super) trait LaunchConfigTrait: Clone {
                 ),
             }
             if matches!(freshness, FreshnessCheckResult::Fresh) {
-                return Ok(build::BuildState::Fresh);
+                return Ok(BuildState::Fresh);
             }
         }
 

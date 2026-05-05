@@ -2,9 +2,13 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::Attribute;
 use syn::Data;
+use syn::DataEnum;
 use syn::DeriveInput;
 use syn::Fields;
+use syn::Ident;
+use syn::LitStr;
 use syn::parse_macro_input;
 
 /// Attributes extracted from #[tool(...)]
@@ -50,7 +54,7 @@ struct BrpMethodParts {
 
 /// Generate marker structs and `ToolFn` implementations for each variant.
 fn generate_tool_impls(
-    data_enum: &syn::DataEnum,
+    data_enum: &DataEnum,
 ) -> (Vec<proc_macro2::TokenStream>, Vec<proc_macro2::TokenStream>) {
     let mut tool_impls = Vec::new();
     let mut marker_structs = Vec::new();
@@ -101,8 +105,8 @@ fn generate_tool_impls(
 
 /// Generate a single `ToolFn` implementation for a BRP tool variant.
 fn generate_tool_fn_impl(
-    variant_name: &syn::Ident,
-    params_ident: &syn::Ident,
+    variant_name: &Ident,
+    params_ident: &Ident,
     result_type: &proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     quote! {
@@ -166,7 +170,7 @@ fn generate_tool_fn_impl(
 }
 
 /// Generate match arms for the `brp_method()` accessor on the tool enum.
-fn generate_method_match_arms(data_enum: &syn::DataEnum) -> Vec<proc_macro2::TokenStream> {
+fn generate_method_match_arms(data_enum: &DataEnum) -> Vec<proc_macro2::TokenStream> {
     let mut method_match_arms = Vec::new();
     for variant in &data_enum.variants {
         let variant_name = &variant.ident;
@@ -186,7 +190,7 @@ fn generate_method_match_arms(data_enum: &syn::DataEnum) -> Vec<proc_macro2::Tok
 }
 
 /// Generate `BrpMethod` enum variants and all associated conversion arms.
-fn generate_brp_method_parts(data_enum: &syn::DataEnum) -> BrpMethodParts {
+fn generate_brp_method_parts(data_enum: &DataEnum) -> BrpMethodParts {
     let mut parts = BrpMethodParts {
         variants:           Vec::new(),
         to_brp_method_arms: Vec::new(),
@@ -228,7 +232,7 @@ fn generate_brp_method_parts(data_enum: &syn::DataEnum) -> BrpMethodParts {
 
 /// Assemble the final output combining all generated parts.
 fn assemble_output(
-    enum_name: &syn::Ident,
+    enum_name: &Ident,
     marker_structs: &[proc_macro2::TokenStream],
     tool_impls: &[proc_macro2::TokenStream],
     method_match_arms: &[proc_macro2::TokenStream],
@@ -304,7 +308,7 @@ fn assemble_output(
 }
 
 /// Extract unified tool attributes from #[tool(...)]
-fn extract_tool_attr(attrs: &[syn::Attribute]) -> ToolAttrs {
+fn extract_tool_attr(attrs: &[Attribute]) -> ToolAttrs {
     let mut tool_attrs = ToolAttrs {
         params:     None,
         result:     None,
@@ -318,15 +322,15 @@ fn extract_tool_attr(attrs: &[syn::Attribute]) -> ToolAttrs {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("params") {
                     let value = meta.value()?;
-                    let s: syn::LitStr = value.parse()?;
+                    let s: LitStr = value.parse()?;
                     tool_attrs.params = Some(s.value());
                 } else if meta.path.is_ident("result") {
                     let value = meta.value()?;
-                    let s: syn::LitStr = value.parse()?;
+                    let s: LitStr = value.parse()?;
                     tool_attrs.result = Some(s.value());
                 } else if meta.path.is_ident("brp_method") {
                     let value = meta.value()?;
-                    let s: syn::LitStr = value.parse()?;
+                    let s: LitStr = value.parse()?;
                     tool_attrs.brp_method = s.value(); // Set required field
                 } else {
                     return Err(meta.error("unsupported tool attribute"));

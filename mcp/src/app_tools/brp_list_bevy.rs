@@ -7,6 +7,7 @@ use bevy_brp_mcp_macros::ToolFn;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::Value;
 
 use super::targets;
 use crate::error::Result;
@@ -33,7 +34,7 @@ pub struct ListBevyResult {
     count:            usize,
     /// List of all Bevy targets found (apps and examples)
     #[to_result]
-    targets:          Vec<serde_json::Value>,
+    targets:          Vec<Value>,
     /// Message template for formatting responses
     #[to_message(message_template = "Found {count} Bevy targets")]
     message_template: String,

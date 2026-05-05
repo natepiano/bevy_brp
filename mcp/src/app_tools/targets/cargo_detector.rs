@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::Context;
+use anyhow::Error;
 use anyhow::Result;
 use cargo_metadata::Metadata;
 use cargo_metadata::MetadataCommand;
@@ -109,7 +110,7 @@ pub(super) struct CargoDetector {
 }
 
 impl TryFrom<&Path> for CargoDetector {
-    type Error = anyhow::Error;
+    type Error = Error;
 
     fn try_from(path: &Path) -> Result<Self> {
         let metadata = MetadataCommand::new()
@@ -255,7 +256,7 @@ impl CargoDetector {
     }
 
     /// Recursively check directory for BRP plugin usage
-    fn check_directory_for_brp_plugins(dir: &std::path::Path) -> bool {
+    fn check_directory_for_brp_plugins(dir: &Path) -> bool {
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -280,7 +281,7 @@ impl CargoDetector {
     /// Returns `"extras"` if the file imports `BrpExtrasPlugin`,
     /// `"brp_only"` if it imports `RemotePlugin` without extras,
     /// or `"none"` if neither is found.
-    pub(super) fn file_brp_level(file_path: &std::path::Path) -> BrpLevel {
+    pub(super) fn file_brp_level(file_path: &Path) -> BrpLevel {
         let Ok(content) = std::fs::read_to_string(file_path) else {
             return BrpLevel::None;
         };
@@ -312,7 +313,7 @@ impl CargoDetector {
     }
 
     /// Check if a specific file uses `RemotePlugin` or `BrpExtrasPlugin` (any BRP support)
-    pub(super) fn file_uses_brp_plugins(file_path: &std::path::Path) -> bool {
+    pub(super) fn file_uses_brp_plugins(file_path: &Path) -> bool {
         !matches!(Self::file_brp_level(file_path), BrpLevel::None)
     }
 }

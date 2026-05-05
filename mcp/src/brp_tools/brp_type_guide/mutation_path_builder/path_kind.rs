@@ -1,6 +1,7 @@
 //! Context for a mutation path describing what kind of mutation this is
 use std::borrow::Borrow;
 use std::fmt::Display;
+use std::fmt::Formatter;
 use std::ops::Deref;
 
 use serde::Deserialize;
@@ -267,7 +268,7 @@ impl PathKind {
 }
 
 impl Display for PathKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.variant_name())
     }
 }

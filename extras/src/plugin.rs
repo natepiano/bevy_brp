@@ -19,7 +19,9 @@ use super::constants::EXTRAS_COMMAND_PREFIX;
 #[cfg(feature = "diagnostics")]
 use super::diagnostics;
 use super::keyboard;
+use super::keyboard::KeyboardPlugin;
 use super::mouse;
+use super::mouse::MousePlugin;
 use super::screenshot;
 use super::shutdown;
 use super::window_title;
@@ -333,8 +335,8 @@ fn build_shared(app: &mut App) {
         app.add_plugins(FrameTimeDiagnosticsPlugin::default());
     }
 
-    app.add_plugins(keyboard::KeyboardPlugin);
-    app.add_plugins(mouse::MousePlugin);
+    app.add_plugins(KeyboardPlugin);
+    app.add_plugins(MousePlugin);
 
     // Add the system to handle deferred shutdown
     app.add_systems(Update, shutdown::deferred_shutdown_system);

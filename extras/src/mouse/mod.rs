@@ -19,6 +19,7 @@ mod scroll;
 mod support;
 
 use bevy::prelude::*;
+use cursor::SimulatedCursorPosition;
 
 pub(crate) use self::button::send_mouse_button_handler;
 pub(crate) use self::click::click_mouse_handler;
@@ -34,7 +35,7 @@ pub(super) struct MousePlugin;
 
 impl Plugin for MousePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<cursor::SimulatedCursorPosition>();
+        app.init_resource::<SimulatedCursorPosition>();
         app.add_systems(Update, cursor::sync_cursor_position);
         app.add_systems(Update, button::process_timed_button_releases);
         app.add_systems(Update, click::process_scheduled_clicks);

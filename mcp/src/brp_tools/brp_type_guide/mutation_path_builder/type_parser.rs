@@ -20,13 +20,13 @@ use nom::sequence;
 struct ParsedTypePath {
     /// The full type including module path and generics
     /// e.g., "`core::option::Option`<`bevy_asset::handle::Handle`<`bevy_mesh::mesh::Mesh`>>"
-    pub full_type:       String,
+    full_type:       String,
     /// The simplified type name with generics but no module paths
     /// e.g., "Option<Handle<Mesh>>"
-    pub simplified_type: String,
+    simplified_type: String,
     /// The variant name if present
     /// e.g., "Some"
-    pub variant:         Option<String>,
+    variant:         Option<String>,
 }
 
 /// Parse an identifier (alphanumeric + underscore, not starting with digit)

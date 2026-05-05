@@ -29,8 +29,8 @@ impl<'de> Deserialize<'de> for ComponentSelector {
         let value = serde_json::Value::deserialize(deserializer)?;
 
         match value {
-            serde_json::Value::String(ref s) if s == "all" => Ok(Self::All),
-            serde_json::Value::Array(arr) => {
+            Value::String(ref s) if s == "all" => Ok(Self::All),
+            Value::Array(arr) => {
                 let paths = arr
                     .into_iter()
                     .map(|v| {

@@ -8,6 +8,7 @@
 //! arrays, not string keys `["key"]` for maps, making individual entry paths impossible.
 
 use std::collections::HashMap;
+use std::vec::IntoIter;
 
 use serde_json::Value;
 use serde_json::json;
@@ -29,7 +30,7 @@ use crate::support::SchemaField;
 impl TypeKindBuilder for MapMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
-        = std::vec::IntoIter<PathKind>
+        = IntoIter<PathKind>
     where
         Self: 'a;
 

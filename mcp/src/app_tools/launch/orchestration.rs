@@ -1,3 +1,4 @@
+use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
@@ -7,7 +8,10 @@ use tracing::debug;
 use tracing::warn;
 
 use super::build;
+use super::build::BuildState;
 use super::config;
+use super::config::LaunchParams;
+use super::config::LaunchResult;
 use crate::app_tools::launch_params::LaunchBevyBinaryParams;
 use crate::app_tools::launch_params::SearchOrder;
 use crate::app_tools::process;
@@ -24,7 +28,7 @@ use crate::error::Result;
 fn prepare_launch_environment<T: config::LaunchConfigTrait>(
     config: &T,
     target: &BevyTarget,
-) -> Result<(Command, PathBuf, PathBuf, std::fs::File)> {
+) -> Result<(Command, PathBuf, PathBuf, File)> {
     let manifest_dir = build::validate_manifest_directory(&target.manifest_path)?;
     let cmd = config.build_command(target);
     let (log_file_path, log_file_for_redirect) = build::setup_launch_logging(
@@ -106,7 +110,7 @@ pub fn launch_bevy_target(
     typed_params: LaunchBevyBinaryParams,
     roots: Vec<PathBuf>,
     default_profile: &'static str,
-) -> Result<config::LaunchResult> {
+) -> Result<LaunchResult> {
     let params = typed_params.to_launch_params(default_profile);
 
     let search_roots = params
@@ -162,9 +166,9 @@ pub fn launch_bevy_target(
 fn launch_found_target(
     target_type: TargetType,
     cached_targets: Vec<BevyTarget>,
-    params: &config::LaunchParams,
+    params: &LaunchParams,
     roots: &[PathBuf],
-) -> Result<config::LaunchResult> {
+) -> Result<LaunchResult> {
     match target_type {
         TargetType::App => {
             let config = config::LaunchConfig::<config::App>::from(params);
@@ -181,7 +185,7 @@ fn launch_target_with_cached<T: config::LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
     cached_targets: Vec<BevyTarget>,
-) -> Result<config::LaunchResult> {
+) -> Result<LaunchResult> {
     let launch_start = Instant::now();
 
     debug!("Environment variable: BRP_EXTRAS_PORT={}", config.port());
@@ -191,9 +195,9 @@ fn launch_target_with_cached<T: config::LaunchConfigTrait>(
 
     let build_state = config.ensure_built(&target)?;
     match build_state {
-        build::BuildState::Fresh => debug!("Target was already up to date, launching immediately"),
-        build::BuildState::Rebuilt => debug!("Target was rebuilt before launch"),
-        build::BuildState::NotFound => {
+        BuildState::Fresh => debug!("Target was already up to date, launching immediately"),
+        BuildState::Rebuilt => debug!("Target was rebuilt before launch"),
+        BuildState::NotFound => {
             warn!("Target not found in build output but build succeeded");
         },
     }

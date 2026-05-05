@@ -3,10 +3,15 @@
 use std::fmt::Write;
 use std::path::PathBuf;
 
+use chrono::DateTime;
+use chrono::Local;
+use serde_json::Value;
+use tokio::fs::File;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+use tokio::time::Instant;
 use tracing::debug;
 use tracing::error;
 
@@ -20,8 +25,8 @@ use crate::log_tools::TracingLevel;
 #[derive(Debug)]
 pub(super) struct LogEntry {
     pub(super) update_type: String,
-    pub(super) data:        serde_json::Value,
-    pub(super) timestamp:   chrono::DateTime<chrono::Local>,
+    pub(super) data:        Value,
+    pub(super) timestamp:   DateTime<Local>,
 }
 
 /// Buffered logger for watch updates
@@ -50,11 +55,7 @@ impl BufferedWatchLogger {
     }
 
     /// Queue a log entry for writing (non-blocking)
-    pub(super) async fn write_update(
-        &self,
-        update_type: &str,
-        data: serde_json::Value,
-    ) -> Result<(), String> {
+    pub(super) async fn write_update(&self, update_type: &str, data: Value) -> Result<(), String> {
         let entry = LogEntry {
             update_type: update_type.to_string(),
             data,
@@ -71,7 +72,7 @@ impl BufferedWatchLogger {
     pub(super) async fn write_debug_update(
         &self,
         update_type: &str,
-        data: serde_json::Value,
+        data: Value,
     ) -> Result<(), String> {
         if matches!(
             TracingLevel::get_current_tracing_level(),
@@ -108,9 +109,9 @@ impl Drop for BufferedWatchLogger {
 
 /// Helper function to flush the buffer to the file
 async fn flush_buffer(
-    file: &mut tokio::fs::File,
+    file: &mut File,
     buffer: &mut String,
-    last_flush: &mut tokio::time::Instant,
+    last_flush: &mut Instant,
 ) -> std::io::Result<()> {
     if !buffer.is_empty() {
         file.write_all(buffer.as_bytes()).await?;

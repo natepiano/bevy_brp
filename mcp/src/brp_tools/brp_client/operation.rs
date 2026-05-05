@@ -1,5 +1,8 @@
 //! BRP operation classification and type-name extraction.
 
+use std::fmt::Display;
+use std::fmt::Formatter;
+
 use serde_json::Value;
 
 use crate::error::Error;
@@ -30,8 +33,8 @@ pub(super) enum Operation {
     },
 }
 
-impl std::fmt::Display for Operation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for Operation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Use consistent string representation for both variants
         let s = match self {
             Self::SpawnInsert { .. } => "spawn_insert",

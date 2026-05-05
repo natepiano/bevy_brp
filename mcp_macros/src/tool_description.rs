@@ -3,9 +3,11 @@
 use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::Attribute;
 use syn::Data;
 use syn::DeriveInput;
 use syn::Fields;
+use syn::LitStr;
 use syn::parse_macro_input;
 
 /// Implementation of the `ToolDescription` derive macro
@@ -55,14 +57,14 @@ pub(crate) fn derive_tool_description_impl(input: TokenStream) -> TokenStream {
 }
 
 /// Extract the path from `tool_description` attributes
-fn extract_path(attrs: &[syn::Attribute]) -> String {
+fn extract_path(attrs: &[Attribute]) -> String {
     for attr in attrs {
         if attr.path().is_ident("tool_description") {
             let mut path = None;
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("path") {
                     let value = meta.value()?;
-                    let s: syn::LitStr = value.parse()?;
+                    let s: LitStr = value.parse()?;
                     path = Some(s.value());
                     Ok(())
                 } else {

@@ -1,5 +1,7 @@
 //! Cursor position tracking and movement
 
+use std::collections::HashMap;
+
 use bevy::ecs::system::In;
 use bevy::math::Vec2;
 use bevy::prelude::*;
@@ -12,6 +14,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::support;
+use super::support::EmptyParamsPolicy;
 
 // ============================================================================
 // Types
@@ -22,22 +25,22 @@ use super::support;
 struct MoveMouseRequest {
     /// Delta movement (mutually exclusive with position)
     #[serde(default)]
-    pub delta:    Option<Vec2>,
+    delta:    Option<Vec2>,
     /// Absolute position (mutually exclusive with delta)
     #[serde(default)]
-    pub position: Option<Vec2>,
+    position: Option<Vec2>,
     /// Target window entity (None = primary window)
     #[serde(default)]
-    pub window:   Option<u64>,
+    window:   Option<u64>,
 }
 
 /// Response structure for `move_mouse`
 #[derive(Serialize)]
 struct MoveMouseResponse {
     /// New cursor position
-    pub new_position: Vec2,
+    new_position: Vec2,
     /// Delta that was applied
-    pub delta:        Vec2,
+    delta:        Vec2,
 }
 
 // ============================================================================
@@ -64,7 +67,7 @@ struct MoveMouseResponse {
 #[derive(Resource, Default)]
 pub(super) struct SimulatedCursorPosition {
     /// Per-window cursor positions
-    pub positions:   std::collections::HashMap<Entity, Vec2>,
+    pub positions:   HashMap<Entity, Vec2>,
     /// The last window the cursor was moved to (used as default for click/scroll operations)
     pub last_window: Option<Entity>,
 }
@@ -102,8 +105,7 @@ impl SimulatedCursorPosition {
 
 /// Handler for `move_mouse` BRP method
 pub fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: MoveMouseRequest =
-        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
+    let request: MoveMouseRequest = support::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     // Validate that exactly one of delta or position is provided
     if request.delta.is_none() && request.position.is_none() {

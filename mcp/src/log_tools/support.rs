@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::fs;
+use std::fs::Metadata;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
@@ -108,7 +109,7 @@ pub(super) struct LogFileEntry {
     pub(super) app_name:  String,
     pub(super) timestamp: String,
     pub(super) path:      PathBuf,
-    pub(super) metadata:  fs::Metadata,
+    pub(super) metadata:  Metadata,
 }
 
 /// Iterates over app log files (port pattern only) in the temp directory with optional filtering

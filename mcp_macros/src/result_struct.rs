@@ -5,8 +5,13 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::Attribute;
 use syn::Data;
 use syn::DeriveInput;
+use syn::Field;
+use syn::Ident;
+use syn::LitBool;
+use syn::Type;
 use syn::parse_macro_input;
 
 use super::constants::DEFAULT_DURATION_MS;
@@ -20,7 +25,7 @@ struct BrpResultAttrs {
 }
 
 /// Parse #[`brp_result`(...)] attribute
-fn parse_brp_result_attr(attrs: &[syn::Attribute]) -> Option<BrpResultAttrs> {
+fn parse_brp_result_attr(attrs: &[Attribute]) -> Option<BrpResultAttrs> {
     for attr in attrs {
         if attr.path().is_ident("brp_result") {
             let mut result = BrpResultAttrs::default();
@@ -29,7 +34,7 @@ fn parse_brp_result_attr(attrs: &[syn::Attribute]) -> Option<BrpResultAttrs> {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("enhanced_errors") {
                     let value = meta.value()?;
-                    let lit: syn::LitBool = value.parse()?;
+                    let lit: LitBool = value.parse()?;
                     result.enhanced_errors = lit.value();
                 }
                 Ok(())
@@ -140,8 +145,8 @@ pub(crate) fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
 
 /// Generate the `get_message_template` implementation body.
 fn generate_get_template_impl(
-    fields: &[&syn::Field],
-    message_template_field: Option<&(syn::Ident, Option<String>)>,
+    fields: &[&Field],
+    message_template_field: Option<&(Ident, Option<String>)>,
 ) -> proc_macro2::TokenStream {
     if let Some((field_name, _)) = message_template_field {
         let message_field_type = fields
@@ -179,11 +184,11 @@ fn generate_get_template_impl(
 /// Generate BRP-specific trait implementations (`BrpToolConfig`, `ResultStructBrpExt`,
 /// `from_brp_client_response`).
 fn generate_brp_trait_impls(
-    struct_name: &syn::Ident,
+    struct_name: &Ident,
     brp_attrs: Option<&BrpResultAttrs>,
-    regular_fields: &[(syn::Ident, syn::Type)],
+    regular_fields: &[(Ident, Type)],
     computed_fields: &[ComputedField],
-    message_template_field: Option<&(syn::Ident, Option<String>)>,
+    message_template_field: Option<&(Ident, Option<String>)>,
 ) -> proc_macro2::TokenStream {
     let from_brp_client_response_impl = if brp_attrs.is_some() {
         generate_from_brp_client_response(
@@ -234,9 +239,9 @@ fn generate_brp_trait_impls(
 
 /// Generate `MessageTemplateProvider` implementation and constructor methods
 fn generate_message_template_provider(
-    struct_name: &syn::Ident,
-    message_template_field: Option<&(syn::Ident, Option<String>)>,
-    regular_fields: &[(syn::Ident, syn::Type)],
+    struct_name: &Ident,
+    message_template_field: Option<&(Ident, Option<String>)>,
+    regular_fields: &[(Ident, Type)],
     computed_fields: &[ComputedField],
 ) -> proc_macro2::TokenStream {
     let Some((field_name, default_template)) = message_template_field else {
@@ -285,9 +290,9 @@ fn generate_message_template_provider(
 
 /// Build field initializers for the constructor.
 fn build_constructor_initializers(
-    template_field_name: &syn::Ident,
+    template_field_name: &Ident,
     default_template: Option<&str>,
-    regular_fields: &[(syn::Ident, syn::Type)],
+    regular_fields: &[(Ident, Type)],
     computed_fields: &[ComputedField],
 ) -> Vec<proc_macro2::TokenStream> {
     let mut initializers = Vec::new();
@@ -311,8 +316,8 @@ fn build_constructor_initializers(
 
 /// Generate the initializer for the message template field.
 fn template_field_initializer(
-    name: &syn::Ident,
-    ty: &syn::Type,
+    name: &Ident,
+    ty: &Type,
     default_template: Option<&str>,
 ) -> proc_macro2::TokenStream {
     let type_str = quote!(#ty).to_string();
@@ -333,10 +338,7 @@ fn template_field_initializer(
 }
 
 /// Check whether the message template field is `Option<String>`.
-fn is_option_message_field(
-    field_name: &syn::Ident,
-    regular_fields: &[(syn::Ident, syn::Type)],
-) -> bool {
+fn is_option_message_field(field_name: &Ident, regular_fields: &[(Ident, Type)]) -> bool {
     regular_fields
         .iter()
         .find(|(name, _)| name == field_name)
@@ -346,11 +348,11 @@ fn is_option_message_field(
 
 /// Generate a builder-pattern constructor for `Option<String>` template fields without defaults.
 fn generate_builder_pattern(
-    struct_name: &syn::Ident,
-    field_name: &syn::Ident,
+    struct_name: &Ident,
+    field_name: &Ident,
     constructor_params: &[proc_macro2::TokenStream],
     with_template_impl: &proc_macro2::TokenStream,
-    regular_fields: &[(syn::Ident, syn::Type)],
+    regular_fields: &[(Ident, Type)],
     computed_fields: &[ComputedField],
 ) -> proc_macro2::TokenStream {
     let builder_name = quote::format_ident!("{}Builder", struct_name);
@@ -414,7 +416,7 @@ fn generate_builder_pattern(
 
 /// Generate a direct constructor (no builder) when a default template exists.
 fn generate_direct_constructor(
-    struct_name: &syn::Ident,
+    struct_name: &Ident,
     constructor_params: &[proc_macro2::TokenStream],
     field_initializers: &[proc_macro2::TokenStream],
     with_template_impl: &proc_macro2::TokenStream,
@@ -439,10 +441,10 @@ fn generate_direct_constructor(
 
 /// Generate `from_brp_client_response` method
 fn generate_from_brp_client_response(
-    struct_name: &syn::Ident,
-    regular_fields: &[(syn::Ident, syn::Type)],
+    struct_name: &Ident,
+    regular_fields: &[(Ident, Type)],
     computed_fields: &[ComputedField],
-    message_template_field: Option<&(syn::Ident, Option<String>)>,
+    message_template_field: Option<&(Ident, Option<String>)>,
 ) -> proc_macro2::TokenStream {
     let mut field_initializers = Vec::new();
 
@@ -480,9 +482,9 @@ fn generate_from_brp_client_response(
 
 /// Generate the initializer for a single regular field in `from_brp_client_response`.
 fn generate_regular_field_initializer(
-    field_name: &syn::Ident,
-    field_type: &syn::Type,
-    message_template_field: Option<&(syn::Ident, Option<String>)>,
+    field_name: &Ident,
+    field_type: &Type,
+    message_template_field: Option<&(Ident, Option<String>)>,
 ) -> Option<proc_macro2::TokenStream> {
     match classify_generated_field(field_name, field_type, message_template_field) {
         Some(GeneratedFieldKind::ResultValue) => Some(quote! { result: value.clone() }),
@@ -527,9 +529,9 @@ enum GeneratedFieldKind<'a> {
 }
 
 fn classify_generated_field<'a>(
-    field_name: &syn::Ident,
-    field_type: &syn::Type,
-    message_template_field: Option<&'a (syn::Ident, Option<String>)>,
+    field_name: &Ident,
+    field_type: &Type,
+    message_template_field: Option<&'a (Ident, Option<String>)>,
 ) -> Option<GeneratedFieldKind<'a>> {
     if let Some((template_field_name, template_default)) = message_template_field
         && field_name == template_field_name

@@ -1,5 +1,7 @@
 //! Mutation path newtype for BRP operations.
 
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::ops::Deref;
 
 use serde::Deserialize;
@@ -23,6 +25,6 @@ impl From<&str> for MutationPath {
     fn from(path: &str) -> Self { Self(path.to_string()) }
 }
 
-impl std::fmt::Display for MutationPath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+impl Display for MutationPath {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
 }

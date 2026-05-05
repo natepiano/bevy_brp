@@ -4,6 +4,8 @@ use bevy_brp_mcp_macros::ToolFn;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::Value;
+use sysinfo::ProcessesToUpdate;
 use sysinfo::Signal;
 use sysinfo::System;
 use tracing::debug;
@@ -178,7 +180,7 @@ async fn handle_impl(params: ShutdownParams) -> Result<ShutdownResult> {
 }
 
 /// Try to gracefully shutdown via `bevy_brp_extras`
-async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> {
+async fn try_graceful_shutdown(port: Port) -> Result<Option<Value>> {
     debug!("Starting graceful shutdown attempt on port {port}");
     let client = BrpClient::new(BrpMethod::BrpShutdown, port, None);
     match client.execute_raw().await {
@@ -220,7 +222,7 @@ async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> 
 /// Kill the process using the system signal
 fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
     let mut system = System::new_all();
-    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+    system.refresh_processes(ProcessesToUpdate::All, true);
 
     // First try: Get PID from port for more reliable process identification
     let target_pid = process::get_pid_for_port(port).map_or_else(

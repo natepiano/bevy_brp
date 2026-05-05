@@ -23,7 +23,7 @@ pub struct ExecuteParams {
     pub method: BrpMethod,
     /// Optional parameters for the method
     #[to_metadata(skip_if_none)]
-    pub params: Option<serde_json::Value>,
+    pub params: Option<Value>,
     /// The BRP port (default: 15702)
     #[serde(default)]
     pub port:   Port,

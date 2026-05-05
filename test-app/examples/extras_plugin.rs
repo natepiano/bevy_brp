@@ -216,32 +216,32 @@ struct TextInputDisplay;
 #[derive(Resource, Default, Reflect)]
 #[reflect(Resource)]
 struct TextInputContent {
-    pub text: String,
+    text: String,
 }
 
 /// Test resource for BRP operations
 #[derive(Resource, Default, Reflect)]
 #[reflect(Resource)]
 struct TestConfigResource {
-    pub setting_a: f32,
-    pub setting_b: String,
-    pub enabled:   bool,
+    setting_a: f32,
+    setting_b: String,
+    enabled:   bool,
 }
 
 /// Test resource for runtime statistics
 #[derive(Resource, Default, Reflect)]
 #[reflect(Resource)]
 struct RuntimeStatsResource {
-    pub frame_count: u32,
-    pub total_time:  f32,
-    pub debug_mode:  bool,
+    frame_count: u32,
+    total_time:  f32,
+    debug_mode:  bool,
 }
 
 /// Simple `HashSet` test component with just strings
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct SimpleSetComponent {
-    pub string_set: HashSet<String>,
+    string_set: HashSet<String>,
 }
 
 /// Test component with `HashMap` for testing map mutations
@@ -249,11 +249,11 @@ struct SimpleSetComponent {
 #[reflect(Component)]
 struct TestMapComponent {
     /// `String` to `String` map
-    pub strings:    HashMap<String, String>,
+    strings:    HashMap<String, String>,
     /// `String` to `f32` map
-    pub values:     HashMap<String, f32>,
+    values:     HashMap<String, f32>,
     /// `String` to `Transform` map (complex nested type)
-    pub transforms: HashMap<String, Transform>,
+    transforms: HashMap<String, Transform>,
 }
 
 /// Test component with enum-keyed `HashMap` (`NotMutable` due to complex key)
@@ -261,7 +261,7 @@ struct TestMapComponent {
 #[reflect(Component)]
 struct TestEnumKeyedMap {
     /// Enum to String map (should be `NotMutable` due to complex key)
-    pub enum_keyed: HashMap<SimpleTestEnum, String>,
+    enum_keyed: HashMap<SimpleTestEnum, String>,
 }
 
 /// Simple test enum for `HashMap` key testing
@@ -277,9 +277,9 @@ enum SimpleTestEnum {
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct TestStructNoSerDe {
-    pub value:   f32,
-    pub name:    String,
-    pub enabled: bool,
+    value:   f32,
+    name:    String,
+    enabled: bool,
 }
 
 #[derive(Component, Default, Reflect)]
@@ -387,9 +387,9 @@ enum TestEnumWithArray {
 #[reflect(Component)]
 struct TestArrayField {
     /// Fixed-size array field
-    pub vertices: [Vec2; 3],
+    vertices: [Vec2; 3],
     /// Another array field
-    pub values:   [f32; 4],
+    values:   [f32; 4],
 }
 
 /// Test component with array of Transforms
@@ -397,7 +397,7 @@ struct TestArrayField {
 #[reflect(Component)]
 struct TestArrayTransforms {
     /// Array of `Transform` components
-    pub transforms: [Transform; 2],
+    transforms: [Transform; 2],
 }
 
 /// Test component with tuple field
@@ -405,24 +405,24 @@ struct TestArrayTransforms {
 #[reflect(Component)]
 struct TestTupleField {
     /// Tuple field with two elements
-    pub coords:    (f32, f32),
+    coords:    (f32, f32),
     /// Tuple field with three elements
-    pub color_rgb: (u8, u8, u8),
+    color_rgb: (u8, u8, u8),
 }
 
 /// Test tuple struct component
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
-struct TestTupleStruct(pub f32, pub String, pub bool);
+struct TestTupleStruct(f32, String, bool);
 
 /// Test component with complex tuple types for testing tuple recursion
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 struct TestComplexTuple {
     /// Tuple with complex types that should recurse
-    pub complex: (Transform, Vec3),
+    complex: (Transform, Vec3),
     /// Nested tuple with both simple and complex types
-    pub nested:  (Vec2, (f32, String)),
+    nested:  (Vec2, (f32, String)),
 }
 
 /// Core type with mixed mutability for `mutability_reason` testing
@@ -430,16 +430,16 @@ struct TestComplexTuple {
 #[derive(Default, Reflect)]
 struct TestMixedMutabilityCore {
     /// Mutable string field
-    pub mutable_string: String,
+    mutable_string: String,
 
     /// Mutable float field
-    pub mutable_float: f32,
+    mutable_float: f32,
 
     /// Not mutable field - Arc type
-    pub not_mutable_arc: std::sync::Arc<String>,
+    not_mutable_arc: std::sync::Arc<String>,
 
     /// Partially mutable field - simple nested struct
-    pub partially_mutable_nested: TestPartiallyMutableNested,
+    partially_mutable_nested: TestPartiallyMutableNested,
 }
 
 /// Vec parent containing mixed mutability items
@@ -447,7 +447,7 @@ struct TestMixedMutabilityCore {
 #[reflect(Component)]
 struct TestMixedMutabilityVec {
     /// Vec of mixed mutability items
-    pub items: Vec<TestMixedMutabilityCore>,
+    items: Vec<TestMixedMutabilityCore>,
 }
 
 /// Array parent containing mixed mutability items
@@ -455,13 +455,13 @@ struct TestMixedMutabilityVec {
 #[reflect(Component)]
 struct TestMixedMutabilityArray {
     /// Fixed-size array of mixed mutability items
-    pub items: [TestMixedMutabilityCore; 2],
+    items: [TestMixedMutabilityCore; 2],
 }
 
 /// `TupleStruct` parent containing mixed mutability item
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
-struct TestMixedMutabilityTuple(pub TestMixedMutabilityCore, pub f32, pub String);
+struct TestMixedMutabilityTuple(TestMixedMutabilityCore, f32, String);
 
 /// Enum parent containing mixed mutability variants
 #[derive(Component, Default, Reflect)]
@@ -483,10 +483,10 @@ enum TestMixedMutabilityEnum {
 #[derive(Default, Reflect)]
 struct TestPartiallyMutableNested {
     /// Mutable field in nested struct
-    pub mutable_value: f32,
+    mutable_value: f32,
 
     /// Not mutable - Arc type without serialization
-    pub not_mutable_arc: std::sync::Arc<Vec<u8>>,
+    not_mutable_arc: std::sync::Arc<Vec<u8>>,
 }
 
 impl Default for TestComplexTuple {
@@ -503,15 +503,15 @@ impl Default for TestComplexTuple {
 #[reflect(Component)]
 struct TestComplexComponent {
     /// Nested struct field (will have .transform.translation.x paths)
-    pub transform:      Transform,
+    transform:      Transform,
     /// Enum field
-    pub mode:           SimpleNestedEnum,
+    mode:           SimpleNestedEnum,
     /// Array field
-    pub points:         [Vec3; 2],
+    points:         [Vec3; 2],
     /// Tuple field
-    pub range:          (f32, f32),
+    range:          (f32, f32),
     /// Option field
-    pub optional_value: Option<f32>,
+    optional_value: Option<f32>,
 }
 
 /// Test component with List and Set collection types containing complex elements
@@ -519,9 +519,9 @@ struct TestComplexComponent {
 #[reflect(Component)]
 struct TestCollectionComponent {
     /// `Vec<Transform>` - should trigger `ListMutationBuilder` with complex recursion
-    pub transform_list: Vec<Transform>,
+    transform_list: Vec<Transform>,
     /// `HashSet<String>` - should trigger `SetMutationBuilder`
-    pub struct_set:     HashSet<String>,
+    struct_set:     HashSet<String>,
 }
 
 impl Default for TestCollectionComponent {

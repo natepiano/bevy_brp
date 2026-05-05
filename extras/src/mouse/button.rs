@@ -6,6 +6,7 @@ use bevy::input::mouse::MouseButton;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::*;
 use bevy::window::WindowEvent;
+use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
 use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
@@ -15,6 +16,7 @@ use serde_json::Value;
 use super::constants::DEFAULT_MOUSE_DURATION_MS;
 use super::constants::MAX_MOUSE_DURATION_MS;
 use super::support;
+use super::support::EmptyParamsPolicy;
 
 // ============================================================================
 // Types
@@ -24,22 +26,22 @@ use super::support;
 #[derive(Deserialize)]
 struct SendMouseButtonRequest {
     /// Mouse button to press
-    pub button:      MouseButton,
+    button:      MouseButton,
     /// Duration in milliseconds to hold button (default: 100ms, max: 60000ms)
     #[serde(default)]
-    pub duration_ms: Option<u32>,
+    duration_ms: Option<u32>,
     /// Target window entity (None = primary window)
     #[serde(default)]
-    pub window:      Option<u64>,
+    window:      Option<u64>,
 }
 
 /// Response structure for `send_mouse_button`
 #[derive(Serialize)]
 struct SendMouseButtonResponse {
     /// Button that was pressed
-    pub button:      MouseButton,
+    button:      MouseButton,
     /// Duration in milliseconds the button was held
-    pub duration_ms: u32,
+    duration_ms: u32,
 }
 
 // ============================================================================
@@ -69,12 +71,12 @@ pub(super) struct TimedButtonRelease {
 /// Sends a mouse button press with configurable hold duration before automatic release
 pub fn send_mouse_button_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: SendMouseButtonRequest =
-        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
+        support::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     // Validate duration
     let duration_ms = request.duration_ms.unwrap_or(DEFAULT_MOUSE_DURATION_MS);
     if duration_ms > MAX_MOUSE_DURATION_MS {
-        return Err(bevy_remote::BrpError {
+        return Err(BrpError {
             code:    INVALID_PARAMS,
             message: format!(
                 "Duration exceeds maximum: {duration_ms}ms > {MAX_MOUSE_DURATION_MS}ms"

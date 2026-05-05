@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use rmcp::model::CallToolResult;
 use schemars::JsonSchema;
+use schemars::Schema;
+use schemars::SchemaGenerator;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -22,7 +24,7 @@ impl JsonSchema for AnySchemaValue {
         clippy::expect_used,
         reason = "empty JSON object deserialization is infallible"
     )]
-    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    fn json_schema(_: &mut SchemaGenerator) -> Schema {
         serde_json::from_value(json!({}))
             .expect("Serializing empty JSON object to Schema should always succeed")
     }

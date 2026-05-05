@@ -133,7 +133,7 @@ impl ResponseBuilder {
 
     /// Add multiple fields from an optional JSON object to metadata
     /// Useful for adding error details or other optional metadata
-    fn add_optional_details(self, details: Option<&serde_json::Value>) -> Self {
+    fn add_optional_details(self, details: Option<&Value>) -> Self {
         match details {
             Some(Value::Object(map)) => {
                 map.iter()

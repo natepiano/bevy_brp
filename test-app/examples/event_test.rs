@@ -17,18 +17,18 @@ struct TestUnitEvent;
 #[derive(Event, Reflect, Clone, Default)]
 #[reflect(Event)]
 struct TestPayloadEvent {
-    pub message: String,
-    pub value:   i32,
+    message: String,
+    value:   i32,
 }
 
 /// Resource to verify events were triggered
 #[derive(Resource, Default, Reflect)]
 #[reflect(Resource)]
 struct EventTriggerTracker {
-    pub unit_event_count:     u32,
-    pub last_payload_message: String,
-    pub last_payload_value:   i32,
-    pub payload_event_count:  u32,
+    unit_event_count:     u32,
+    last_payload_message: String,
+    last_payload_value:   i32,
+    payload_event_count:  u32,
 }
 
 fn main() {

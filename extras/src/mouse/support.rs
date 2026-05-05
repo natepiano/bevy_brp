@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use bevy::window::CursorMoved;
 use bevy::window::PrimaryWindow;
 use bevy_remote::BrpError;
+use bevy_remote::BrpResult;
 use bevy_remote::error_codes::INTERNAL_ERROR;
 use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Serialize;
@@ -74,10 +75,7 @@ pub(super) fn parse_request<T: serde::de::DeserializeOwned>(
 ///
 /// # Returns
 /// Serialized JSON value or BRP error with `INTERNAL_ERROR` code
-pub(super) fn serialize_response<T: Serialize>(
-    response: T,
-    handler_name: &str,
-) -> bevy_remote::BrpResult {
+pub(super) fn serialize_response<T: Serialize>(response: T, handler_name: &str) -> BrpResult {
     serde_json::to_value(response).map_err(|e| {
         warn!("Failed to serialize {handler_name} response: {e}");
         BrpError {

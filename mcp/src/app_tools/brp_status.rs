@@ -4,6 +4,8 @@ use bevy_brp_mcp_macros::ToolFn;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
+use sysinfo::Process;
+use sysinfo::ProcessesToUpdate;
 use sysinfo::System;
 
 use super::constants::STATUS_MAX_RETRIES;
@@ -94,7 +96,7 @@ struct BrpNotRespondingError {
 }
 
 /// Check if process matches the target app name with substring match
-fn process_matches_app_substring(process: &sysinfo::Process, target_app: &str) -> bool {
+fn process_matches_app_substring(process: &Process, target_app: &str) -> bool {
     let normalized_target = process::normalize_process_name(target_app);
 
     // Check process name
@@ -124,13 +126,13 @@ fn process_matches_app_substring(process: &sysinfo::Process, target_app: &str) -
 }
 
 /// Check if process is `bevy_brp_mcp` (the MCP tool itself)
-fn is_bevy_brp_mcp(process: &sysinfo::Process) -> bool {
+fn is_bevy_brp_mcp(process: &Process) -> bool {
     let process_name = process.name().to_string_lossy();
     process_name == "bevy_brp_mcp"
 }
 
 /// Extract clean app name from process for suggestions
-fn extract_app_name(process: &sysinfo::Process) -> String {
+fn extract_app_name(process: &Process) -> String {
     let process_name = process.name().to_string_lossy();
 
     // Check if it's running through cargo
@@ -185,7 +187,7 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
 
     // Initialize system for process lookups
     let mut system = System::new_all();
-    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+    system.refresh_processes(ProcessesToUpdate::All, true);
 
     // If we have a PID from the port, always report about THAT PID
     // Never fall through to searching for other processes by name

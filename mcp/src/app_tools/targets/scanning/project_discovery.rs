@@ -4,6 +4,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::time::Instant;
 
+use cargo_metadata::Metadata;
 use tracing::debug;
 
 /// Safely canonicalize a path.
@@ -106,7 +107,7 @@ fn should_skip_directory(dir: &Path) -> bool {
 }
 
 fn discover_workspace_members(
-    metadata: &cargo_metadata::Metadata,
+    metadata: &Metadata,
     workspace_root: &Path,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
 ) {
@@ -140,7 +141,7 @@ fn discover_workspace_members(
 }
 
 fn handle_workspace_root(
-    metadata: &cargo_metadata::Metadata,
+    metadata: &Metadata,
     workspace_root: &Path,
     canonical_dir: PathBuf,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,

@@ -126,22 +126,22 @@ fn list_log_files(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct LogFileInfo {
     /// The filename
-    pub filename:   String,
+    filename:   String,
     /// The app name extracted from the filename
-    pub app_name:   String,
+    app_name:   String,
     /// Full path to the file (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub path:       Option<String>,
+    path:       Option<String>,
     /// Human-readable file size (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub size:       Option<String>,
+    size:       Option<String>,
     /// File size in bytes (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub size_bytes: Option<u64>,
+    size_bytes: Option<u64>,
     /// Creation time as ISO string (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub created:    Option<String>,
+    created:    Option<String>,
     /// Modification time as ISO string (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub modified:   Option<String>,
+    modified:   Option<String>,
 }

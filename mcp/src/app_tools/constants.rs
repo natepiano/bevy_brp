@@ -1,4 +1,5 @@
 use std::ops::RangeInclusive;
+use std::time::Duration;
 
 // instance count constants
 /// Maximum number of instances (100)
@@ -18,4 +19,4 @@ pub(super) const PROFILE_RELEASE: &str = "release";
 /// Maximum number of retries when checking BRP port responsiveness
 pub(super) const STATUS_MAX_RETRIES: u32 = 5;
 /// Delay between BRP status poll retries
-pub(super) const STATUS_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(500);
+pub(super) const STATUS_POLL_INTERVAL: Duration = std::time::Duration::from_millis(500);

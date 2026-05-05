@@ -8,6 +8,7 @@
 //! This is because array elements are addressable by stable indices `[0]`, `[1]`, etc.
 
 use std::collections::HashMap;
+use std::vec::IntoIter;
 
 use serde_json::Value;
 use serde_json::json;
@@ -29,7 +30,7 @@ use crate::support::SchemaField;
 impl TypeKindBuilder for ArrayMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
-        = std::vec::IntoIter<PathKind>
+        = IntoIter<PathKind>
     where
         Self: 'a;
 

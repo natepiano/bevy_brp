@@ -22,6 +22,7 @@ use super::annotations::EnvironmentImpact;
 use super::annotations::ToolCategory;
 use super::handler::ErasedToolFn;
 use super::parameters;
+use super::parameters::ParameterBuilder;
 use crate::app_tools;
 use crate::app_tools::LaunchBevyBinaryParams;
 use crate::app_tools::ListBevy;
@@ -707,7 +708,7 @@ impl ToolName {
         clippy::too_many_lines,
         reason = "trivial per-variant constructor calls"
     )]
-    fn get_parameters(self) -> Option<fn() -> parameters::ParameterBuilder> {
+    fn get_parameters(self) -> Option<fn() -> ParameterBuilder> {
         match self {
             Self::WorldDespawnEntity => {
                 Some(parameters::build_parameters_from::<DespawnEntityParams>)

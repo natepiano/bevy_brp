@@ -1,4 +1,5 @@
 // buffer constants
+use std::time::Duration;
 /// Buffer size threshold that triggers a flush to disk
 pub(super) const BUFFER_FLUSH_SIZE: usize = 4096;
 /// Maximum size for the total buffer when processing incomplete lines (10MB)
@@ -16,5 +17,4 @@ pub(super) const MAX_PREVIEW_BYTES: usize = 500;
 
 // timing constants
 /// Interval between automatic log buffer flushes
-pub(super) const WATCH_LOG_FLUSH_INTERVAL: std::time::Duration =
-    std::time::Duration::from_millis(100);
+pub(super) const WATCH_LOG_FLUSH_INTERVAL: Duration = std::time::Duration::from_millis(100);

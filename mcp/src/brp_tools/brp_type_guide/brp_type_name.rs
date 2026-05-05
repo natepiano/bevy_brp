@@ -4,6 +4,9 @@
 //! Rust type names (e.g., `"bevy_transform::components::transform::Transform"`)
 //! with various utility methods for working with these names.
 
+use std::fmt::Display;
+use std::fmt::Formatter;
+
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -144,8 +147,8 @@ impl From<&BrpTypeName> for String {
     fn from(type_name: &BrpTypeName) -> Self { type_name.0.clone() }
 }
 
-impl std::fmt::Display for BrpTypeName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+impl Display for BrpTypeName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
 }
 
 impl From<BrpTypeName> for Value {

@@ -4,6 +4,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use bevy::input::ButtonState;
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::window::WindowEvent;
 use bevy_remote::BrpError;
@@ -146,7 +147,7 @@ pub(super) fn process_timed_key_releases(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedKeyRelease)>,
-    mut keyboard_events: MessageWriter<bevy::input::keyboard::KeyboardInput>,
+    mut keyboard_events: MessageWriter<KeyboardInput>,
     mut window_events: MessageWriter<WindowEvent>,
 ) {
     for (entity, mut timed_release) in &mut query {

@@ -1,7 +1,9 @@
 use std::collections::HashMap;
+use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::process::Output;
 
 use error_stack::Report;
 use serde_json::Value;
@@ -47,7 +49,7 @@ pub(super) fn setup_launch_logging(
     manifest_dir: &Path,
     port: Port,
     extra_log_info: Option<&str>,
-) -> Result<(PathBuf, std::fs::File)> {
+) -> Result<(PathBuf, File)> {
     let (log_file_path, _) =
         logging::create_log_file(name, target_type, profile, binary_path, manifest_dir, port)
             .map_err(|e| Error::tool_call_failed(format!("Failed to create log file: {e}")))?;
@@ -138,7 +140,7 @@ fn execute_build_command(
     target_type: TargetType,
     profile: &str,
     manifest_dir: &Path,
-) -> Result<std::process::Output> {
+) -> Result<Output> {
     debug!("Running cargo build for {target_type} '{target_name}' with args: {cmd:?}");
 
     let output = cmd.output().map_err(|e| {

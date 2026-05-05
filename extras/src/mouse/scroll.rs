@@ -10,6 +10,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::support;
+use super::support::EmptyParamsPolicy;
 use crate::window_event;
 
 // ============================================================================
@@ -20,25 +21,25 @@ use crate::window_event;
 #[derive(Deserialize)]
 struct ScrollMouseRequest {
     /// Horizontal scroll amount
-    pub x:      f32,
+    x:      f32,
     /// Vertical scroll amount
-    pub y:      f32,
+    y:      f32,
     /// Scroll unit
-    pub unit:   MouseScrollUnit,
+    unit:   MouseScrollUnit,
     /// Target window entity (None = primary window)
     #[serde(default)]
-    pub window: Option<u64>,
+    window: Option<u64>,
 }
 
 /// Response structure for `scroll_mouse`
 #[derive(Serialize)]
 struct ScrollMouseResponse {
     /// Horizontal scroll amount
-    pub x:    f32,
+    x:    f32,
     /// Vertical scroll amount
-    pub y:    f32,
+    y:    f32,
     /// Scroll unit that was used
-    pub unit: MouseScrollUnit,
+    unit: MouseScrollUnit,
 }
 
 // ============================================================================
@@ -47,8 +48,7 @@ struct ScrollMouseResponse {
 
 /// Handler for `scroll_mouse` BRP method
 pub fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: ScrollMouseRequest =
-        support::parse_request(params, support::EmptyParamsPolicy::Reject)?;
+    let request: ScrollMouseRequest = support::parse_request(params, EmptyParamsPolicy::Reject)?;
     let window = support::resolve_window(world, request.window)?;
 
     window_event::write_input_event(

@@ -1,8 +1,10 @@
 //! Type-text handler: sequential character-by-character typing via BRP.
 
+use std::collections::VecDeque;
 use std::str::FromStr;
 
 use bevy::input::ButtonState;
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::window::WindowEvent;
 use bevy_remote::BrpError;
@@ -30,7 +32,7 @@ pub(super) enum TypingPhase {
 #[derive(Component)]
 pub(super) struct TextTypingQueue {
     /// Characters remaining to type
-    chars:        std::collections::VecDeque<char>,
+    chars:        VecDeque<char>,
     /// Currently pressed keys (waiting for release next frame)
     current_keys: Vec<KeyCodeWrapper>,
     /// The character we're currently typing (for proper text field on shifted chars)
@@ -184,7 +186,7 @@ pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
 pub(super) fn process_text_typing(
     mut commands: Commands,
     mut query: Query<(Entity, &mut TextTypingQueue)>,
-    mut keyboard_events: MessageWriter<bevy::input::keyboard::KeyboardInput>,
+    mut keyboard_events: MessageWriter<KeyboardInput>,
     mut window_events: MessageWriter<WindowEvent>,
 ) {
     for (entity, mut queue) in &mut query {

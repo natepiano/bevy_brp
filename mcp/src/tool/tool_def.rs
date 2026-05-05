@@ -6,6 +6,8 @@ use std::sync::Arc;
 use rmcp::ErrorData;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
+use rmcp::model::JsonObject;
+use rmcp::model::Tool;
 use schemars::generate::SchemaSettings;
 
 use super::HandlerContext;
@@ -44,7 +46,7 @@ impl ToolDef {
     }
 
     /// Generate unified output schema from the actual [`ToolCallJsonResponse`] struct
-    fn generate_output_schema() -> Arc<rmcp::model::JsonObject> {
+    fn generate_output_schema() -> Arc<JsonObject> {
         let mut settings = SchemaSettings::default();
         settings.inline_subschemas = true;
         let generator = settings.into_generator();
@@ -63,7 +65,7 @@ impl ToolDef {
     }
 
     /// Convert to MCP Tool for registration
-    pub fn to_tool(&self) -> rmcp::model::Tool {
+    pub fn to_tool(&self) -> Tool {
         // Build parameters using the provided builder function, or create empty builder
         let builder = self
             .parameters

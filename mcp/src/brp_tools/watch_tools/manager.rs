@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
@@ -15,7 +16,7 @@ use crate::error::Error;
 use crate::error::Result;
 
 /// Global watch manager instance
-pub(super) static WATCH_MANAGER: std::sync::LazyLock<Arc<Mutex<WatchManager>>> =
+pub(super) static WATCH_MANAGER: LazyLock<Arc<Mutex<WatchManager>>> =
     std::sync::LazyLock::new(|| Arc::new(Mutex::new(WatchManager::new())));
 
 /// Information about an active watch

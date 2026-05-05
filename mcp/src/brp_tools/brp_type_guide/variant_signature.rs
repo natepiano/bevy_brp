@@ -6,6 +6,9 @@
 //! - Matching variant-specific type knowledge entries
 //! - Displaying variant signatures in debug output
 
+use std::fmt::Display;
+use std::fmt::Formatter;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -23,8 +26,8 @@ pub(super) enum VariantSignature {
     Struct(Vec<(StructFieldName, BrpTypeName)>),
 }
 
-impl std::fmt::Display for VariantSignature {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for VariantSignature {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Unit => write!(f, "unit"),
             Self::Tuple(types) => {

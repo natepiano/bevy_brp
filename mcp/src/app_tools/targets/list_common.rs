@@ -1,13 +1,16 @@
 //! Listing handler using the strategy pattern
 
 use std::collections::HashSet;
+use std::path::PathBuf;
+
+use serde_json::Value;
 
 use super::cargo_detector::CargoDetector;
 use super::collection_strategy::AllBevyTargetsStrategy;
 use super::scanning;
 
 /// Collect all Bevy targets (apps and examples) with `kind` and `brp_enabled` fields
-pub fn collect_all_bevy_targets(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
+pub fn collect_all_bevy_targets(search_paths: &[PathBuf]) -> Vec<Value> {
     let mut all_items = Vec::new();
     let mut seen_items = HashSet::new();
 

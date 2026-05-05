@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::fs::Metadata;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
@@ -120,7 +121,7 @@ fn read_log_file(
     path: &Path,
     keyword: Option<&str>,
     tail_lines: Option<usize>,
-) -> Result<(String, std::fs::Metadata)> {
+) -> Result<(String, Metadata)> {
     // Get file metadata
     let metadata =
         std::fs::metadata(path).map_err(|e| Error::io_failed("get file metadata", path, &e))?;

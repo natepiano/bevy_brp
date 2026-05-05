@@ -2,6 +2,7 @@
 
 use bevy::input::ButtonState;
 use bevy::input::keyboard::Key;
+use bevy::input::keyboard::KeyboardInput;
 use bevy::input::keyboard::NativeKey;
 use bevy::prelude::Entity;
 
@@ -14,7 +15,7 @@ use super::key_code::KeyCodeWrapper;
 pub(super) fn create_keyboard_events(
     wrappers: &[KeyCodeWrapper],
     state: ButtonState,
-) -> Vec<bevy::input::keyboard::KeyboardInput> {
+) -> Vec<KeyboardInput> {
     create_keyboard_events_with_text(wrappers, state, None)
 }
 
@@ -27,7 +28,7 @@ pub(super) fn create_keyboard_events_with_text(
     wrappers: &[KeyCodeWrapper],
     state: ButtonState,
     target_char: Option<char>,
-) -> Vec<bevy::input::keyboard::KeyboardInput> {
+) -> Vec<KeyboardInput> {
     // Find the last non-modifier key index (that's where we set the text)
     let last_non_modifier_idx = wrappers.iter().rposition(|w| {
         !matches!(
@@ -70,7 +71,7 @@ pub(super) fn create_keyboard_events_with_text(
                     (Key::Character(s.into()), text)
                 });
 
-            bevy::input::keyboard::KeyboardInput {
+            KeyboardInput {
                 state,
                 key_code,
                 logical_key,

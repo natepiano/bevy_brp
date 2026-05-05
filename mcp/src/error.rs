@@ -1,4 +1,8 @@
+use std::fmt::Formatter;
+use std::path::Path;
+
 use error_stack::Report;
+use serde_json::Value;
 use thiserror::Error;
 
 use super::tool::ResultStruct;
@@ -59,7 +63,7 @@ pub(crate) enum Error {
     #[error("Tool call error: {message}")]
     ToolCall {
         message: String,
-        details: Option<serde_json::Value>,
+        details: Option<Value>,
     },
 
     #[error("Watch operation failed: {0}")]
@@ -67,7 +71,7 @@ pub(crate) enum Error {
 }
 
 impl std::fmt::Debug for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::BrpCommunication(s) => f.debug_tuple("BrpCommunication").field(s).finish(),
             Self::FileOperation(s) => f.debug_tuple("FileOperation").field(s).finish(),
@@ -123,11 +127,7 @@ impl Error {
     }
 
     /// Create error for IO operations
-    pub(crate) fn io_failed(
-        operation: &str,
-        path: &std::path::Path,
-        error: impl std::fmt::Display,
-    ) -> Self {
+    pub(crate) fn io_failed(operation: &str, path: &Path, error: impl std::fmt::Display) -> Self {
         Self::LogOperation(format!(
             "{MSG_FAILED_TO_PREFIX} {operation} {}: {error}",
             path.display()
@@ -145,7 +145,7 @@ impl Error {
     /// Create a tool error with message and details
     pub(crate) fn tool_call_failed_with_details(
         message: impl Into<String>,
-        details: serde_json::Value,
+        details: Value,
     ) -> Self {
         Self::ToolCall {
             message: message.into(),

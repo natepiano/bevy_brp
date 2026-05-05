@@ -1,7 +1,9 @@
 //! Collection strategy trait for app listing handlers
 
 use std::collections::HashSet;
+use std::path::PathBuf;
 
+use serde_json::Value;
 use serde_json::json;
 
 use super::cargo_detector::BevyTarget;
@@ -11,7 +13,7 @@ use crate::app_tools::constants::PROFILE_DEBUG;
 use crate::app_tools::constants::PROFILE_RELEASE;
 
 /// Helper function to create builds JSON for binary items
-fn create_builds_json(item: &BevyTarget) -> serde_json::Value {
+fn create_builds_json(item: &BevyTarget) -> Value {
     let profiles = vec![PROFILE_DEBUG, PROFILE_RELEASE];
     let mut builds = json!({});
     for profile in &profiles {
@@ -82,7 +84,7 @@ impl AllBevyTargetsStrategy {
         )
     }
 
-    pub(super) fn get_path_for_relative(item: &EnrichedTarget) -> std::path::PathBuf {
+    pub(super) fn get_path_for_relative(item: &EnrichedTarget) -> PathBuf {
         item.target
             .manifest_path
             .parent()
@@ -90,10 +92,7 @@ impl AllBevyTargetsStrategy {
             .to_path_buf()
     }
 
-    pub(super) fn serialize_item(
-        item: &EnrichedTarget,
-        relative_path: String,
-    ) -> serde_json::Value {
+    pub(super) fn serialize_item(item: &EnrichedTarget, relative_path: String) -> Value {
         json!({
             "name": item.target.name,
             "kind": item.target.target_type.as_ref(),

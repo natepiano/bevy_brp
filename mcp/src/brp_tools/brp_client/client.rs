@@ -6,6 +6,7 @@
 //! - `execute_raw()`: Low-level API for debugging and format discovery engine
 //! - `execute_streaming()`: Specialized API for watch operations with streaming responses
 
+use reqwest::Response;
 use serde_json::Value;
 use tracing::warn;
 
@@ -140,7 +141,7 @@ impl BrpClient {
     /// - Uses no timeout (streaming connections stay open)
     /// - Returns the raw response for the caller to process
     /// - Provides the same rich error context as other `BrpClient` methods
-    pub async fn execute_streaming(&self) -> Result<reqwest::Response> {
+    pub async fn execute_streaming(&self) -> Result<Response> {
         // Create HTTP client with our data
         let http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
 
@@ -169,10 +170,7 @@ impl BrpClient {
     }
 
     /// Parse the JSON response from the BRP call to a running bevy app
-    async fn parse_json_response(
-        &self,
-        response: reqwest::Response,
-    ) -> Result<BrpClientCallJsonResponse> {
+    async fn parse_json_response(&self, response: Response) -> Result<BrpClientCallJsonResponse> {
         match response.json().await {
             Ok(json_response) => Ok(json_response),
             Err(e) => {
@@ -232,7 +230,7 @@ impl BrpClient {
         let mut extracted_types = Operation::try_from(self.method).map_or_else(
             |_| Vec::new(),
             |operation| {
-                let params = self.params.as_ref().unwrap_or(&serde_json::Value::Null);
+                let params = self.params.as_ref().unwrap_or(&Value::Null);
                 operation.extract_type_names(params)
             },
         );
