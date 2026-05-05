@@ -20,40 +20,35 @@
       "app_type": "example"
     },
     {
-      "test_name": "shutdown",
-      "test_file": ".claude/integration_tests/shutdown.md",
+      "test_name": "extras_text",
+      "test_file": ".claude/integration_tests/extras_text.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "apps",
+      "test_file": ".claude/integration_tests/apps.md",
       "apps": [
         {
-          "app_name": "extras_plugin",
-          "app_type": "example",
-          "label": "status_check_app"
+          "app_name": "test_app",
+          "app_type": "app",
+          "label": "main_app"
         },
         {
-          "app_name": "extras_plugin",
-          "app_type": "example",
-          "label": "shutdown_test_app",
-          "consumed_by_test": true
-        },
-        {
-          "app_name": "no_extras_plugin",
-          "app_type": "example",
-          "label": "no_brp_app",
-          "fixed_port": 25000,
-          "consumed_by_test": true
+          "app_name": "test_app",
+          "app_type": "app",
+          "label": "env_app",
+          "env": {
+            "RUST_LOG": "test_app=debug"
+          }
         }
       ]
     },
     {
-      "test_name": "watch_component",
-      "test_file": ".claude/integration_tests/watch_component.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "query_filtered",
-      "test_file": ".claude/integration_tests/query_filtered.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
+      "test_name": "list",
+      "test_file": ".claude/integration_tests/list.md",
+      "app_name": "N/A",
+      "app_type": null
     },
     {
       "test_name": "get",
@@ -62,8 +57,8 @@
       "app_type": "example"
     },
     {
-      "test_name": "type_guide",
-      "test_file": ".claude/integration_tests/type_guide.md",
+      "test_name": "watch_component",
+      "test_file": ".claude/integration_tests/watch_component.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
@@ -98,45 +93,50 @@
       "app_type": "example"
     },
     {
-      "test_name": "apps",
-      "test_file": ".claude/integration_tests/apps.md",
-      "apps": [
-        {
-          "app_name": "test_app",
-          "app_type": "app",
-          "label": "main_app"
-        },
-        {
-          "app_name": "test_app",
-          "app_type": "app",
-          "label": "env_app",
-          "env": {
-            "RUST_LOG": "test_app=debug"
-          }
-        }
-      ]
-    },
-    {
       "test_name": "watch_list",
       "test_file": ".claude/integration_tests/watch_list.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
     {
-      "test_name": "extras_text",
-      "test_file": ".claude/integration_tests/extras_text.md",
+      "test_name": "type_guide",
+      "test_file": ".claude/integration_tests/type_guide.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
     {
-      "test_name": "list",
-      "test_file": ".claude/integration_tests/list.md",
-      "app_name": "N/A",
-      "app_type": null
+      "test_name": "shutdown",
+      "test_file": ".claude/integration_tests/shutdown.md",
+      "apps": [
+        {
+          "app_name": "extras_plugin",
+          "app_type": "example",
+          "label": "status_check_app"
+        },
+        {
+          "app_name": "extras_plugin",
+          "app_type": "example",
+          "label": "shutdown_test_app",
+          "consumed_by_test": true
+        },
+        {
+          "app_name": "no_extras_plugin",
+          "app_type": "example",
+          "label": "no_brp_app",
+          "fixed_port": 25000,
+          "consumed_by_test": true
+        }
+      ]
     },
     {
       "test_name": "introspection",
       "test_file": ".claude/integration_tests/introspection.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "query_filtered",
+      "test_file": ".claude/integration_tests/query_filtered.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
