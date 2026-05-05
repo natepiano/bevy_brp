@@ -73,9 +73,9 @@ fn list_log_files(
 
     // Sort by timestamp (newest first)
     log_entries.sort_by(|a, b| {
-        let ts_a = a.timestamp.parse::<u128>().unwrap_or(0);
-        let ts_b = b.timestamp.parse::<u128>().unwrap_or(0);
-        ts_b.cmp(&ts_a)
+        let timestamp_a = a.timestamp.parse::<u128>().unwrap_or(0);
+        let timestamp_b = b.timestamp.parse::<u128>().unwrap_or(0);
+        timestamp_b.cmp(&timestamp_a)
     });
 
     // Convert to LogFileInfo structs

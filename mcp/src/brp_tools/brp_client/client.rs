@@ -174,7 +174,7 @@ impl BrpClient {
         response: reqwest::Response,
     ) -> Result<BrpClientCallJsonResponse> {
         match response.json().await {
-            Ok(json_resp) => Ok(json_resp),
+            Ok(json_response) => Ok(json_response),
             Err(e) => {
                 warn!("BRP execute_brp_method: JSON parsing failed - error={e}");
                 Err(

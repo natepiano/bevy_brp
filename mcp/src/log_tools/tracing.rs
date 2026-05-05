@@ -11,7 +11,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 use super::lazy_file_writer::LazyFileWriter;
 
-static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(1); // Default to WARN level (1) for "do no harm"
+static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(TracingLevel::Warn.code()); // Default to WARN level for "do no harm"
 
 /// Dynamic tracing filter that can be updated at runtime
 #[derive(Clone)]
@@ -37,15 +37,9 @@ where
             return false;
         }
 
-        let current_level = CURRENT_LEVEL.load(Ordering::Relaxed);
-        let level_value = match *metadata.level() {
-            Level::ERROR => 0,
-            Level::WARN => 1,
-            Level::INFO => 2,
-            Level::DEBUG => 3,
-            Level::TRACE => 4,
-        };
-        level_value <= current_level
+        let current_level = TracingLevel::from_code(CURRENT_LEVEL.load(Ordering::Relaxed));
+        let metadata_level = TracingLevel::from_level(*metadata.level());
+        metadata_level.code() <= current_level.code()
     }
 }
 
@@ -77,14 +71,33 @@ impl FromStr for TracingLevel {
 }
 
 impl TracingLevel {
-    #[cfg(feature = "mcp-debug")]
-    const fn as_u8(self) -> u8 {
+    const fn code(self) -> u8 {
         match self {
             Self::Error => 0,
             Self::Warn => 1,
             Self::Info => 2,
             Self::Debug => 3,
             Self::Trace => 4,
+        }
+    }
+
+    const fn from_code(level_code: u8) -> Self {
+        match level_code {
+            0 => Self::Error,
+            2 => Self::Info,
+            3 => Self::Debug,
+            4 => Self::Trace,
+            _ => Self::Warn,
+        }
+    }
+
+    const fn from_level(level: Level) -> Self {
+        match level {
+            Level::ERROR => Self::Error,
+            Level::WARN => Self::Warn,
+            Level::INFO => Self::Info,
+            Level::DEBUG => Self::Debug,
+            Level::TRACE => Self::Trace,
         }
     }
 
@@ -125,19 +138,13 @@ impl TracingLevel {
 
     /// Get the current tracing level
     pub fn get_current_tracing_level() -> Self {
-        match CURRENT_LEVEL.load(Ordering::Relaxed) {
-            0 => Self::Error,
-            2 => Self::Info,
-            3 => Self::Debug,
-            4 => Self::Trace,
-            _ => Self::Warn, // Default fallback (handles 1 and any invalid values)
-        }
+        Self::from_code(CURRENT_LEVEL.load(Ordering::Relaxed))
     }
 
     /// Set the current tracing level dynamically
     #[cfg(feature = "mcp-debug")]
     pub fn set_tracing_level(level: Self) {
-        CURRENT_LEVEL.store(level.as_u8(), Ordering::Relaxed);
+        CURRENT_LEVEL.store(level.code(), Ordering::Relaxed);
 
         // Log at the level that was just set
         match level {

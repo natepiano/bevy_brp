@@ -9,6 +9,7 @@ use syn::Data;
 use syn::DeriveInput;
 use syn::parse_macro_input;
 
+use super::constants::DEFAULT_DURATION_MS;
 use super::shared;
 use super::shared::ComputedField;
 
@@ -667,6 +668,8 @@ fn generate_extract_computation(
     source: &proc_macro2::TokenStream,
     operation: &str,
 ) -> Option<proc_macro2::TokenStream> {
+    let default_duration_ms = DEFAULT_DURATION_MS;
+
     match operation {
         "extract_entity" => Some(quote! {
             #source.as_ref()
@@ -693,7 +696,7 @@ fn generate_extract_computation(
                 .and_then(|obj| obj.get("duration_ms"))
                 .and_then(serde_json::Value::as_u64)
                 .map(|v| v as u32)
-                .unwrap_or(100)
+                .unwrap_or(#default_duration_ms)
         }),
         "extract_debug_enabled" => Some(quote! {
             #source.as_ref()
@@ -754,6 +757,8 @@ fn generate_extract_computation(
 
 /// Default value for a computed field operation used in constructors and builders.
 fn computed_field_default(operation: &str) -> proc_macro2::TokenStream {
+    let default_duration_ms = DEFAULT_DURATION_MS;
+
     match operation {
         "count"
         | "count_type_info"
@@ -765,7 +770,7 @@ fn computed_field_default(operation: &str) -> proc_macro2::TokenStream {
             quote! { 0 }
         },
         "extract_entity" => quote! { 0 },
-        "extract_duration_ms" => quote! { 100 },
+        "extract_duration_ms" => quote! { #default_duration_ms },
         "count_errors" => quote! { None },
         "extract_keys_sent" | "extract_skipped" => quote! { Vec::new() },
         "extract_debug_enabled" => quote! { false },

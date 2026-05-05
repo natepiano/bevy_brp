@@ -143,11 +143,11 @@ pub fn get_pid_for_port(port: Port) -> Option<u32> {
     netstat2::get_sockets_info(af_flags, proto_flags)
         .ok()?
         .into_iter()
-        .find_map(|si| {
-            if let ProtocolSocketInfo::Tcp(tcp_si) = si.protocol_socket_info
-                && tcp_si.local_port == *port
+        .find_map(|socket_info| {
+            if let ProtocolSocketInfo::Tcp(tcp_socket_info) = socket_info.protocol_socket_info
+                && tcp_socket_info.local_port == *port
             {
-                return si.associated_pids.first().copied();
+                return socket_info.associated_pids.first().copied();
             }
             None
         })
