@@ -3,6 +3,15 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+use super::constants::BUILD_SCRIPT_FILE;
+use super::constants::CARGO_CONFIG_DIR;
+use super::constants::CARGO_CONFIG_FILE;
+use super::constants::CARGO_CONFIG_TOML_FILE;
+use super::constants::CARGO_LOCK_FILE;
+use super::constants::DEP_INFO_EXTENSION;
+use super::constants::RUST_TOOLCHAIN_FILE;
+use super::constants::RUST_TOOLCHAIN_TOML_FILE;
+use crate::app_tools::constants::CARGO_MANIFEST_FILE;
 use crate::app_tools::targets::BevyTarget;
 use crate::error::Error;
 use crate::error::Result;
@@ -81,29 +90,31 @@ fn try_check_target_freshness(target: &BevyTarget, profile: &str) -> Result<Fres
 }
 
 fn dep_info_path(target: &BevyTarget, profile: &str) -> PathBuf {
-    target.get_binary_path(profile).with_extension("d")
+    target
+        .get_binary_path(profile)
+        .with_extension(DEP_INFO_EXTENSION)
 }
 
 fn extra_fingerprint_inputs(target: &BevyTarget) -> Vec<PathBuf> {
     let mut inputs = vec![target.manifest_path.clone()];
 
-    let workspace_manifest = target.workspace_root.join("Cargo.toml");
+    let workspace_manifest = target.workspace_root.join(CARGO_MANIFEST_FILE);
     if workspace_manifest != target.manifest_path {
         inputs.push(workspace_manifest);
     }
 
-    inputs.push(target.workspace_root.join("Cargo.lock"));
+    inputs.push(target.workspace_root.join(CARGO_LOCK_FILE));
     inputs.extend(find_cargo_config_files(
         &target.manifest_path,
         &target.workspace_root,
     ));
 
     if let Some(package_dir) = target.manifest_path.parent() {
-        inputs.push(package_dir.join("build.rs"));
+        inputs.push(package_dir.join(BUILD_SCRIPT_FILE));
     }
 
-    inputs.push(target.workspace_root.join("rust-toolchain.toml"));
-    inputs.push(target.workspace_root.join("rust-toolchain"));
+    inputs.push(target.workspace_root.join(RUST_TOOLCHAIN_TOML_FILE));
+    inputs.push(target.workspace_root.join(RUST_TOOLCHAIN_FILE));
 
     inputs
 }
@@ -116,8 +127,12 @@ fn find_cargo_config_files(manifest_path: &Path, workspace_root: &Path) -> Vec<P
     };
 
     loop {
-        configs.push(current_dir.join(".cargo").join("config.toml"));
-        configs.push(current_dir.join(".cargo").join("config"));
+        configs.push(
+            current_dir
+                .join(CARGO_CONFIG_DIR)
+                .join(CARGO_CONFIG_TOML_FILE),
+        );
+        configs.push(current_dir.join(CARGO_CONFIG_DIR).join(CARGO_CONFIG_FILE));
 
         if current_dir == workspace_root {
             break;
@@ -161,6 +176,16 @@ enum MissingInputPolicy {
     TreatAsStale,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum BackslashState {
+    ReadingToken,
+    Escaped,
+}
+
+impl BackslashState {
+    const fn is_escaped(self) -> bool { matches!(self, Self::Escaped) }
+}
+
 fn compare_path_to_binary(
     input_path: &Path,
     binary_mtime: SystemTime,
@@ -202,20 +227,20 @@ fn parse_dep_info_dependencies(contents: &str, base_dir: &Path) -> Vec<PathBuf> 
 
     let mut dependencies = Vec::new();
     let mut current = String::new();
-    let mut escaped = false;
+    let mut escaped = BackslashState::ReadingToken;
 
     for ch in dependency_text.chars() {
-        if escaped {
+        if escaped.is_escaped() {
             match ch {
                 '\n' | '\r' => {},
                 _ => current.push(ch),
             }
-            escaped = false;
+            escaped = BackslashState::ReadingToken;
             continue;
         }
 
         match ch {
-            '\\' => escaped = true,
+            '\\' => escaped = BackslashState::Escaped,
             c if c.is_whitespace() => {
                 push_dependency(&mut dependencies, &mut current, base_dir);
             },

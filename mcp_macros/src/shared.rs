@@ -17,6 +17,23 @@ pub(crate) struct ComputedField {
 }
 
 #[derive(Clone, Copy)]
+enum SkipIfNonePolicy {
+    Keep,
+    Omit,
+}
+
+impl SkipIfNonePolicy {
+    fn tokens(self) -> TokenStream {
+        match self {
+            Self::Keep => quote! { crate::tool::SkipIfNone::Keep },
+            Self::Omit => quote! { crate::tool::SkipIfNone::Omit },
+        }
+    }
+
+    const fn skips_none(self) -> bool { matches!(self, Self::Omit) }
+}
+
+#[derive(Clone, Copy)]
 enum PlacementAttrKey {
     FieldType,
     From,
@@ -79,11 +96,11 @@ impl FieldAttributeKind {
 }
 
 /// Parse placement attribute arguments
-pub(crate) fn parse_placement_attr(
+fn parse_placement_attr(
     attr: &Attribute,
     source_path: &mut Option<String>,
     field_type: &mut Option<String>,
-    skip_if_none: &mut bool,
+    skip_if_none: &mut SkipIfNonePolicy,
     result_operation: &mut Option<String>,
 ) {
     let _ = attr.parse_nested_meta(|meta| match PlacementAttrKey::parse(&meta)? {
@@ -100,7 +117,7 @@ pub(crate) fn parse_placement_attr(
             Ok(())
         },
         PlacementAttrKey::SkipIfNone => {
-            *skip_if_none = true;
+            *skip_if_none = SkipIfNonePolicy::Omit;
             Ok(())
         },
         PlacementAttrKey::ResultOperation => {
@@ -144,17 +161,17 @@ pub(crate) fn parse_to_message_attr(attr: &Attribute) -> Option<String> {
 }
 
 /// Generate response data field addition
-pub(crate) fn generate_response_data_field(
+fn generate_response_data_field(
     field_name: &Ident,
     field_type: &Type,
     placement: &TokenStream,
-    skip_if_none: bool,
+    skip_if_none: SkipIfNonePolicy,
 ) -> TokenStream {
     let field_name_str = field_name.to_string();
     let type_str = quote!(#field_type).to_string();
 
     // Handle Option types with skip_if_none
-    if type_str.starts_with("Option <") && skip_if_none {
+    if type_str.starts_with("Option <") && skip_if_none.skips_none() {
         quote! {
             if let Some(val) = &self.#field_name {
                 builder = builder.add_field_to(#field_name_str, val, #placement)?;
@@ -183,7 +200,7 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
         let mut placement = None;
         let mut source_path = None;
         let mut field_type_override = None;
-        let mut skip_if_none = false;
+        let mut skip_if_none = SkipIfNonePolicy::Keep;
         let mut is_computed = false;
         let mut result_operation = None;
 
@@ -239,6 +256,7 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
         // Only add placement info if there's a placement attribute
         if let Some(placement) = &placement {
             let field_name_str = field_name.to_string();
+            let skip_if_none_tokens = skip_if_none.tokens();
 
             let source_path_token = source_path
                 .as_ref()
@@ -249,7 +267,7 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
                     field_name: #field_name_str,
                     placement: #placement,
                     source_path: #source_path_token,
-                    skip_if_none: crate::tool::SkipIfNone::from(#skip_if_none),
+                    skip_if_none: #skip_if_none_tokens,
                 }
             });
 

@@ -11,6 +11,21 @@ use crate::tool::NoParams;
 use crate::tool::ToolFn;
 use crate::tool::ToolResult;
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(from = "bool", into = "bool")]
+enum TraceLogFile {
+    Missing,
+    Present,
+}
+
+impl From<bool> for TraceLogFile {
+    fn from(value: bool) -> Self { if value { Self::Present } else { Self::Missing } }
+}
+
+impl From<TraceLogFile> for bool {
+    fn from(value: TraceLogFile) -> Self { matches!(value, TraceLogFile::Present) }
+}
+
 /// Result from getting the trace log path
 #[cfg(feature = "mcp-debug")]
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
@@ -20,7 +35,7 @@ pub struct GetTraceLogPathResult {
     log_path:         String,
     /// Whether the log file currently exists
     #[to_metadata]
-    exists:           bool,
+    exists:           TraceLogFile,
     /// Size of the log file in bytes (if it exists)
     #[to_metadata(skip_if_none)]
     file_size_bytes:  Option<u64>,
@@ -47,8 +62,10 @@ async fn handle_impl(_: NoParams) -> Result<GetTraceLogPathResult> {
     let log_path = log_path.to_string_lossy().to_string();
 
     // Check if the file exists and get its size
-    let (exists, file_size_bytes) =
-        std::fs::metadata(&log_path).map_or((false, None), |metadata| (true, Some(metadata.len())));
+    let (exists, file_size_bytes) = std::fs::metadata(&log_path)
+        .map_or((TraceLogFile::Missing, None), |metadata| {
+            (TraceLogFile::Present, Some(metadata.len()))
+        });
 
     Ok(GetTraceLogPathResult::new(
         log_path,

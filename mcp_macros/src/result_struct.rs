@@ -18,10 +18,21 @@ use super::constants::DEFAULT_DURATION_MS;
 use super::shared;
 use super::shared::ComputedField;
 
+#[derive(Clone, Copy, Default)]
+enum ErrorDetailMode {
+    #[default]
+    Basic,
+    IncludeTypeGuide,
+}
+
+impl ErrorDetailMode {
+    const fn includes_type_guide(self) -> bool { matches!(self, Self::IncludeTypeGuide) }
+}
+
 /// Attributes for #[`brp_result`(...)]
 #[derive(Default)]
 struct BrpResultAttrs {
-    enhanced_errors: bool,
+    enhanced_errors: ErrorDetailMode,
 }
 
 /// Parse #[`brp_result`(...)] attribute
@@ -35,7 +46,11 @@ fn parse_brp_result_attr(attrs: &[Attribute]) -> Option<BrpResultAttrs> {
                 if meta.path.is_ident("enhanced_errors") {
                     let value = meta.value()?;
                     let lit: LitBool = value.parse()?;
-                    result.enhanced_errors = lit.value();
+                    result.enhanced_errors = if lit.value() {
+                        ErrorDetailMode::IncludeTypeGuide
+                    } else {
+                        ErrorDetailMode::Basic
+                    };
                 }
                 Ok(())
             });
@@ -202,10 +217,10 @@ fn generate_brp_trait_impls(
     };
 
     let brp_tool_config_impl = if let Some(attrs) = brp_attrs {
-        let enhanced_errors = attrs.enhanced_errors;
+        let add_type_guide_to_error = attrs.enhanced_errors.includes_type_guide();
         quote! {
             impl crate::brp_tools::BrpToolConfig for #struct_name {
-                const ADD_TYPE_GUIDE_TO_ERROR: bool = #enhanced_errors;
+                const ADD_TYPE_GUIDE_TO_ERROR: bool = #add_type_guide_to_error;
             }
         }
     } else {

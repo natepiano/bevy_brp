@@ -15,6 +15,7 @@ use bevy_remote::http::RemoteHttpPlugin;
 
 #[cfg(not(target_arch = "wasm32"))]
 use super::DEFAULT_REMOTE_PORT;
+use super::constants::BRP_EXTRAS_PORT_ENV_VAR;
 use super::constants::EXTRAS_COMMAND_PREFIX;
 #[cfg(feature = "diagnostics")]
 use super::diagnostics;
@@ -213,7 +214,7 @@ impl<H: HasEffectivePort> BrpExtrasPlugin<H> {
     pub fn get_effective_port(&self) -> (u16, String) {
         let fallback = self.http_config.fallback_port();
 
-        let env_port = std::env::var("BRP_EXTRAS_PORT")
+        let env_port = std::env::var(BRP_EXTRAS_PORT_ENV_VAR)
             .ok()
             .and_then(|s| s.parse::<u16>().ok());
 
@@ -354,7 +355,7 @@ fn add_managed_http_transport(app: &mut App, configured_port: Option<u16>) {
         return;
     }
 
-    let env_port = std::env::var("BRP_EXTRAS_PORT")
+    let env_port = std::env::var(BRP_EXTRAS_PORT_ENV_VAR)
         .ok()
         .and_then(|s| s.parse::<u16>().ok());
 
@@ -470,7 +471,7 @@ fn maybe_add_port_title_system(
 
     let fallback = http_config.fallback_port();
 
-    let env_port = std::env::var("BRP_EXTRAS_PORT")
+    let env_port = std::env::var(BRP_EXTRAS_PORT_ENV_VAR)
         .ok()
         .and_then(|s| s.parse::<u16>().ok());
 

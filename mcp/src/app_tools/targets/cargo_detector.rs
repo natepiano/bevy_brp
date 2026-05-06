@@ -15,6 +15,9 @@ use strum::AsRefStr;
 use strum::Display;
 use strum::EnumString;
 
+use crate::app_tools::constants::CARGO_BIN_FLAG;
+use crate::app_tools::constants::CARGO_EXAMPLE_FLAG;
+
 /// Type of Bevy target
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, EnumString, Serialize)]
 #[strum(serialize_all = "lowercase")]
@@ -54,10 +57,10 @@ impl TargetType {
     pub fn add_cargo_args(self, cmd: &mut Command, target_name: &str) {
         match self {
             Self::App => {
-                cmd.arg("--bin").arg(target_name);
+                cmd.arg(CARGO_BIN_FLAG).arg(target_name);
             },
             Self::Example => {
-                cmd.arg("--example").arg(target_name);
+                cmd.arg(CARGO_EXAMPLE_FLAG).arg(target_name);
             },
         }
     }

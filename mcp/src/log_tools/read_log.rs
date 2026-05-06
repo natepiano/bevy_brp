@@ -19,6 +19,42 @@ use crate::tool::HandlerResult;
 use crate::tool::ToolFn;
 use crate::tool::ToolResult;
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(from = "bool", into = "bool")]
+enum KeywordFilterMode {
+    Unfiltered,
+    Filtered,
+}
+
+impl From<bool> for KeywordFilterMode {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::Filtered
+        } else {
+            Self::Unfiltered
+        }
+    }
+}
+
+impl From<KeywordFilterMode> for bool {
+    fn from(value: KeywordFilterMode) -> Self { matches!(value, KeywordFilterMode::Filtered) }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(from = "bool", into = "bool")]
+enum LogReadMode {
+    FullFile,
+    Tail,
+}
+
+impl From<bool> for LogReadMode {
+    fn from(value: bool) -> Self { if value { Self::Tail } else { Self::FullFile } }
+}
+
+impl From<LogReadMode> for bool {
+    fn from(value: LogReadMode) -> Self { matches!(value, LogReadMode::Tail) }
+}
+
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ReadLogParams {
     /// The log filename (e.g., `bevy_brp_mcp_myapp_1234567890.log`)
@@ -58,10 +94,10 @@ pub struct ReadLogResult {
     content:             String,
     /// Whether content was filtered by keyword
     #[to_metadata]
-    filtered_by_keyword: bool,
+    filtered_by_keyword: KeywordFilterMode,
     /// Whether tail mode was used
     #[to_metadata]
-    tail_mode:           bool,
+    tail_mode:           LogReadMode,
     /// Message template for formatting responses
     #[to_message(message_template = "Read {lines_read} lines from {filename}")]
     message_template:    String,
@@ -112,8 +148,10 @@ async fn handle_impl(params: ReadLogParams) -> Result<ReadLogResult> {
         support::format_bytes(metadata.len()),
         content.lines().count(),
         content,
-        keyword.is_some(),
-        tail_lines.is_some(),
+        keyword.map_or(KeywordFilterMode::Unfiltered, |_| {
+            KeywordFilterMode::Filtered
+        }),
+        tail_lines.map_or(LogReadMode::FullFile, |_| LogReadMode::Tail),
     ))
 }
 

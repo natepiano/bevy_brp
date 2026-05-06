@@ -7,6 +7,8 @@ use super::relative_paths;
 use crate::app_tools::targets::cargo_detector::BevyTarget;
 use crate::app_tools::targets::cargo_detector::CargoDetector;
 use crate::app_tools::targets::cargo_detector::TargetType;
+use crate::app_tools::targets::constants::TARGET_KIND_APP;
+use crate::app_tools::targets::constants::TARGET_KIND_EXAMPLE;
 use crate::app_tools::targets::errors::NoTargetsFoundError;
 use crate::app_tools::targets::errors::PackageDisambiguationError;
 use crate::error::Error;
@@ -82,8 +84,8 @@ pub fn find_required_target_with_package_name(
     cached_targets: Option<Vec<BevyTarget>>,
 ) -> Result<BevyTarget, Error> {
     let target_type_str = match target_type {
-        TargetType::App => "app",
-        TargetType::Example => "example",
+        TargetType::App => TARGET_KIND_APP,
+        TargetType::Example => TARGET_KIND_EXAMPLE,
     };
 
     debug!("Searching for {target_type_str} '{target_name}'");

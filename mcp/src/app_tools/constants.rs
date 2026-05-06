@@ -1,6 +1,14 @@
 use std::ops::RangeInclusive;
 use std::time::Duration;
 
+// cargo constants
+pub(super) const CARGO_BIN_FLAG: &str = "--bin";
+pub(super) const CARGO_COMMAND_NAME: &str = "cargo";
+pub(super) const CARGO_EXAMPLE_FLAG: &str = "--example";
+pub(super) const CARGO_MANIFEST_FILE: &str = "Cargo.toml";
+pub(super) const CARGO_RUN_SUBCOMMAND: &str = "run";
+pub(super) const MCP_BINARY_NAME: &str = "bevy_brp_mcp";
+
 // instance count constants
 /// Maximum number of instances (100)
 pub(super) const MAX_INSTANCE_COUNT: u16 = 100;

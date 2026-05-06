@@ -10,7 +10,11 @@ use serde_json::Value;
 use tracing::debug;
 use tracing::info;
 
+use super::constants::CARGO_RELEASE_FLAG;
 use super::logging;
+use crate::app_tools::constants::CARGO_EXAMPLE_FLAG;
+use crate::app_tools::constants::CARGO_RUN_SUBCOMMAND;
+use crate::app_tools::constants::PROFILE_RELEASE;
 use crate::app_tools::targets::TargetType;
 use crate::brp_tools::BRP_EXTRAS_PORT_ENV_VAR;
 use crate::brp_tools::Port;
@@ -75,10 +79,12 @@ pub(super) fn build_cargo_example_command(
     args: Option<&[String]>,
 ) -> Command {
     let mut cmd = Command::new("cargo");
-    cmd.arg("run").arg("--example").arg(example_name);
+    cmd.arg(CARGO_RUN_SUBCOMMAND)
+        .arg(CARGO_EXAMPLE_FLAG)
+        .arg(example_name);
 
-    if profile == "release" {
-        cmd.arg("--release");
+    if profile == PROFILE_RELEASE {
+        cmd.arg(CARGO_RELEASE_FLAG);
     }
 
     if let Some(user_args) = args {
@@ -125,8 +131,8 @@ fn build_cargo_command(
 
     target_type.add_cargo_args(&mut cmd, target_name);
 
-    if profile == "release" {
-        cmd.arg("--release");
+    if profile == PROFILE_RELEASE {
+        cmd.arg(CARGO_RELEASE_FLAG);
     }
 
     cmd.arg("--message-format=json");

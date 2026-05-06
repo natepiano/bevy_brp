@@ -1,5 +1,6 @@
 mod cargo_detector;
 mod collection_strategy;
+mod constants;
 mod errors;
 mod list_common;
 mod scanning;

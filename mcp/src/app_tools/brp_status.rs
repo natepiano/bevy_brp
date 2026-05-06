@@ -8,6 +8,11 @@ use sysinfo::Process;
 use sysinfo::ProcessesToUpdate;
 use sysinfo::System;
 
+use super::constants::CARGO_BIN_FLAG;
+use super::constants::CARGO_COMMAND_NAME;
+use super::constants::CARGO_EXAMPLE_FLAG;
+use super::constants::CARGO_RUN_SUBCOMMAND;
+use super::constants::MCP_BINARY_NAME;
 use super::constants::STATUS_MAX_RETRIES;
 use super::constants::STATUS_POLL_INTERVAL;
 use super::process;
@@ -68,13 +73,34 @@ struct ProcessNotFoundError {
     similar_app_name: Option<String>,
 
     #[to_error_info]
-    brp_responding_on_port: bool,
+    brp_responding_on_port: BrpPortStatus,
 
     #[to_error_info]
     port: u16,
 
     #[to_message]
     message_template: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(from = "bool", into = "bool")]
+enum BrpPortStatus {
+    NotResponding,
+    Responding,
+}
+
+impl From<bool> for BrpPortStatus {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::Responding
+        } else {
+            Self::NotResponding
+        }
+    }
+}
+
+impl From<BrpPortStatus> for bool {
+    fn from(value: BrpPortStatus) -> Self { matches!(value, BrpPortStatus::Responding) }
 }
 
 /// Error when process is running but BRP not responding
@@ -128,7 +154,7 @@ fn process_matches_app_substring(process: &Process, target_app: &str) -> bool {
 /// Check if process is `bevy_brp_mcp` (the MCP tool itself)
 fn is_bevy_brp_mcp(process: &Process) -> bool {
     let process_name = process.name().to_string_lossy();
-    process_name == "bevy_brp_mcp"
+    process_name == MCP_BINARY_NAME
 }
 
 /// Extract clean app name from process for suggestions
@@ -136,22 +162,22 @@ fn extract_app_name(process: &Process) -> String {
     let process_name = process.name().to_string_lossy();
 
     // Check if it's running through cargo
-    if process_name == "cargo" {
+    if process_name == CARGO_COMMAND_NAME {
         // Look for "run" and then the binary name in args
         let args: Vec<String> = process
             .cmd()
             .iter()
             .map(|arg| arg.to_string_lossy().to_string())
             .collect();
-        if args.iter().any(|arg| arg == "run") {
+        if args.iter().any(|arg| arg == CARGO_RUN_SUBCOMMAND) {
             // Check for --bin argument
-            if let Some(binary_position) = args.iter().position(|arg| arg == "--bin")
+            if let Some(binary_position) = args.iter().position(|arg| arg == CARGO_BIN_FLAG)
                 && let Some(binary_name) = args.get(binary_position + 1)
             {
                 return binary_name.clone();
             }
             // Check for --example argument
-            if let Some(example_position) = args.iter().position(|arg| arg == "--example")
+            if let Some(example_position) = args.iter().position(|arg| arg == CARGO_EXAMPLE_FLAG)
                 && let Some(example_name) = args.get(example_position + 1)
             {
                 return example_name.clone();
@@ -179,72 +205,16 @@ fn extract_app_name(process: &Process) -> String {
 }
 
 async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
-    // Check BRP connectivity first
     let brp_responsive = check_brp_on_port(port).await?;
-
-    // Try to get PID from port for more reliable process identification
-    let pid_from_port = process::get_pid_for_port(port);
-
-    // Initialize system for process lookups
     let mut system = System::new_all();
     system.refresh_processes(ProcessesToUpdate::All, true);
 
-    // If we have a PID from the port, always report about THAT PID
-    // Never fall through to searching for other processes by name
-    if let Some(pid) = pid_from_port {
-        // We found a process on this port - verify the name if possible
-        if let Some(process) = system.process(sysinfo::Pid::from_u32(pid))
-            && process::process_matches_name_exact(process, app_name)
-        {
-            // SUCCESS: Found process on port with matching name
-            if brp_responsive {
-                return Ok(StatusResult::new(app_name.to_string(), pid, port.0));
-            }
-            // Process running but BRP not responding
-            return Err(Error::Structured {
-                result: Box::new(BrpNotRespondingError::new(
-                    app_name.to_string(),
-                    pid,
-                    port.0,
-                )),
-            })?;
-        }
-
-        // We found a PID on the port, but either:
-        // - couldn't look it up in sysinfo, OR
-        // - the name doesn't match
-        // This means the wrong app is on this port
-        let message = if brp_responsive {
-            format!(
-                "Process '{app_name}' not found. BRP is responding on port {} - another process may be using it.",
-                port.0
-            )
-        } else {
-            format!(
-                "Process '{app_name}' not found and BRP is not responding on port {}.",
-                port.0
-            )
-        };
-
-        return Err(Error::Structured {
-            result: Box::new(
-                ProcessNotFoundError::new(app_name.to_string(), None, brp_responsive, port.0)
-                    .with_message_template(message),
-            ),
-        })?;
+    if let Some(pid) = process::get_pid_for_port(port) {
+        return resolve_pid_on_port(&system, app_name, port, brp_responsive, pid);
     }
 
-    // Fallback: ONLY runs when NO PID found on the port at all
-    // Check if process exists by exact name match (running on different port)
-    let exact_match_by_name = system.processes().values().find(|process| {
-        !matches!(process.status(), sysinfo::ProcessStatus::Zombie)
-            && process::process_matches_name_exact(process, app_name)
-    });
-
-    if let Some(process) = exact_match_by_name {
-        let pid = process.pid().as_u32();
-        // Process exists but not on the queried port
-        return Err(Error::Structured {
+    if let Some(pid) = find_exact_match_pid(&system, app_name) {
+        Err(Error::Structured {
             result: Box::new(BrpNotRespondingError::new(
                 app_name.to_string(),
                 pid,
@@ -253,21 +223,73 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
         })?;
     }
 
-    // No process found on port with matching name - look for suggestions
-    let suggestions: Vec<String> = system
-        .processes()
-        .values()
-        .filter(|process| {
-            !matches!(process.status(), sysinfo::ProcessStatus::Zombie)
-                && process_matches_app_substring(process, app_name)
-                && !is_bevy_brp_mcp(process)
-        })
-        .map(extract_app_name)
-        .collect();
+    build_missing_process_result(
+        app_name,
+        collect_similar_app_names(&system, app_name)
+            .first()
+            .cloned(),
+        brp_responsive,
+        port,
+    )
+}
 
-    let similar_app = suggestions.first().cloned();
+fn resolve_pid_on_port(
+    system: &System,
+    app_name: &str,
+    port: Port,
+    brp_responsive: bool,
+    pid: u32,
+) -> Result<StatusResult> {
+    if let Some(process) = system.process(sysinfo::Pid::from_u32(pid))
+        && process::process_matches_name_exact(process, app_name)
+    {
+        if brp_responsive {
+            return Ok(StatusResult::new(app_name.to_string(), pid, port.0));
+        }
 
-    let message = match (similar_app.as_ref(), brp_responsive) {
+        Err(Error::Structured {
+            result: Box::new(BrpNotRespondingError::new(
+                app_name.to_string(),
+                pid,
+                port.0,
+            )),
+        })?;
+    }
+
+    build_missing_process_result(app_name, None, brp_responsive, port)
+}
+
+fn build_missing_process_result(
+    app_name: &str,
+    similar_app_name: Option<String>,
+    brp_responsive: bool,
+    port: Port,
+) -> Result<StatusResult> {
+    let process_not_found_error = ProcessNotFoundError::new(
+        app_name.to_string(),
+        similar_app_name.clone(),
+        BrpPortStatus::from(brp_responsive),
+        port.0,
+    )
+    .with_message_template(missing_process_message(
+        app_name,
+        similar_app_name.as_deref(),
+        brp_responsive,
+        port,
+    ));
+
+    Err(Error::Structured {
+        result: Box::new(process_not_found_error),
+    })?
+}
+
+fn missing_process_message(
+    app_name: &str,
+    similar_app_name: Option<&str>,
+    brp_responsive: bool,
+    port: Port,
+) -> String {
+    match (similar_app_name, brp_responsive) {
         (Some(suggestion), true) => {
             format!(
                 "Process '{app_name}' not found. Did you mean: {suggestion}? (BRP is responding on port {})",
@@ -289,15 +311,28 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
                 port.0
             )
         },
-    };
+    }
+}
 
-    let process_not_found_error =
-        ProcessNotFoundError::new(app_name.to_string(), similar_app, brp_responsive, port.0)
-            .with_message_template(message);
+fn find_exact_match_pid(system: &System, app_name: &str) -> Option<u32> {
+    system.processes().values().find_map(|process| {
+        (!matches!(process.status(), sysinfo::ProcessStatus::Zombie)
+            && process::process_matches_name_exact(process, app_name))
+        .then(|| process.pid().as_u32())
+    })
+}
 
-    Err(Error::Structured {
-        result: Box::new(process_not_found_error),
-    })?
+fn collect_similar_app_names(system: &System, app_name: &str) -> Vec<String> {
+    system
+        .processes()
+        .values()
+        .filter(|process| {
+            !matches!(process.status(), sysinfo::ProcessStatus::Zombie)
+                && process_matches_app_substring(process, app_name)
+                && !is_bevy_brp_mcp(process)
+        })
+        .map(extract_app_name)
+        .collect()
 }
 
 /// Check if BRP is responding on the given port

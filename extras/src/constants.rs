@@ -4,6 +4,10 @@
 /// Command prefix for `brp_extras` methods
 pub(crate) const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
 
+// environment variables
+/// Environment variable that overrides the BRP extras HTTP port
+pub(crate) const BRP_EXTRAS_PORT_ENV_VAR: &str = "BRP_EXTRAS_PORT";
+
 // network constants
 /// Default port for remote control connections
 ///

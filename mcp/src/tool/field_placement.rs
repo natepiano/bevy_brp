@@ -19,12 +19,12 @@ pub enum FieldPlacement {
 /// Whether to omit a `None`-valued field from the serialized output.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SkipIfNone {
-    Skip,
+    Omit,
     Keep,
 }
 
 impl From<bool> for SkipIfNone {
-    fn from(value: bool) -> Self { if value { Self::Skip } else { Self::Keep } }
+    fn from(value: bool) -> Self { if value { Self::Omit } else { Self::Keep } }
 }
 
 /// Information about where a field should be placed in the response

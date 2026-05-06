@@ -7,6 +7,8 @@ use std::time::Instant;
 use cargo_metadata::Metadata;
 use tracing::debug;
 
+use crate::app_tools::constants::CARGO_MANIFEST_FILE;
+
 /// Safely canonicalize a path.
 ///
 /// Returns the canonicalized path when available; otherwise returns the
@@ -256,7 +258,7 @@ fn shallow_scan_internal(
         return;
     }
 
-    let cargo_toml = dir.join("Cargo.toml");
+    let cargo_toml = dir.join(CARGO_MANIFEST_FILE);
     let skip_subdirs = if cargo_toml.exists() {
         debug!("  Found Cargo.toml at level 0");
         process_cargo_toml(dir, discovered_projects)
@@ -286,7 +288,7 @@ fn shallow_scan_internal(
             entry_count += 1;
             let path = entry.path();
             if path.is_dir() && !should_skip_directory(&path) {
-                let sub_cargo_toml = path.join("Cargo.toml");
+                let sub_cargo_toml = path.join(CARGO_MANIFEST_FILE);
                 if sub_cargo_toml.exists() {
                     found_count += 1;
                     debug!("  Found Cargo.toml in subdirectory: {}", path.display());

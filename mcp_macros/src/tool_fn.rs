@@ -6,6 +6,16 @@ use syn::Lit;
 use syn::Result;
 use syn::parse2;
 
+#[derive(Clone, Copy)]
+enum ContextPassing {
+    Excluded,
+    Included,
+}
+
+impl ContextPassing {
+    const fn includes_context(self) -> bool { matches!(self, Self::Included) }
+}
+
 /// Derive macro for implementing the `ToolFn` trait
 ///
 /// This macro generates the standard `ToolFn` implementation pattern that is
@@ -55,7 +65,7 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
 
     let mut params_type = None;
     let mut output_type = None;
-    let mut with_context = false;
+    let mut with_context = ContextPassing::Excluded;
 
     // Parse the attribute arguments
     tool_fn_attr.parse_nested_meta(|meta| {
@@ -72,7 +82,7 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
                 output_type = Some(s.value());
             }
         } else if meta.path.is_ident("with_context") {
-            with_context = true;
+            with_context = ContextPassing::Included;
         }
         Ok(())
     })?;
@@ -91,7 +101,7 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
         .map_err(|_| Error::new_spanned(tool_fn_attr, "Invalid output type"))?;
 
     // Generate the implementation based on whether context is needed
-    let handle_impl_call = if with_context {
+    let handle_impl_call = if with_context.includes_context() {
         quote! { handle_impl(ctx.clone(), params.clone()).await }
     } else {
         quote! { handle_impl(params.clone()).await }
