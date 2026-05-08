@@ -14,7 +14,21 @@ use syn::LitBool;
 use syn::Type;
 use syn::parse_macro_input;
 
+use super::constants::CHARS_QUEUED_FIELD;
+use super::constants::COMPONENTS_FIELD;
+use super::constants::DEBUG_ENABLED_FIELD;
 use super::constants::DEFAULT_DURATION_MS;
+use super::constants::DURATION_MS_FIELD;
+use super::constants::ENTITY_FIELD;
+use super::constants::ERRORS_FIELD;
+use super::constants::KEYS_SENT_FIELD;
+use super::constants::MESSAGE_FIELD;
+use super::constants::METHODS_FIELD;
+use super::constants::RESULT_FIELD;
+use super::constants::SKIPPED_FIELD;
+use super::constants::STATUS_FIELD;
+use super::constants::TYPE_GUIDE_FIELD;
+use super::constants::UNKNOWN_STATUS;
 use super::shared;
 use super::shared::ComputedField;
 
@@ -36,13 +50,13 @@ struct BrpResultAttrs {
 }
 
 /// Parse #[`brp_result`(...)] attribute
-fn parse_brp_result_attr(attrs: &[Attribute]) -> Option<BrpResultAttrs> {
-    for attr in attrs {
-        if attr.path().is_ident("brp_result") {
+fn parse_brp_result_attr(attributes: &[Attribute]) -> Option<BrpResultAttrs> {
+    for attribute in attributes {
+        if attribute.path().is_ident("brp_result") {
             let mut result = BrpResultAttrs::default();
 
             // Parse attribute arguments if any
-            let _ = attr.parse_nested_meta(|meta| {
+            drop(attribute.parse_nested_meta(|meta| {
                 if meta.path.is_ident("enhanced_errors") {
                     let value = meta.value()?;
                     let lit: LitBool = value.parse()?;
@@ -53,7 +67,7 @@ fn parse_brp_result_attr(attrs: &[Attribute]) -> Option<BrpResultAttrs> {
                     };
                 }
                 Ok(())
-            });
+            }));
 
             return Some(result);
         }
@@ -169,8 +183,8 @@ fn generate_get_template_impl(
             .find(|f| f.ident.as_ref() == Some(field_name))
             .map(|f| &f.ty);
 
-        let is_option_type =
-            message_field_type.is_some_and(|ty| quote!(#ty).to_string().contains("Option <"));
+        let is_option_type = message_field_type
+            .is_some_and(|field_type| quote!(#field_type).to_string().contains("Option <"));
 
         if is_option_type {
             quote! {
@@ -216,8 +230,8 @@ fn generate_brp_trait_impls(
         quote! {}
     };
 
-    let brp_tool_config_impl = if let Some(attrs) = brp_attrs {
-        let add_type_guide_to_error = attrs.enhanced_errors.includes_type_guide();
+    let brp_tool_config_impl = if let Some(attributes) = brp_attrs {
+        let add_type_guide_to_error = attributes.enhanced_errors.includes_type_guide();
         quote! {
             impl crate::brp_tools::BrpToolConfig for #struct_name {
                 const ADD_TYPE_GUIDE_TO_ERROR: bool = #add_type_guide_to_error;
@@ -236,8 +250,8 @@ fn generate_brp_trait_impls(
                     Option<crate::brp_tools::FormatCorrectionStatus>,
                 );
 
-                fn from_brp_client_response(args: Self::Args) -> crate::error::Result<Self> {
-                    Self::from_brp_client_response(args.0, args.1, args.2)
+                fn from_brp_client_response(response: Self::Args) -> crate::error::Result<Self> {
+                    Self::from_brp_client_response(response.0, response.1, response.2)
                 }
             }
         }
@@ -266,7 +280,7 @@ fn generate_message_template_provider(
     let constructor_params: Vec<_> = regular_fields
         .iter()
         .filter(|(name, _)| name != field_name)
-        .map(|(name, ty)| quote! { #name: #ty })
+        .map(|(name, field_type)| quote! { #name: #field_type })
         .collect();
 
     let field_initializers = build_constructor_initializers(
@@ -332,10 +346,10 @@ fn build_constructor_initializers(
 /// Generate the initializer for the message template field.
 fn template_field_initializer(
     name: &Ident,
-    ty: &Type,
+    field_type: &Type,
     default_template: Option<&str>,
 ) -> proc_macro2::TokenStream {
-    let type_str = quote!(#ty).to_string();
+    let type_str = quote!(#field_type).to_string();
     let is_option = type_str.contains("Option <");
 
     if let Some(template) = default_template {
@@ -357,8 +371,8 @@ fn is_option_message_field(field_name: &Ident, regular_fields: &[(Ident, Type)])
     regular_fields
         .iter()
         .find(|(name, _)| name == field_name)
-        .map(|(_, ty)| ty)
-        .is_some_and(|ty| quote!(#ty).to_string().contains("Option <"))
+        .map(|(_, field_type)| field_type)
+        .is_some_and(|field_type| quote!(#field_type).to_string().contains("Option <"))
 }
 
 /// Generate a builder-pattern constructor for `Option<String>` template fields without defaults.
@@ -381,7 +395,7 @@ fn generate_builder_pattern(
     let builder_fields: Vec<_> = regular_fields
         .iter()
         .filter(|(name, _)| name != field_name)
-        .map(|(name, ty)| quote! { #name: #ty })
+        .map(|(name, field_type)| quote! { #name: #field_type })
         .collect();
 
     let mut builder_to_struct_initializers = Vec::new();
@@ -572,7 +586,7 @@ fn generate_computed_field_initializer(computed: &ComputedField) -> proc_macro2:
     let from_field = &computed.from_field;
     let operation = &computed.operation;
 
-    let source = if from_field == "result" {
+    let source = if from_field == RESULT_FIELD {
         quote! { value }
     } else {
         let from_ident = syn::Ident::new(from_field, field_name.span());
@@ -620,7 +634,7 @@ fn generate_count_computation(
         }),
         "count_type_guide" => Some(quote! {
             #source.as_ref()
-                .and_then(|v| v.get("type_guide"))
+                .and_then(|value| value.get(#TYPE_GUIDE_FIELD))
                 .and_then(serde_json::Value::as_object)
                 .map(serde_json::Map::len)
                 .unwrap_or(0)
@@ -628,12 +642,16 @@ fn generate_count_computation(
         "count_components" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .map(|obj| {
-                    if let Some(components) = obj.get("components").and_then(serde_json::Value::as_object) {
+                .map(|object| {
+                    if let Some(components) = object
+                        .get(#COMPONENTS_FIELD)
+                        .and_then(serde_json::Value::as_object)
+                    {
                         components.len()
                     } else {
-                        obj.iter()
-                            .filter(|(key, _)| key.as_str() != "errors")
+                        object
+                            .iter()
+                            .filter(|(key, _)| key.as_str() != #ERRORS_FIELD)
                             .count()
                     }
                 })
@@ -642,7 +660,7 @@ fn generate_count_computation(
         "count_errors" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("errors"))
+                .and_then(|object| object.get(#ERRORS_FIELD))
                 .and_then(serde_json::Value::as_array)
                 .map(Vec::len)
         }),
@@ -661,7 +679,7 @@ fn generate_count_computation(
         "count_methods" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("methods"))
+                .and_then(|object| object.get(#METHODS_FIELD))
                 .and_then(serde_json::Value::as_array)
                 .map(Vec::len)
                 .unwrap_or(0)
@@ -669,7 +687,7 @@ fn generate_count_computation(
         "count_keys_sent" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("keys_sent"))
+                .and_then(|object| object.get(#KEYS_SENT_FIELD))
                 .and_then(serde_json::Value::as_array)
                 .map(Vec::len)
                 .unwrap_or(0)
@@ -691,14 +709,14 @@ fn generate_extract_computation(
         "extract_entity" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("entity"))
+                .and_then(|object| object.get(#ENTITY_FIELD))
                 .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0)
         }),
         "extract_keys_sent" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("keys_sent"))
+                .and_then(|object| object.get(#KEYS_SENT_FIELD))
                 .and_then(serde_json::Value::as_array)
                 .map(|arr| {
                     arr.iter()
@@ -710,7 +728,7 @@ fn generate_extract_computation(
         "extract_duration_ms" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("duration_ms"))
+                .and_then(|object| object.get(#DURATION_MS_FIELD))
                 .and_then(serde_json::Value::as_u64)
                 .map(|v| v as u32)
                 .unwrap_or(#default_duration_ms)
@@ -718,23 +736,23 @@ fn generate_extract_computation(
         "extract_debug_enabled" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("debug_enabled"))
+                .and_then(|object| object.get(#DEBUG_ENABLED_FIELD))
                 .and_then(serde_json::Value::as_bool)
                 .unwrap_or(false)
         }),
         "extract_message" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("message"))
+                .and_then(|object| object.get(#MESSAGE_FIELD))
                 .and_then(serde_json::Value::as_str)
                 .map(String::from)
         }),
         "extract_status" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("status"))
+                .and_then(|object| object.get(#STATUS_FIELD))
                 .and_then(serde_json::Value::as_str)
-                .map_or_else(|| "unknown".to_string(), String::from)
+                .map_or_else(|| #UNKNOWN_STATUS.to_string(), String::from)
         }),
         "extract_old_title" | "extract_new_title" => {
             let json_key = operation
@@ -743,7 +761,7 @@ fn generate_extract_computation(
             Some(quote! {
                 #source.as_ref()
                     .and_then(serde_json::Value::as_object)
-                    .and_then(|obj| obj.get(#json_key))
+                    .and_then(|object| object.get(#json_key))
                     .and_then(serde_json::Value::as_str)
                     .map_or_else(String::new, String::from)
             })
@@ -751,7 +769,7 @@ fn generate_extract_computation(
         "extract_chars_queued" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("chars_queued"))
+                .and_then(|object| object.get(#CHARS_QUEUED_FIELD))
                 .and_then(serde_json::Value::as_u64)
                 .map(|v| v as usize)
                 .unwrap_or(0)
@@ -759,7 +777,7 @@ fn generate_extract_computation(
         "extract_skipped" => Some(quote! {
             #source.as_ref()
                 .and_then(serde_json::Value::as_object)
-                .and_then(|obj| obj.get("skipped"))
+                .and_then(|object| object.get(#SKIPPED_FIELD))
                 .and_then(serde_json::Value::as_array)
                 .map(|arr| {
                     arr.iter()

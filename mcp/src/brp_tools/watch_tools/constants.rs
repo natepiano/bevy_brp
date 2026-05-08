@@ -15,6 +15,12 @@ pub(super) const WATCH_LOG_BUFFER_SIZE: usize = 1000;
 /// Maximum bytes to include in debug preview of watch stream data
 pub(super) const MAX_PREVIEW_BYTES: usize = 500;
 
+// response fields
+pub(super) const CONTENT_TYPE_HEADER: &str = "content-type";
+pub(super) const JSON_RPC_ERROR_FIELD: &str = "error";
+pub(super) const JSON_RPC_ID_FIELD: &str = "id";
+pub(super) const JSON_RPC_RESULT_FIELD: &str = "result";
+
 // timing constants
 /// Interval between automatic log buffer flushes
 pub(super) const WATCH_LOG_FLUSH_INTERVAL: Duration = std::time::Duration::from_millis(100);

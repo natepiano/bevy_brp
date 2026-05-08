@@ -18,7 +18,7 @@ use crate::error::Result;
 
 /// Launch a detached process with proper setup
 pub(super) fn launch_detached_process(
-    cmd: &Command,
+    command: &Command,
     working_dir: &Path,
     log_file: File,
     process_name: &str,
@@ -32,10 +32,10 @@ pub(super) fn launch_detached_process(
         .attach(format!("Process: {process_name}, Operation: launch"))?;
 
     // Create a new command from the provided one
-    let mut new_cmd = std::process::Command::new(cmd.get_program());
+    let mut new_cmd = std::process::Command::new(command.get_program());
 
     // Copy args
-    for arg in cmd.get_args() {
+    for arg in command.get_args() {
         new_cmd.arg(arg);
     }
 
@@ -45,7 +45,7 @@ pub(super) fn launch_detached_process(
         .env("CARGO_MANIFEST_DIR", working_dir);
 
     // Copy other environment variables
-    for (key, value) in cmd.get_envs() {
+    for (key, value) in command.get_envs() {
         if let Some(value) = value {
             new_cmd.env(key, value);
         }
@@ -69,22 +69,22 @@ pub(super) fn launch_detached_process(
     match new_cmd.spawn() {
         Ok(mut child) => {
             // Get the PID
-            let pid = child.id();
+            let process_id = child.id();
 
-            tracing::debug!("Process spawned successfully: {process_name} (PID: {pid})");
+            tracing::debug!("Process spawned successfully: {process_name} (PID: {process_id})");
 
             // Spawn a background thread to reap the child when it exits
             // This prevents zombie processes
             std::thread::spawn(move || match child.wait() {
                 Ok(status) => {
-                    tracing::debug!("Child process {pid} exited with status: {status:?}");
+                    tracing::debug!("Child process {process_id} exited with status: {status:?}");
                 },
                 Err(e) => {
-                    tracing::warn!("Failed to wait for child process {pid}: {e}");
+                    tracing::warn!("Failed to wait for child process {process_id}: {e}");
                 },
             });
 
-            Ok(pid)
+            Ok(process_id)
         },
         Err(e) => {
             tracing::error!("Failed to spawn process {process_name}: {e}");

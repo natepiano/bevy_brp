@@ -81,7 +81,7 @@ enum FieldAttributeKind {
 }
 
 impl FieldAttributeKind {
-    fn parse(attr: &Attribute) -> Option<Self> {
+    fn parse(attribute: &Attribute) -> Option<Self> {
         [
             ("computed", Self::Computed),
             ("to_call_info", Self::CallInfo),
@@ -91,47 +91,49 @@ impl FieldAttributeKind {
             ("to_result", Self::Placement(PlacementKind::Result)),
         ]
         .into_iter()
-        .find_map(|(ident, kind)| attr.path().is_ident(ident).then_some(kind))
+        .find_map(|(ident, kind)| attribute.path().is_ident(ident).then_some(kind))
     }
 }
 
 /// Parse placement attribute arguments
 fn parse_placement_attr(
-    attr: &Attribute,
+    attribute: &Attribute,
     source_path: &mut Option<String>,
     field_type: &mut Option<String>,
     skip_if_none: &mut SkipIfNonePolicy,
     result_operation: &mut Option<String>,
 ) {
-    let _ = attr.parse_nested_meta(|meta| match PlacementAttrKey::parse(&meta)? {
-        PlacementAttrKey::From => {
-            let value = meta.value()?;
-            let string: LitStr = value.parse()?;
-            *source_path = Some(string.value());
-            Ok(())
-        },
-        PlacementAttrKey::FieldType => {
-            let value = meta.value()?;
-            let string: LitStr = value.parse()?;
-            *field_type = Some(string.value());
-            Ok(())
-        },
-        PlacementAttrKey::SkipIfNone => {
-            *skip_if_none = SkipIfNonePolicy::Omit;
-            Ok(())
-        },
-        PlacementAttrKey::ResultOperation => {
-            let value = meta.value()?;
-            let string: LitStr = value.parse()?;
-            *result_operation = Some(string.value());
-            Ok(())
-        },
-    });
+    drop(
+        attribute.parse_nested_meta(|meta| match PlacementAttrKey::parse(&meta)? {
+            PlacementAttrKey::From => {
+                let value = meta.value()?;
+                let string: LitStr = value.parse()?;
+                *source_path = Some(string.value());
+                Ok(())
+            },
+            PlacementAttrKey::FieldType => {
+                let value = meta.value()?;
+                let string: LitStr = value.parse()?;
+                *field_type = Some(string.value());
+                Ok(())
+            },
+            PlacementAttrKey::SkipIfNone => {
+                *skip_if_none = SkipIfNonePolicy::Omit;
+                Ok(())
+            },
+            PlacementAttrKey::ResultOperation => {
+                let value = meta.value()?;
+                let string: LitStr = value.parse()?;
+                *result_operation = Some(string.value());
+                Ok(())
+            },
+        }),
+    );
 }
 
 /// Parse computed attribute arguments
-pub(crate) fn parse_computed_attr(attr: &Attribute, result_operation: &mut Option<String>) {
-    let _ = attr.parse_nested_meta(|meta| {
+pub(crate) fn parse_computed_attr(attribute: &Attribute, result_operation: &mut Option<String>) {
+    drop(attribute.parse_nested_meta(|meta| {
         if meta.path.is_ident("operation") {
             let value = meta.value()?;
             let string: LitStr = value.parse()?;
@@ -140,13 +142,13 @@ pub(crate) fn parse_computed_attr(attr: &Attribute, result_operation: &mut Optio
         } else {
             Err(meta.error("unsupported computed attribute"))
         }
-    });
+    }));
 }
 
 /// Parse `to_message` attribute arguments
-pub(crate) fn parse_to_message_attr(attr: &Attribute) -> Option<String> {
+pub(crate) fn parse_to_message_attr(attribute: &Attribute) -> Option<String> {
     let mut message_template = None;
-    let _ = attr.parse_nested_meta(|meta| {
+    drop(attribute.parse_nested_meta(|meta| {
         if meta.path.is_ident("message_template") {
             let value = meta.value()?;
             let string: LitStr = value.parse()?;
@@ -155,7 +157,7 @@ pub(crate) fn parse_to_message_attr(attr: &Attribute) -> Option<String> {
         } else {
             Err(meta.error("unsupported to_message attribute"))
         }
-    });
+    }));
 
     message_template
 }

@@ -164,21 +164,28 @@ fn extract_app_name(process: &Process) -> String {
     // Check if it's running through cargo
     if process_name == CARGO_COMMAND_NAME {
         // Look for "run" and then the binary name in args
-        let args: Vec<String> = process
+        let command_line_arguments: Vec<String> = process
             .cmd()
             .iter()
-            .map(|arg| arg.to_string_lossy().to_string())
+            .map(|argument| argument.to_string_lossy().to_string())
             .collect();
-        if args.iter().any(|arg| arg == CARGO_RUN_SUBCOMMAND) {
+        if command_line_arguments
+            .iter()
+            .any(|argument| argument == CARGO_RUN_SUBCOMMAND)
+        {
             // Check for --bin argument
-            if let Some(binary_position) = args.iter().position(|arg| arg == CARGO_BIN_FLAG)
-                && let Some(binary_name) = args.get(binary_position + 1)
+            if let Some(binary_position) = command_line_arguments
+                .iter()
+                .position(|argument| argument == CARGO_BIN_FLAG)
+                && let Some(binary_name) = command_line_arguments.get(binary_position + 1)
             {
                 return binary_name.clone();
             }
             // Check for --example argument
-            if let Some(example_position) = args.iter().position(|arg| arg == CARGO_EXAMPLE_FLAG)
-                && let Some(example_name) = args.get(example_position + 1)
+            if let Some(example_position) = command_line_arguments
+                .iter()
+                .position(|argument| argument == CARGO_EXAMPLE_FLAG)
+                && let Some(example_name) = command_line_arguments.get(example_position + 1)
             {
                 return example_name.clone();
             }
@@ -209,15 +216,15 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
     let mut system = System::new_all();
     system.refresh_processes(ProcessesToUpdate::All, true);
 
-    if let Some(pid) = process::get_pid_for_port(port) {
-        return resolve_pid_on_port(&system, app_name, port, brp_responsive, pid);
+    if let Some(process_id) = process::get_pid_for_port(port) {
+        return resolve_pid_on_port(&system, app_name, port, brp_responsive, process_id);
     }
 
-    if let Some(pid) = find_exact_match_pid(&system, app_name) {
+    if let Some(process_id) = find_exact_match_pid(&system, app_name) {
         Err(Error::Structured {
             result: Box::new(BrpNotRespondingError::new(
                 app_name.to_string(),
-                pid,
+                process_id,
                 port.0,
             )),
         })?;
@@ -238,19 +245,19 @@ fn resolve_pid_on_port(
     app_name: &str,
     port: Port,
     brp_responsive: bool,
-    pid: u32,
+    process_id: u32,
 ) -> Result<StatusResult> {
-    if let Some(process) = system.process(sysinfo::Pid::from_u32(pid))
+    if let Some(process) = system.process(sysinfo::Pid::from_u32(process_id))
         && process::process_matches_name_exact(process, app_name)
     {
         if brp_responsive {
-            return Ok(StatusResult::new(app_name.to_string(), pid, port.0));
+            return Ok(StatusResult::new(app_name.to_string(), process_id, port.0));
         }
 
         Err(Error::Structured {
             result: Box::new(BrpNotRespondingError::new(
                 app_name.to_string(),
-                pid,
+                process_id,
                 port.0,
             )),
         })?;

@@ -15,6 +15,10 @@ use strum::AsRefStr;
 use strum::Display;
 use strum::EnumString;
 
+use super::constants::BEVY_CRATE_NAME;
+use super::constants::BEVY_REMOTE_FEATURE;
+use super::constants::MCP_CRATE_NAME;
+use super::constants::RUST_SOURCE_EXTENSION;
 use crate::app_tools::constants::CARGO_BIN_FLAG;
 use crate::app_tools::constants::CARGO_EXAMPLE_FLAG;
 
@@ -54,13 +58,13 @@ impl BrpLevel {
 
 impl TargetType {
     /// Add cargo-specific arguments for this target type
-    pub fn add_cargo_args(self, cmd: &mut Command, target_name: &str) {
+    pub fn add_cargo_args(self, command: &mut Command, target_name: &str) {
         match self {
             Self::App => {
-                cmd.arg(CARGO_BIN_FLAG).arg(target_name);
+                command.arg(CARGO_BIN_FLAG).arg(target_name);
             },
             Self::Example => {
-                cmd.arg(CARGO_EXAMPLE_FLAG).arg(target_name);
+                command.arg(CARGO_EXAMPLE_FLAG).arg(target_name);
             },
         }
     }
@@ -183,13 +187,13 @@ impl CargoDetector {
     /// Filter for packages that depend on Bevy (excluding `bevy_brp_mcp` itself)
     /// Also includes the `bevy` crate itself since it contains examples
     fn bevy_app_filter(package: &Package) -> bool {
-        package.name.as_str() != "bevy_brp_mcp"
-            && (package.name.as_str() == "bevy" || Self::package_depends_on_bevy(package))
+        package.name.as_str() != MCP_CRATE_NAME
+            && (package.name.as_str() == BEVY_CRATE_NAME || Self::package_depends_on_bevy(package))
     }
 
     /// Filter for packages that have BRP support and are not `bevy_brp_mcp` itself
     fn brp_app_filter(package: &Package) -> bool {
-        package.name.as_str() != "bevy_brp_mcp" && Self::package_has_brp_support(package)
+        package.name.as_str() != MCP_CRATE_NAME && Self::package_has_brp_support(package)
     }
 
     /// Find all Bevy targets (apps and examples) in the workspace/project
@@ -208,7 +212,10 @@ impl CargoDetector {
 
     fn package_depends_on_bevy(package: &Package) -> bool {
         // Check direct dependencies (including workspace dependencies)
-        package.dependencies.iter().any(|dep| dep.name == "bevy")
+        package
+            .dependencies
+            .iter()
+            .any(|dependency| dependency.name == BEVY_CRATE_NAME)
     }
 
     /// Check if a package has BRP (Bevy Remote Protocol) support enabled
@@ -226,15 +233,18 @@ impl CargoDetector {
     /// inherited)
     fn package_has_bevy_remote_feature(package: &Package) -> bool {
         // Check if bevy dependency includes bevy_remote feature or uses workspace inheritance
-        package.dependencies.iter().any(|dep| {
-            if dep.name == "bevy" {
+        package.dependencies.iter().any(|dependency| {
+            if dependency.name == BEVY_CRATE_NAME {
                 // If it has explicit features, check for bevy_remote
-                if dep.features.is_empty() {
+                if dependency.features.is_empty() {
                     // If no explicit features, assume workspace inheritance
                     // (we'll verify actual usage in the code scanning step)
                     true
                 } else {
-                    dep.features.iter().any(|feature| feature == "bevy_remote")
+                    dependency
+                        .features
+                        .iter()
+                        .any(|feature| feature == BEVY_REMOTE_FEATURE)
                 }
             } else {
                 false
@@ -268,7 +278,9 @@ impl CargoDetector {
                     if Self::check_directory_for_brp_plugins(&path) {
                         return true;
                     }
-                } else if path.extension().is_some_and(|ext| ext == "rs")
+                } else if path
+                    .extension()
+                    .is_some_and(|extension| extension == RUST_SOURCE_EXTENSION)
                     && Self::file_uses_brp_plugins(&path)
                 {
                     return true;

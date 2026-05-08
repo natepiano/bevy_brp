@@ -24,7 +24,7 @@ pub trait ResultStructBrpExt: Sized {
     type Args;
 
     /// Construct from BRP client response
-    fn from_brp_client_response(args: Self::Args) -> Result<Self>;
+    fn from_brp_client_response(response: Self::Args) -> Result<Self>;
 }
 
 /// Error information from BRP operations

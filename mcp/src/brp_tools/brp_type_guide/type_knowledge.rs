@@ -12,6 +12,7 @@ use serde_json::Value;
 use serde_json::json;
 
 use super::BrpTypeName;
+use super::constants;
 use super::constants::TYPE_ALLOC_STRING;
 use super::constants::TYPE_BEVY_CAMERA;
 use super::constants::TYPE_BEVY_ENTITY;
@@ -305,7 +306,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Serializes as struct with both fields required
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_DURATION),
-            TypeKnowledge::as_root_value(json!({"secs": 0, "nanos": 0}), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(constants::duration_value(0, 0), TYPE_CORE_DURATION),
         );
 
         // ===== Unit tuple =====
@@ -483,7 +484,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // mutation paths
         map.insert(
             KnowledgeKey::struct_field(TYPE_BEVY_CAMERA, "target"),
-            TypeKnowledge::new(json!({"Window": "Primary"})),
+            TypeKnowledge::new(constants::primary_window_target_value()),
         );
 
         // ===== Camera3d field-specific values =====
@@ -645,7 +646,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
                 "bevy_time::time::Time<bevy_time::fixed::Fixed>",
                 "wrap_period",
             ),
-            TypeKnowledge::as_root_value(json!({"secs": 3600, "nanos": 0}), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
         );
 
         // timestep must be non-zero for fixed timestep to function
@@ -653,7 +654,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         map.insert(
             KnowledgeKey::struct_field("bevy_time::fixed::Fixed", "timestep"),
             TypeKnowledge::as_root_value(
-                json!({"secs": 0, "nanos": 15_625_000}),
+                constants::duration_value(0, 15_625_000),
                 TYPE_CORE_DURATION,
             ),
         );
@@ -666,7 +667,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
                 "bevy_time::time::Time<bevy_time::virt::Virtual>",
                 "wrap_period",
             ),
-            TypeKnowledge::as_root_value(json!({"secs": 3600, "nanos": 0}), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
         );
 
         // max_delta must be non-zero to allow virtual time to advance
@@ -674,7 +675,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         map.insert(
             KnowledgeKey::struct_field("bevy_time::virt::Virtual", "max_delta"),
             TypeKnowledge::as_root_value(
-                json!({"secs": 0, "nanos": 250_000_000}),
+                constants::duration_value(0, 250_000_000),
                 TYPE_CORE_DURATION,
             ),
         );
@@ -687,7 +688,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
                 "bevy_time::time::Time<bevy_time::real::Real>",
                 "wrap_period",
             ),
-            TypeKnowledge::as_root_value(json!({"secs": 3600, "nanos": 0}), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
         );
 
         // ===== Time<()> field-specific values =====
@@ -695,7 +696,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Default is 3600 seconds (1 hour) - setting to zero causes app crash
         map.insert(
             KnowledgeKey::struct_field("bevy_time::time::Time<()>", "wrap_period"),
-            TypeKnowledge::as_root_value(json!({"secs": 3600, "nanos": 0}), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
         );
 
         // ===== AlphaMode2d enum variant signatures =====

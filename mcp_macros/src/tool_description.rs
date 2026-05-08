@@ -57,21 +57,22 @@ pub(crate) fn derive_tool_description_impl(input: TokenStream) -> TokenStream {
 }
 
 /// Extract the path from `tool_description` attributes
-fn extract_path(attrs: &[Attribute]) -> String {
-    for attr in attrs {
-        if attr.path().is_ident("tool_description") {
+fn extract_path(attributes: &[Attribute]) -> String {
+    for attribute in attributes {
+        if attribute.path().is_ident("tool_description") {
             let mut path = None;
-            attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("path") {
-                    let value = meta.value()?;
-                    let s: LitStr = value.parse()?;
-                    path = Some(s.value());
-                    Ok(())
-                } else {
-                    Err(meta.error("unsupported tool_description attribute"))
-                }
-            })
-            .expect("failed to parse tool_description attribute");
+            attribute
+                .parse_nested_meta(|meta| {
+                    if meta.path.is_ident("path") {
+                        let value = meta.value()?;
+                        let s: LitStr = value.parse()?;
+                        path = Some(s.value());
+                        Ok(())
+                    } else {
+                        Err(meta.error("unsupported tool_description attribute"))
+                    }
+                })
+                .expect("failed to parse tool_description attribute");
 
             if let Some(path) = path {
                 return path;

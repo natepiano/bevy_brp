@@ -26,6 +26,7 @@ use crate::brp_tools::brp_type_guide;
 use crate::error::Error;
 use crate::error::Result;
 use crate::tool::BrpMethod;
+use crate::tool::ParameterName;
 
 /// Client for executing a BRP operation
 pub struct BrpClient {
@@ -212,7 +213,7 @@ impl BrpClient {
         if original_message.contains("Attempting to deserialize an invalid entity") {
             // Try to extract entity ID from parameters
             if let Some(params) = &self.params
-                && let Some(entity_id) = params.get("entity")
+                && let Some(entity_id) = params.get(ParameterName::Entity.as_ref())
             {
                 return format!(
                     "Entity {entity_id} is not valid: {original_message} (error {error_code})"

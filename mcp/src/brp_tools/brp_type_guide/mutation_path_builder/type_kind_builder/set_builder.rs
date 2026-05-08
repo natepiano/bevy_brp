@@ -34,8 +34,8 @@ impl TypeKindBuilder for SetMutationBuilder {
     where
         Self: 'a;
 
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
-        let schema = ctx.require_registry_schema()?;
+    fn collect_children(&self, context: &RecursionContext) -> Result<Self::Iter<'_>> {
+        let schema = context.require_registry_schema()?;
 
         // Extract item type from schema
         let item_type = schema.get_type(SchemaField::Items);
@@ -43,7 +43,7 @@ impl TypeKindBuilder for SetMutationBuilder {
         let Some(item_t) = item_type else {
             return Err(Error::InvalidState(format!(
                 "Failed to extract item type from schema for type: {}",
-                ctx.type_name()
+                context.type_name()
             ))
             .into());
         };
@@ -52,14 +52,14 @@ impl TypeKindBuilder for SetMutationBuilder {
         Ok(vec![PathKind::StructField {
             field_name:  StructFieldName::from(SchemaField::Items),
             type_name:   item_t,
-            parent_type: ctx.type_name().clone(),
+            parent_type: context.type_name().clone(),
         }]
         .into_iter())
     }
 
     fn assemble_from_children(
         &self,
-        ctx: &RecursionContext,
+        context: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         // At this point, children contains a COMPLETE example for the item type
@@ -67,7 +67,7 @@ impl TypeKindBuilder for SetMutationBuilder {
             return Err(BuilderError::SystemError(
                 Error::InvalidState(format!(
                     "Protocol violation: Set type {} missing required 'items' child example",
-                    ctx.type_name()
+                    context.type_name()
                 ))
                 .into(),
             ));
@@ -77,7 +77,7 @@ impl TypeKindBuilder for SetMutationBuilder {
         let item_value = item_example.to_value();
 
         // Check if the element is complex (non-primitive) type
-        self.check_collection_element_complexity(&item_value, ctx)?;
+        self.check_collection_element_complexity(&item_value, context)?;
 
         // Create array with 2 example elements
         // For Sets, these represent unique values to add

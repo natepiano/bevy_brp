@@ -49,9 +49,9 @@ pub(super) struct EnumPathInfo {
 }
 
 pub(super) fn process_enum(
-    ctx: &RecursionContext,
+    context: &RecursionContext,
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
-    enum_path_builder::process_enum(ctx)
+    enum_path_builder::process_enum(context)
 }
 
 pub(super) fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Example> {

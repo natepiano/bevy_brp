@@ -36,7 +36,7 @@ pub(super) struct LaunchConfig<T> {
     port:           Port,
     instance_count: InstanceCount,
     env:            Option<HashMap<String, String>>,
-    args:           Option<Vec<String>>,
+    arguments:      Option<Vec<String>>,
     _phantom:       PhantomData<T>,
 }
 
@@ -48,7 +48,7 @@ impl<T> LaunchConfig<T> {
         port: Port,
         instance_count: InstanceCount,
         env: Option<HashMap<String, String>>,
-        args: Option<Vec<String>>,
+        arguments: Option<Vec<String>>,
     ) -> Self {
         Self {
             target_name,
@@ -57,7 +57,7 @@ impl<T> LaunchConfig<T> {
             port,
             instance_count,
             env,
-            args,
+            arguments,
             _phantom: PhantomData,
         }
     }
@@ -190,10 +190,10 @@ pub(super) fn build_launch_result<T: LaunchConfigTrait>(
         .into_iter()
         .zip(all_log_files.iter())
         .zip(all_ports.iter())
-        .map(|((pid, log_file), port)| LaunchedInstance {
-            pid,
+        .map(|((process_id, log_file), port)| LaunchedInstance {
+            pid:      process_id,
             log_file: log_file.display().to_string(),
-            port: *port,
+            port:     *port,
         })
         .collect();
 
@@ -280,7 +280,7 @@ impl LaunchConfigTrait for LaunchConfig<App> {
             &target.get_binary_path(self.profile()),
             Some(self.port),
             self.env.as_ref(),
-            self.args.as_deref(),
+            self.arguments.as_deref(),
         )
     }
 
@@ -322,7 +322,7 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
             self.profile(),
             Some(self.port),
             self.env.as_ref(),
-            self.args.as_deref(),
+            self.arguments.as_deref(),
         )
     }
 

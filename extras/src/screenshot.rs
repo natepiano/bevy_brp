@@ -11,6 +11,9 @@ use bevy_remote::error_codes::INVALID_PARAMS;
 use serde_json::Value;
 use serde_json::json;
 
+use crate::constants::IMAGE_EXTENSION_PNG;
+use crate::constants::PARAM_PATH;
+
 /// Handler for screenshot requests
 ///
 /// Takes a screenshot of the primary window and saves it to the specified path.
@@ -18,7 +21,7 @@ use serde_json::json;
 /// File I/O is performed asynchronously to avoid blocking the main thread.
 pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Check if PNG support is available at runtime
-    if bevy::image::ImageFormat::from_extension("png").is_none() {
+    if bevy::image::ImageFormat::from_extension(IMAGE_EXTENSION_PNG).is_none() {
         return Err(BrpError {
             code:    INTERNAL_ERROR,
             message: "PNG support not available. Enable the 'png' feature in your Bevy dependency"
@@ -29,7 +32,7 @@ pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpRe
     // Get the path from params
     let path = params
         .as_ref()
-        .and_then(|v| v.get("path"))
+        .and_then(|value| value.get(PARAM_PATH))
         .and_then(Value::as_str)
         .ok_or_else(|| BrpError {
             code:    INVALID_PARAMS,

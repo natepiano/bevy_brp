@@ -12,6 +12,10 @@ use tracing::error;
 use tracing::info;
 use tracing::warn;
 
+use super::constants::CONTENT_TYPE_HEADER;
+use super::constants::JSON_RPC_ERROR_FIELD;
+use super::constants::JSON_RPC_ID_FIELD;
+use super::constants::JSON_RPC_RESULT_FIELD;
 use super::constants::MAX_BUFFER_SIZE;
 use super::constants::MAX_CHUNK_SIZE;
 use super::constants::MAX_PREVIEW_BYTES;
@@ -90,16 +94,16 @@ async fn parse_sse_line(
         serde_json::json!({
             "watch_type": watch_type,
             ParameterName::Entity: entity_id,
-            "has_result": data.get("result").is_some(),
-            "has_error": data.get("error").is_some(),
-            "has_id": data.get("id").is_some(),
+            "has_result": data.get(JSON_RPC_RESULT_FIELD).is_some(),
+            "has_error": data.get(JSON_RPC_ERROR_FIELD).is_some(),
+            "has_id": data.get(JSON_RPC_ID_FIELD).is_some(),
             "json_keys": data.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()).unwrap_or_default(),
             "timestamp": chrono::Local::now().to_rfc3339()
         })
     ).await;
 
     // Extract the result from JSON-RPC response
-    if let Some(result) = data.get("result") {
+    if let Some(result) = data.get(JSON_RPC_RESULT_FIELD) {
         log_update(logger, result.clone()).await?;
     } else {
         debug!("[{watch_type}] No result in JSON-RPC response: {data:?}");
@@ -459,18 +463,23 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
     match brp_client.execute_streaming().await {
         Ok(response) => {
             // Log initial HTTP response
-            let _ = logger.write_debug_update(
-                "DEBUG_HTTP_RESPONSE",
-                serde_json::json!({
-                    "watch_type": &conn_params.watch_type,
-                    ParameterName::Entity: conn_params.entity_id,
-                    "status": response.status().as_u16(),
-                    "status_text": response.status().canonical_reason().unwrap_or("Unknown"),
-                    "headers_count": response.headers().len(),
-                    "content_type": response.headers().get("content-type").and_then(|v| v.to_str().ok()),
-                    "timestamp": chrono::Local::now().to_rfc3339()
-                })
-            ).await;
+            let _ = logger
+                .write_debug_update(
+                    "DEBUG_HTTP_RESPONSE",
+                    serde_json::json!({
+                        "watch_type": &conn_params.watch_type,
+                        ParameterName::Entity: conn_params.entity_id,
+                        "status": response.status().as_u16(),
+                        "status_text": response.status().canonical_reason().unwrap_or("Unknown"),
+                        "headers_count": response.headers().len(),
+                        "content_type": response
+                            .headers()
+                            .get(CONTENT_TYPE_HEADER)
+                            .and_then(|value| value.to_str().ok()),
+                        "timestamp": chrono::Local::now().to_rfc3339()
+                    }),
+                )
+                .await;
 
             if let Err(e) = process_watch_stream(
                 response,

@@ -118,13 +118,13 @@ fn extract_child_value_for_chain(
 /// 2. Fallback to `example.for_parent()` otherwise
 pub(super) fn collect_children_for_chain(
     child_paths: &[&MutationPathInternal],
-    ctx: &RecursionContext,
+    context: &RecursionContext,
     target_chain: Option<&[VariantName]>,
 ) -> HashMap<MutationPathDescriptor, Example> {
     child_paths
         .iter()
         // Skip grandchildren - only process direct children
-        .filter(|child| child.is_direct_child_at_depth(*ctx.depth))
+        .filter(|child| child.is_direct_child_at_depth(*context.depth))
         // Filter by variant-chain compatibility if target chain specified
         .filter(|child| target_chain.is_none_or(|chain| is_variant_chain_compatible(child, chain)))
         // Exclude NotMutable children - they can't be set in root_example

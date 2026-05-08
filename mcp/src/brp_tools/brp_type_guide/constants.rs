@@ -1,3 +1,8 @@
+use serde_json::Map;
+use serde_json::Value;
+
+use crate::support::JsonObjectAccess;
+
 // agent guidance constants
 /// Base warning message for AI agents about mutation paths
 pub(super) const AGENT_GUIDANCE: &str = "The 'mutation_paths' field provides valid 'path' arguments for 'mcp__brp__world_mutate_components' and 'mcp__brp__world_mutate_resources' tools, with example values suitable for testing.";
@@ -45,6 +50,16 @@ pub(super) const TYPE_GLAM_VEC2: &str = "glam::Vec2";
 pub(super) const TYPE_GLAM_VEC3: &str = "glam::Vec3";
 pub(super) const TYPE_GLAM_VEC3A: &str = "glam::Vec3A";
 pub(super) const TYPE_GLAM_VEC4: &str = "glam::Vec4";
+
+// json fields
+pub(super) const DURATION_FIELD_NANOS: &str = "nanos";
+pub(super) const DURATION_FIELD_SECS: &str = "secs";
+pub(super) const MUTABLE_FIELD: &str = "mutable";
+pub(super) const MUTABILITY_MESSAGE_FIELD: &str = "message";
+pub(super) const NOT_MUTABLE_FIELD: &str = "not_mutable";
+pub(super) const PARTIALLY_MUTABLE_FIELD: &str = "partially_mutable";
+pub(super) const WINDOW_TARGET_FIELD: &str = "Window";
+pub(super) const WINDOW_TARGET_PRIMARY: &str = "Primary";
 
 // operation guidance constants
 /// Guidance for `resource` when type is a Resource
@@ -105,3 +120,16 @@ pub(super) const TYPE_U32: &str = "u32";
 pub(super) const TYPE_U64: &str = "u64";
 pub(super) const TYPE_U8: &str = "u8";
 pub(super) const TYPE_USIZE: &str = "usize";
+
+pub(super) fn duration_value(seconds: u64, nanoseconds: u32) -> Value {
+    let mut duration = Map::new();
+    duration.insert_field(DURATION_FIELD_NANOS, nanoseconds);
+    duration.insert_field(DURATION_FIELD_SECS, seconds);
+    Value::Object(duration)
+}
+
+pub(super) fn primary_window_target_value() -> Value {
+    let mut target = Map::new();
+    target.insert_field(WINDOW_TARGET_FIELD, WINDOW_TARGET_PRIMARY);
+    Value::Object(target)
+}

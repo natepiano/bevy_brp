@@ -76,28 +76,28 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
         Self: 'a,
         B: 'a;
 
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
+    fn collect_children(&self, context: &RecursionContext) -> Result<Self::Iter<'_>> {
         // Delegate to the inner builder
-        self.inner.collect_children(ctx)
+        self.inner.collect_children(context)
     }
 
     fn build_paths(
         &self,
-        ctx: &RecursionContext,
+        context: &RecursionContext,
     ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
         // Early returns for simple cases
-        if let Some(result) = Self::check_registry(ctx) {
+        if let Some(result) = Self::check_registry(context) {
             return result;
         }
 
         // Check knowledge - might return early or provide example
-        let knowledge_example = match ctx.check_knowledge()? {
+        let knowledge_example = match context.check_knowledge()? {
             KnowledgeAction::CompleteWithExample(example) => {
                 // Build single root path and return immediately
                 // Note: build_mutation_path_internal() returns MutationPathInternal,
                 // so we wrap in vec![] to match build_paths() return type
                 return Ok(vec![Self::build_mutation_path_internal(
-                    ctx,
+                    context,
                     PathExample::Simple(Example::Json(example)),
                     Mutability::Mutable,
                     None,
@@ -113,13 +113,13 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
             all_paths,
             paths_to_expose,
             child_examples,
-        } = self.process_all_children(ctx)?;
+        } = self.process_all_children(context)?;
 
         // Assemble THIS level from children (post-order)
         // Clone child_examples since we need it later for filtering
         let assembled_value = self
             .inner
-            .assemble_from_children(ctx, child_examples.clone())?;
+            .assemble_from_children(context, child_examples.clone())?;
 
         // Wrap result in Example
         let assembled_example = Example::Json(assembled_value);
@@ -131,13 +131,13 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
             .filter(|p| child_examples.contains_key(&p.path_kind.to_mutation_path_descriptor()))
             .collect();
         let partial_root_examples =
-            Self::build_partial_root_examples(&self.inner, ctx, direct_children.as_slice())?;
+            Self::build_partial_root_examples(&self.inner, context, direct_children.as_slice())?;
 
         // Use knowledge example if available (for Teach types), otherwise use assembled example
         let final_example = knowledge_example.unwrap_or(assembled_example);
 
         // Compute parent's mutation status from children's statuses
-        let (parent_status, mutability_reason) = determine_parent_mutability(ctx, &all_paths);
+        let (parent_status, mutability_reason) = determine_parent_mutability(context, &all_paths);
 
         // Build examples appropriately based on mutation status
         let example_to_use: Example = match parent_status {
@@ -159,7 +159,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                 // Assemble from only mutable children
                 let assembled = self
                     .inner
-                    .assemble_from_children(ctx, mutable_child_examples)
+                    .assemble_from_children(context, mutable_child_examples)
                     .unwrap_or_else(|_| json!(null));
 
                 Example::Json(assembled)
@@ -178,7 +178,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                 Err(BuilderError::NotMutable(reason))
             },
             Mutability::Mutable | Mutability::PartiallyMutable => Ok(Self::build_final_result(
-                ctx,
+                context,
                 paths_to_expose,
                 example_to_use,
                 parent_status,
@@ -204,31 +204,31 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
 /// accidentally skip the check.
 pub(super) fn recurse_mutation_paths(
     type_kind: TypeKind,
-    ctx: &RecursionContext,
+    context: &RecursionContext,
 ) -> Result<Vec<MutationPathInternal>> {
     let mutation_result = match type_kind {
         // Enum is distinct from the rest but now returns MutationResult too
-        TypeKind::Enum => enum_builder::process_enum(ctx),
-        TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx),
+        TypeKind::Enum => enum_builder::process_enum(context),
+        TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(context),
         TypeKind::Tuple | TypeKind::TupleStruct => {
-            MutationPathBuilder::new(TupleMutationBuilder).build_paths(ctx)
+            MutationPathBuilder::new(TupleMutationBuilder).build_paths(context)
         },
-        TypeKind::Array => MutationPathBuilder::new(ArrayMutationBuilder).build_paths(ctx),
-        TypeKind::List => MutationPathBuilder::new(ListMutationBuilder).build_paths(ctx),
-        TypeKind::Map => MutationPathBuilder::new(MapMutationBuilder).build_paths(ctx),
-        TypeKind::Set => MutationPathBuilder::new(SetMutationBuilder).build_paths(ctx),
-        TypeKind::Value => MutationPathBuilder::new(ValueMutationBuilder).build_paths(ctx),
+        TypeKind::Array => MutationPathBuilder::new(ArrayMutationBuilder).build_paths(context),
+        TypeKind::List => MutationPathBuilder::new(ListMutationBuilder).build_paths(context),
+        TypeKind::Map => MutationPathBuilder::new(MapMutationBuilder).build_paths(context),
+        TypeKind::Set => MutationPathBuilder::new(SetMutationBuilder).build_paths(context),
+        TypeKind::Value => MutationPathBuilder::new(ValueMutationBuilder).build_paths(context),
     };
 
     // Convert BuilderError to public Result interface at module boundary
     // This is the choke point where NotMutableReason becomes a success with NotMutable path
     match mutation_result {
         Ok(paths) => Ok(paths),
-        Err(BuilderError::NotMutable(reason)) => {
-            Ok(vec![
-                MutationPathBuilder::<ValueMutationBuilder>::build_not_mutable_path(ctx, reason),
-            ])
-        },
+        Err(BuilderError::NotMutable(reason)) => Ok(vec![MutationPathBuilder::<
+            ValueMutationBuilder,
+        >::build_not_mutable_path(
+            context, reason
+        )]),
         Err(BuilderError::SystemError(e)) => Err(e),
     }
 }
@@ -247,11 +247,14 @@ pub(super) fn recurse_mutation_paths(
 /// Unlike Structs where some fields can be mutable and others not, collections are
 /// all-or-nothing: either you can perform operations or you can't.
 pub(super) fn determine_parent_mutability(
-    ctx: &RecursionContext,
+    context: &RecursionContext,
     child_paths: &[MutationPathInternal],
 ) -> (Mutability, Option<NotMutableReason>) {
     // Get TypeKind for special case handling
-    let schema = ctx.registry.get(ctx.type_name()).unwrap_or(&Value::Null);
+    let schema = context
+        .registry
+        .get(context.type_name())
+        .unwrap_or(&Value::Null);
     let type_kind: TypeKind = schema.into();
 
     // SPECIAL CASE: Map and Set require ALL children to be mutable
@@ -277,7 +280,7 @@ pub(super) fn determine_parent_mutability(
             };
 
             let reason = NotMutableReason::from_partial_mutability(
-                ctx.type_name().clone(),
+                context.type_name().clone(),
                 mutability_issues,
                 format!(
                     "{collection_type} require all {} to be mutable for BRP operations",
@@ -308,12 +311,12 @@ pub(super) fn determine_parent_mutability(
             );
 
             Some(NotMutableReason::from_partial_mutability(
-                ctx.type_name().clone(),
+                context.type_name().clone(),
                 mutability_issues,
                 message,
             ))
         },
-        Mutability::NotMutable => Some(ctx.create_no_mutable_children_error()),
+        Mutability::NotMutable => Some(context.create_no_mutable_children_error()),
         Mutability::Mutable => None,
     };
 
@@ -326,12 +329,12 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     /// Process all children and collect their paths and examples
     fn process_all_children(
         &self,
-        ctx: &RecursionContext,
+        context: &RecursionContext,
     ) -> std::result::Result<ChildProcessingResult, BuilderError> {
         // Collect children for depth-first traversal
         let child_items = self
             .inner
-            .collect_children(ctx)
+            .collect_children(context)
             .map_err(BuilderError::SystemError)?;
         let mut all_paths = vec![];
         let mut paths_to_expose = vec![]; // Paths that should be included in final result
@@ -339,20 +342,20 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
         // Recurse to each child (they handle their own protocol)
         for path_kind in child_items {
-            let child_ctx =
-                ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action())?;
+            let child_context = context
+                .create_recursion_context(path_kind.clone(), self.inner.child_path_action())?;
 
             // Extract descriptor from PathKind for HashMap
             let child_key = path_kind.to_mutation_path_descriptor();
 
-            let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx)?;
+            let (child_paths, child_example) = Self::process_child(&child_key, &child_context)?;
             child_examples.insert(child_key, child_example);
 
             // Always collect all paths for analysis
             all_paths.extend(child_paths.clone());
 
             // Only add to paths_to_expose if this child should be created
-            if matches!(child_ctx.path_action, PathAction::Create) {
+            if matches!(child_context.path_action, PathAction::Create) {
                 paths_to_expose.extend(child_paths);
             }
         }
@@ -421,32 +424,32 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     /// within an enum's variant tree. The instructions explain how many variant
     /// selections are needed (based on `variant_chain` length) to reach this mutation path.
     fn build_mutation_path_internal(
-        ctx: &RecursionContext,
+        context: &RecursionContext,
         example: PathExample,
         status: Mutability,
         mutability_reason: Option<NotMutableReason>,
         partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
     ) -> MutationPathInternal {
         // Build enum data if variant chain exists
-        let enum_path_data = if ctx.variant_chain.is_empty() {
+        let enum_path_data = if context.variant_chain.is_empty() {
             None
         } else {
             Some(EnumPathInfo {
-                variant_chain:       ctx.variant_chain.clone(),
+                variant_chain:       context.variant_chain.clone(),
                 applicable_variants: Vec::new(),
                 root_example:        None,
             })
         };
 
         MutationPathInternal {
-            mutation_path: ctx.mutation_path.clone(),
+            mutation_path: context.mutation_path.clone(),
             example,
-            type_name: ctx.type_name().display_name(),
-            path_kind: ctx.path_kind.clone(),
+            type_name: context.type_name().display_name(),
+            path_kind: context.path_kind.clone(),
             mutability: status,
             mutability_reason,
             enum_path_info: enum_path_data,
-            depth: *ctx.depth,
+            depth: *context.depth,
             partial_root_examples,
         }
     }
@@ -464,7 +467,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     /// 3. Store the assembled value for that chain
     fn build_partial_root_examples(
         builder: &B,
-        ctx: &RecursionContext,
+        context: &RecursionContext,
         child_paths: &[&MutationPathInternal],
     ) -> std::result::Result<
         Option<HashMap<Vec<VariantName>, RootExample>>, // NEW
@@ -473,7 +476,10 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         // Special case: Skip partial root examples for Maps/Sets with NotMutable children
         // These collections require ALL children to be present for assembly, but our
         // filter excludes NotMutable children, causing assembly validation errors
-        let schema = ctx.registry.get(ctx.type_name()).unwrap_or(&Value::Null);
+        let schema = context
+            .registry
+            .get(context.type_name())
+            .unwrap_or(&Value::Null);
         let type_kind: TypeKind = schema.into();
 
         if matches!(type_kind, TypeKind::Map | TypeKind::Set) {
@@ -488,7 +494,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
 
         // Collect all unique variant chains from all children
-        let all_chains = mutation_path_internal::child_variant_chains(child_paths, *ctx.depth);
+        let all_chains = mutation_path_internal::child_variant_chains(child_paths, *context.depth);
 
         if all_chains.is_empty() {
             return Ok(None);
@@ -500,11 +506,11 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         for chain in all_chains {
             // Use shared choke point for filtering and value extraction
             let examples_for_chain =
-                support::collect_children_for_chain(child_paths, ctx, Some(&chain));
+                support::collect_children_for_chain(child_paths, context, Some(&chain));
 
             // Convert to values for assembly
             // Assemble from filtered children
-            let assembled_value = builder.assemble_from_children(ctx, examples_for_chain)?;
+            let assembled_value = builder.assemble_from_children(context, examples_for_chain)?;
 
             // Use shared helper to wrap with availability status
             let root_example = support::wrap_example_with_availability(
@@ -522,7 +528,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
     /// Build final result based on `PathAction`
     fn build_final_result(
-        ctx: &RecursionContext,
+        context: &RecursionContext,
         mut paths_to_expose: Vec<MutationPathInternal>,
         example_to_use: Example,
         parent_status: Mutability,
@@ -543,14 +549,14 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
 
         let mutation_path_internal = Self::build_mutation_path_internal(
-            ctx,
+            context,
             PathExample::Simple(example_to_use),
             parent_status,
             mutability_reason,
             partial_root_examples,
         );
 
-        match ctx.path_action {
+        match context.path_action {
             PathAction::Create => {
                 // Normal mode: Add root path and return only paths marked for exposure
                 paths_to_expose.insert(0, mutation_path_internal);
@@ -570,11 +576,11 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     /// This centralizes `NotMutable` path creation, ensuring only `MutationPathBuilder`
     /// can create these paths while builders simply return `Error::NotMutable`.
     fn build_not_mutable_path(
-        ctx: &RecursionContext,
+        context: &RecursionContext,
         reason: NotMutableReason,
     ) -> MutationPathInternal {
         Self::build_mutation_path_internal(
-            ctx,
+            context,
             PathExample::Simple(Example::NotApplicable), // Self-documenting!
             Mutability::NotMutable,
             Some(reason),
@@ -584,11 +590,11 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
     /// Check if type is in registry and return `NotMutable` path if not found
     fn check_registry(
-        ctx: &RecursionContext,
+        context: &RecursionContext,
     ) -> Option<std::result::Result<Vec<MutationPathInternal>, BuilderError>> {
-        if ctx.require_registry_schema().is_err() {
+        if context.require_registry_schema().is_err() {
             Some(Err(BuilderError::NotMutable(
-                NotMutableReason::NotInRegistry(ctx.type_name().clone()),
+                NotMutableReason::NotInRegistry(context.type_name().clone()),
             )))
         } else {
             None

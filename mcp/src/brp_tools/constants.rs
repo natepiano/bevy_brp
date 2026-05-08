@@ -9,3 +9,6 @@ pub const MAX_VALID_PORT: u16 = 65534;
 /// Non-privileged ports start here
 pub(super) const MIN_VALID_PORT: u16 = 1024;
 pub(super) const VALID_PORT_RANGE: RangeInclusive<u16> = MIN_VALID_PORT..=MAX_VALID_PORT;
+
+// query constants
+pub(super) const COMPONENT_SELECTOR_ALL: &str = "all";

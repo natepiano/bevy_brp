@@ -171,8 +171,8 @@ impl ParameterBuilder {
     /// Add a string property to the schema
     fn add_string_property(mut self, name: &str, description: &str, required: Required) -> Self {
         let mut prop = Map::new();
-        prop.insert_field("type", JsonSchemaType::String);
-        prop.insert_field("description", description);
+        prop.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::String);
+        prop.insert_field(SchemaField::Description.as_ref(), description);
         self.properties.insert_field(name, prop);
 
         self.mark_required(name, required);
@@ -187,13 +187,13 @@ impl ParameterBuilder {
         required: Required,
     ) -> Self {
         let mut prop = Map::new();
-        prop.insert_field("type", JsonSchemaType::Array);
+        prop.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Array);
 
         let mut items = Map::new();
-        items.insert_field("type", JsonSchemaType::String);
-        prop.insert_field("items", items);
+        items.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::String);
+        prop.insert_field(SchemaField::Items.as_ref(), items);
 
-        prop.insert_field("description", description);
+        prop.insert_field(SchemaField::Description.as_ref(), description);
         self.properties.insert_field(name, prop);
 
         self.mark_required(name, required);
@@ -208,13 +208,13 @@ impl ParameterBuilder {
         required: Required,
     ) -> Self {
         let mut prop = Map::new();
-        prop.insert_field("type", JsonSchemaType::Array);
+        prop.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Array);
 
         let mut items = Map::new();
-        items.insert_field("type", JsonSchemaType::Number);
-        prop.insert_field("items", items);
+        items.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Number);
+        prop.insert_field(SchemaField::Items.as_ref(), items);
 
-        prop.insert_field("description", description);
+        prop.insert_field(SchemaField::Description.as_ref(), description);
         self.properties.insert_field(name, prop);
 
         self.mark_required(name, required);
@@ -224,8 +224,8 @@ impl ParameterBuilder {
     /// Add a number property to the schema
     fn add_number_property(mut self, name: &str, description: &str, required: Required) -> Self {
         let mut prop = Map::new();
-        prop.insert_field("type", JsonSchemaType::Number);
-        prop.insert_field("description", description);
+        prop.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Number);
+        prop.insert_field(SchemaField::Description.as_ref(), description);
         self.properties.insert_field(name, prop);
 
         self.mark_required(name, required);
@@ -235,8 +235,8 @@ impl ParameterBuilder {
     /// Add a boolean property to the schema
     fn add_boolean_property(mut self, name: &str, description: &str, required: Required) -> Self {
         let mut prop = Map::new();
-        prop.insert_field("type", JsonSchemaType::Boolean);
-        prop.insert_field("description", description);
+        prop.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Boolean);
+        prop.insert_field(SchemaField::Description.as_ref(), description);
         self.properties.insert_field(name, prop);
 
         self.mark_required(name, required);
@@ -259,16 +259,35 @@ impl ParameterBuilder {
         let mut prop = Map::new();
         // Use anyOf instead of type array to satisfy validators that require
         // array schemas to have an "items" field (e.g., Copilot).
-        let any_of: Vec<Value> = vec![
-            serde_json::json!({"type": "object"}),
-            serde_json::json!({"type": "array", "items": {}}),
-            serde_json::json!({"type": "string"}),
-            serde_json::json!({"type": "number"}),
-            serde_json::json!({"type": "boolean"}),
-            serde_json::json!({"type": "null"}),
+        let mut object_schema = Map::new();
+        object_schema.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Object);
+
+        let mut array_schema = Map::new();
+        array_schema.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Array);
+        array_schema.insert_field(SchemaField::Items.as_ref(), Map::<String, Value>::new());
+
+        let mut string_schema = Map::new();
+        string_schema.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::String);
+
+        let mut number_schema = Map::new();
+        number_schema.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Number);
+
+        let mut boolean_schema = Map::new();
+        boolean_schema.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Boolean);
+
+        let mut null_schema = Map::new();
+        null_schema.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Null);
+
+        let any_of = vec![
+            Value::Object(object_schema),
+            Value::Object(array_schema),
+            Value::Object(string_schema),
+            Value::Object(number_schema),
+            Value::Object(boolean_schema),
+            Value::Object(null_schema),
         ];
-        prop.insert("anyOf".to_string(), Value::Array(any_of));
-        prop.insert_field("description", description);
+        prop.insert_field(SchemaField::AnyOf.as_ref(), Value::Array(any_of));
+        prop.insert_field(SchemaField::Description.as_ref(), description);
         self.properties.insert_field(name, prop);
 
         self.mark_required(name, required);
@@ -285,11 +304,11 @@ impl ParameterBuilder {
     /// Build the final schema
     pub(super) fn build(self) -> Arc<Map<String, Value>> {
         let mut schema = Map::new();
-        schema.insert_field("type", JsonSchemaType::Object);
-        schema.insert_field("properties", self.properties);
+        schema.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Object);
+        schema.insert_field(SchemaField::Properties.as_ref(), self.properties);
 
         if !self.required.is_empty() {
-            schema.insert_field("required", self.required);
+            schema.insert_field(SchemaField::Required.as_ref(), self.required);
         }
 
         Arc::new(schema)
@@ -297,8 +316,9 @@ impl ParameterBuilder {
 }
 
 /// Handle array type schemas and determine the array element type
-fn handle_array_type(obj: &Map<String, Value>) -> ParameterType {
-    obj.get_field(SchemaField::Items)
+fn handle_array_type(object: &Map<String, Value>) -> ParameterType {
+    object
+        .get_field(SchemaField::Items)
         .and_then(|items| items.as_object())
         .and_then(|items_obj| items_obj.get_field(SchemaField::Type))
         .and_then(Value::as_str)
@@ -312,7 +332,7 @@ fn handle_array_type(obj: &Map<String, Value>) -> ParameterType {
 }
 
 /// Handle string type values from schema type field
-fn handle_string_type(type_str: &str, obj: &Map<String, Value>) -> ParameterType {
+fn handle_string_type(type_str: &str, object: &Map<String, Value>) -> ParameterType {
     match type_str {
         s if s == JsonSchemaType::String.as_ref() => ParameterType::String,
         s if s == JsonSchemaType::Integer.as_ref() || s == JsonSchemaType::Number.as_ref() => {
@@ -320,13 +340,13 @@ fn handle_string_type(type_str: &str, obj: &Map<String, Value>) -> ParameterType
         },
         s if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
         s if s == JsonSchemaType::Object.as_ref() => ParameterType::Object,
-        s if s == JsonSchemaType::Array.as_ref() => handle_array_type(obj),
+        s if s == JsonSchemaType::Array.as_ref() => handle_array_type(object),
         _ => ParameterType::Any,
     }
 }
 
 /// Handle array type values from schema type field (for `Option<T>` types)
-fn handle_type_array(types: &[Value], obj: &Map<String, Value>) -> ParameterType {
+fn handle_type_array(types: &[Value], object: &Map<String, Value>) -> ParameterType {
     let non_null_types: Vec<&str> = types
         .iter()
         .filter_map(Value::as_str)
@@ -344,7 +364,7 @@ fn handle_type_array(types: &[Value], obj: &Map<String, Value>) -> ParameterType
             },
             Some(&s) if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
             Some(&s) if s == JsonSchemaType::Object.as_ref() => ParameterType::Object,
-            Some(&s) if s == JsonSchemaType::Array.as_ref() => handle_array_type(obj),
+            Some(&s) if s == JsonSchemaType::Array.as_ref() => handle_array_type(object),
             _ => ParameterType::Any,
         }
     } else {
@@ -415,44 +435,52 @@ fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
 }
 
 fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
-    let Some(obj) = schema.as_object() else {
+    let Some(object) = schema.as_object() else {
         return ParameterType::Any;
     };
 
     // Handle direct "type" field
-    if let Some(type_value) = obj.get_field(SchemaField::Type) {
+    if let Some(type_value) = object.get_field(SchemaField::Type) {
         let parameter_type = match type_value {
-            Value::String(type_str) => handle_string_type(type_str, obj),
-            Value::Array(types) => handle_type_array(types, obj),
+            Value::String(type_str) => handle_string_type(type_str, object),
+            Value::Array(types) => handle_type_array(types, object),
             _ => ParameterType::Any,
         };
         return parameter_type;
     }
 
     // Handle objects with `additionalProperties` (`HashMap` pattern)
-    if obj.get_field(SchemaField::AdditionalProperties).is_some() {
+    if object
+        .get_field(SchemaField::AdditionalProperties)
+        .is_some()
+    {
         return ParameterType::Object;
     }
 
     // Handle objects with only description (typically `serde_json::Value` that has no type field)
     // This should be Any since Value can hold any JSON type
-    if obj.get_field(SchemaField::Description).is_some()
-        && !obj.contains_key("type")
-        && !obj.contains_key("anyOf")
-        && !obj.contains_key("oneOf")
+    if object.get_field(SchemaField::Description).is_some()
+        && !object.contains_key(SchemaField::Type.as_ref())
+        && !object.contains_key(SchemaField::AnyOf.as_ref())
+        && !object.contains_key(SchemaField::OneOf.as_ref())
     {
         return ParameterType::Any;
     }
 
     // Handle "oneOf" schemas (enums like `BrpMethod`)
-    if let Some(one_of) = obj.get_field(SchemaField::OneOf).and_then(Value::as_array)
+    if let Some(one_of) = object
+        .get_field(SchemaField::OneOf)
+        .and_then(Value::as_array)
         && let Some(param_type) = handle_one_of_schema(one_of)
     {
         return param_type;
     }
 
     // Handle "anyOf" schemas (typically Option<T> types)
-    if let Some(any_of) = obj.get_field(SchemaField::AnyOf).and_then(Value::as_array) {
+    if let Some(any_of) = object
+        .get_field(SchemaField::AnyOf)
+        .and_then(Value::as_array)
+    {
         return handle_any_of_schema(any_of);
     }
 
@@ -465,7 +493,7 @@ fn resolve_schema_value<'a>(
 ) -> &'a Value {
     field_value
         .as_object()
-        .and_then(|obj| obj.get_field(SchemaField::Ref))
+        .and_then(|object| object.get_field(SchemaField::Ref))
         .and_then(Value::as_str)
         .and_then(|ref_path| {
             ref_path
@@ -523,7 +551,7 @@ fn normalize_argument_value(value: &mut Value, schema: &Schema) {
 /// Parse stringified JSON values at the MCP boundary for fields whose schema
 /// accepts structured JSON. Numeric, string, and boolean fields are left as-is
 /// so type mismatches surface as serde errors rather than being silently coerced.
-pub(super) fn normalize_arguments_for<T: JsonSchema>(args: &mut Map<String, Value>) {
+pub(super) fn normalize_arguments_for<T: JsonSchema>(arguments: &mut Map<String, Value>) {
     let schema = schemars::schema_for!(T);
     let Some(root_obj) = schema.as_object() else {
         return;
@@ -535,7 +563,7 @@ pub(super) fn normalize_arguments_for<T: JsonSchema>(args: &mut Map<String, Valu
         .get_field(SchemaField::Defs)
         .and_then(Value::as_object);
 
-    for (field_name, value) in args {
+    for (field_name, value) in arguments {
         let Some(field_schema_value) = properties.get(field_name) else {
             continue;
         };
@@ -598,7 +626,7 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         // Extract description from schema if available
         let description = resolved_value
             .as_object()
-            .and_then(|obj| obj.get_field(SchemaField::Description))
+            .and_then(|object| object.get_field(SchemaField::Description))
             .and_then(Value::as_str)
             .unwrap_or(field_name.as_str());
 
@@ -636,55 +664,55 @@ mod tests {
 
     #[test]
     fn normalize_arguments_for_does_not_coerce_numeric_strings() {
-        let mut args = Map::new();
-        args.insert(
+        let mut arguments = Map::new();
+        arguments.insert(
             String::from("instance_count"),
             Value::String(String::from("3")),
         );
-        args.insert(String::from("port"), Value::String(String::from("15702")));
-        args.insert(
+        arguments.insert(String::from("port"), Value::String(String::from("15702")));
+        arguments.insert(
             String::from("target_name"),
             Value::String(String::from("42")),
         );
 
-        normalize_arguments_for::<LaunchBevyBinaryParams>(&mut args);
+        normalize_arguments_for::<LaunchBevyBinaryParams>(&mut arguments);
 
         assert_eq!(
-            args.get("instance_count"),
+            arguments.get("instance_count"),
             Some(&Value::String(String::from("3")))
         );
         assert_eq!(
-            args.get("port"),
+            arguments.get("port"),
             Some(&Value::String(String::from("15702")))
         );
         assert_eq!(
-            args.get("target_name"),
+            arguments.get("target_name"),
             Some(&Value::String(String::from("42")))
         );
     }
 
     #[test]
     fn normalize_arguments_for_mutation_params_parses_stringified_json() {
-        let mut args = Map::new();
-        args.insert(String::from("entity"), serde_json::json!(1));
-        args.insert(String::from("component"), Value::String(String::from("42")));
-        args.insert(
+        let mut arguments = Map::new();
+        arguments.insert(String::from("entity"), serde_json::json!(1));
+        arguments.insert(String::from("component"), Value::String(String::from("42")));
+        arguments.insert(
             String::from("value"),
             Value::String(String::from(r#"{"nested":true}"#)),
         );
-        args.insert(String::from("port"), serde_json::json!(15702));
+        arguments.insert(String::from("port"), serde_json::json!(15702));
 
-        normalize_arguments_for::<MutateComponentsParams>(&mut args);
+        normalize_arguments_for::<MutateComponentsParams>(&mut arguments);
 
         assert_eq!(
-            args.get("component"),
+            arguments.get("component"),
             Some(&Value::String(String::from("42")))
         );
         assert_eq!(
-            args.get("value"),
+            arguments.get("value"),
             Some(&serde_json::json!({ "nested": true }))
         );
-        assert_eq!(args.get("port"), Some(&serde_json::json!(15702)));
+        assert_eq!(arguments.get("port"), Some(&serde_json::json!(15702)));
     }
 
     /// Regression test: `add_any_property` must emit anyOf where the array branch

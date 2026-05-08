@@ -9,12 +9,14 @@ use bevy_remote::error_codes::INVALID_PARAMS;
 use serde_json::Value;
 use serde_json::json;
 
+use crate::constants::PARAM_TITLE;
+
 /// Handler for `set_window_title` requests
 pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Extract title from params
     let title = params
         .as_ref()
-        .and_then(|p| p.get("title"))
+        .and_then(|parameters| parameters.get(PARAM_TITLE))
         .and_then(Value::as_str)
         .ok_or_else(|| BrpError {
             code:    INVALID_PARAMS,

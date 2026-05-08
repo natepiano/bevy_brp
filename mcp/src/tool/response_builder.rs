@@ -4,7 +4,12 @@ use serde_json::Value;
 
 use super::HandlerContext;
 use super::ParamStruct;
+use super::ParameterName;
 use super::ResultStruct;
+use super::constants::ENTITY_COUNT_PLACEHOLDER;
+use super::constants::OPTIONAL_PARAMETERS_NOT_PROVIDED_FIELD;
+use super::constants::RESULT_PLACEHOLDER;
+use super::constants::SKIP_NULL_FIELD_SENTINEL;
 use super::field_placement::FieldPlacement;
 use super::json_response::AnySchemaValue;
 use super::json_response::ResponseStatus;
@@ -115,7 +120,7 @@ impl ResponseBuilder {
 
         // Skip fields marked for nullable skipping
         if let Value::String(s) = &value_json
-            && s == "__SKIP_NULL_FIELD__"
+            && s == SKIP_NULL_FIELD_SENTINEL
         {
             return Ok(self);
         }
@@ -161,7 +166,7 @@ impl ResponseBuilder {
 
         // Skip fields marked for nullable skipping
         if let Value::String(s) = &value_json
-            && s == "__SKIP_NULL_FIELD__"
+            && s == SKIP_NULL_FIELD_SENTINEL
         {
             return Ok(self);
         }
@@ -256,7 +261,7 @@ impl ResponseBuilder {
             // Add the optional_parameters_not_provided array if there are any
             if !optional_not_provided.is_empty() {
                 params_obj.insert(
-                    "optional_parameters_not_provided".to_string(),
+                    OPTIONAL_PARAMETERS_NOT_PROVIDED_FIELD.to_string(),
                     Value::Array(
                         optional_not_provided
                             .into_iter()
@@ -378,7 +383,7 @@ impl ResponseBuilder {
         }
 
         // Then check result if placeholder is "result"
-        if placeholder == "result"
+        if placeholder == RESULT_PLACEHOLDER
             && let Some(result_value) = builder.result()
         {
             return Some(Self::value_to_string(result_value));
@@ -387,8 +392,9 @@ impl ResponseBuilder {
         // Check parameters added to the builder
         if let Some(Value::Object(params_obj)) = builder.parameters_ref() {
             // Special handling for entity_count from entities array
-            if placeholder == "entity_count"
-                && let Some(Value::Array(entities)) = params_obj.get("entities")
+            if placeholder == ENTITY_COUNT_PLACEHOLDER
+                && let Some(Value::Array(entities)) =
+                    params_obj.get(ParameterName::Entities.as_ref())
             {
                 return Some(entities.len().to_string());
             }

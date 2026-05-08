@@ -24,6 +24,7 @@ use crate::brp_tools::brp_type_guide::mutation_path_builder::recursion_context::
 use crate::error::Error;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;
+use crate::support::SchemaField;
 
 impl TypeKindBuilder for TupleMutationBuilder {
     type Item = PathKind;
@@ -32,12 +33,12 @@ impl TypeKindBuilder for TupleMutationBuilder {
     where
         Self: 'a;
 
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
+    fn collect_children(&self, context: &RecursionContext) -> Result<Self::Iter<'_>> {
         // Use Result-returning API - MutationPathBuilder handles missing schema
-        let schema = ctx.require_registry_schema()?;
+        let schema = context.require_registry_schema()?;
 
         // Handle empty tuples (unit type `()`) - they don't have prefixItems
-        let Some(prefix_items) = schema.get("prefixItems") else {
+        let Some(prefix_items) = schema.get_field(SchemaField::PrefixItems) else {
             // Empty tuple - no children to process
             return Ok(Vec::new().into_iter());
         };
@@ -45,7 +46,7 @@ impl TypeKindBuilder for TupleMutationBuilder {
         // Extract array of element schemas
         let Some(items_array) = prefix_items.as_array() else {
             return Err(Error::schema_processing_for_type(
-                ctx.type_name().as_str(),
+                context.type_name().as_str(),
                 "parse_prefix_items",
                 "prefixItems is not an array",
             )
@@ -58,7 +59,7 @@ impl TypeKindBuilder for TupleMutationBuilder {
             // Extract element type from schema
             let Some(element_type) = element_schema.extract_field_type() else {
                 return Err(Error::schema_processing_for_type(
-                    ctx.type_name().as_str(),
+                    context.type_name().as_str(),
                     "extract_element_type",
                     format!("Failed to extract type for element {index}"),
                 )
@@ -69,7 +70,7 @@ impl TypeKindBuilder for TupleMutationBuilder {
             children.push(PathKind::new_indexed_element(
                 index,
                 element_type,
-                ctx.type_name().clone(),
+                context.type_name().clone(),
             ));
         }
 
@@ -78,18 +79,18 @@ impl TypeKindBuilder for TupleMutationBuilder {
 
     fn assemble_from_children(
         &self,
-        ctx: &RecursionContext,
+        context: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         // First extract element types to check for Handle wrapper
-        let schema = ctx.require_registry_schema()?;
+        let schema = context.require_registry_schema()?;
         let elements = RecursionContext::extract_tuple_element_types(schema).unwrap_or_default();
 
         // Check if this is a single-element Handle wrapper
         if elements.len() == 1 && elements[0].is_handle() {
             return Err(BuilderError::NotMutable(
                 NotMutableReason::NonMutableHandle {
-                    container_type: ctx.type_name().clone(),
+                    container_type: context.type_name().clone(),
                     element_type:   elements[0].clone(),
                 },
             ));

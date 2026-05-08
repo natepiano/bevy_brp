@@ -13,6 +13,12 @@ pub(crate) const BRP_EXTRAS_PORT_ENV_VAR: &str = "BRP_EXTRAS_PORT";
 ///
 /// This matches Bevy's `RemoteHttpPlugin` default port to ensure compatibility.
 pub const DEFAULT_REMOTE_PORT: u16 = 15702;
+/// File extension used by screenshot output.
+pub(crate) const IMAGE_EXTENSION_PNG: &str = "png";
+
+// parameter fields
+pub(crate) const PARAM_PATH: &str = "path";
+pub(crate) const PARAM_TITLE: &str = "title";
 
 // shutdown constants
 /// Number of frames to defer shutdown to allow the response to be sent

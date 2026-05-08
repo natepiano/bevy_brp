@@ -49,8 +49,8 @@ impl TypeKindBuilder for MapMutationBuilder {
         PathAction::Skip
     }
 
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
-        let schema = ctx.require_registry_schema()?;
+    fn collect_children(&self, context: &RecursionContext) -> Result<Self::Iter<'_>> {
+        let schema = context.require_registry_schema()?;
 
         // Extract key and value types from schema
         let key_type = schema.get_type(SchemaField::KeyType);
@@ -59,7 +59,7 @@ impl TypeKindBuilder for MapMutationBuilder {
         let Some(key_type_name) = key_type else {
             return Err(Error::InvalidState(format!(
                 "Failed to extract key type from schema for type: {}",
-                ctx.type_name()
+                context.type_name()
             ))
             .into());
         };
@@ -67,7 +67,7 @@ impl TypeKindBuilder for MapMutationBuilder {
         let Some(val_type_name) = value_type else {
             return Err(Error::InvalidState(format!(
                 "Failed to extract value type from schema for type: {}",
-                ctx.type_name()
+                context.type_name()
             ))
             .into());
         };
@@ -77,12 +77,12 @@ impl TypeKindBuilder for MapMutationBuilder {
             PathKind::StructField {
                 field_name:  StructFieldName::from(SchemaField::Key),
                 type_name:   key_type_name,
-                parent_type: ctx.type_name().clone(),
+                parent_type: context.type_name().clone(),
             },
             PathKind::StructField {
                 field_name:  StructFieldName::from(SchemaField::Value),
                 type_name:   val_type_name,
-                parent_type: ctx.type_name().clone(),
+                parent_type: context.type_name().clone(),
             },
         ]
         .into_iter())
@@ -90,14 +90,14 @@ impl TypeKindBuilder for MapMutationBuilder {
 
     fn assemble_from_children(
         &self,
-        ctx: &RecursionContext,
+        context: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         let Some(key_example) = children.get(SchemaField::Key.as_ref()) else {
             return Err(BuilderError::SystemError(
                 Error::InvalidState(format!(
                     "Protocol violation: Map type {} missing required 'key' child example",
-                    ctx.type_name()
+                    context.type_name()
                 ))
                 .into(),
             ));
@@ -107,7 +107,7 @@ impl TypeKindBuilder for MapMutationBuilder {
             return Err(BuilderError::SystemError(
                 Error::InvalidState(format!(
                     "Protocol violation: Map type {} missing required 'value' child example",
-                    ctx.type_name()
+                    context.type_name()
                 ))
                 .into(),
             ));
@@ -118,7 +118,7 @@ impl TypeKindBuilder for MapMutationBuilder {
         let value_value = value_example.to_value();
 
         // Check if the key is complex (non-primitive) type
-        self.check_collection_element_complexity(&key_value, ctx)?;
+        self.check_collection_element_complexity(&key_value, context)?;
 
         // Convert key to string (JSON maps need string keys)
         let key_str = match &key_value {
@@ -130,7 +130,7 @@ impl TypeKindBuilder for MapMutationBuilder {
                 // This should not happen since we checked for complex keys above
                 return Err(BuilderError::SystemError(
                     Error::schema_processing_for_type(
-                        ctx.type_name(),
+                        context.type_name(),
                         "serialize_map_key",
                         format!("Unexpected complex key type after complexity check: {other:?}"),
                     )

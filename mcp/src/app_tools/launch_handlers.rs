@@ -22,11 +22,14 @@ impl ToolFn for LaunchBevyTarget {
 
     fn call(
         &self,
-        ctx: HandlerContext,
+        context: HandlerContext,
     ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
-        tool::call_with_typed_params(ctx, |ctx, params: LaunchBevyBinaryParams| async move {
-            launch::launch_bevy_target(params, ctx.roots, DEFAULT_PROFILE)
-        })
+        tool::call_with_typed_params(
+            context,
+            |context, params: LaunchBevyBinaryParams| async move {
+                launch::launch_bevy_target(params, context.roots, DEFAULT_PROFILE)
+            },
+        )
     }
 
     async fn handle_impl(&self, _: Self::Params) -> Result<Self::Output> {

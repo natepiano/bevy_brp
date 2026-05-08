@@ -107,16 +107,16 @@ impl Operation {
 /// Extract type names from components object keys in spawn/insert operations
 fn extract_from_components_object(params: &Value) -> Vec<String> {
     params
-        .get("components")
+        .get(ParameterName::Components.as_ref())
         .and_then(Value::as_object)
-        .map(|obj| obj.keys().cloned().collect())
+        .map(|object| object.keys().cloned().collect())
         .unwrap_or_default()
 }
 
 /// Extract type name from resource field in resource operations
 fn extract_from_resource_field(params: &Value) -> Vec<String> {
     params
-        .get("resource")
+        .get(ParameterName::Resource.as_ref())
         .and_then(Value::as_str)
         .map(|value| vec![String::from(value)])
         .unwrap_or_default()
@@ -125,7 +125,7 @@ fn extract_from_resource_field(params: &Value) -> Vec<String> {
 /// Extract single component type from component field in mutation operations
 fn extract_single_component_type(params: &Value) -> Vec<String> {
     params
-        .get("component")
+        .get(ParameterName::Component.as_ref())
         .and_then(Value::as_str)
         .map(|value| vec![String::from(value)])
         .unwrap_or_default()
@@ -134,7 +134,7 @@ fn extract_single_component_type(params: &Value) -> Vec<String> {
 /// Extract single resource type from resource field in mutation operations
 fn extract_single_resource_type(params: &Value) -> Vec<String> {
     params
-        .get("resource")
+        .get(ParameterName::Resource.as_ref())
         .and_then(Value::as_str)
         .map(|value| vec![String::from(value)])
         .unwrap_or_default()

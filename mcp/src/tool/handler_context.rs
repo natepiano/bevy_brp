@@ -59,10 +59,10 @@ impl HandlerContext {
         } else {
             self.request.arguments.as_ref().map_or_else(
                 || Value::Object(Map::new()),
-                |args| {
-                    let mut args = args.clone();
-                    parameters::normalize_arguments_for::<T>(&mut args);
-                    Value::Object(args)
+                |arguments| {
+                    let mut arguments = arguments.clone();
+                    parameters::normalize_arguments_for::<T>(&mut arguments);
+                    Value::Object(arguments)
                 },
             )
         };

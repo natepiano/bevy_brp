@@ -10,6 +10,9 @@ use serde_json::Value;
 use tracing::debug;
 use tracing::info;
 
+use super::constants::BUILD_OUTPUT_FRESH_FIELD;
+use super::constants::BUILD_OUTPUT_NAME_FIELD;
+use super::constants::BUILD_OUTPUT_TARGET_FIELD;
 use super::constants::CARGO_RELEASE_FLAG;
 use super::logging;
 use crate::app_tools::constants::CARGO_EXAMPLE_FLAG;
@@ -31,16 +34,16 @@ pub(super) fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path>
     })
 }
 
-fn set_brp_env_vars(cmd: &mut Command, port: Option<Port>) {
+fn set_brp_env_vars(command: &mut Command, port: Option<Port>) {
     if let Some(port) = port {
-        cmd.env(BRP_EXTRAS_PORT_ENV_VAR, port.to_string());
+        command.env(BRP_EXTRAS_PORT_ENV_VAR, port.to_string());
     }
 }
 
-fn set_user_env_vars(cmd: &mut Command, env: Option<&HashMap<String, String>>) {
+fn set_user_env_vars(command: &mut Command, env: Option<&HashMap<String, String>>) {
     if let Some(env_vars) = env {
         for (key, value) in env_vars {
-            cmd.env(key, value);
+            command.env(key, value);
         }
     }
 }
@@ -76,40 +79,41 @@ pub(super) fn build_cargo_example_command(
     profile: &str,
     port: Option<Port>,
     env: Option<&HashMap<String, String>>,
-    args: Option<&[String]>,
+    command_line_arguments: Option<&[String]>,
 ) -> Command {
-    let mut cmd = Command::new("cargo");
-    cmd.arg(CARGO_RUN_SUBCOMMAND)
+    let mut command = Command::new("cargo");
+    command
+        .arg(CARGO_RUN_SUBCOMMAND)
         .arg(CARGO_EXAMPLE_FLAG)
         .arg(example_name);
 
     if profile == PROFILE_RELEASE {
-        cmd.arg(CARGO_RELEASE_FLAG);
+        command.arg(CARGO_RELEASE_FLAG);
     }
 
-    if let Some(user_args) = args {
-        cmd.arg("--").args(user_args);
+    if let Some(user_arguments) = command_line_arguments {
+        command.arg("--").args(user_arguments);
     }
 
-    set_brp_env_vars(&mut cmd, port);
-    set_user_env_vars(&mut cmd, env);
+    set_brp_env_vars(&mut command, port);
+    set_user_env_vars(&mut command, env);
 
-    cmd
+    command
 }
 
 pub(super) fn build_app_command(
     binary_path: &Path,
     port: Option<Port>,
     env: Option<&HashMap<String, String>>,
-    args: Option<&[String]>,
+    command_line_arguments: Option<&[String]>,
 ) -> Command {
-    let mut cmd = Command::new(binary_path);
-    if let Some(user_args) = args {
-        cmd.args(user_args);
+    let mut command = Command::new(binary_path);
+    if let Some(user_arguments) = command_line_arguments {
+        command.args(user_arguments);
     }
-    set_brp_env_vars(&mut cmd, port);
-    set_user_env_vars(&mut cmd, env);
-    cmd
+    set_brp_env_vars(&mut command, port);
+    set_user_env_vars(&mut command, env);
+    command
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -125,31 +129,31 @@ fn build_cargo_command(
     profile: &str,
     manifest_dir: &Path,
 ) -> Command {
-    let mut cmd = Command::new("cargo");
-    cmd.current_dir(manifest_dir);
-    cmd.arg("build");
+    let mut command = Command::new("cargo");
+    command.current_dir(manifest_dir);
+    command.arg("build");
 
-    target_type.add_cargo_args(&mut cmd, target_name);
+    target_type.add_cargo_args(&mut command, target_name);
 
     if profile == PROFILE_RELEASE {
-        cmd.arg(CARGO_RELEASE_FLAG);
+        command.arg(CARGO_RELEASE_FLAG);
     }
 
-    cmd.arg("--message-format=json");
+    command.arg("--message-format=json");
 
-    cmd
+    command
 }
 
 fn execute_build_command(
-    cmd: &mut Command,
+    command: &mut Command,
     target_name: &str,
     target_type: TargetType,
     profile: &str,
     manifest_dir: &Path,
 ) -> Result<Output> {
-    debug!("Running cargo build for {target_type} '{target_name}' with args: {cmd:?}");
+    debug!("Running cargo build for {target_type} '{target_name}' with command: {command:?}");
 
-    let output = cmd.output().map_err(|e| {
+    let output = command.output().map_err(|e| {
         Error::ProcessManagement(format!(
             "Failed to run cargo build for {target_type} '{target_name}' (profile: {profile}, dir: {}): {e}",
             manifest_dir.display()
@@ -173,12 +177,12 @@ fn parse_build_output(stdout: &[u8], target_name: &str) -> BuildState {
 
     for line in stdout_str.lines() {
         if let Ok(json) = serde_json::from_str::<Value>(line)
-            && let Some(target) = json.get("target")
-            && let Some(name) = target.get("name")
+            && let Some(target) = json.get(BUILD_OUTPUT_TARGET_FIELD)
+            && let Some(name) = target.get(BUILD_OUTPUT_NAME_FIELD)
             && name.as_str() == Some(target_name)
         {
             return json
-                .get("fresh")
+                .get(BUILD_OUTPUT_FRESH_FIELD)
                 .and_then(serde_json::Value::as_bool)
                 .map_or(BuildState::Rebuilt, |is_fresh| {
                     if is_fresh {
@@ -213,8 +217,14 @@ pub(super) fn run_cargo_build(
     profile: &str,
     manifest_dir: &Path,
 ) -> Result<BuildState> {
-    let mut cmd = build_cargo_command(target_name, target_type, profile, manifest_dir);
-    let output = execute_build_command(&mut cmd, target_name, target_type, profile, manifest_dir)?;
+    let mut command = build_cargo_command(target_name, target_type, profile, manifest_dir);
+    let output = execute_build_command(
+        &mut command,
+        target_name,
+        target_type,
+        profile,
+        manifest_dir,
+    )?;
     let build_state = parse_build_output(&output.stdout, target_name);
     log_build_result(build_state, target_name, target_type);
 

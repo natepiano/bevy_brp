@@ -8,6 +8,8 @@ use cargo_metadata::Metadata;
 use tracing::debug;
 
 use crate::app_tools::constants::CARGO_MANIFEST_FILE;
+use crate::app_tools::targets::constants::HIDDEN_DIRECTORY_PREFIX;
+use crate::app_tools::targets::constants::TARGET_DIRECTORY_NAME;
 
 /// Safely canonicalize a path.
 ///
@@ -104,7 +106,7 @@ pub fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> Vec<PathBuf> {
 fn should_skip_directory(dir: &Path) -> bool {
     dir.file_name().is_some_and(|name| {
         let name_str = name.to_string_lossy();
-        name_str.starts_with('.') || name_str == "target"
+        name_str.starts_with(HIDDEN_DIRECTORY_PREFIX) || name_str == TARGET_DIRECTORY_NAME
     })
 }
 

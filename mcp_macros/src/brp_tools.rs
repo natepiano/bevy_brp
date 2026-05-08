@@ -116,10 +116,10 @@ fn generate_tool_fn_impl(
 
             fn call(
                 &self,
-                ctx: crate::tool::HandlerContext,
+                context: crate::tool::HandlerContext,
             ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::Params>> {
                 Box::pin(async move {
-                    let params = ctx.extract_parameter_values::<#params_ident>()?;
+                    let params = context.extract_parameter_values::<#params_ident>()?;
                     let port = params.port;
                     let params_json = serde_json::to_value(&params).ok();
 
@@ -308,7 +308,7 @@ fn assemble_output(
 }
 
 /// Extract unified tool attributes from #[tool(...)]
-fn extract_tool_attr(attrs: &[Attribute]) -> ToolAttrs {
+fn extract_tool_attr(attributes: &[Attribute]) -> ToolAttrs {
     let mut tool_attrs = ToolAttrs {
         params:     None,
         result:     None,
@@ -316,10 +316,10 @@ fn extract_tool_attr(attrs: &[Attribute]) -> ToolAttrs {
     };
 
     let mut has_brp_tool = false;
-    for attr in attrs {
-        if attr.path().is_ident("brp_tool") {
+    for attribute in attributes {
+        if attribute.path().is_ident("brp_tool") {
             has_brp_tool = true;
-            let _ = attr.parse_nested_meta(|meta| {
+            drop(attribute.parse_nested_meta(|meta| {
                 if meta.path.is_ident("params") {
                     let value = meta.value()?;
                     let s: LitStr = value.parse()?;
@@ -336,7 +336,7 @@ fn extract_tool_attr(attrs: &[Attribute]) -> ToolAttrs {
                     return Err(meta.error("unsupported tool attribute"));
                 }
                 Ok(())
-            });
+            }));
             break;
         }
     }

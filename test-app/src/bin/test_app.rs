@@ -8,6 +8,10 @@ use bevy::window::WindowPosition;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
+const BRP_EXTRAS_PORT_DEFAULT: &str = "15702";
+const BRP_EXTRAS_PORT_ENV_VAR: &str = "BRP_EXTRAS_PORT";
+const MARKER_FLAG: &str = "--marker";
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -66,13 +70,14 @@ fn setup(mut commands: Commands) {
 }
 
 fn log_startup() {
-    let port = std::env::var("BRP_EXTRAS_PORT").unwrap_or_else(|_| "15702".to_string());
+    let port = std::env::var(BRP_EXTRAS_PORT_ENV_VAR)
+        .unwrap_or_else(|_| BRP_EXTRAS_PORT_DEFAULT.to_string());
     debug!("test_app starting on port {port}");
 
     // Log --marker value if provided (used by args integration test)
-    let args: Vec<String> = std::env::args().collect();
-    if let Some(pos) = args.iter().position(|a| a == "--marker")
-        && let Some(value) = args.get(pos + 1)
+    let command_line_arguments: Vec<String> = std::env::args().collect();
+    if let Some(pos) = command_line_arguments.iter().position(|a| a == MARKER_FLAG)
+        && let Some(value) = command_line_arguments.get(pos + 1)
     {
         info!("MARKER:{value}");
     }

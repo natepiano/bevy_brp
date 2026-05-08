@@ -9,6 +9,7 @@ use serde::de::Error;
 use serde_json::Value;
 
 use crate::brp_tools::Port;
+use crate::brp_tools::constants::COMPONENT_SELECTOR_ALL;
 
 /// Selector for optional components in a query (mirrors Bevy's `ComponentSelector`)
 #[derive(Clone, Debug, Serialize, JsonSchema)]
@@ -29,7 +30,7 @@ impl<'de> Deserialize<'de> for ComponentSelector {
         let value = serde_json::Value::deserialize(deserializer)?;
 
         match value {
-            Value::String(ref s) if s == "all" => Ok(Self::All),
+            Value::String(ref selector) if selector == COMPONENT_SELECTOR_ALL => Ok(Self::All),
             Value::Array(arr) => {
                 let paths = arr
                     .into_iter()

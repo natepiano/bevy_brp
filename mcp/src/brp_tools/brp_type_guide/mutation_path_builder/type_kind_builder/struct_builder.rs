@@ -33,9 +33,9 @@ impl TypeKindBuilder for StructMutationBuilder {
     where
         Self: 'a;
 
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
+    fn collect_children(&self, context: &RecursionContext) -> Result<Self::Iter<'_>> {
         // require_registry_schema() returns Result with standard error
-        let schema = ctx.require_registry_schema()?;
+        let schema = context.require_registry_schema()?;
 
         // Extract properties from schema - use proper schema methods
         // Note: Missing properties field is valid for empty structs (e.g., Camera2d)
@@ -59,9 +59,9 @@ impl TypeKindBuilder for StructMutationBuilder {
                     message:   format!(
                         "Failed to extract type for field '{}' in struct '{}'",
                         field_name,
-                        ctx.type_name()
+                        context.type_name()
                     ),
-                    type_name: Some(ctx.type_name().to_string()),
+                    type_name: Some(context.type_name().to_string()),
                     operation: Some("extract_field_type".to_string()),
                     details:   Some(format!("Field: {field_name}")),
                 }
@@ -72,7 +72,7 @@ impl TypeKindBuilder for StructMutationBuilder {
             let path_kind = PathKind::StructField {
                 field_name: StructFieldName::from(field_name.clone()),
                 type_name,
-                parent_type: ctx.type_name().clone(),
+                parent_type: context.type_name().clone(),
             };
 
             children.push(path_kind);

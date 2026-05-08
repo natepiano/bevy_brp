@@ -18,11 +18,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> { registry::get_all_tool_defin
 ///
 /// This keeps request decoding owned by the `tool` subsystem instead of exposing
 /// `HandlerContext`'s parsing method across sibling modules.
-pub fn extract_parameter_values<T>(ctx: &HandlerContext) -> Result<T>
+pub fn extract_parameter_values<T>(context: &HandlerContext) -> Result<T>
 where
     T: serde::de::DeserializeOwned + schemars::JsonSchema,
 {
-    ctx.extract_parameter_values()
+    context.extract_parameter_values()
 }
 
 /// Visibility facade for custom `ToolFn::call()` implementations.
@@ -30,7 +30,7 @@ where
 /// Sibling modules can request typed parameters through the top-level `tool`
 /// boundary instead of depending on lower-level helper placement.
 pub fn call_with_typed_params<O, P, F, Fut>(
-    ctx: HandlerContext,
+    context: HandlerContext,
     f: F,
 ) -> HandlerResult<'static, ToolResult<O, P>>
 where
@@ -39,5 +39,5 @@ where
     F: FnOnce(HandlerContext, P) -> Fut + Send + 'static,
     Fut: std::future::Future<Output = Result<O>> + Send + 'static,
 {
-    handler::call_with_typed_params(ctx, f)
+    handler::call_with_typed_params(context, f)
 }

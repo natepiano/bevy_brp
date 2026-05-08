@@ -62,7 +62,7 @@ pub(super) trait TypeKindBuilder {
     fn child_path_action(&self) -> PathAction { PathAction::Create }
 
     /// Collect `PathKind`s for child elements.
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>>;
+    fn collect_children(&self, context: &RecursionContext) -> Result<Self::Iter<'_>>;
 
     /// Assemble a parent value from child examples.
     fn assemble_from_children(
@@ -78,11 +78,11 @@ pub(super) trait TypeKindBuilder {
     fn check_collection_element_complexity(
         &self,
         element: &Value,
-        ctx: &RecursionContext,
+        context: &RecursionContext,
     ) -> std::result::Result<(), BuilderError> {
         if element.is_complex_type() {
             return Err(BuilderError::NotMutable(
-                NotMutableReason::ComplexCollectionKey(ctx.type_name().clone()),
+                NotMutableReason::ComplexCollectionKey(context.type_name().clone()),
             ));
         }
         Ok(())

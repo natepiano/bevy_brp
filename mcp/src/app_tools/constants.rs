@@ -9,6 +9,10 @@ pub(super) const CARGO_MANIFEST_FILE: &str = "Cargo.toml";
 pub(super) const CARGO_RUN_SUBCOMMAND: &str = "run";
 pub(super) const MCP_BINARY_NAME: &str = "bevy_brp_mcp";
 
+// json fields
+pub(super) const MANIFEST_PATH_FIELD: &str = "manifest_path";
+pub(super) const PID_FIELD: &str = "pid";
+
 // instance count constants
 /// Maximum number of instances (100)
 pub(super) const MAX_INSTANCE_COUNT: u16 = 100;

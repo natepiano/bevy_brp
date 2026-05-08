@@ -33,6 +33,10 @@ use serde_json::json;
 use super::mutability::Mutability;
 use super::mutability::MutabilityIssue;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
+use crate::brp_tools::brp_type_guide::constants::MUTABILITY_MESSAGE_FIELD;
+use crate::brp_tools::brp_type_guide::constants::MUTABLE_FIELD;
+use crate::brp_tools::brp_type_guide::constants::NOT_MUTABLE_FIELD;
+use crate::brp_tools::brp_type_guide::constants::PARTIALLY_MUTABLE_FIELD;
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -183,16 +187,19 @@ impl From<&NotMutableReason> for Option<Value> {
                 partially_mutable,
             } => {
                 let mut reason = serde_json::Map::new();
-                reason.insert("message".to_string(), json!(message));
+                reason.insert(MUTABILITY_MESSAGE_FIELD.to_string(), json!(message));
 
                 if !mutable.is_empty() {
-                    reason.insert("mutable".to_string(), json!(mutable));
+                    reason.insert(MUTABLE_FIELD.to_string(), json!(mutable));
                 }
                 if !not_mutable.is_empty() {
-                    reason.insert("not_mutable".to_string(), json!(not_mutable));
+                    reason.insert(NOT_MUTABLE_FIELD.to_string(), json!(not_mutable));
                 }
                 if !partially_mutable.is_empty() {
-                    reason.insert("partially_mutable".to_string(), json!(partially_mutable));
+                    reason.insert(
+                        PARTIALLY_MUTABLE_FIELD.to_string(),
+                        json!(partially_mutable),
+                    );
                 }
 
                 Some(Value::Object(reason))

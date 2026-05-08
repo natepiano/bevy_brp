@@ -9,6 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
+use super::constants::MANIFEST_PATH_FIELD;
 use super::targets;
 use crate::error::Result;
 use crate::tool::HandlerContext;
@@ -48,11 +49,11 @@ pub struct ListBevy;
     clippy::unused_async,
     reason = "ToolFn trait requires async handler signature"
 )]
-async fn handle_impl(ctx: HandlerContext, params: ListBevyParams) -> Result<ListBevyResult> {
+async fn handle_impl(context: HandlerContext, params: ListBevyParams) -> Result<ListBevyResult> {
     let search_paths = params
         .path
         .as_ref()
-        .map_or(ctx.roots, |path| vec![PathBuf::from(path)]);
+        .map_or(context.roots, |path| vec![PathBuf::from(path)]);
     let mut items = targets::collect_all_bevy_targets(&search_paths);
 
     // When a user-specified path is provided, post-filter to only targets whose
@@ -61,7 +62,7 @@ async fn handle_impl(ctx: HandlerContext, params: ListBevyParams) -> Result<List
     if let Some(ref path) = params.path {
         let scope = std::fs::canonicalize(path).unwrap_or_else(|_| PathBuf::from(path));
         items.retain(|item| {
-            item.get("manifest_path")
+            item.get(MANIFEST_PATH_FIELD)
                 .and_then(serde_json::Value::as_str)
                 .is_some_and(|mp| {
                     let manifest_dir = Path::new(mp).parent().unwrap_or_else(|| Path::new(mp));

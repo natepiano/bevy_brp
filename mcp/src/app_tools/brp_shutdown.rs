@@ -10,6 +10,7 @@ use sysinfo::Signal;
 use sysinfo::System;
 use tracing::debug;
 
+use super::constants::PID_FIELD;
 use super::process;
 use crate::brp_tools::BrpClient;
 use crate::brp_tools::JSON_RPC_ERROR_METHOD_NOT_FOUND;
@@ -59,9 +60,9 @@ pub struct ShutdownResult {
 /// Result of a shutdown operation
 enum ShutdownOutcome {
     /// Graceful shutdown via `bevy_brp_extras` succeeded
-    CleanShutdown { pid: u32 },
+    CleanShutdown { process_id: u32 },
     /// Process was killed using system signal - typically when extras plugin is not available
-    ProcessKilled { pid: u32 },
+    ProcessKilled { process_id: u32 },
     /// Process was not running
     NotRunning,
     /// An error occurred during shutdown
@@ -83,15 +84,15 @@ async fn shutdown_app(app_name: &str, port: Port) -> ShutdownOutcome {
         Ok(Some(result)) => {
             debug!("Graceful shutdown succeeded");
             // Extract PID from the BRP response
-            let pid = result
-                .get("pid")
+            let process_id = result
+                .get(PID_FIELD)
                 .and_then(serde_json::Value::as_u64)
                 .and_then(|p| u32::try_from(p).ok())
                 .unwrap_or_else(|| {
                     debug!("Warning: PID not found in BRP extras shutdown response");
                     0
                 });
-            ShutdownOutcome::CleanShutdown { pid }
+            ShutdownOutcome::CleanShutdown { process_id }
         },
         Ok(None) => {
             debug!("Graceful shutdown failed, falling back to process kill");
@@ -115,7 +116,7 @@ fn handle_kill_process_fallback(
     match kill_process(app_name, port) {
         Ok(Some(pid)) => {
             debug!("Successfully killed process {app_name} with PID {pid}");
-            ShutdownOutcome::ProcessKilled { pid }
+            ShutdownOutcome::ProcessKilled { process_id: pid }
         },
         Ok(None) => {
             if brp_error.is_some() {
@@ -148,26 +149,26 @@ async fn handle_impl(params: ShutdownParams) -> Result<ShutdownResult> {
 
     // Build and return typed response
     match result {
-        ShutdownOutcome::CleanShutdown { pid } => Ok(ShutdownResult::new(
+        ShutdownOutcome::CleanShutdown { process_id } => Ok(ShutdownResult::new(
             params.app_name.clone(),
-            pid,
+            process_id,
             "clean_shutdown".to_string(),
             params.port.0,
             None,
         )
         .with_message_template(format!(
-            "Successfully initiated graceful shutdown for '{}' (PID: {pid}) via bevy_brp_extras",
+            "Successfully initiated graceful shutdown for '{}' (PID: {process_id}) via bevy_brp_extras",
             params.app_name
         ))),
-        ShutdownOutcome::ProcessKilled { pid } => Ok(ShutdownResult::new(
+        ShutdownOutcome::ProcessKilled { process_id } => Ok(ShutdownResult::new(
             params.app_name.clone(),
-            pid,
+            process_id,
             "process_kill".to_string(),
             params.port.0,
             Some("Consider adding bevy_brp_extras for clean shutdown".to_string()),
         )
         .with_message_template(format!(
-            "Terminated process '{}' (PID: {pid}) using kill",
+            "Terminated process '{}' (PID: {process_id}) using kill",
             params.app_name
         ))),
         ShutdownOutcome::NotRunning => Err(Error::Structured {
@@ -230,19 +231,21 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
             debug!("No process found listening on port {port}, falling back to name-only lookup");
             None
         },
-        |pid| {
-            debug!("Found PID {pid} listening on port {port}");
+        |process_id| {
+            debug!("Found PID {process_id} listening on port {port}");
             // Verify the process name matches to ensure we're killing the right process
-            system.process(sysinfo::Pid::from_u32(pid)).map_or_else(|| {
-            debug!("PID {pid} not found in process list");
+            system
+                .process(sysinfo::Pid::from_u32(process_id))
+                .map_or_else(|| {
+            debug!("PID {process_id} not found in process list");
             None
         }, |process| {
             if process::process_matches_name_exact(process, app_name) {
                 debug!("Verified process name matches: {}", process.name().to_string_lossy());
-                Some(pid)
+                Some(process_id)
             } else {
                 debug!(
-                    "Process name mismatch: expected '{app_name}', found '{}' for PID {pid}",
+                    "Process name mismatch: expected '{app_name}', found '{}' for PID {process_id}",
                     process.name().to_string_lossy()
                 );
                 None
@@ -252,18 +255,18 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
     );
 
     // If port-based lookup succeeded, kill that specific PID
-    if let Some(pid) = target_pid
-        && let Some(process) = system.process(sysinfo::Pid::from_u32(pid))
+    if let Some(process_id) = target_pid
+        && let Some(process) = system.process(sysinfo::Pid::from_u32(process_id))
     {
         if process.kill_with(Signal::Term).unwrap_or(false) {
-            debug!("Successfully killed process {app_name} (PID {pid}) via port lookup");
-            return Ok(Some(pid));
+            debug!("Successfully killed process {app_name} (PID {process_id}) via port lookup");
+            return Ok(Some(process_id));
         }
         return Err(error_stack::Report::new(Error::ProcessManagement(
             "Failed to terminate process".to_string(),
         ))
         .attach(format!("Process name: {app_name}"))
-        .attach(format!("PID: {pid}"))
+        .attach(format!("PID: {process_id}"))
         .attach(format!("Port: {port}"))
         .attach("Failed to send SIGTERM signal"));
     }

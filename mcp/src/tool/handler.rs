@@ -49,7 +49,7 @@ pub struct ToolResult<T, P = ()> {
 /// This keeps request decoding inside the `tool` subsystem while still supporting
 /// custom `call()` implementations in sibling modules.
 pub(super) fn call_with_typed_params<O, P, F, Fut>(
-    ctx: HandlerContext,
+    context: HandlerContext,
     f: F,
 ) -> HandlerResult<'static, ToolResult<O, P>>
 where
@@ -59,8 +59,8 @@ where
     Fut: Future<Output = Result<O>> + Send + 'static,
 {
     Box::pin(async move {
-        let params: P = super::extract_parameter_values(&ctx)?;
-        let result = f(ctx, params.clone()).await;
+        let params: P = super::extract_parameter_values(&context)?;
+        let result = f(context, params.clone()).await;
         Ok(ToolResult {
             result,
             params: Some(params),
@@ -131,11 +131,11 @@ pub trait ToolFn: Send + Sync {
     /// Default implementation extracts parameters and calls `handle_impl_with_context`
     fn call(
         &self,
-        ctx: HandlerContext,
+        context: HandlerContext,
     ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
-            let params: Self::Params = super::extract_parameter_values(&ctx)?;
-            let result = self.handle_impl_with_context(ctx, params).await;
+            let params: Self::Params = super::extract_parameter_values(&context)?;
+            let result = self.handle_impl_with_context(context, params).await;
             Ok(ToolResult {
                 result,
                 params: None, // Don't include params in response if we can't clone them
@@ -155,7 +155,7 @@ pub trait ToolFn: Send + Sync {
 pub trait ErasedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
-        ctx: HandlerContext,
+        context: HandlerContext,
     ) -> Pin<Box<dyn Future<Output = CallToolResult> + Send + 'a>>;
 }
 
@@ -163,15 +163,15 @@ pub trait ErasedToolFn: Send + Sync {
 impl<T: ToolFn> ErasedToolFn for T {
     fn call_erased<'a>(
         &'a self,
-        ctx: HandlerContext,
+        context: HandlerContext,
     ) -> Pin<Box<dyn Future<Output = CallToolResult> + Send + 'a>> {
         Box::pin(async move {
             // we're making a judgement call that we passed a reference to call()
 
-            let result = self.call(ctx.clone()).await;
+            let result = self.call(context.clone()).await;
             match result {
-                Ok(tool_result) => ctx.format_result(tool_result),
-                Err(e) => ctx.format_framework_error(e),
+                Ok(tool_result) => context.format_result(tool_result),
+                Err(e) => context.format_framework_error(e),
             }
         })
     }

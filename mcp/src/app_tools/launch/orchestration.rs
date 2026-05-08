@@ -30,19 +30,19 @@ fn prepare_launch_environment<T: config::LaunchConfigTrait>(
     target: &BevyTarget,
 ) -> Result<(Command, PathBuf, PathBuf, File)> {
     let manifest_dir = build::validate_manifest_directory(&target.manifest_path)?;
-    let cmd = config.build_command(target);
+    let command = config.build_command(target);
     let (log_file_path, log_file_for_redirect) = build::setup_launch_logging(
         config.target_name(),
         T::TARGET_TYPE,
         config.profile(),
-        &PathBuf::from(format!("{cmd:?}")),
+        &PathBuf::from(format!("{command:?}")),
         manifest_dir,
         config.port(),
         config.extra_log_info(target).as_deref(),
     )?;
 
     Ok((
-        cmd,
+        command,
         manifest_dir.to_path_buf(),
         log_file_path,
         log_file_for_redirect,
@@ -75,17 +75,17 @@ fn launch_instances<T: config::LaunchConfigTrait>(
         let mut instance_config = config.clone();
         instance_config.set_port(port);
 
-        let (cmd, manifest_dir, log_file_path, log_file_for_redirect) =
+        let (command, manifest_dir, log_file_path, log_file_for_redirect) =
             prepare_launch_environment(&instance_config, target)?;
 
-        let pid = process::launch_detached_process(
-            &cmd,
+        let process_id = process::launch_detached_process(
+            &command,
             &manifest_dir,
             log_file_for_redirect,
             config.target_name(),
         )?;
 
-        all_pids.push(pid);
+        all_pids.push(process_id);
         all_log_files.push(log_file_path);
         all_ports.push(port.0);
     }

@@ -34,17 +34,17 @@ impl TypeKindBuilder for ArrayMutationBuilder {
     where
         Self: 'a;
 
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
-        let schema = ctx.require_registry_schema()?;
+    fn collect_children(&self, context: &RecursionContext) -> Result<Self::Iter<'_>> {
+        let schema = context.require_registry_schema()?;
 
         // Extract element type from schema
         let Some(element_type) = schema.get_type(SchemaField::Items) else {
             return Err(Error::SchemaProcessing {
                 message:   format!(
                     "Failed to extract element type from schema for array: {}",
-                    ctx.type_name()
+                    context.type_name()
                 ),
-                type_name: Some(ctx.type_name().to_string()),
+                type_name: Some(context.type_name().to_string()),
                 operation: Some("extract_items_type".to_string()),
                 details:   None,
             }
@@ -56,14 +56,14 @@ impl TypeKindBuilder for ArrayMutationBuilder {
         Ok(vec![PathKind::ArrayElement {
             index:       0,
             type_name:   element_type,
-            parent_type: ctx.type_name().clone(),
+            parent_type: context.type_name().clone(),
         }]
         .into_iter())
     }
 
     fn assemble_from_children(
         &self,
-        ctx: &RecursionContext,
+        context: &RecursionContext,
         children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         // Get the single element at index 0
@@ -74,14 +74,14 @@ impl TypeKindBuilder for ArrayMutationBuilder {
             .ok_or_else(|| {
                 BuilderError::SystemError(Error::InvalidState(format!(
                 "Protocol violation: Array {} missing element at index 0. Available keys: {:?}",
-                ctx.type_name(),
+                context.type_name(),
                 children.keys().collect::<Vec<_>>()
             )).into())
             })?
             .to_value();
 
         // Create array with appropriate size
-        let array_size = Self::extract_array_size(ctx.type_name());
+        let array_size = Self::extract_array_size(context.type_name());
         let size = array_size.unwrap_or(DEFAULT_ARRAY_EXAMPLE_LENGTH);
 
         // Create array filled with the element example

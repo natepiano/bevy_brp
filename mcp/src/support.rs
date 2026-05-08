@@ -121,7 +121,7 @@ pub(crate) trait JsonObjectAccess {
     /// and extracts "`SomeType`" as a `BrpTypeName`.
     fn extract_field_type(&self) -> Option<BrpTypeName> {
         self.get_field(SchemaField::Type)
-            .and_then(|ty| ty.get_field(SchemaField::Ref))
+            .and_then(|field_type| field_type.get_field(SchemaField::Ref))
             .and_then(Value::as_str)
             .and_then(|ref_str| ref_str.strip_prefix(SCHEMA_REF_PREFIX))
             .map(BrpTypeName::from)

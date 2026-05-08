@@ -55,7 +55,7 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
     let tool_fn_attr = input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("tool_fn"))
+        .find(|attribute| attribute.path().is_ident("tool_fn"))
         .ok_or_else(|| {
             Error::new_spanned(
                 &input,
@@ -102,7 +102,7 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
 
     // Generate the implementation based on whether context is needed
     let handle_impl_call = if with_context.includes_context() {
-        quote! { handle_impl(ctx.clone(), params.clone()).await }
+        quote! { handle_impl(context.clone(), params.clone()).await }
     } else {
         quote! { handle_impl(params.clone()).await }
     };
@@ -112,9 +112,9 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
             type Output = #output_type;
             type Params = #params_type;
 
-            fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
+            fn call(&self, context: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
                 Box::pin(async move {
-                    let params: Self::Params = crate::tool::extract_parameter_values(&ctx)?;
+                    let params: Self::Params = crate::tool::extract_parameter_values(&context)?;
                     let result = #handle_impl_call;
                     Ok(ToolResult {
                         result,
