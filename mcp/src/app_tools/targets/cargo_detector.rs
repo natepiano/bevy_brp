@@ -40,7 +40,7 @@ pub(super) enum BrpLevel {
     /// No BRP support detected
     None,
     /// Uses `RemotePlugin` only (core BRP, no extras)
-    BrpOnly,
+    Core,
     /// Uses `BrpExtrasPlugin` (full extras support: screenshots, input, shutdown, etc.)
     Extras,
 }
@@ -50,7 +50,7 @@ impl BrpLevel {
     pub(super) const fn as_str(self) -> &'static str {
         match self {
             Self::None => "none",
-            Self::BrpOnly => "brp_only",
+            Self::Core => "brp_only",
             Self::Extras => "extras",
         }
     }
@@ -75,7 +75,7 @@ impl TargetType {
 pub struct BevyTarget {
     /// Name of the target
     pub name:           String,
-    /// Type of target (App or Example)
+    /// Type of target (`App` or `Example`)
     pub target_type:    TargetType,
     /// Package name (for examples, this is the package containing the example)
     pub package_name:   String,
@@ -307,7 +307,7 @@ impl CargoDetector {
         if has_extras {
             BrpLevel::Extras
         } else if has_remote {
-            BrpLevel::BrpOnly
+            BrpLevel::Core
         } else {
             BrpLevel::None
         }

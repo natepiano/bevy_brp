@@ -120,7 +120,7 @@ pub fn extract_spawn_insert_example(
 ///
 /// When `example` is `Example::NotApplicable`, only `agent_guidance` is included.
 ///
-/// Note: Only derives Debug and Clone (NOT Deserialize) because we implement
+/// Note: Only derives `Debug` and `Clone` (NOT `Deserialize`) because we implement
 /// `Deserialize` manually below with a stub that returns an error.
 #[derive(Debug, Clone)]
 pub enum SpawnInsertExample {

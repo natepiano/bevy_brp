@@ -150,8 +150,8 @@ pub(super) enum KnowledgeAction {
     /// enum variant selection).
     UseExampleAndRecurse(Value),
 
-    /// No hardcoded knowledge found - assemble example from children normally
-    NoHardcodedKnowledge,
+    /// Missing hardcoded knowledge - assemble example from children normally
+    Missing,
 }
 
 impl TypeKnowledge {

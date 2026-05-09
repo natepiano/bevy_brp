@@ -69,7 +69,7 @@ impl TypeKindBuilder for ListMutationBuilder {
         let element_example = children
             .get("0")
             .ok_or_else(|| {
-                BuilderError::SystemError(Error::InvalidState(format!(
+                BuilderError::System(Error::InvalidState(format!(
                 "Protocol violation: List {} missing element at index 0. Available keys: {:?}",
                 context.type_name(),
                 children.keys().map(|k| &**k).collect::<Vec<_>>()

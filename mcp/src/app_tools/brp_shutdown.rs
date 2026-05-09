@@ -60,7 +60,7 @@ pub struct ShutdownResult {
 /// Result of a shutdown operation
 enum ShutdownOutcome {
     /// Graceful shutdown via `bevy_brp_extras` succeeded
-    CleanShutdown { process_id: u32 },
+    Clean { process_id: u32 },
     /// Process was killed using system signal - typically when extras plugin is not available
     ProcessKilled { process_id: u32 },
     /// Process was not running
@@ -92,7 +92,7 @@ async fn shutdown_app(app_name: &str, port: Port) -> ShutdownOutcome {
                     debug!("Warning: PID not found in BRP extras shutdown response");
                     0
                 });
-            ShutdownOutcome::CleanShutdown { process_id }
+            ShutdownOutcome::Clean { process_id }
         },
         Ok(None) => {
             debug!("Graceful shutdown failed, falling back to process kill");
@@ -149,7 +149,7 @@ async fn handle_impl(params: ShutdownParams) -> Result<ShutdownResult> {
 
     // Build and return typed response
     match result {
-        ShutdownOutcome::CleanShutdown { process_id } => Ok(ShutdownResult::new(
+        ShutdownOutcome::Clean { process_id } => Ok(ShutdownResult::new(
             params.app_name.clone(),
             process_id,
             "clean_shutdown".to_string(),

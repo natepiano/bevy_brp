@@ -94,7 +94,7 @@ impl TypeKindBuilder for MapMutationBuilder {
         children: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
         let Some(key_example) = children.get(SchemaField::Key.as_ref()) else {
-            return Err(BuilderError::SystemError(
+            return Err(BuilderError::System(
                 Error::InvalidState(format!(
                     "Protocol violation: Map type {} missing required 'key' child example",
                     context.type_name()
@@ -104,7 +104,7 @@ impl TypeKindBuilder for MapMutationBuilder {
         };
 
         let Some(value_example) = children.get(SchemaField::Value.as_ref()) else {
-            return Err(BuilderError::SystemError(
+            return Err(BuilderError::System(
                 Error::InvalidState(format!(
                     "Protocol violation: Map type {} missing required 'value' child example",
                     context.type_name()
@@ -128,7 +128,7 @@ impl TypeKindBuilder for MapMutationBuilder {
             Value::Null => "null".to_string(),
             other => {
                 // This should not happen since we checked for complex keys above
-                return Err(BuilderError::SystemError(
+                return Err(BuilderError::System(
                     Error::schema_processing_for_type(
                         context.type_name(),
                         "serialize_map_key",

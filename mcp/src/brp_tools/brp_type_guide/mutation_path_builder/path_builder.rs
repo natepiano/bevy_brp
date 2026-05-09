@@ -105,7 +105,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
                 )]);
             },
             KnowledgeAction::UseExampleAndRecurse(example) => Some(Example::Json(example)),
-            KnowledgeAction::NoHardcodedKnowledge => None,
+            KnowledgeAction::Missing => None,
         };
 
         // Process all children and collect paths
@@ -171,7 +171,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
         match parent_status {
             Mutability::NotMutable => {
                 let reason = mutability_reason.ok_or_else(|| {
-                    BuilderError::SystemError(Report::new(Error::InvalidState(
+                    BuilderError::System(Report::new(Error::InvalidState(
                         "NotMutable status must have a reason".to_string(),
                     )))
                 })?;
@@ -229,7 +229,7 @@ pub(super) fn recurse_mutation_paths(
         >::build_not_mutable_path(
             context, reason
         )]),
-        Err(BuilderError::SystemError(e)) => Err(e),
+        Err(BuilderError::System(e)) => Err(e),
     }
 }
 
@@ -335,7 +335,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         let child_items = self
             .inner
             .collect_children(context)
-            .map_err(BuilderError::SystemError)?;
+            .map_err(BuilderError::System)?;
         let mut all_paths = vec![];
         let mut paths_to_expose = vec![]; // Paths that should be included in final result
         let mut child_examples = HashMap::<MutationPathDescriptor, Example>::new();

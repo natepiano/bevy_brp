@@ -327,9 +327,9 @@ enum WrapperEnum {
     #[default]
     Empty,
     /// Wrapper with nested enum - should recurse into `SimpleNestedEnum`'s paths
-    WithSimpleEnum(SimpleNestedEnum),
-    /// Option wrapper - should recurse through Option<SimpleNestedEnum>
-    WithOptionalEnum(Option<SimpleNestedEnum>),
+    Simple(SimpleNestedEnum),
+    /// Option wrapper - should recurse through `Option<SimpleNestedEnum>`
+    Optional(Option<SimpleNestedEnum>),
 }
 
 /// Test enum for verifying variant chain propagation through non-enum intermediate levels
@@ -375,11 +375,11 @@ enum TestEnumWithArray {
     #[default]
     Empty,
     /// Variant with array of `Vec2`
-    WithVec2Array([Vec2; 3]),
+    Vec2([Vec2; 3]),
     /// Variant with array of `f32`
-    WithFloatArray([f32; 4]),
+    Float([f32; 4]),
     /// Struct variant with array field
-    WithStructArray { points: [Vec3; 2], scale: f32 },
+    Struct { points: [Vec3; 2], scale: f32 },
 }
 
 /// Test component with array field
@@ -470,7 +470,7 @@ enum TestMixedMutabilityEnum {
     #[default]
     None,
     /// Variant with mixed mutability struct
-    WithMixed(TestMixedMutabilityCore),
+    Core(TestMixedMutabilityCore),
     /// Variant with multiple fields including mixed
     Multiple {
         name:  String,
@@ -1130,7 +1130,7 @@ fn spawn_enum_test_entities(commands: &mut Commands) {
     ));
 
     commands.spawn((
-        TestEnumWithArray::WithVec2Array([
+        TestEnumWithArray::Vec2([
             Vec2::new(0.0, 0.0),
             Vec2::new(1.0, 1.0),
             Vec2::new(2.0, 2.0),
@@ -1167,12 +1167,12 @@ fn spawn_enum_test_entities(commands: &mut Commands) {
     ));
 
     commands.spawn((
-        WrapperEnum::WithSimpleEnum(SimpleNestedEnum::WithVec2(Vec2::new(50.0, 75.0))),
+        WrapperEnum::Simple(SimpleNestedEnum::WithVec2(Vec2::new(50.0, 75.0))),
         Name::new("WrapperEnumSimpleEntity"),
     ));
 
     commands.spawn((
-        WrapperEnum::WithOptionalEnum(Some(SimpleNestedEnum::WithTransform(
+        WrapperEnum::Optional(Some(SimpleNestedEnum::WithTransform(
             Transform::from_rotation(Quat::from_rotation_y(1.0)),
         ))),
         Name::new("WrapperEnumOptionalEntity"),

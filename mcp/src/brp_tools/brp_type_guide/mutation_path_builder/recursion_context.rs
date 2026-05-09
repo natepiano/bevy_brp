@@ -314,12 +314,12 @@ impl RecursionContext {
                             // IndexedElement should only occur with Tuple signatures
                             // create_paths_for_signature() creates StructField for Struct, nothing
                             // for Unit
-                            return Err(BuilderError::SystemError(Report::new(
-                                Error::InvalidState(format!(
+                            return Err(BuilderError::System(Report::new(Error::InvalidState(
+                                format!(
                                     "IndexedElement path kind with {signature:?} variant signature for type {}. This indicates a bug in path generation logic.",
                                     parent_type.display_name()
-                                )),
-                            )));
+                                ),
+                            ))));
                         },
                     }
                 }
@@ -353,14 +353,14 @@ impl RecursionContext {
             },
             None => {
                 // No knowledge - proceed with normal processing
-                Ok(KnowledgeAction::NoHardcodedKnowledge)
+                Ok(KnowledgeAction::Missing)
             },
         }
     }
 
-    /// Creates a `NoMutableChildren` error with this context's type name
+    /// Creates an `ImmutableChildren` error with this context's type name
     pub(super) fn create_no_mutable_children_error(&self) -> NotMutableReason {
-        NotMutableReason::NoMutableChildren {
+        NotMutableReason::ImmutableChildren {
             parent_type: self.type_name().clone(),
         }
     }

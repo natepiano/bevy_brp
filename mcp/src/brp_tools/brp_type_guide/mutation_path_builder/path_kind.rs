@@ -107,7 +107,7 @@ impl PathKind {
     /// matches the parent type (indicating redundancy that should be eliminated in description)
     ///
     /// Example: For path `.0.z` where `parent_type` is "Xyza" and `applicable_variants` is
-    /// [`Color::Xyza`], returns Some(&VariantName) to enable integrated description
+    /// [`Color::Xyza`], returns `Some(&VariantName)` to enable integrated description
     /// "Mutate the z field of `Color::Xyza` variant" instead of redundant
     /// "Mutate the z field of `Xyza` within `Color::Xyza` variant"
     fn single_variant_matching_parent(
@@ -181,7 +181,7 @@ impl PathKind {
             type_name,
             ..
         } = self
-            && let OptionClassification::Option { .. } = parent_type.into()
+            && let OptionClassification::Wrapped { .. } = parent_type.into()
         {
             // Integrated description (no suffix): Option<T> element at index 0.
             let value_short = type_name.short_name();
@@ -214,7 +214,7 @@ impl PathKind {
                 type_name,
                 ..
             } => {
-                if let OptionClassification::Option { inner_type } = type_name.into() {
+                if let OptionClassification::Wrapped { inner_type } = type_name.into() {
                     let inner_short = inner_type.short_name();
                     format!("Set {field_name} to None or Some({inner_short})")
                 } else {

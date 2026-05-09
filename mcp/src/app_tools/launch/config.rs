@@ -19,11 +19,11 @@ use crate::app_tools::targets::TargetType;
 use crate::brp_tools::Port;
 use crate::error::Result;
 
-/// Marker type for App launch configuration
+/// Marker type for `App` launch configuration
 #[derive(Clone)]
 pub(super) struct App;
 
-/// Marker type for Example launch configuration
+/// Marker type for `Example` launch configuration
 #[derive(Clone)]
 pub(super) struct Example;
 

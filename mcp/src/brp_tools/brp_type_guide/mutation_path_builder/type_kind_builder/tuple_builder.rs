@@ -89,7 +89,7 @@ impl TypeKindBuilder for TupleMutationBuilder {
         // Check if this is a single-element Handle wrapper
         if elements.len() == 1 && elements[0].is_handle() {
             return Err(BuilderError::NotMutable(
-                NotMutableReason::NonMutableHandle {
+                NotMutableReason::ImmutableHandle {
                     container_type: context.type_name().clone(),
                     element_type:   elements[0].clone(),
                 },

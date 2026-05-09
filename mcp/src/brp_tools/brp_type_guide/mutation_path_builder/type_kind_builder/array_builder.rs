@@ -72,7 +72,7 @@ impl TypeKindBuilder for ArrayMutationBuilder {
         let element_example = children
             .get("0")
             .ok_or_else(|| {
-                BuilderError::SystemError(Error::InvalidState(format!(
+                BuilderError::System(Error::InvalidState(format!(
                 "Protocol violation: Array {} missing element at index 0. Available keys: {:?}",
                 context.type_name(),
                 children.keys().collect::<Vec<_>>()

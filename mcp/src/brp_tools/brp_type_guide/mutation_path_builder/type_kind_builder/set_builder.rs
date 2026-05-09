@@ -64,7 +64,7 @@ impl TypeKindBuilder for SetMutationBuilder {
     ) -> std::result::Result<Value, BuilderError> {
         // At this point, children contains a COMPLETE example for the item type
         let Some(item_example) = children.get(SchemaField::Items.as_ref()) else {
-            return Err(BuilderError::SystemError(
+            return Err(BuilderError::System(
                 Error::InvalidState(format!(
                     "Protocol violation: Set type {} missing required 'items' child example",
                     context.type_name()

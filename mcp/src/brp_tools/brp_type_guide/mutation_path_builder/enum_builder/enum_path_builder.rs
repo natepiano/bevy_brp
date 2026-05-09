@@ -136,10 +136,10 @@ pub(super) fn process_enum(
             // Use this example but still process variants
             Example::Json(example)
         },
-        KnowledgeAction::NoHardcodedKnowledge => {
+        KnowledgeAction::Missing => {
             // Use preferred example from processed variants
             select_preferred_example(&enum_examples).ok_or_else(|| {
-                BuilderError::SystemError(Report::new(Error::InvalidState(format!(
+                BuilderError::System(Report::new(Error::InvalidState(format!(
                     "Enum {} has no valid example: no knowledge and no mutable variants",
                     context.type_name()
                 ))))
@@ -810,8 +810,8 @@ fn build_enum_mutability_reason(
             ))
         },
         Mutability::NotMutable => {
-            // Use NoMutableChildren variant instead of raw JSON
-            Some(NotMutableReason::NoMutableChildren {
+            // Use `ImmutableChildren` variant instead of raw JSON
+            Some(NotMutableReason::ImmutableChildren {
                 parent_type: type_name,
             })
         },

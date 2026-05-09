@@ -42,7 +42,7 @@ use crate::brp_tools::brp_type_guide::constants::PARTIALLY_MUTABLE_FIELD;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum NotMutableReason {
     /// Container type has non-mutable element type
-    NonMutableHandle {
+    ImmutableHandle {
         container_type: BrpTypeName,
         element_type:   BrpTypeName,
     },
@@ -53,7 +53,7 @@ pub(super) enum NotMutableReason {
     /// `HashMap` or `HashSet` with complex (non-primitive) key type that cannot be mutated via BRP
     ComplexCollectionKey(BrpTypeName),
     /// All child paths are `NotMutable`
-    NoMutableChildren { parent_type: BrpTypeName },
+    ImmutableChildren { parent_type: BrpTypeName },
     /// Leaf type registered in schema but has no hardcoded example value
     NoExampleAvailable(BrpTypeName),
     /// Some children are mutable, others are not (results in `PartiallyMutable`)
@@ -136,7 +136,7 @@ impl NotMutableReason {
 impl Display for NotMutableReason {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NonMutableHandle {
+            Self::ImmutableHandle {
                 container_type,
                 element_type,
             } => write!(
@@ -153,7 +153,7 @@ impl Display for NotMutableReason {
                 f,
                 "HashMap `{type_name}` has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet"
             ),
-            Self::NoMutableChildren { parent_type } => {
+            Self::ImmutableChildren { parent_type } => {
                 write!(f, "`{parent_type}` has no mutable child paths")
             },
             Self::NoExampleAvailable(type_name) => write!(
@@ -172,11 +172,11 @@ impl Display for NotMutableReason {
 impl From<&NotMutableReason> for Option<Value> {
     fn from(reason: &NotMutableReason) -> Self {
         match reason {
-            NotMutableReason::NonMutableHandle { .. }
+            NotMutableReason::ImmutableHandle { .. }
             | NotMutableReason::NotInRegistry(_)
             | NotMutableReason::RecursionLimitExceeded(_)
             | NotMutableReason::ComplexCollectionKey(_)
-            | NotMutableReason::NoMutableChildren { .. }
+            | NotMutableReason::ImmutableChildren { .. }
             | NotMutableReason::NoExampleAvailable(_) => Some(Value::String(format!("{reason}"))),
             // PartialChildMutability returns structured JSON
             NotMutableReason::PartialChildMutability {

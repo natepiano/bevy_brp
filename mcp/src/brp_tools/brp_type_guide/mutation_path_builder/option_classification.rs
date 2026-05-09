@@ -13,12 +13,12 @@ use crate::brp_tools::brp_type_guide::BrpTypeName;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum OptionClassification {
-    Option { inner_type: BrpTypeName },
+    Wrapped { inner_type: BrpTypeName },
     Regular(BrpTypeName),
 }
 
 impl OptionClassification {
-    pub(super) const fn is_option(&self) -> bool { matches!(self, Self::Option { .. }) }
+    pub(super) const fn is_option(&self) -> bool { matches!(self, Self::Wrapped { .. }) }
 
     fn extract_option_inner(type_name: &BrpTypeName) -> Option<BrpTypeName> {
         let type_str = type_name.as_str();
@@ -36,7 +36,7 @@ impl From<&BrpTypeName> for OptionClassification {
     fn from(type_name: &BrpTypeName) -> Self {
         Self::extract_option_inner(type_name).map_or_else(
             || Self::Regular(type_name.clone()),
-            |inner_type| Self::Option { inner_type },
+            |inner_type| Self::Wrapped { inner_type },
         )
     }
 }
