@@ -22,11 +22,13 @@ pub struct SetTracingLevelParams {
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct SetTracingLevelResult {
     /// The new tracing level that was set
+    #[serde(rename = "tracing_level")]
     #[to_metadata]
-    tracing_level:    String,
+    level:            String,
     /// The log file where trace output is written
+    #[serde(rename = "tracing_log_file")]
     #[to_metadata]
-    tracing_log_file: String,
+    log_file:         String,
     /// Message template for formatting responses
     #[to_message(message_template = "Set tracing level to {tracing_level}")]
     message_template: String,
@@ -60,11 +62,11 @@ impl ToolFn for SetTracingLevel {
 
         // Get the actual trace log path
         let log_path = TracingLevel::get_trace_log_path();
-        let tracing_log_file = log_path.to_string_lossy().to_string();
+        let log_file = log_path.to_string_lossy().to_string();
 
         Ok(SetTracingLevelResult::new(
             tracing_level.as_str().to_string(),
-            tracing_log_file,
+            log_file,
         ))
     }
 }

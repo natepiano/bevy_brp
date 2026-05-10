@@ -81,11 +81,13 @@ pub struct ReadLogResult {
     #[to_metadata]
     file_path:           String,
     /// Size of the file in bytes
+    #[serde(rename = "size_bytes")]
     #[to_metadata]
-    size_bytes:          u64,
+    bytes:               u64,
     /// Human-readable file size
+    #[serde(rename = "size_human")]
     #[to_metadata]
-    size_human:          String,
+    human:               String,
     /// Number of lines read
     #[to_metadata]
     lines_read:          usize,

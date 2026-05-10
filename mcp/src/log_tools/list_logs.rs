@@ -50,7 +50,10 @@ pub struct ListLogs;
     reason = "ToolFn trait requires async handler signature"
 )]
 async fn handle_impl(params: ListLogsParams) -> Result<ListLogResult> {
-    let logs = list_log_files(params.app_name.as_deref(), params.verbose)?;
+    let logs = list_log_files(
+        params.app_name.as_deref(),
+        LogDetail::from(params.verbose.unwrap_or(false)),
+    )?;
     Ok(ListLogResult::new(
         logs.clone(),
         support::get_log_directory().display().to_string(),
@@ -60,7 +63,7 @@ async fn handle_impl(params: ListLogsParams) -> Result<ListLogResult> {
 
 fn list_log_files(
     app_name_filter: Option<&str>,
-    verbose: Option<bool>,
+    log_detail: LogDetail,
 ) -> Result<Vec<LogFileInfo>> {
     // Use the iterator to get all log files with optional filter
     let filter = |entry: &LogFileEntry| -> bool {
@@ -79,11 +82,10 @@ fn list_log_files(
     });
 
     // Convert to LogFileInfo structs
-    let use_verbose = verbose.unwrap_or(false);
     let log_infos: Vec<LogFileInfo> = log_entries
         .into_iter()
         .map(|entry| {
-            if use_verbose {
+            if log_detail.is_verbose() {
                 let size_bytes = entry.metadata.len();
                 let modified = entry.metadata.modified().ok().map(|t| {
                     chrono::DateTime::<chrono::Local>::from(t)
@@ -120,6 +122,22 @@ fn list_log_files(
         .collect();
 
     Ok(log_infos)
+}
+
+#[derive(Clone, Copy)]
+enum LogDetail {
+    Minimal,
+    Verbose,
+}
+
+impl LogDetail {
+    const fn is_verbose(self) -> bool { matches!(self, Self::Verbose) }
+}
+
+impl From<bool> for LogDetail {
+    fn from(value: bool) -> Self {
+        if value { Self::Verbose } else { Self::Minimal }
+    }
 }
 
 /// Individual log file entry

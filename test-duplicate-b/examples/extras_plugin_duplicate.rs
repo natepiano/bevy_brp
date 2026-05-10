@@ -30,8 +30,19 @@ struct KeyboardInputHistory {
     press_time:       Option<Instant>,
     /// Duration between press and release in milliseconds
     last_duration_ms: Option<u64>,
-    /// Whether the last key press has completed
-    completed:        bool,
+    /// Completion state for the last key press
+    completion:       CompletionState,
+}
+
+#[derive(Default)]
+enum CompletionState {
+    Completed,
+    #[default]
+    Pending,
+}
+
+impl CompletionState {
+    const fn is_completed(&self) -> bool { matches!(self, Self::Completed) }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -211,7 +222,7 @@ fn track_keyboard_input(
         match event.state {
             bevy::input::ButtonState::Pressed => {
                 info!("Key pressed: {key_str}");
-                history.completed = false;
+                history.completion = CompletionState::Pending;
                 history.press_time = Some(Instant::now());
 
                 if !history.active_keys.contains(&key_str) {
@@ -244,7 +255,7 @@ fn track_keyboard_input(
                 }
 
                 if history.active_keys.is_empty() && !history.last_keys.is_empty() {
-                    history.completed = true;
+                    history.completion = CompletionState::Completed;
                 }
             },
         }
@@ -287,7 +298,7 @@ fn update_keyboard_display(
             "In progress...".to_string()
         };
 
-        let status = if history.completed {
+        let status = if history.completion.is_completed() {
             "Completed"
         } else if !history.active_keys.is_empty() {
             "Keys pressed"

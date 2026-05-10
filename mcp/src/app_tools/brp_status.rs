@@ -103,6 +103,10 @@ impl From<BrpPortStatus> for bool {
     fn from(value: BrpPortStatus) -> Self { matches!(value, BrpPortStatus::Responding) }
 }
 
+impl BrpPortStatus {
+    const fn is_responding(self) -> bool { matches!(self, Self::Responding) }
+}
+
 /// Error when process is running but BRP not responding
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 struct BrpNotRespondingError {
@@ -212,12 +216,12 @@ fn extract_app_name(process: &Process) -> String {
 }
 
 async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
-    let brp_responsive = check_brp_on_port(port).await?;
+    let brp_port_status = check_brp_on_port(port).await?;
     let mut system = System::new_all();
     system.refresh_processes(ProcessesToUpdate::All, true);
 
     if let Some(process_id) = process::get_pid_for_port(port) {
-        return resolve_pid_on_port(&system, app_name, port, brp_responsive, process_id);
+        return resolve_pid_on_port(&system, app_name, port, brp_port_status, process_id);
     }
 
     if let Some(process_id) = find_exact_match_pid(&system, app_name) {
@@ -235,7 +239,7 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
         collect_similar_app_names(&system, app_name)
             .first()
             .cloned(),
-        brp_responsive,
+        brp_port_status,
         port,
     )
 }
@@ -244,13 +248,13 @@ fn resolve_pid_on_port(
     system: &System,
     app_name: &str,
     port: Port,
-    brp_responsive: bool,
+    brp_port_status: BrpPortStatus,
     process_id: u32,
 ) -> Result<StatusResult> {
     if let Some(process) = system.process(sysinfo::Pid::from_u32(process_id))
         && process::process_matches_name_exact(process, app_name)
     {
-        if brp_responsive {
+        if brp_port_status.is_responding() {
             return Ok(StatusResult::new(app_name.to_string(), process_id, port.0));
         }
 
@@ -263,25 +267,25 @@ fn resolve_pid_on_port(
         })?;
     }
 
-    build_missing_process_result(app_name, None, brp_responsive, port)
+    build_missing_process_result(app_name, None, brp_port_status, port)
 }
 
 fn build_missing_process_result(
     app_name: &str,
     similar_app_name: Option<String>,
-    brp_responsive: bool,
+    brp_port_status: BrpPortStatus,
     port: Port,
 ) -> Result<StatusResult> {
     let process_not_found_error = ProcessNotFoundError::new(
         app_name.to_string(),
         similar_app_name.clone(),
-        BrpPortStatus::from(brp_responsive),
+        brp_port_status,
         port.0,
     )
     .with_message_template(missing_process_message(
         app_name,
         similar_app_name.as_deref(),
-        brp_responsive,
+        brp_port_status,
         port,
     ));
 
@@ -293,26 +297,26 @@ fn build_missing_process_result(
 fn missing_process_message(
     app_name: &str,
     similar_app_name: Option<&str>,
-    brp_responsive: bool,
+    brp_port_status: BrpPortStatus,
     port: Port,
 ) -> String {
-    match (similar_app_name, brp_responsive) {
-        (Some(suggestion), true) => {
+    match (similar_app_name, brp_port_status) {
+        (Some(suggestion), BrpPortStatus::Responding) => {
             format!(
                 "Process '{app_name}' not found. Did you mean: {suggestion}? (BRP is responding on port {})",
                 port.0
             )
         },
-        (Some(suggestion), false) => {
+        (Some(suggestion), BrpPortStatus::NotResponding) => {
             format!("Process '{app_name}' not found. Did you mean: {suggestion}?")
         },
-        (None, true) => {
+        (None, BrpPortStatus::Responding) => {
             format!(
                 "Process '{app_name}' not found. BRP is responding on port {} - another process may be using it.",
                 port.0
             )
         },
-        (None, false) => {
+        (None, BrpPortStatus::NotResponding) => {
             format!(
                 "Process '{app_name}' not found and BRP is not responding on port {}.",
                 port.0
@@ -343,14 +347,14 @@ fn collect_similar_app_names(system: &System, app_name: &str) -> Vec<String> {
 }
 
 /// Check if BRP is responding on the given port
-async fn check_brp_on_port(port: Port) -> Result<bool> {
+async fn check_brp_on_port(port: Port) -> Result<BrpPortStatus> {
     // Retry with delays to account for BRP initialization timing
     for _ in 0..STATUS_MAX_RETRIES {
         let client = brp_tools::BrpClient::new(BrpMethod::WorldListComponents, port, None);
         match client.execute_raw().await {
             Ok(ResponseStatus::Success(_)) => {
                 // BRP is responding and working
-                return Ok(true);
+                return Ok(BrpPortStatus::Responding);
             },
             Ok(ResponseStatus::Error(_)) | Err(_) => {
                 // BRP not responding or returned an error, wait and retry
@@ -360,5 +364,5 @@ async fn check_brp_on_port(port: Port) -> Result<bool> {
     }
 
     // After all retries failed
-    Ok(false)
+    Ok(BrpPortStatus::NotResponding)
 }

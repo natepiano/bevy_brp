@@ -315,10 +315,10 @@ fn extract_tool_attr(attributes: &[Attribute]) -> ToolAttrs {
         brp_method: String::new(), // Required field
     };
 
-    let mut has_brp_tool = false;
+    let mut brp_tool_attribute = BrpToolAttribute::Missing;
     for attribute in attributes {
         if attribute.path().is_ident("brp_tool") {
-            has_brp_tool = true;
+            brp_tool_attribute = BrpToolAttribute::Present;
             drop(attribute.parse_nested_meta(|meta| {
                 if meta.path.is_ident("params") {
                     let value = meta.value()?;
@@ -343,9 +343,19 @@ fn extract_tool_attr(attributes: &[Attribute]) -> ToolAttrs {
 
     // Only validate if brp_tool attribute was present
     assert!(
-        !(has_brp_tool && tool_attrs.brp_method.trim().is_empty()),
+        !(brp_tool_attribute.is_present() && tool_attrs.brp_method.trim().is_empty()),
         "brp_tool attribute must include non-empty brp_method parameter"
     );
 
     tool_attrs
+}
+
+#[derive(Clone, Copy)]
+enum BrpToolAttribute {
+    Missing,
+    Present,
+}
+
+impl BrpToolAttribute {
+    const fn is_present(self) -> bool { matches!(self, Self::Present) }
 }

@@ -165,25 +165,44 @@ pub(crate) fn parse_to_message_attr(attribute: &Attribute) -> Option<String> {
 /// Generate response data field addition
 fn generate_response_data_field(
     field_name: &Ident,
+    response_field_name: &str,
     field_type: &Type,
     placement: &TokenStream,
     skip_if_none: SkipIfNonePolicy,
 ) -> TokenStream {
-    let field_name_str = field_name.to_string();
     let type_str = quote!(#field_type).to_string();
 
     // Handle Option types with skip_if_none
     if type_str.starts_with("Option <") && skip_if_none.skips_none() {
         quote! {
             if let Some(val) = &self.#field_name {
-                builder = builder.add_field_to(#field_name_str, val, #placement)?;
+                builder = builder.add_field_to(#response_field_name, val, #placement)?;
             }
         }
     } else {
         quote! {
-            builder = builder.add_field_to(#field_name_str, &self.#field_name, #placement)?;
+            builder = builder.add_field_to(#response_field_name, &self.#field_name, #placement)?;
         }
     }
+}
+
+fn serde_field_rename(field: &Field) -> Option<String> {
+    field
+        .attrs
+        .iter()
+        .filter(|attribute| attribute.path().is_ident("serde"))
+        .find_map(|attribute| {
+            let mut rename = None;
+            drop(attribute.parse_nested_meta(|meta| {
+                if meta.path.is_ident("rename") {
+                    let value = meta.value()?;
+                    let string: LitStr = value.parse()?;
+                    rename = Some(string.value());
+                }
+                Ok(())
+            }));
+            rename
+        })
 }
 
 /// Extract field data from struct fields
@@ -203,7 +222,7 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
         let mut source_path = None;
         let mut field_type_override = None;
         let mut skip_if_none = SkipIfNonePolicy::Keep;
-        let mut is_computed = false;
+        let mut computation_source = ComputationSource::Regular;
         let mut result_operation = None;
 
         for attr in &field.attrs {
@@ -226,7 +245,7 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
                     // Skip fields marked with to_call_info as we no longer need them
                 },
                 FieldAttributeKind::Computed => {
-                    is_computed = true;
+                    computation_source = ComputationSource::Computed;
                     parse_computed_attr(attr, &mut result_operation);
                 },
                 FieldAttributeKind::Message => {
@@ -239,11 +258,11 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
 
         // If we found result_operation in placement attrs, mark as computed
         if result_operation.is_some() {
-            is_computed = true;
+            computation_source = ComputationSource::Computed;
         }
 
         // Handle computed fields
-        if is_computed {
+        if computation_source.is_computed() {
             if let Some(operation) = result_operation {
                 computed_fields.push(ComputedField {
                     field_name: field_name.clone(),
@@ -257,7 +276,8 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
 
         // Only add placement info if there's a placement attribute
         if let Some(placement) = &placement {
-            let field_name_str = field_name.to_string();
+            let response_field_name =
+                serde_field_rename(field).unwrap_or_else(|| field_name.to_string());
             let skip_if_none_tokens = skip_if_none.tokens();
 
             let source_path_token = source_path
@@ -266,7 +286,7 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
 
             field_placements.push(quote! {
                 crate::tool::FieldPlacementInfo {
-                    field_name: #field_name_str,
+                    field_name: #response_field_name,
                     placement: #placement,
                     source_path: #source_path_token,
                     skip_if_none: #skip_if_none_tokens,
@@ -275,6 +295,7 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
 
             response_data_fields.push(generate_response_data_field(
                 field_name,
+                &response_field_name,
                 field_type,
                 placement,
                 skip_if_none,
@@ -289,6 +310,16 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
         regular_fields,
         message_template_field,
     }
+}
+
+#[derive(Clone, Copy)]
+enum ComputationSource {
+    Computed,
+    Regular,
+}
+
+impl ComputationSource {
+    const fn is_computed(self) -> bool { matches!(self, Self::Computed) }
 }
 
 pub(crate) struct FieldExtractionResult {

@@ -148,8 +148,19 @@ struct KeyboardInputHistory {
     press_time:           Option<Instant>,
     /// Duration between press and release in milliseconds
     last_duration_ms:     Option<u64>,
-    /// Whether the last key press has completed
-    completed:            bool,
+    /// Completion state for the last key press
+    completion:           CompletionState,
+}
+
+#[derive(Default, Reflect)]
+enum CompletionState {
+    Completed,
+    #[default]
+    Pending,
+}
+
+impl CompletionState {
+    const fn is_completed(&self) -> bool { matches!(self, Self::Completed) }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -225,7 +236,7 @@ struct TextInputContent {
 struct TestConfigResource {
     setting_a: f32,
     setting_b: String,
-    enabled:   bool,
+    enabled:   ToggleState,
 }
 
 /// Test resource for runtime statistics
@@ -234,7 +245,21 @@ struct TestConfigResource {
 struct RuntimeStatsResource {
     frame_count: u32,
     total_time:  f32,
-    debug_mode:  bool,
+    debug_mode:  RuntimeMode,
+}
+
+#[derive(Default, Reflect)]
+enum RuntimeMode {
+    Debug,
+    #[default]
+    Standard,
+}
+
+#[derive(Default, Reflect)]
+enum ToggleState {
+    #[default]
+    Disabled,
+    Enabled,
 }
 
 /// Simple `HashSet` test component with just strings
@@ -279,7 +304,7 @@ enum SimpleTestEnum {
 struct TestStructNoSerDe {
     value:   f32,
     name:    String,
-    enabled: bool,
+    enabled: ToggleState,
 }
 
 #[derive(Component, Default, Reflect)]
@@ -413,7 +438,7 @@ struct TestTupleField {
 /// Test tuple struct component
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
-struct TestTupleStruct(f32, String, bool);
+struct TestTupleStruct(f32, String, ToggleState);
 
 /// Test component with complex tuple types for testing tuple recursion
 #[derive(Component, Reflect)]
@@ -576,12 +601,12 @@ fn main() {
         .insert_resource(TestConfigResource {
             setting_a: 100.0,
             setting_b: "test config".to_string(),
-            enabled:   true,
+            enabled:   ToggleState::Enabled,
         })
         .insert_resource(RuntimeStatsResource {
             frame_count: 0,
             total_time:  0.0,
-            debug_mode:  false,
+            debug_mode:  RuntimeMode::Standard,
         })
         .insert_resource(MeshPickingSettings {
             require_markers:     false,
@@ -1016,7 +1041,7 @@ fn spawn_array_and_tuple_test_entities(commands: &mut Commands) {
     ));
 
     commands.spawn((
-        TestTupleStruct(42.0, "test".to_string(), true),
+        TestTupleStruct(42.0, "test".to_string(), ToggleState::Enabled),
         Name::new("TestTupleStructEntity"),
     ));
 
@@ -1778,7 +1803,7 @@ fn track_keyboard_input(
         match event.state {
             bevy::input::ButtonState::Pressed => {
                 info!("Key pressed: {key_str}");
-                history.completed = false;
+                history.completion = CompletionState::Pending;
 
                 // If this is the first key in a new combination, reset the combination tracking
                 if history.active_keys.is_empty() {
@@ -1815,7 +1840,7 @@ fn track_keyboard_input(
                     history.complete_modifiers =
                         collect_modifier_labels(&history.complete_combination);
 
-                    history.completed = true;
+                    history.completion = CompletionState::Completed;
                 }
             },
         }
@@ -1856,7 +1881,7 @@ fn update_keyboard_display(
             "In progress...".to_string()
         };
 
-        let status = if history.completed {
+        let status = if history.completion.is_completed() {
             "Completed"
         } else if !history.active_keys.is_empty() {
             "Keys pressed"

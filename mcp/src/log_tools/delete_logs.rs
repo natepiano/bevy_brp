@@ -32,11 +32,13 @@ pub struct DeleteLogsParams {
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct DeleteLogsResult {
     /// List of deleted filenames
+    #[serde(rename = "deleted_files")]
     #[to_metadata]
-    deleted_files:      Vec<String>,
+    files:              Vec<String>,
     /// Number of files deleted
+    #[serde(rename = "deleted_count")]
     #[to_metadata]
-    deleted_count:      usize,
+    count:              usize,
     /// App name filter that was applied (if any)
     #[to_metadata(skip_if_none)]
     app_name_filter:    Option<String>,
@@ -57,11 +59,11 @@ pub struct DeleteLogs;
     reason = "ToolFn trait requires async handler signature"
 )]
 async fn handle_impl(params: DeleteLogsParams) -> Result<DeleteLogsResult> {
-    let deleted_files = delete_log_files(params.app_name.as_deref(), params.older_than_seconds)?;
+    let files = delete_log_files(params.app_name.as_deref(), params.older_than_seconds)?;
 
     Ok(DeleteLogsResult::new(
-        deleted_files.clone(),
-        deleted_files.len(),
+        files.clone(),
+        files.len(),
         params.app_name.clone(),
         params.older_than_seconds,
     ))
@@ -71,7 +73,7 @@ fn delete_log_files(
     app_name_filter: Option<&str>,
     older_than_seconds: Option<u32>,
 ) -> Result<Vec<String>> {
-    let mut deleted_files = Vec::new();
+    let mut files = Vec::new();
 
     // Calculate cutoff time if age filter is specified
     let cutoff_time = older_than_seconds
@@ -111,9 +113,9 @@ fn delete_log_files(
     // Delete the files
     for entry in log_entries {
         if fs::remove_file(&entry.path).is_ok() {
-            deleted_files.push(entry.filename);
+            files.push(entry.filename);
         }
     }
 
-    Ok(deleted_files)
+    Ok(files)
 }

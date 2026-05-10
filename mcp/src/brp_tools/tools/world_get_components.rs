@@ -37,12 +37,14 @@ pub struct GetComponentsResult {
     result: Option<Value>,
 
     /// Count of components retrieved - computed from result.components object
+    #[serde(rename = "component_count")]
     #[to_metadata(result_operation = "count_components")]
-    component_count: usize,
+    components: usize,
 
     /// Count of errors if any components failed to retrieve
+    #[serde(rename = "error_count")]
     #[to_metadata(skip_if_none, result_operation = "count_errors")]
-    error_count: Option<usize>,
+    errors: Option<usize>,
 
     /// Message template for formatting responses
     #[to_message(message_template = "Retrieved {component_count} components")]

@@ -98,24 +98,64 @@ enum WindowSlot {
     Secondary,
 }
 
+#[derive(Clone, Copy, Default, Reflect)]
+enum ButtonPress {
+    Pressed,
+    #[default]
+    Released,
+}
+
+impl ButtonPress {
+    const fn is_pressed(&self) -> bool { matches!(self, Self::Pressed) }
+    const fn is_released(&self) -> bool { matches!(self, Self::Released) }
+}
+
+impl From<bool> for ButtonPress {
+    fn from(value: bool) -> Self {
+        if value { Self::Pressed } else { Self::Released }
+    }
+}
+
+#[derive(Clone, Copy, Default, Reflect)]
+enum GizmoState {
+    Active,
+    #[default]
+    Inactive,
+}
+
+impl GizmoState {
+    const fn is_active(&self) -> bool { matches!(self, Self::Active) }
+}
+
+#[derive(Clone, Copy, Default)]
+enum MinimizeState {
+    Done,
+    #[default]
+    Pending,
+}
+
+impl MinimizeState {
+    const fn is_done(&self) -> bool { matches!(self, Self::Done) }
+}
+
 #[derive(Default, Reflect)]
 struct ButtonState {
     duration:  f32,
-    pressed:   bool,
+    pressed:   ButtonPress,
     timestamp: f32,
 }
 
 impl ButtonState {
-    const fn set_pressed(&mut self, pressed: bool, current_time: f32) {
+    const fn set_pressed(&mut self, pressed: ButtonPress, current_time: f32) {
         self.pressed = pressed;
         self.timestamp = current_time;
-        if !pressed {
+        if self.pressed.is_released() {
             self.duration = 0.0;
         }
     }
 
     fn update_duration(&mut self, current_time: f32) {
-        if self.pressed {
+        if self.pressed.is_pressed() {
             self.duration = current_time - self.timestamp;
         }
     }
@@ -163,7 +203,7 @@ struct MotionState {
 struct PickingState {
     clicks:          u32,
     double_clicks:   u32,
-    gizmo_active:    bool,
+    gizmo_active:    GizmoState,
     last_click_time: f32,
 }
 
@@ -582,7 +622,7 @@ fn on_primary_cuboid_click(
             color: Color::from(LIME),
         });
     }
-    picking.gizmo_active = true;
+    picking.gizmo_active = GizmoState::Active;
     picking.last_click_time = current;
 }
 
@@ -613,7 +653,7 @@ fn on_secondary_cuboid_click(
             color: Color::from(LIME),
         });
     }
-    picking.gizmo_active = true;
+    picking.gizmo_active = GizmoState::Active;
     picking.last_click_time = current;
 }
 
@@ -626,7 +666,7 @@ fn on_primary_background_click(
     if trigger.button != PointerButton::Primary {
         return;
     }
-    tracker.picking_mut(WindowSlot::Primary).gizmo_active = false;
+    tracker.picking_mut(WindowSlot::Primary).gizmo_active = GizmoState::Inactive;
     if let Ok(cuboid_entity) = cuboids.single() {
         commands.entity(cuboid_entity).remove::<GizmoOutline>();
     }
@@ -641,7 +681,7 @@ fn on_secondary_background_click(
     if trigger.button != PointerButton::Primary {
         return;
     }
-    tracker.picking_mut(WindowSlot::Secondary).gizmo_active = false;
+    tracker.picking_mut(WindowSlot::Secondary).gizmo_active = GizmoState::Inactive;
     if let Ok(cuboid_entity) = cuboids.single() {
         commands.entity(cuboid_entity).remove::<GizmoOutline>();
     }
@@ -659,20 +699,20 @@ fn draw_gizmo_outlines(mut gizmos: Gizmos, query: Query<(&Transform, &GizmoOutli
 }
 
 // ============================================================================
-// Input tracking systems (unchanged from original)
+// Input tracking systems
 // ============================================================================
 
 fn minimize_window(
     mut windows: Query<&mut Window, With<PrimaryWindow>>,
-    mut minimized: Local<bool>,
+    mut minimized: Local<MinimizeState>,
 ) {
-    if *minimized {
+    if minimized.is_done() {
         return;
     }
 
     for mut window in &mut windows {
         window.mode = WindowMode::Windowed;
-        *minimized = true;
+        *minimized = MinimizeState::Done;
     }
 }
 
@@ -685,7 +725,7 @@ fn track_mouse_buttons(
         let current_time = time.elapsed_secs();
 
         if let Some(button) = tracker.button_mut(event.button) {
-            button.set_pressed(event.state.is_pressed(), current_time);
+            button.set_pressed(ButtonPress::from(event.state.is_pressed()), current_time);
         }
     }
 }
@@ -857,7 +897,7 @@ fn format_timestamp(current_time: f32, timestamp: f32) -> String {
 }
 
 fn format_button(current_time: f32, button: &ButtonState) -> String {
-    if button.pressed {
+    if button.pressed.is_pressed() {
         if button.duration > 0.0 {
             format!(
                 "PRESSED {} [{:.1}s]",
@@ -893,7 +933,11 @@ fn format_picking(picking: &PickingState) -> String {
         "Clicks: {}  DblClk: {}  Gizmo: {}",
         picking.clicks,
         picking.double_clicks,
-        if picking.gizmo_active { "ON" } else { "off" }
+        if picking.gizmo_active.is_active() {
+            "ON"
+        } else {
+            "off"
+        }
     )
 }
 
