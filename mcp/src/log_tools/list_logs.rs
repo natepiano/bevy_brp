@@ -135,9 +135,7 @@ impl LogDetail {
 }
 
 impl From<bool> for LogDetail {
-    fn from(value: bool) -> Self {
-        if value { Self::Verbose } else { Self::Minimal }
-    }
+    fn from(value: bool) -> Self { if value { Self::Verbose } else { Self::Minimal } }
 }
 
 /// Individual log file entry

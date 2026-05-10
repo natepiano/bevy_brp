@@ -111,9 +111,7 @@ impl ButtonPress {
 }
 
 impl From<bool> for ButtonPress {
-    fn from(value: bool) -> Self {
-        if value { Self::Pressed } else { Self::Released }
-    }
+    fn from(value: bool) -> Self { if value { Self::Pressed } else { Self::Released } }
 }
 
 #[derive(Clone, Copy, Default, Reflect)]
