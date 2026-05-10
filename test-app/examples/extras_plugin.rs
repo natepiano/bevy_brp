@@ -1209,7 +1209,7 @@ fn spawn_gltf_test_entities(commands: &mut Commands) {
         TestStructNoSerDe {
             value:   123.45,
             name:    "test_struct".to_string(),
-            enabled: true,
+            enabled: ToggleState::Enabled,
         },
         Name::new("TestStructNoSerDeEntity"),
     ));

@@ -106,8 +106,8 @@ enum ButtonPress {
 }
 
 impl ButtonPress {
-    const fn is_pressed(&self) -> bool { matches!(self, Self::Pressed) }
-    const fn is_released(&self) -> bool { matches!(self, Self::Released) }
+    const fn is_pressed(self) -> bool { matches!(self, Self::Pressed) }
+    const fn is_released(self) -> bool { matches!(self, Self::Released) }
 }
 
 impl From<bool> for ButtonPress {
@@ -122,7 +122,7 @@ enum GizmoState {
 }
 
 impl GizmoState {
-    const fn is_active(&self) -> bool { matches!(self, Self::Active) }
+    const fn is_active(self) -> bool { matches!(self, Self::Active) }
 }
 
 #[derive(Clone, Copy, Default)]
@@ -133,7 +133,7 @@ enum MinimizeState {
 }
 
 impl MinimizeState {
-    const fn is_done(&self) -> bool { matches!(self, Self::Done) }
+    const fn is_done(self) -> bool { matches!(self, Self::Done) }
 }
 
 #[derive(Default, Reflect)]
