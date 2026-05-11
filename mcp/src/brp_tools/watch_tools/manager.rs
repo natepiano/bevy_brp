@@ -22,11 +22,11 @@ pub(super) static WATCH_MANAGER: LazyLock<Arc<Mutex<WatchManager>>> =
 /// Information about an active watch
 #[derive(Debug, Clone)]
 pub(super) struct WatchInfo {
-    pub(super) watch_id:   u32,
-    pub(super) entity_id:  u64,
-    pub(super) watch_type: String,
-    pub(super) log_path:   PathBuf,
-    pub(super) port:       Port,
+    pub(super) watch_id:  u32,
+    pub(super) entity_id: u64,
+    pub(super) kind:      String,
+    pub(super) log_path:  PathBuf,
+    pub(super) port:      Port,
 }
 
 /// Manager for watch subscriptions

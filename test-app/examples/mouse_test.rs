@@ -207,10 +207,10 @@ struct PickingState {
 
 #[derive(Default, Reflect)]
 struct ScrollState {
-    timestamp: f32,
-    unit:      String,
-    x_total:   f32,
-    y_total:   f32,
+    timestamp:  f32,
+    unit:       String,
+    horizontal: f32,
+    vertical:   f32,
 }
 
 #[derive(Default, Reflect)]
@@ -823,8 +823,8 @@ fn track_mouse_wheel(
 
         if let Some(slot) = slot {
             let scroll = tracker.scroll_mut(slot);
-            scroll.x_total += event.x;
-            scroll.y_total += event.y;
+            scroll.horizontal += event.x;
+            scroll.vertical += event.y;
             scroll.unit = format!("{:?}", event.unit);
             scroll.timestamp = current_time;
         }
@@ -976,8 +976,8 @@ fn format_primary_display(tracker: &MouseStateTracker, current_time: f32) -> Str
             primary_clicks.double_position
         ),
         format_picking(primary_picking),
-        primary_scroll.x_total,
-        primary_scroll.y_total,
+        primary_scroll.horizontal,
+        primary_scroll.vertical,
         primary_scroll.unit,
         format_timestamp(current_time, primary_scroll.timestamp),
         primary_gestures.pinch_total,
@@ -1025,8 +1025,8 @@ fn format_secondary_display(tracker: &MouseStateTracker, current_time: f32) -> S
             secondary_clicks.double_position
         ),
         format_picking(secondary_picking),
-        secondary_scroll.x_total,
-        secondary_scroll.y_total,
+        secondary_scroll.horizontal,
+        secondary_scroll.vertical,
         secondary_scroll.unit,
         format_timestamp(current_time, secondary_scroll.timestamp),
         secondary_gestures.pinch_total,

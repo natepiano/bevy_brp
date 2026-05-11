@@ -29,10 +29,10 @@ fn prepare_launch_environment<T: config::LaunchConfigTrait>(
     config: &T,
     target: &BevyTarget,
 ) -> Result<(Command, PathBuf, PathBuf, File)> {
-    let manifest_dir = build::validate_manifest_directory(&target.manifest_path)?;
+    let manifest_dir = build::validate_manifest_directory(&target.manifest)?;
     let command = config.build_command(target);
     let (log_file_path, log_file_for_redirect) = build::setup_launch_logging(
-        config.target_name(),
+        config.target(),
         T::TARGET_TYPE,
         config.profile(),
         &PathBuf::from(format!("{command:?}")),
@@ -82,7 +82,7 @@ fn launch_instances<T: config::LaunchConfigTrait>(
             &command,
             &manifest_dir,
             log_file_for_redirect,
-            config.target_name(),
+            config.target(),
         )?;
 
         all_pids.push(process_id);
@@ -126,7 +126,7 @@ pub fn launch_bevy_target(
     let scope_path: Option<PathBuf> = params.path.as_ref().map(PathBuf::from);
 
     let mut first_targets =
-        targets::find_all_targets_by_name(&params.target_name, Some(first), &search_roots);
+        targets::find_all_targets_by_name(&params.target, Some(first), &search_roots);
     if let Some(ref scope) = scope_path {
         first_targets = targets::filter_targets_by_path_scope(first_targets, scope);
     }
@@ -135,7 +135,7 @@ pub fn launch_bevy_target(
     }
 
     let mut second_targets =
-        targets::find_all_targets_by_name(&params.target_name, Some(second), &search_roots);
+        targets::find_all_targets_by_name(&params.target, Some(second), &search_roots);
     if let Some(ref scope) = scope_path {
         second_targets = targets::filter_targets_by_path_scope(second_targets, scope);
     }
@@ -152,11 +152,11 @@ pub fn launch_bevy_target(
         .map(|target| AvailableTarget {
             name: target.name,
             kind: target.target_type.to_string(),
-            path: target.relative_path.to_string_lossy().to_string(),
+            path: target.relative.to_string_lossy().to_string(),
         })
         .collect();
 
-    let error = UnifiedTargetNotFoundError::new(params.target_name, available);
+    let error = UnifiedTargetNotFoundError::new(params.target, available);
     Err(Error::Structured {
         result: Box::new(error),
     }
@@ -226,9 +226,9 @@ fn find_and_validate_target_with_cache<T: config::LaunchConfigTrait>(
     cached_targets: Vec<BevyTarget>,
 ) -> Result<BevyTarget> {
     targets::find_required_target_with_package_name(
-        config.target_name(),
+        config.target(),
         T::TARGET_TYPE,
-        config.package_name(),
+        config.package(),
         search_paths,
         Some(cached_targets),
     )

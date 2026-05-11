@@ -33,7 +33,7 @@ use crate::tool::ParameterName;
 struct WatchConnectionParams {
     watch_id:   u32,
     entity_id:  u64,
-    watch_type: String,
+    kind:       String,
     brp_method: BrpMethod,
     params:     Value,
     port:       Port,
@@ -433,7 +433,7 @@ async fn handle_connection_error(
         .write_update(
             "CONNECTION_ERROR",
             serde_json::json!({
-                "watch_type": &conn_params.watch_type,
+                "watch_type": &conn_params.kind,
                 ParameterName::Entity: conn_params.entity_id,
                 "error": error_string,
                 "elapsed_seconds": elapsed.as_secs(),
@@ -447,7 +447,7 @@ async fn handle_connection_error(
 async fn run_watch_connection(conn_params: WatchConnectionParams, logger: BufferedWatchLogger) {
     info!(
         "Starting {} watch task for entity {} on port {}",
-        conn_params.watch_type, conn_params.entity_id, conn_params.port
+        conn_params.kind, conn_params.entity_id, conn_params.port
     );
 
     // Track start time for timeout detection
@@ -467,7 +467,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
                 .write_debug_update(
                     "DEBUG_HTTP_RESPONSE",
                     serde_json::json!({
-                        "watch_type": &conn_params.watch_type,
+                        "watch_type": &conn_params.kind,
                         ParameterName::Entity: conn_params.entity_id,
                         "status": response.status().as_u16(),
                         "status_text": response.status().canonical_reason().unwrap_or("Unknown"),
@@ -484,7 +484,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
             if let Err(e) = process_watch_stream(
                 response,
                 conn_params.entity_id,
-                &conn_params.watch_type,
+                &conn_params.kind,
                 &logger,
                 start_time,
             )
@@ -583,7 +583,7 @@ async fn start_watch_task(
         WatchConnectionParams {
             watch_id,
             entity_id,
-            watch_type: watch_type_owned,
+            kind: watch_type_owned,
             brp_method: brp_method_owned,
             params,
             port,
@@ -598,7 +598,7 @@ async fn start_watch_task(
             WatchInfo {
                 watch_id,
                 entity_id,
-                watch_type: watch_type.to_string(),
+                kind: watch_type.to_string(),
                 log_path: log_path.clone(),
                 port,
             },

@@ -96,20 +96,20 @@ fn dep_info_path(target: &BevyTarget, profile: &str) -> PathBuf {
 }
 
 fn extra_fingerprint_inputs(target: &BevyTarget) -> Vec<PathBuf> {
-    let mut inputs = vec![target.manifest_path.clone()];
+    let mut inputs = vec![target.manifest.clone()];
 
     let workspace_manifest = target.workspace_root.join(CARGO_MANIFEST_FILE);
-    if workspace_manifest != target.manifest_path {
+    if workspace_manifest != target.manifest {
         inputs.push(workspace_manifest);
     }
 
     inputs.push(target.workspace_root.join(CARGO_LOCK_FILE));
     inputs.extend(find_cargo_config_files(
-        &target.manifest_path,
+        &target.manifest,
         &target.workspace_root,
     ));
 
-    if let Some(package_dir) = target.manifest_path.parent() {
+    if let Some(package_dir) = target.manifest.parent() {
         inputs.push(package_dir.join(BUILD_SCRIPT_FILE));
     }
 
@@ -287,9 +287,9 @@ mod tests {
             target_type:    TargetType::App,
             package_name:   "pkg".to_string(),
             workspace_root: workspace_root.to_path_buf(),
-            manifest_path:  manifest_path.to_path_buf(),
-            relative_path:  PathBuf::new(),
-            source_path:    PathBuf::new(),
+            manifest:       manifest_path.to_path_buf(),
+            relative:       PathBuf::new(),
+            source:         PathBuf::new(),
         }
     }
 

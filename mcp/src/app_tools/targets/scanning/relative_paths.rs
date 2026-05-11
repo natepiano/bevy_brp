@@ -36,10 +36,7 @@ pub fn filter_targets_by_path_scope(targets: Vec<BevyTarget>, scope: &Path) -> V
     targets
         .into_iter()
         .filter(|target| {
-            let manifest_dir = target
-                .manifest_path
-                .parent()
-                .unwrap_or(&target.manifest_path);
+            let manifest_dir = target.manifest.parent().unwrap_or(&target.manifest);
             let canonical_manifest = project_discovery::safe_canonicalize(manifest_dir);
             canonical_manifest.starts_with(&canonical_scope)
         })
@@ -60,9 +57,9 @@ mod tests {
             target_type:    TargetType::Example,
             package_name:   package_name.to_string(),
             workspace_root: PathBuf::from("/workspace"),
-            manifest_path:  PathBuf::from(manifest_path),
-            relative_path:  PathBuf::new(),
-            source_path:    PathBuf::new(),
+            manifest:       PathBuf::from(manifest_path),
+            relative:       PathBuf::new(),
+            source:         PathBuf::new(),
         }
     }
 

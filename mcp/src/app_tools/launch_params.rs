@@ -25,7 +25,8 @@ pub enum SearchOrder {
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct LaunchBevyBinaryParams {
     /// Name of the Bevy target to launch (app or example)
-    pub target_name:    String,
+    #[serde(rename = "target_name")]
+    pub target:         String,
     /// Build profile to use (debug or release)
     #[to_metadata(skip_if_none)]
     pub profile:        Option<String>,
@@ -36,8 +37,9 @@ pub struct LaunchBevyBinaryParams {
     pub path:           Option<String>,
     /// Package name to filter when multiple targets with the same name exist
     #[serde(default)]
+    #[serde(rename = "package_name")]
     #[to_metadata(skip_if_none)]
-    pub package_name:   Option<String>,
+    pub package:        Option<String>,
     /// The BRP port (default: 15702)
     #[serde(default)]
     pub port:           Port,
@@ -61,13 +63,13 @@ impl LaunchBevyBinaryParams {
     /// Convert to `LaunchParams` with the given default profile
     pub fn to_launch_params(&self, default_profile: &str) -> LaunchParams {
         LaunchParams {
-            target_name:    self.target_name.clone(),
+            target:         self.target.clone(),
             profile:        self
                 .profile
                 .clone()
                 .unwrap_or_else(|| default_profile.to_string()),
             path:           self.path.clone(),
-            package_name:   self.package_name.clone(),
+            package:        self.package.clone(),
             port:           self.port,
             instance_count: self.instance_count,
             env:            self.env.clone(),

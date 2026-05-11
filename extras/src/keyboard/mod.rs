@@ -44,11 +44,12 @@ mod tests {
     fn test_duration_validation_exceeds_maximum() {
         // Create a minimal Bevy app
         let mut app = App::new();
+        let too_long_duration_ms = MAX_KEY_DURATION_MS + DEFAULT_KEY_DURATION_MS;
 
         // Create a request with duration exceeding the maximum
         let params = json!({
             "keys": ["KeyA"],
-            "duration_ms": 70_000  // 70 seconds, exceeds 60 second maximum
+            "duration_ms": too_long_duration_ms
         });
 
         // Call the handler
@@ -67,11 +68,12 @@ mod tests {
     fn test_duration_validation_within_maximum() {
         // Create a minimal Bevy app
         let mut app = App::new();
+        let valid_duration_ms = MAX_KEY_DURATION_MS / 2;
 
         // Create a request with duration within the maximum
         let params = json!({
             "keys": ["KeyA"],
-            "duration_ms": 30_000  // 30 seconds, within 60 second maximum
+            "duration_ms": valid_duration_ms
         });
 
         // Call the handler
@@ -82,7 +84,7 @@ mod tests {
 
         let response = result.expect("Expected success but got error");
         assert_eq!(response["success"], true);
-        assert_eq!(response["duration_ms"], 30_000);
+        assert_eq!(response["duration_ms"], valid_duration_ms);
     }
 
     #[test]

@@ -30,9 +30,9 @@ pub(super) struct Example;
 /// Parameterized launch configuration for apps and examples
 #[derive(Clone)]
 pub(super) struct LaunchConfig<T> {
-    target_name:    String,
+    target:         String,
     profile:        String,
-    package_name:   Option<String>,
+    package:        Option<String>,
     port:           Port,
     instance_count: InstanceCount,
     env:            Option<HashMap<String, String>>,
@@ -42,18 +42,18 @@ pub(super) struct LaunchConfig<T> {
 
 impl<T> LaunchConfig<T> {
     const fn new(
-        target_name: String,
+        target: String,
         profile: String,
-        package_name: Option<String>,
+        package: Option<String>,
         port: Port,
         instance_count: InstanceCount,
         env: Option<HashMap<String, String>>,
         arguments: Option<Vec<String>>,
     ) -> Self {
         Self {
-            target_name,
+            target,
             profile,
-            package_name,
+            package,
             port,
             instance_count,
             env,
@@ -75,49 +75,53 @@ pub struct LaunchedInstance {
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct LaunchResult {
     /// Name of the target that was launched (app or example)
+    #[serde(rename = "target_name")]
     #[to_metadata(skip_if_none)]
-    target_name:        Option<String>,
+    target:            Option<String>,
     /// Array of launched instances (1 or more)
     #[to_result]
-    instances:          Vec<LaunchedInstance>,
+    instances:         Vec<LaunchedInstance>,
     /// Working directory used for launch
     #[to_metadata(skip_if_none)]
-    working_directory:  Option<String>,
+    working_directory: Option<String>,
     /// Build profile used (debug/release)
     #[to_metadata(skip_if_none)]
-    profile:            Option<String>,
+    profile:           Option<String>,
     /// Binary path of the launched app (only for apps, not examples)
     #[to_metadata(skip_if_none)]
-    binary_path:        Option<String>,
+    binary_path:       Option<String>,
     /// Launch duration in milliseconds
+    #[serde(rename = "launch_duration_ms")]
     #[to_metadata(skip_if_none)]
-    launch_duration_ms: Option<u128>,
+    duration_ms:       Option<u128>,
     /// Launch timestamp
+    #[serde(rename = "launch_timestamp")]
     #[to_metadata(skip_if_none)]
-    launch_timestamp:   Option<String>,
+    timestamp:         Option<String>,
     /// Workspace information
     #[to_metadata(skip_if_none)]
-    workspace:          Option<String>,
+    workspace:         Option<String>,
     /// Package name containing the example (only for examples)
+    #[serde(rename = "package_name")]
     #[to_metadata(skip_if_none)]
-    package_name:       Option<String>,
+    package:           Option<String>,
     /// Whether the target was launched as an "app" or "example"
     #[to_metadata(skip_if_none)]
-    launched_as:        Option<String>,
+    launched_as:       Option<String>,
     /// Available duplicate paths (for disambiguation errors)
     #[to_metadata(skip_if_none)]
-    duplicate_paths:    Option<Vec<String>>,
+    duplicate_paths:   Option<Vec<String>>,
     /// Message template for formatting responses
     #[to_message]
-    message_template:   Option<String>,
+    message_template:  Option<String>,
 }
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
-    pub target_name:    String,
+    pub target:         String,
     pub profile:        String,
     pub path:           Option<String>,
-    pub package_name:   Option<String>,
+    pub package:        Option<String>,
     pub port:           Port,
     pub instance_count: InstanceCount,
     pub env:            Option<HashMap<String, String>>,
@@ -129,11 +133,11 @@ pub struct LaunchParams {
 pub(super) trait LaunchConfigTrait: Clone {
     const TARGET_TYPE: TargetType;
 
-    fn target_name(&self) -> &str;
+    fn target(&self) -> &str;
 
     fn profile(&self) -> &str;
 
-    fn package_name(&self) -> Option<&str>;
+    fn package(&self) -> Option<&str>;
 
     fn port(&self) -> Port;
 
@@ -153,12 +157,12 @@ pub(super) trait LaunchConfigTrait: Clone {
                 FreshnessCheckResult::Stale(reason) => tracing::debug!(
                     "Lock-free freshness check marked {} '{}' stale: {reason}",
                     Self::TARGET_TYPE,
-                    self.target_name(),
+                    self.target(),
                 ),
                 FreshnessCheckResult::Unknown(reason) => tracing::debug!(
                     "Lock-free freshness check was inconclusive for {} '{}': {reason}",
                     Self::TARGET_TYPE,
-                    self.target_name(),
+                    self.target(),
                 ),
             }
             if matches!(freshness, FreshnessCheckResult::Fresh) {
@@ -166,9 +170,9 @@ pub(super) trait LaunchConfigTrait: Clone {
             }
         }
 
-        let manifest_dir = build::validate_manifest_directory(&target.manifest_path)?;
+        let manifest_dir = build::validate_manifest_directory(&target.manifest)?;
         build::run_cargo_build(
-            self.target_name(),
+            self.target(),
             Self::TARGET_TYPE,
             self.profile(),
             manifest_dir,
@@ -210,22 +214,22 @@ pub(super) fn build_launch_result<T: LaunchConfigTrait>(
     };
 
     let instance_count = all_ports.len();
-    let target_name_str = config.target_name();
     let message = format!(
-        "Successfully launched {instance_count} instance(s) of {target_name_str} on ports {port_range}"
+        "Successfully launched {instance_count} instance(s) of {} on ports {port_range}",
+        config.target()
     );
 
     LaunchResult {
-        target_name: Some(config.target_name().to_string()),
+        target: Some(config.target().to_string()),
         instances,
         working_directory: std::env::current_dir()
             .ok()
             .map(|dir| dir.display().to_string()),
         profile: Some(config.profile().to_string()),
-        launch_duration_ms: Some(launch_duration.as_millis()),
-        launch_timestamp: Some(chrono::Utc::now().to_rfc3339()),
+        duration_ms: Some(launch_duration.as_millis()),
+        timestamp: Some(chrono::Utc::now().to_rfc3339()),
         workspace,
-        package_name: if T::TARGET_TYPE == TargetType::Example {
+        package: if T::TARGET_TYPE == TargetType::Example {
             Some(target.package_name.clone())
         } else {
             None
@@ -249,9 +253,9 @@ pub(super) fn build_launch_result<T: LaunchConfigTrait>(
 impl From<&LaunchParams> for LaunchConfig<App> {
     fn from(params: &LaunchParams) -> Self {
         Self::new(
-            params.target_name.clone(),
+            params.target.clone(),
             params.profile.clone(),
-            params.package_name.clone(),
+            params.package.clone(),
             params.port,
             params.instance_count,
             params.env.clone(),
@@ -263,11 +267,11 @@ impl From<&LaunchParams> for LaunchConfig<App> {
 impl LaunchConfigTrait for LaunchConfig<App> {
     const TARGET_TYPE: TargetType = TargetType::App;
 
-    fn target_name(&self) -> &str { &self.target_name }
+    fn target(&self) -> &str { &self.target }
 
     fn profile(&self) -> &str { &self.profile }
 
-    fn package_name(&self) -> Option<&str> { self.package_name.as_deref() }
+    fn package(&self) -> Option<&str> { self.package.as_deref() }
 
     fn port(&self) -> Port { self.port }
 
@@ -290,9 +294,9 @@ impl LaunchConfigTrait for LaunchConfig<App> {
 impl From<&LaunchParams> for LaunchConfig<Example> {
     fn from(params: &LaunchParams) -> Self {
         Self::new(
-            params.target_name.clone(),
+            params.target.clone(),
             params.profile.clone(),
-            params.package_name.clone(),
+            params.package.clone(),
             params.port,
             params.instance_count,
             params.env.clone(),
@@ -304,11 +308,11 @@ impl From<&LaunchParams> for LaunchConfig<Example> {
 impl LaunchConfigTrait for LaunchConfig<Example> {
     const TARGET_TYPE: TargetType = TargetType::Example;
 
-    fn target_name(&self) -> &str { &self.target_name }
+    fn target(&self) -> &str { &self.target }
 
     fn profile(&self) -> &str { &self.profile }
 
-    fn package_name(&self) -> Option<&str> { self.package_name.as_deref() }
+    fn package(&self) -> Option<&str> { self.package.as_deref() }
 
     fn port(&self) -> Port { self.port }
 
@@ -318,7 +322,7 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
 
     fn build_command(&self, _: &BevyTarget) -> Command {
         build::build_cargo_example_command(
-            &self.target_name,
+            &self.target,
             self.profile(),
             Some(self.port),
             self.env.as_ref(),

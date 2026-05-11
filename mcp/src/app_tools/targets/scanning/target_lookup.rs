@@ -22,12 +22,8 @@ pub fn collect_all_bevy_targets(search_paths: &[PathBuf]) -> Vec<BevyTarget> {
         if let Ok(detector) = CargoDetector::try_from(path.as_path()) {
             let mut found = detector.find_bevy_targets();
             for target in &mut found {
-                let manifest_dir = target
-                    .manifest_path
-                    .parent()
-                    .unwrap_or(&target.manifest_path);
-                target.relative_path =
-                    relative_paths::compute_relative_path(manifest_dir, search_paths);
+                let manifest_dir = target.manifest.parent().unwrap_or(&target.manifest);
+                target.relative = relative_paths::compute_relative_path(manifest_dir, search_paths);
             }
             targets.extend(found);
         }
@@ -54,11 +50,8 @@ pub fn find_all_targets_by_name(
                         continue;
                     }
 
-                    let manifest_dir = target
-                        .manifest_path
-                        .parent()
-                        .unwrap_or(&target.manifest_path);
-                    target.relative_path =
+                    let manifest_dir = target.manifest.parent().unwrap_or(&target.manifest);
+                    target.relative =
                         relative_paths::compute_relative_path(manifest_dir, search_paths);
                     targets.push(target);
                 }

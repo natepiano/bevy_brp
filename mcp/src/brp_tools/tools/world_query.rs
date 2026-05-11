@@ -118,12 +118,14 @@ pub struct QueryResult {
     pub result: Option<Value>,
 
     /// Count of entities returned
+    #[serde(rename = "entity_count")]
     #[to_metadata(result_operation = "count")]
-    pub entity_count: usize,
+    pub entities: usize,
 
     /// Total count of components across all entities
+    #[serde(rename = "component_count")]
     #[to_metadata(result_operation = "count_query_components")]
-    pub component_count: usize,
+    pub components: usize,
 
     /// Message template for formatting responses
     #[to_message(message_template = "Found {entity_count} entities")]

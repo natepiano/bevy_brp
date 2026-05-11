@@ -5,14 +5,17 @@ use serde::Serialize;
 /// Error when multiple targets with the same name exist across packages
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub(super) struct PackageDisambiguationError {
+    #[serde(rename = "available_package_names")]
     #[to_error_info]
-    available_package_names: Vec<String>,
+    available_packages: Vec<String>,
 
+    #[serde(rename = "target_name")]
     #[to_error_info]
-    target_name: String,
+    target: String,
 
+    #[serde(rename = "target_type")]
     #[to_error_info]
-    target_type: String,
+    kind: String,
 
     #[to_message(
         message_template = "Found multiple {target_type}s named `{target_name}`. Please specify `package_name` to disambiguate."
@@ -23,17 +26,21 @@ pub(super) struct PackageDisambiguationError {
 /// Error when target exists but not in the specified package
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub(super) struct TargetNotFoundInPackage {
+    #[serde(rename = "target_name")]
     #[to_error_info]
-    target_name: String,
+    target: String,
 
+    #[serde(rename = "target_type")]
     #[to_error_info]
-    target_type: String,
+    kind: String,
 
+    #[serde(rename = "searched_package_name")]
     #[to_error_info]
-    searched_package_name: Option<String>,
+    searched_package: Option<String>,
 
+    #[serde(rename = "available_package_names")]
     #[to_error_info]
-    available_package_names: Vec<String>,
+    available_packages: Vec<String>,
 
     #[to_message(
         message_template = "{target_type} `{target_name}` not found in package `{searched_package_name}`. Available in: {available_package_names}"
@@ -44,11 +51,13 @@ pub(super) struct TargetNotFoundInPackage {
 /// Error when no targets found - apps only, we don't detect it for examples
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub(super) struct NoTargetsFoundError {
+    #[serde(rename = "target_name")]
     #[to_error_info]
-    target_name: String,
+    target: String,
 
+    #[serde(rename = "target_type")]
     #[to_error_info]
-    target_type: String,
+    kind: String,
 
     #[to_message(message_template = "No {target_type} named `{target_name}` found in workspace")]
     message_template: String,

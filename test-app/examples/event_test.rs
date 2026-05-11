@@ -25,10 +25,10 @@ struct TestPayloadEvent {
 #[derive(Resource, Default, Reflect)]
 #[reflect(Resource)]
 struct EventTriggerTracker {
-    unit_event_count:     u32,
+    unit_events:          u32,
     last_payload_message: String,
     last_payload_value:   i32,
-    payload_event_count:  u32,
+    payload_events:       u32,
 }
 
 fn main() {
@@ -50,13 +50,13 @@ fn main() {
 }
 
 fn on_unit_event(_unit_event: On<TestUnitEvent>, mut tracker: ResMut<EventTriggerTracker>) {
-    tracker.unit_event_count += 1;
+    tracker.unit_events += 1;
 }
 
 fn on_payload_event(on: On<TestPayloadEvent>, mut tracker: ResMut<EventTriggerTracker>) {
     tracker.last_payload_message.clone_from(&on.event().message);
     tracker.last_payload_value = on.event().value;
-    tracker.payload_event_count += 1;
+    tracker.payload_events += 1;
 }
 
 fn minimize_window(mut windows: Query<&mut Window>) {

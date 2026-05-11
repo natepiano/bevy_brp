@@ -234,9 +234,9 @@ struct TextInputContent {
 #[derive(Resource, Default, Reflect)]
 #[reflect(Resource)]
 struct TestConfigResource {
-    setting_a: f32,
-    setting_b: String,
-    enabled:   ToggleState,
+    level:   f32,
+    label:   String,
+    enabled: ToggleState,
 }
 
 /// Test resource for runtime statistics
@@ -372,9 +372,9 @@ enum TestVariantChainEnum {
 #[derive(Default, Reflect)]
 struct MiddleStruct {
     /// Regular field with no special requirements
-    some_field:  String,
+    label:       String,
     /// Another regular field
-    some_value:  f32,
+    magnitude:   f32,
     /// Nested enum that will require variant selection
     nested_enum: BottomEnum,
 }
@@ -599,9 +599,9 @@ fn main() {
             default_color: Color::WHITE,
         })
         .insert_resource(TestConfigResource {
-            setting_a: 100.0,
-            setting_b: "test config".to_string(),
-            enabled:   ToggleState::Enabled,
+            level:   100.0,
+            label:   "test config".to_string(),
+            enabled: ToggleState::Enabled,
         })
         .insert_resource(RuntimeStatsResource {
             frame_count: 0,
@@ -1141,8 +1141,8 @@ fn spawn_enum_test_entities(commands: &mut Commands) {
     commands.spawn((
         TestVariantChainEnum::WithMiddleStruct {
             middle_struct: MiddleStruct {
-                some_field:  "test_field".to_string(),
-                some_value:  42.5,
+                label:       "test_field".to_string(),
+                magnitude:   42.5,
                 nested_enum: BottomEnum::VariantA(999),
             },
         },

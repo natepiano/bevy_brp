@@ -49,7 +49,7 @@ impl AllBevyTargetsStrategy {
         let brp_targets = detector.find_brp_targets();
         let brp_keys: HashSet<String> = brp_targets
             .iter()
-            .map(|t| format!("{}::{}", t.manifest_path.display(), t.name))
+            .map(|t| format!("{}::{}", t.manifest.display(), t.name))
             .collect();
 
         // Enrich each target with BRP level using a hybrid approach:
@@ -60,15 +60,15 @@ impl AllBevyTargetsStrategy {
             .into_iter()
             .map(|target| {
                 let brp_level = if target.is_app() {
-                    let key = format!("{}::{}", target.manifest_path.display(), target.name);
+                    let key = format!("{}::{}", target.manifest.display(), target.name);
                     if brp_keys.contains(&key) {
                         // Package has BRP — check the specific binary's source for level
-                        CargoDetector::file_brp_level(&target.source_path)
+                        CargoDetector::file_brp_level(&target.source)
                     } else {
                         BrpLevel::None
                     }
                 } else {
-                    CargoDetector::file_brp_level(&target.source_path)
+                    CargoDetector::file_brp_level(&target.source)
                 };
                 EnrichedTarget { target, brp_level }
             })
@@ -78,7 +78,7 @@ impl AllBevyTargetsStrategy {
     pub(super) fn create_unique_key(item: &EnrichedTarget) -> String {
         format!(
             "{}::{}::{}",
-            item.target.manifest_path.display(),
+            item.target.manifest.display(),
             item.target.name,
             item.target.target_type.as_ref()
         )
@@ -86,9 +86,9 @@ impl AllBevyTargetsStrategy {
 
     pub(super) fn get_path_for_relative(item: &EnrichedTarget) -> PathBuf {
         item.target
-            .manifest_path
+            .manifest
             .parent()
-            .unwrap_or(&item.target.manifest_path)
+            .unwrap_or(&item.target.manifest)
             .to_path_buf()
     }
 
@@ -99,7 +99,7 @@ impl AllBevyTargetsStrategy {
             "package_name": item.target.package_name,
             "brp_level": item.brp_level.as_str(),
             "workspace_root": item.target.workspace_root.display().to_string(),
-            "manifest_path": item.target.manifest_path.display().to_string(),
+            "manifest_path": item.target.manifest.display().to_string(),
             // The relative_path field is designed for round-trip compatibility with launch functions.
             // This path can be used directly in `brp_launch`'s path parameter
             // to disambiguate between targets with the same name in different locations.

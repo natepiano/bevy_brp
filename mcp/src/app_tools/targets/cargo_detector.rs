@@ -82,11 +82,11 @@ pub struct BevyTarget {
     /// Workspace root (for apps)
     pub workspace_root: PathBuf,
     /// Path to the package's Cargo.toml
-    pub manifest_path:  PathBuf,
+    pub manifest:       PathBuf,
     /// Relative path from scan root to this item
-    pub relative_path:  PathBuf,
+    pub relative:       PathBuf,
     /// Path to the target's source file (from `cargo metadata`)
-    pub source_path:    PathBuf,
+    pub source:         PathBuf,
 }
 
 impl BevyTarget {
@@ -162,9 +162,9 @@ impl CargoDetector {
                 target_type:    TargetType::App,
                 package_name:   package_name.clone(),
                 workspace_root: workspace_root.clone(),
-                manifest_path:  manifest_path.clone(),
-                relative_path:  PathBuf::new(), // Will be set by scanning logic
-                source_path:    target.src_path.clone().into(),
+                manifest:       manifest_path.clone(),
+                relative:       PathBuf::new(), // Will be set by scanning logic
+                source:         target.src_path.clone().into(),
             });
         }
 
@@ -175,9 +175,9 @@ impl CargoDetector {
                 target_type:    TargetType::Example,
                 package_name:   package_name.clone(),
                 workspace_root: workspace_root.clone(),
-                manifest_path:  manifest_path.clone(),
-                relative_path:  PathBuf::new(), // Will be set by scanning logic
-                source_path:    target.src_path.clone().into(),
+                manifest:       manifest_path.clone(),
+                relative:       PathBuf::new(), // Will be set by scanning logic
+                source:         target.src_path.clone().into(),
             });
         }
 
