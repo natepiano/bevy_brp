@@ -96,7 +96,7 @@ where
 ///     async fn handle_impl_with_context(
 ///         &self,
 ///         ctx: HandlerContext,
-///         _params: NoParams,
+///         _: NoParams,
 ///     ) -> Result<ListResult> {
 ///         let search_paths = &ctx.roots;
 ///         // Implementation using context

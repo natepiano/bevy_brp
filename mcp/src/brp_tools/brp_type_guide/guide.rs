@@ -56,6 +56,21 @@ pub struct TypeGuide {
     pub error:                Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RegistryPresence {
+    Registered,
+    Unregistered,
+}
+
+impl RegistryPresence {
+    const fn is_registered(self) -> bool {
+        match self {
+            Self::Registered => true,
+            Self::Unregistered => false,
+        }
+    }
+}
+
 impl TypeGuide {
     /// Builder method to create ``TypeGuide`` from schema data
     pub fn build(
@@ -93,7 +108,7 @@ impl TypeGuide {
 
         Ok(Self {
             type_name: brp_type_name,
-            in_registry: true,
+            in_registry: RegistryPresence::Registered.is_registered(),
             mutation_paths,
             spawn_insert_example,
             schema_info,
@@ -106,7 +121,7 @@ impl TypeGuide {
     pub fn not_found_in_registry(type_name: BrpTypeName, error_message: String) -> Self {
         Self {
             type_name,
-            in_registry: false,
+            in_registry: RegistryPresence::Unregistered.is_registered(),
             mutation_paths: Vec::new(),
             spawn_insert_example: None,
             schema_info: None,
@@ -122,12 +137,28 @@ impl TypeGuide {
     pub fn processing_failed(type_name: BrpTypeName, error_message: String) -> Self {
         Self {
             type_name,
-            in_registry: true, // Type WAS found in registry
+            in_registry: RegistryPresence::Registered.is_registered(),
             mutation_paths: Vec::new(),
             spawn_insert_example: None,
             schema_info: None,
             agent_guidance: ERROR_GUIDANCE.to_string(),
             error: Some(error_message),
+        }
+    }
+
+    pub(super) const fn is_successful_discovery(&self) -> bool {
+        self.registry_presence().is_registered() && self.error.is_none()
+    }
+
+    pub(super) const fn is_failed_discovery(&self) -> bool {
+        !self.registry_presence().is_registered() || self.error.is_some()
+    }
+
+    const fn registry_presence(&self) -> RegistryPresence {
+        if self.in_registry {
+            RegistryPresence::Registered
+        } else {
+            RegistryPresence::Unregistered
         }
     }
 

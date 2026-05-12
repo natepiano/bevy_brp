@@ -134,11 +134,11 @@ impl TypeGuideEngine {
         // Calculate summary statistics from the results
         let successful_discoveries = type_guide
             .values()
-            .filter(|tg| tg.in_registry && tg.error.is_none())
+            .filter(|tg| tg.is_successful_discovery())
             .count();
         let failed_discoveries = type_guide
             .values()
-            .filter(|tg| !tg.in_registry || tg.error.is_some())
+            .filter(|tg| tg.is_failed_discovery())
             .count();
 
         TypeGuideResponse {

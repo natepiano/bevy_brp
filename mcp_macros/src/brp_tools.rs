@@ -129,7 +129,7 @@ fn generate_tool_fn_impl(
                             "Failed to serialize parameters: {e}"
                         )))?;
                     let brp_params = if let serde_json::Value::Object(ref mut map) = params_value {
-                        map.retain(|key, _value| key != &String::from(crate::tool::ParameterName::Port));
+                        map.retain(|key, _| key != &String::from(crate::tool::ParameterName::Port));
                         if map.is_empty() {
                             None
                         } else {
