@@ -1,4 +1,6 @@
 // directory names
+pub(super) const CARGO_EXAMPLES_DIRECTORY: &str = "examples";
+pub(super) const CARGO_SRC_DIRECTORY: &str = "src";
 pub(super) const HIDDEN_DIRECTORY_PREFIX: char = '.';
 pub(super) const TARGET_DIRECTORY_NAME: &str = "target";
 

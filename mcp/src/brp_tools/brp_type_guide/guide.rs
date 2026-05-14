@@ -38,7 +38,7 @@ pub struct TypeGuide {
     /// Fully-qualified type name
     pub type_name:            BrpTypeName,
     /// Whether the type is registered in the Bevy registry
-    pub in_registry:          bool,
+    pub in_registry:          RegistryPresence,
     /// Example format for spawn/insert operations with guidance
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub spawn_insert_example: Option<SpawnInsertExample>,
@@ -57,7 +57,7 @@ pub struct TypeGuide {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RegistryPresence {
+pub enum RegistryPresence {
     Registered,
     Unregistered,
 }
@@ -68,6 +68,15 @@ impl RegistryPresence {
             Self::Registered => true,
             Self::Unregistered => false,
         }
+    }
+}
+
+impl Serialize for RegistryPresence {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        serializer.serialize_bool(self.is_registered())
     }
 }
 
@@ -108,7 +117,7 @@ impl TypeGuide {
 
         Ok(Self {
             type_name: brp_type_name,
-            in_registry: RegistryPresence::Registered.is_registered(),
+            in_registry: RegistryPresence::Registered,
             mutation_paths,
             spawn_insert_example,
             schema_info,
@@ -121,7 +130,7 @@ impl TypeGuide {
     pub fn not_found_in_registry(type_name: BrpTypeName, error_message: String) -> Self {
         Self {
             type_name,
-            in_registry: RegistryPresence::Unregistered.is_registered(),
+            in_registry: RegistryPresence::Unregistered,
             mutation_paths: Vec::new(),
             spawn_insert_example: None,
             schema_info: None,
@@ -137,7 +146,7 @@ impl TypeGuide {
     pub fn processing_failed(type_name: BrpTypeName, error_message: String) -> Self {
         Self {
             type_name,
-            in_registry: RegistryPresence::Registered.is_registered(),
+            in_registry: RegistryPresence::Registered,
             mutation_paths: Vec::new(),
             spawn_insert_example: None,
             schema_info: None,
@@ -147,19 +156,11 @@ impl TypeGuide {
     }
 
     pub(super) const fn is_successful_discovery(&self) -> bool {
-        self.registry_presence().is_registered() && self.error.is_none()
+        self.in_registry.is_registered() && self.error.is_none()
     }
 
     pub(super) const fn is_failed_discovery(&self) -> bool {
-        !self.registry_presence().is_registered() || self.error.is_some()
-    }
-
-    const fn registry_presence(&self) -> RegistryPresence {
-        if self.in_registry {
-            RegistryPresence::Registered
-        } else {
-            RegistryPresence::Unregistered
-        }
+        !self.in_registry.is_registered() || self.error.is_some()
     }
 
     /// Generate agent guidance with Entity warning

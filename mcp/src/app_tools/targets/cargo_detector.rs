@@ -17,8 +17,11 @@ use strum::EnumString;
 
 use super::constants::BEVY_CRATE_NAME;
 use super::constants::BEVY_REMOTE_FEATURE;
+use super::constants::CARGO_EXAMPLES_DIRECTORY;
+use super::constants::CARGO_SRC_DIRECTORY;
 use super::constants::MCP_CRATE_NAME;
 use super::constants::RUST_SOURCE_EXTENSION;
+use super::constants::TARGET_DIRECTORY_NAME;
 use crate::app_tools::constants::CARGO_BIN_FLAG;
 use crate::app_tools::constants::CARGO_EXAMPLE_FLAG;
 
@@ -95,14 +98,14 @@ impl BevyTarget {
         match self.target_type {
             TargetType::App => self
                 .workspace_root
-                .join("target")
+                .join(TARGET_DIRECTORY_NAME)
                 .join(profile)
                 .join(&self.name),
             TargetType::Example => self
                 .workspace_root
-                .join("target")
+                .join(TARGET_DIRECTORY_NAME)
                 .join(profile)
-                .join("examples")
+                .join(CARGO_EXAMPLES_DIRECTORY)
                 .join(&self.name),
         }
     }
@@ -260,7 +263,7 @@ impl CargoDetector {
         };
 
         // Check all .rs files in src/ directory
-        let src_dir = package_dir.join("src");
+        let src_dir = package_dir.join(CARGO_SRC_DIRECTORY);
         if !src_dir.exists() {
             return false;
         }
