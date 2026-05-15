@@ -38,20 +38,10 @@ pub struct BrpAllTypeGuides;
 /// Implementation that fetches all types then gets their guides
 async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
     // Fetch component types
-    let component_types = fetch_type_list(
-        BrpMethod::WorldListComponents,
-        params.port,
-        "world.list_components",
-    )
-    .await?;
+    let component_types = fetch_type_list(BrpMethod::WorldListComponents, params.port).await?;
 
     // Fetch resource types
-    let resource_types = fetch_type_list(
-        BrpMethod::WorldListResources,
-        params.port,
-        "world.list_resources",
-    )
-    .await?;
+    let resource_types = fetch_type_list(BrpMethod::WorldListResources, params.port).await?;
 
     // Merge both lists
     let mut all_types = component_types;
@@ -68,7 +58,8 @@ async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
 }
 
 /// Helper function to fetch a list of type names from a BRP method
-async fn fetch_type_list(method: BrpMethod, port: Port, method_name: &str) -> Result<Vec<String>> {
+async fn fetch_type_list(method: BrpMethod, port: Port) -> Result<Vec<String>> {
+    let method_name = method.as_str();
     let client = BrpClient::new(method, port, None);
 
     match client.execute_direct_internal_no_enhancement().await {

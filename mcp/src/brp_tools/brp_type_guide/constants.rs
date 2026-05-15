@@ -12,6 +12,7 @@ pub(super) const ENTITY_WARNING: &str = " CAUTION: This type contains bevy_ecs::
 pub(super) const ERROR_GUIDANCE: &str = "This type was found in the registry but failed during processing. Check the 'error' field for details. No mutation paths or spawn format are available due to the processing failure.";
 
 // bevy component type constants
+pub(super) const BEVY_ASSET_HANDLE_PREFIX: &str = "bevy_asset::handle::Handle<";
 pub(super) const TYPE_BEVY_CAMERA: &str = "bevy_camera::camera::Camera";
 pub(super) const TYPE_BEVY_ENTITY: &str = "bevy_ecs::entity::Entity";
 pub(super) const TYPE_BEVY_NAME: &str = "bevy_ecs::name::Name";

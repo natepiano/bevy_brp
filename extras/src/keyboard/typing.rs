@@ -38,7 +38,7 @@ pub(super) struct TextTypingQueue {
     /// The character we're currently typing (for proper text field on shifted chars)
     current_char: Option<char>,
     /// Current phase of the typing state machine
-    phase:        TypingPhase,
+    typing_phase: TypingPhase,
 }
 
 /// Request structure for `type_text`
@@ -128,7 +128,7 @@ fn char_to_keys(c: char) -> Option<Vec<KeyCodeWrapper>> {
 
 /// Handler for the `type_text` BRP method.
 /// Types text one character per frame, simulating realistic keyboard input.
-pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: TypeTextRequest = if let Some(params) = params {
         serde_json::from_value(params).map_err(|e| BrpError {
             code:    INVALID_PARAMS,
@@ -171,7 +171,7 @@ pub fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
             chars,
             current_keys: vec![],
             current_char: None,
-            phase: TypingPhase::PressNext,
+            typing_phase: TypingPhase::PressNext,
         });
     }
 
@@ -190,7 +190,7 @@ pub(super) fn process_text_typing(
     mut window_events: MessageWriter<WindowEvent>,
 ) {
     for (entity, mut queue) in &mut query {
-        match queue.phase {
+        match queue.typing_phase {
             TypingPhase::ReleaseCurrentKeys => {
                 // Release the current keys
                 if !queue.current_keys.is_empty() {
@@ -203,7 +203,7 @@ pub(super) fn process_text_typing(
                     queue.current_keys.clear();
                     queue.current_char = None;
                 }
-                queue.phase = TypingPhase::PressNext;
+                queue.typing_phase = TypingPhase::PressNext;
             },
             TypingPhase::PressNext => {
                 // Press the next character's keys
@@ -222,7 +222,7 @@ pub(super) fn process_text_typing(
                     }
                     queue.current_keys = keys;
                     queue.current_char = Some(c);
-                    queue.phase = TypingPhase::ReleaseCurrentKeys;
+                    queue.typing_phase = TypingPhase::ReleaseCurrentKeys;
                 } else {
                     // All done, despawn
                     commands.entity(entity).despawn();

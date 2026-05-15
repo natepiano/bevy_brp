@@ -21,6 +21,10 @@ pub(super) const JSON_RPC_ERROR_FIELD: &str = "error";
 pub(super) const JSON_RPC_ID_FIELD: &str = "id";
 pub(super) const JSON_RPC_RESULT_FIELD: &str = "result";
 
+// sse stream constants
+/// Canonical Server-Sent Events `data:` line prefix (including trailing space).
+pub(super) const SSE_DATA_PREFIX: &str = "data: ";
+
 // timing constants
 /// Interval between automatic log buffer flushes
 pub(super) const WATCH_LOG_FLUSH_INTERVAL: Duration = std::time::Duration::from_millis(100);

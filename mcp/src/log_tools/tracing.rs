@@ -12,6 +12,7 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+use super::constants::TRACING_FILTERED_TARGET_PREFIXES;
 use super::lazy_file_writer::LazyFileWriter;
 
 static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(TracingLevel::Warn.code()); // Default to WARN level for "do no harm"
@@ -27,11 +28,9 @@ where
     fn enabled(&self, metadata: &Metadata<'_>, _: Context<'_, S>) -> bool {
         // Suppress third-party HTTP connection logs that are noise for BRP debugging
         let target = metadata.target();
-        if target.starts_with("reqwest::")
-            || target.starts_with("hyper")
-            || target.starts_with("h2::")
-            || target.starts_with("rustls::")
-            || target.starts_with("want::")
+        if TRACING_FILTERED_TARGET_PREFIXES
+            .iter()
+            .any(|prefix| target.starts_with(prefix))
         {
             return false;
         }

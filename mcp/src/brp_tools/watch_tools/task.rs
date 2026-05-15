@@ -19,6 +19,7 @@ use super::constants::JSON_RPC_RESULT_FIELD;
 use super::constants::MAX_BUFFER_SIZE;
 use super::constants::MAX_CHUNK_SIZE;
 use super::constants::MAX_PREVIEW_BYTES;
+use super::constants::SSE_DATA_PREFIX;
 use super::logger::BufferedWatchLogger;
 use super::manager::WATCH_MANAGER;
 use super::manager::WatchInfo;
@@ -55,14 +56,14 @@ async fn parse_sse_line(
                 ParameterName::Entity: entity_id,
                 "line": line,
                 "line_length": line.len(),
-                "is_sse_data": line.starts_with("data: "),
+                "is_sse_data": line.starts_with(SSE_DATA_PREFIX),
                 "timestamp": chrono::Local::now().to_rfc3339()
             }),
         )
         .await;
 
     // Handle SSE format: "data: {json}"
-    let Some(json_str) = line.strip_prefix("data: ") else {
+    let Some(json_str) = line.strip_prefix(SSE_DATA_PREFIX) else {
         debug!("[{watch_type}] Received non-SSE line: {line}");
         return Ok(());
     };
@@ -236,7 +237,7 @@ async fn process_chunk(
                     ParameterName::Entity: entity_id,
                     "buffer_content": line_buffer,
                     "buffer_size": line_buffer.len(),
-                    "contains_data_prefix": line_buffer.contains("data: "),
+                    "contains_data_prefix": line_buffer.contains(SSE_DATA_PREFIX),
                     "timestamp": chrono::Local::now().to_rfc3339()
                 }),
             )
@@ -301,7 +302,7 @@ async fn log_first_chunk(
                 ParameterName::Entity: entity_id,
                 "chunk_size": bytes.len(),
                 "preview": preview,
-                "starts_with_data": String::from_utf8_lossy(bytes).starts_with("data:"),
+                "starts_with_data": String::from_utf8_lossy(bytes).starts_with(SSE_DATA_PREFIX.trim_end()),
                 "contains_newline": bytes.contains(&b'\n'),
                 "timestamp": chrono::Local::now().to_rfc3339()
             }),

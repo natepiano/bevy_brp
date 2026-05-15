@@ -5,3 +5,9 @@ pub(super) const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
 // log filenames
 pub(super) const LOG_EXTENSION: &str = ".log";
 pub(super) const LOG_PREFIX: &str = "bevy_brp_mcp_";
+
+// tracing filter constants
+/// Third-party HTTP/transport crate name prefixes whose tracing events are
+/// suppressed because they are noise for BRP debugging.
+pub(super) const TRACING_FILTERED_TARGET_PREFIXES: &[&str] =
+    &["reqwest::", "hyper", "h2::", "rustls::", "want::"];

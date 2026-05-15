@@ -63,7 +63,7 @@ struct DoubleTapGestureResponse {
 // ============================================================================
 
 /// Handler for `pinch_gesture` BRP method
-pub fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: PinchGestureRequest = support::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     window_event::write_input_event(world, PinchGesture(request.delta));
@@ -77,7 +77,10 @@ pub fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -
 }
 
 /// Handler for `rotation_gesture` BRP method
-pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn rotation_gesture_handler(
+    In(params): In<Option<Value>>,
+    world: &mut World,
+) -> BrpResult {
     let request: RotationGestureRequest =
         support::parse_request(params, EmptyParamsPolicy::Reject)?;
 
@@ -92,7 +95,10 @@ pub fn rotation_gesture_handler(In(params): In<Option<Value>>, world: &mut World
 }
 
 /// Handler for `double_tap_gesture` BRP method
-pub fn double_tap_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn double_tap_gesture_handler(
+    In(params): In<Option<Value>>,
+    world: &mut World,
+) -> BrpResult {
     let _: DoubleTapGestureRequest = support::parse_request(params, EmptyParamsPolicy::Allow)?;
 
     window_event::write_input_event(world, DoubleTapGesture);

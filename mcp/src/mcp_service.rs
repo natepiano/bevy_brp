@@ -17,6 +17,7 @@ use rmcp::service::RequestContext;
 
 use super::tool;
 use super::tool::ToolDef;
+use crate::constants::FILE_URI_SCHEME;
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
@@ -96,7 +97,7 @@ impl McpService {
                     .iter()
                     .filter_map(|root| {
                         // Parse the file:// URI
-                        root.uri.strip_prefix("file://").map_or_else(
+                        root.uri.strip_prefix(FILE_URI_SCHEME).map_or_else(
                             || {
                                 tracing::warn!("Ignoring non-file URI: {}", root.uri);
                                 None

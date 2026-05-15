@@ -12,9 +12,12 @@ use super::constants::CARGO_BIN_FLAG;
 use super::constants::CARGO_COMMAND_NAME;
 use super::constants::CARGO_EXAMPLE_FLAG;
 use super::constants::CARGO_RUN_SUBCOMMAND;
+use super::constants::EXAMPLES_PATH_SEGMENT;
 use super::constants::MCP_BINARY_NAME;
 use super::constants::STATUS_MAX_RETRIES;
 use super::constants::STATUS_POLL_INTERVAL;
+use super::constants::TARGET_DEBUG_PATH;
+use super::constants::TARGET_RELEASE_PATH;
 use super::process;
 use crate::brp_tools;
 use crate::brp_tools::Port;
@@ -197,16 +200,16 @@ fn extract_app_name(process: &Process) -> String {
     }
 
     // If the process name looks like a path to a binary, extract just the binary name
-    if process_name.contains("target/debug") || process_name.contains("target/release") {
+    if process_name.contains(TARGET_DEBUG_PATH) || process_name.contains(TARGET_RELEASE_PATH) {
         return process::normalize_process_name(&process_name);
     }
 
     // For processes run directly, check the first command argument
     if let Some(cmd) = process.cmd().first() {
         let command_string = cmd.to_string_lossy();
-        if command_string.contains("target/debug")
-            || command_string.contains("target/release")
-            || command_string.contains("/examples/")
+        if command_string.contains(TARGET_DEBUG_PATH)
+            || command_string.contains(TARGET_RELEASE_PATH)
+            || command_string.contains(EXAMPLES_PATH_SEGMENT)
         {
             return process::normalize_process_name(&command_string);
         }

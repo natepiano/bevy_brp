@@ -85,7 +85,7 @@ fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCodeWrapper)>, BrpEr
 /// - Request parameters are missing
 /// - Request format is invalid
 /// - Any key code is invalid or unknown
-pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Parse the request
     let request: SendKeysRequest = if let Some(params) = params {
         serde_json::from_value(params).map_err(|e| BrpError {

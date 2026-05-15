@@ -11,6 +11,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
+use super::constants::BEVY_ASSET_HANDLE_PREFIX;
 use super::type_knowledge::TypeKnowledge;
 
 /// A newtype wrapper for BRP type names used as `HashMap` keys
@@ -38,7 +39,7 @@ impl BrpTypeName {
 
     /// Check if this type is a `Handle` wrapper type
     /// Returns true for types like `bevy_asset::handle::Handle<...>`
-    pub fn is_handle(&self) -> bool { self.0.starts_with("bevy_asset::handle::Handle<") }
+    pub fn is_handle(&self) -> bool { self.0.starts_with(BEVY_ASSET_HANDLE_PREFIX) }
 
     /// Get the short name (last segment after ::)
     /// For example: `bevy_transform::components::transform::Transform` returns `Transform`
