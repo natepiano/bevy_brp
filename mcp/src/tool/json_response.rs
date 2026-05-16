@@ -9,7 +9,7 @@ use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
 
-use super::tool_name::CallInfo;
+use super::name::CallInfo;
 
 /// Wrapper for Value that produces an empty object schema `{}` instead of `true` or specific types.
 /// This ensures compatibility with strict JSON Schema validators (like Gemini's).

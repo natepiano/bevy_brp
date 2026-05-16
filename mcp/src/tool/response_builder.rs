@@ -14,7 +14,7 @@ use super::field_placement::FieldPlacement;
 use super::json_response::AnySchemaValue;
 use super::json_response::ResponseStatus;
 use super::json_response::ToolCallJsonResponse;
-use super::tool_name::CallInfo;
+use super::name::CallInfo;
 use crate::error::Error;
 use crate::error::Result;
 

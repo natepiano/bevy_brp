@@ -9,9 +9,11 @@ pub(super) const TARGET_RELEASE_PATH: &str = "target/release";
 
 // cargo constants
 pub(super) const CARGO_BIN_FLAG: &str = "--bin";
+pub(super) const CARGO_BUILD_SUBCOMMAND: &str = "build";
 pub(super) const CARGO_COMMAND_NAME: &str = "cargo";
 pub(super) const CARGO_EXAMPLE_FLAG: &str = "--example";
 pub(super) const CARGO_MANIFEST_FILE: &str = "Cargo.toml";
+pub(super) const CARGO_MESSAGE_FORMAT_JSON_FLAG: &str = "--message-format=json";
 pub(super) const CARGO_RUN_SUBCOMMAND: &str = "run";
 
 // instance count constants

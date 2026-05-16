@@ -15,7 +15,10 @@ use super::constants::BUILD_OUTPUT_NAME_FIELD;
 use super::constants::BUILD_OUTPUT_TARGET_FIELD;
 use super::constants::CARGO_RELEASE_FLAG;
 use super::logging;
+use crate::app_tools::constants::CARGO_BUILD_SUBCOMMAND;
+use crate::app_tools::constants::CARGO_COMMAND_NAME;
 use crate::app_tools::constants::CARGO_EXAMPLE_FLAG;
+use crate::app_tools::constants::CARGO_MESSAGE_FORMAT_JSON_FLAG;
 use crate::app_tools::constants::CARGO_RUN_SUBCOMMAND;
 use crate::app_tools::constants::PROFILE_RELEASE;
 use crate::app_tools::targets::TargetType;
@@ -81,7 +84,7 @@ pub(super) fn build_cargo_example_command(
     env: Option<&HashMap<String, String>>,
     command_line_arguments: Option<&[String]>,
 ) -> Command {
-    let mut command = Command::new("cargo");
+    let mut command = Command::new(CARGO_COMMAND_NAME);
     command
         .arg(CARGO_RUN_SUBCOMMAND)
         .arg(CARGO_EXAMPLE_FLAG)
@@ -129,9 +132,9 @@ fn build_cargo_command(
     profile: &str,
     manifest_dir: &Path,
 ) -> Command {
-    let mut command = Command::new("cargo");
+    let mut command = Command::new(CARGO_COMMAND_NAME);
     command.current_dir(manifest_dir);
-    command.arg("build");
+    command.arg(CARGO_BUILD_SUBCOMMAND);
 
     target_type.add_cargo_args(&mut command, target_name);
 
@@ -139,7 +142,7 @@ fn build_cargo_command(
         command.arg(CARGO_RELEASE_FLAG);
     }
 
-    command.arg("--message-format=json");
+    command.arg(CARGO_MESSAGE_FORMAT_JSON_FLAG);
 
     command
 }

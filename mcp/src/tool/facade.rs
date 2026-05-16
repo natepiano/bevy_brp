@@ -10,7 +10,7 @@ use crate::error::Result;
 
 /// Visibility facade for the tool catalog.
 ///
-/// Callers outside `tool_name.rs` should depend on the `tool` subsystem boundary
+/// Callers outside `name.rs` should depend on the `tool` subsystem boundary
 /// rather than on `ToolName` owning whole-registry construction.
 pub fn get_all_tool_definitions() -> Vec<ToolDef> { registry::get_all_tool_definitions() }
 
