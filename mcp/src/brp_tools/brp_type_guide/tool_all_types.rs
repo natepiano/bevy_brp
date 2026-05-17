@@ -60,9 +60,9 @@ async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
 /// Helper function to fetch a list of type names from a BRP method
 async fn fetch_type_list(method: BrpMethod, port: Port) -> Result<Vec<String>> {
     let method_name = method.as_str();
-    let client = BrpClient::new(method, port, None);
+    let brp_client = BrpClient::new(method, port, None);
 
-    match client.execute_direct_internal_no_enhancement().await {
+    match brp_client.execute_direct_internal_no_enhancement().await {
         Ok(ResponseStatus::Success(Some(types_data))) => types_data.as_array().map_or_else(
             || {
                 Err(Error::BrpCommunication(format!(

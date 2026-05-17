@@ -89,9 +89,9 @@ impl TypeGuideEngine {
     /// Fetches fresh registry data from the BRP server on each call.
     async fn get_full_registry(port: Port) -> Result<HashMap<BrpTypeName, Value>> {
         // Fetch full registry from BRP
-        let client = BrpClient::new(BrpMethod::RegistrySchema, port, Some(json!({})));
+        let brp_client = BrpClient::new(BrpMethod::RegistrySchema, port, Some(json!({})));
 
-        match client.execute_direct_internal_no_enhancement().await {
+        match brp_client.execute_direct_internal_no_enhancement().await {
             Ok(ResponseStatus::Success(Some(registry_data))) => {
                 // Convert to `HashMap` with `BrpTypeName` keys
                 let mut registry_map = HashMap::new();
@@ -162,6 +162,6 @@ pub async fn generate_type_guide_response(
     port: Port,
     requested_types: &[String],
 ) -> Result<TypeGuideResponse> {
-    let engine = TypeGuideEngine::new(port).await?;
-    Ok(engine.generate_response(requested_types))
+    let type_guide_engine = TypeGuideEngine::new(port).await?;
+    Ok(type_guide_engine.generate_response(requested_types))
 }

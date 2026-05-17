@@ -122,10 +122,10 @@ impl BrpClient {
     /// to prevent recursion when `TypeSchemaEngine` needs to fetch registry data.
     pub async fn execute_direct_internal_no_enhancement(&self) -> Result<ResponseStatus> {
         // Create HTTP client with our data
-        let http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
+        let brp_http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
 
         // Send HTTP request (includes status check)
-        let response = http_client.send_request().await?;
+        let response = brp_http_client.send_request().await?;
 
         // Parse JSON-RPC response
         let brp_response = self.parse_json_response(response).await?;
@@ -144,10 +144,10 @@ impl BrpClient {
     /// - Provides the same rich error context as other `BrpClient` methods
     pub async fn execute_streaming(&self) -> Result<Response> {
         // Create HTTP client with our data
-        let http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
+        let brp_http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
 
         // Send HTTP request using streaming version (no timeout, includes status check)
-        let response = http_client.send_streaming_request().await?;
+        let response = brp_http_client.send_streaming_request().await?;
 
         Ok(response)
     }
@@ -158,10 +158,10 @@ impl BrpClient {
     /// and the like.
     async fn execute_direct_internal(&self) -> Result<ResponseStatus> {
         // Create HTTP client with our data
-        let http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
+        let brp_http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
 
         // Send HTTP request (includes status check)
-        let response = http_client.send_request().await?;
+        let response = brp_http_client.send_request().await?;
 
         // Parse JSON-RPC response
         let brp_response = self.parse_json_response(response).await?;

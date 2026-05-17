@@ -51,13 +51,13 @@ impl ToolFn for BrpExecute {
     type Params = ExecuteParams;
 
     async fn handle_impl(&self, params: ExecuteParams) -> Result<ExecuteResult> {
-        let client = BrpClient::new(
+        let brp_client = BrpClient::new(
             params.method,         // Direct use of typed BRP method
             params.port,           // Use typed port parameter
             params.params.clone(), // User-provided params (already Option<Value>)
         );
 
-        let brp_result = client.execute_raw().await?;
+        let brp_result = brp_client.execute_raw().await?;
 
         // Convert BRP result to ExecuteResult
         match brp_result {

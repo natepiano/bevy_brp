@@ -169,11 +169,11 @@ fn read_log_file(
     // Open the file
     let file = File::open(path).map_err(|e| Error::io_failed("open log file", path, &e))?;
 
-    let reader = BufReader::new(file);
+    let buf_reader = BufReader::new(file);
     let mut lines: Vec<String> = Vec::new();
 
     // Read lines with optional keyword filtering
-    for line_result in reader.lines() {
+    for line_result in buf_reader.lines() {
         let line = line_result.map_err(|e| Error::io_failed("read line from log", path, &e))?;
 
         // Apply keyword filter if provided

@@ -133,12 +133,12 @@ pub fn find_required_target_with_package_name(
             let mut filtered = filtered.into_iter();
             filtered.next().map_or_else(
                 || {
-                    let error = NoTargetsFoundError::new(
+                    let no_targets_found_error = NoTargetsFoundError::new(
                         target_name.to_string(),
                         target_type_str.to_string(),
                     );
                     Err(Error::Structured {
-                        result: Box::new(error),
+                        result: Box::new(no_targets_found_error),
                     })
                 },
                 Ok,
@@ -150,13 +150,13 @@ pub fn find_required_target_with_package_name(
                 .map(|target| target.package_name.clone())
                 .collect();
 
-            let error = PackageDisambiguationError::new(
+            let package_disambiguation_error = PackageDisambiguationError::new(
                 available,
                 target_name.to_string(),
                 target_type_str.to_string(),
             );
             Err(Error::Structured {
-                result: Box::new(error),
+                result: Box::new(package_disambiguation_error),
             })
         },
     }

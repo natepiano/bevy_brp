@@ -48,10 +48,10 @@ pub fn build_mutation_paths(
 
     // Create internal context (hidden from caller)
     let path_kind = PathKind::new_root_value(type_name.clone());
-    let context = RecursionContext::new(path_kind, Arc::clone(&registry));
+    let recursion_context = RecursionContext::new(path_kind, Arc::clone(&registry));
 
     // Dispatch to the recursive builder
-    let internal_paths = path_builder::recurse_mutation_paths(type_kind, &context)?;
+    let internal_paths = path_builder::recurse_mutation_paths(type_kind, &recursion_context)?;
 
     // Convert internal representation to external format before returning
     let external_paths = internal_paths

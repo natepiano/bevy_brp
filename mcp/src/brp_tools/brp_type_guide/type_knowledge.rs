@@ -14,26 +14,52 @@ use serde_json::json;
 use super::BrpTypeName;
 use super::constants;
 use super::constants::TYPE_ALLOC_STRING;
+use super::constants::TYPE_BEVY_ALPHA_MODE_2D;
 use super::constants::TYPE_BEVY_CAMERA;
+use super::constants::TYPE_BEVY_CAMERA3D;
 use super::constants::TYPE_BEVY_ENTITY;
+use super::constants::TYPE_BEVY_FIXED;
+use super::constants::TYPE_BEVY_GLOBAL_TRANSFORM;
+use super::constants::TYPE_BEVY_GLYPH_ATLAS_LOCATION;
 use super::constants::TYPE_BEVY_MAT2;
 use super::constants::TYPE_BEVY_MAT3;
 use super::constants::TYPE_BEVY_MAT4;
 use super::constants::TYPE_BEVY_NAME;
 use super::constants::TYPE_BEVY_QUAT;
 use super::constants::TYPE_BEVY_RECT;
+use super::constants::TYPE_BEVY_TIME_FIXED_CONTAINER;
+use super::constants::TYPE_BEVY_TIME_REAL_CONTAINER;
+use super::constants::TYPE_BEVY_TIME_VIRTUAL_CONTAINER;
 use super::constants::TYPE_BEVY_VEC2;
 use super::constants::TYPE_BEVY_VEC3;
 use super::constants::TYPE_BEVY_VEC3A;
 use super::constants::TYPE_BEVY_VEC4;
+use super::constants::TYPE_BEVY_VIDEO_MODE;
+use super::constants::TYPE_BEVY_VIRTUAL;
+use super::constants::TYPE_BEVY_WINDOW_RESOLUTION;
 use super::constants::TYPE_BLOOM;
 use super::constants::TYPE_BOOL;
 use super::constants::TYPE_CHAR;
 use super::constants::TYPE_CORE_DURATION;
+use super::constants::TYPE_CORE_NON_ZERO_I8;
+use super::constants::TYPE_CORE_NON_ZERO_I16;
+use super::constants::TYPE_CORE_NON_ZERO_I32;
+use super::constants::TYPE_CORE_NON_ZERO_I64;
+use super::constants::TYPE_CORE_NON_ZERO_I128;
+use super::constants::TYPE_CORE_NON_ZERO_ISIZE;
+use super::constants::TYPE_CORE_NON_ZERO_U8;
+use super::constants::TYPE_CORE_NON_ZERO_U16;
+use super::constants::TYPE_CORE_NON_ZERO_U32;
+use super::constants::TYPE_CORE_NON_ZERO_U64;
+use super::constants::TYPE_CORE_NON_ZERO_U128;
+use super::constants::TYPE_CORE_NON_ZERO_USIZE;
 use super::constants::TYPE_F32;
 use super::constants::TYPE_F64;
 use super::constants::TYPE_GLAM_AFFINE2;
 use super::constants::TYPE_GLAM_AFFINE3A;
+use super::constants::TYPE_GLAM_DVEC2;
+use super::constants::TYPE_GLAM_DVEC3;
+use super::constants::TYPE_GLAM_DVEC4;
 use super::constants::TYPE_GLAM_IVEC2;
 use super::constants::TYPE_GLAM_IVEC3;
 use super::constants::TYPE_GLAM_IVEC4;
@@ -365,15 +391,15 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
 
         // Double-precision vectors (f64)
         map.insert(
-            KnowledgeKey::exact("glam::DVec2"),
+            KnowledgeKey::exact(TYPE_GLAM_DVEC2),
             TypeKnowledge::new(json!([1.0, 2.0])),
         );
         map.insert(
-            KnowledgeKey::exact("glam::DVec3"),
+            KnowledgeKey::exact(TYPE_GLAM_DVEC3),
             TypeKnowledge::new(json!([1.0, 2.0, 3.0])),
         );
         map.insert(
-            KnowledgeKey::exact("glam::DVec4"),
+            KnowledgeKey::exact(TYPE_GLAM_DVEC4),
             TypeKnowledge::new(json!([1.0, 2.0, 3.0, 4.0])),
         );
 
@@ -494,7 +520,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // textures! Safe combinations: 16 (RENDER_ATTACHMENT only), 20 (RENDER_ATTACHMENT |
         // TEXTURE_BINDING)
         map.insert(
-            KnowledgeKey::struct_field("bevy_camera::components::Camera3d", "depth_texture_usages"),
+            KnowledgeKey::struct_field(TYPE_BEVY_CAMERA3D, "depth_texture_usages"),
             // RENDER_ATTACHMENT | TEXTURE_BINDING - safe combination, treat as opaque u32
             TypeKnowledge::as_root_value(json!(20), TYPE_U32),
         );
@@ -503,7 +529,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Default is 1, typical range is 0-4 per transmission.rs example
         map.insert(
             KnowledgeKey::struct_field(
-                "bevy_camera::components::Camera3d",
+                TYPE_BEVY_CAMERA3D,
                 "screen_space_specular_transmission_steps",
             ),
             TypeKnowledge::as_root_value(json!(1), TYPE_USIZE),
@@ -514,7 +540,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Format: [matrix_row1(3), matrix_row2(3), matrix_row3(3), translation(3)]
         // Registry shows nested object but BRP actually expects flat array
         map.insert(
-            KnowledgeKey::exact("bevy_transform::components::global_transform::GlobalTransform"),
+            KnowledgeKey::exact(TYPE_BEVY_GLOBAL_TRANSFORM),
             TypeKnowledge::new(json!([
                 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0
             ])), // Affine matrices don't have simple component access
@@ -544,37 +570,34 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // ===== WindowResolution field-specific values =====
         // Provide reasonable window dimension values to prevent GPU texture size errors
         map.insert(
-            KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_width"),
+            KnowledgeKey::struct_field(TYPE_BEVY_WINDOW_RESOLUTION, "physical_width"),
             TypeKnowledge::as_root_value(json!(800), TYPE_U32), // Reasonable window width
         );
         map.insert(
-            KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_height"),
+            KnowledgeKey::struct_field(TYPE_BEVY_WINDOW_RESOLUTION, "physical_height"),
             TypeKnowledge::as_root_value(json!(600), TYPE_U32), // Reasonable window height
         );
 
         // ===== GlyphAtlasLocation field-specific values =====
         // Provide safe glyph index to prevent crashes from out-of-bounds atlas access
         map.insert(
-            KnowledgeKey::struct_field("bevy_text::glyph::GlyphAtlasLocation", "glyph_index"),
+            KnowledgeKey::struct_field(TYPE_BEVY_GLYPH_ATLAS_LOCATION, "glyph_index"),
             TypeKnowledge::as_root_value(json!(5), TYPE_USIZE),
         );
 
         // ===== VideoMode field-specific values =====
         // Provide realistic video mode values to prevent window system crashes
         map.insert(
-            KnowledgeKey::struct_field("bevy_window::monitor::VideoMode", "bit_depth"),
+            KnowledgeKey::struct_field(TYPE_BEVY_VIDEO_MODE, "bit_depth"),
             TypeKnowledge::as_root_value(json!(32), "u16"), // Standard 32-bit color
         );
         map.insert(
-            KnowledgeKey::struct_field("bevy_window::monitor::VideoMode", "physical_size"),
+            KnowledgeKey::struct_field(TYPE_BEVY_VIDEO_MODE, "physical_size"),
             TypeKnowledge::as_root_value(json!([1920, 1080]), "UVec2"), /* Standard Full HD
                                                                          * resolution */
         );
         map.insert(
-            KnowledgeKey::struct_field(
-                "bevy_window::monitor::VideoMode",
-                "refresh_rate_millihertz",
-            ),
+            KnowledgeKey::struct_field(TYPE_BEVY_VIDEO_MODE, "refresh_rate_millihertz"),
             TypeKnowledge::as_root_value(json!(60000), TYPE_U32), // 60 Hz in millihertz
         );
 
@@ -589,51 +612,51 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // ===== NonZero types =====
         // These types guarantee the value is never zero
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroU8"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U8),
             TypeKnowledge::as_root_value(json!(1), "NonZeroU8"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroU16"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U16),
             TypeKnowledge::as_root_value(json!(1), "NonZeroU16"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroU32"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U32),
             TypeKnowledge::as_root_value(json!(1), "NonZeroU32"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroU64"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U64),
             TypeKnowledge::as_root_value(json!(1), "NonZeroU64"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroU128"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U128),
             TypeKnowledge::as_root_value(json!(1), "NonZeroU128"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroUsize"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_USIZE),
             TypeKnowledge::as_root_value(json!(1), "NonZeroUsize"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroI8"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I8),
             TypeKnowledge::as_root_value(json!(1), "NonZeroI8"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroI16"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I16),
             TypeKnowledge::as_root_value(json!(1), "NonZeroI16"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroI32"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I32),
             TypeKnowledge::as_root_value(json!(1), "NonZeroI32"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroI64"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I64),
             TypeKnowledge::as_root_value(json!(1), "NonZeroI64"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroI128"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I128),
             TypeKnowledge::as_root_value(json!(1), "NonZeroI128"),
         );
         map.insert(
-            KnowledgeKey::exact("core::num::NonZeroIsize"),
+            KnowledgeKey::exact(TYPE_CORE_NON_ZERO_ISIZE),
             TypeKnowledge::as_root_value(json!(1), "NonZeroIsize"),
         );
 
@@ -642,17 +665,14 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Default is 3600 seconds (1 hour) - setting to zero causes panic in
         // run_fixed_main_schedule
         map.insert(
-            KnowledgeKey::struct_field(
-                "bevy_time::time::Time<bevy_time::fixed::Fixed>",
-                "wrap_period",
-            ),
+            KnowledgeKey::struct_field(TYPE_BEVY_TIME_FIXED_CONTAINER, "wrap_period"),
             TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
         );
 
         // timestep must be non-zero for fixed timestep to function
         // Default is 1/64 second (15625000 nanos) - setting to zero causes divide-by-zero panic
         map.insert(
-            KnowledgeKey::struct_field("bevy_time::fixed::Fixed", "timestep"),
+            KnowledgeKey::struct_field(TYPE_BEVY_FIXED, "timestep"),
             TypeKnowledge::as_root_value(
                 constants::duration_value(0, 15_625_000),
                 TYPE_CORE_DURATION,
@@ -663,17 +683,14 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // wrap_period must be non-zero to prevent divide-by-zero in time wrapping calculations
         // Default is 3600 seconds (1 hour) - setting to zero causes app crash
         map.insert(
-            KnowledgeKey::struct_field(
-                "bevy_time::time::Time<bevy_time::virt::Virtual>",
-                "wrap_period",
-            ),
+            KnowledgeKey::struct_field(TYPE_BEVY_TIME_VIRTUAL_CONTAINER, "wrap_period"),
             TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
         );
 
         // max_delta must be non-zero to allow virtual time to advance
         // Default is 250ms (250000000 nanos) - setting to zero prevents time updates
         map.insert(
-            KnowledgeKey::struct_field("bevy_time::virt::Virtual", "max_delta"),
+            KnowledgeKey::struct_field(TYPE_BEVY_VIRTUAL, "max_delta"),
             TypeKnowledge::as_root_value(
                 constants::duration_value(0, 250_000_000),
                 TYPE_CORE_DURATION,
@@ -684,10 +701,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // wrap_period must be non-zero to prevent divide-by-zero in time wrapping calculations
         // Default is 3600 seconds (1 hour) - setting to zero causes app crash
         map.insert(
-            KnowledgeKey::struct_field(
-                "bevy_time::time::Time<bevy_time::real::Real>",
-                "wrap_period",
-            ),
+            KnowledgeKey::struct_field(TYPE_BEVY_TIME_REAL_CONTAINER, "wrap_period"),
             TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
         );
 
@@ -703,8 +717,8 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Mask(f32) variant requires alpha threshold in 0.0-1.0 range
         map.insert(
             KnowledgeKey::enum_variant_signature(
-                "bevy_sprite_render::mesh2d::material::AlphaMode2d",
-                VariantSignature::Tuple(vec![BrpTypeName::from("f32")]),
+                TYPE_BEVY_ALPHA_MODE_2D,
+                VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_F32)]),
                 0,
             ),
             TypeKnowledge::as_root_value(json!(0.5), TYPE_F32),

@@ -13,9 +13,17 @@ pub(super) const ERROR_GUIDANCE: &str = "This type was found in the registry but
 
 // bevy component type constants
 pub(super) const BEVY_ASSET_HANDLE_PREFIX: &str = "bevy_asset::handle::Handle<";
+pub(super) const TYPE_BEVY_ALPHA_MODE_2D: &str =
+    "bevy_sprite_render::mesh2d::material::AlphaMode2d";
 pub(super) const TYPE_BEVY_CAMERA: &str = "bevy_camera::camera::Camera";
+pub(super) const TYPE_BEVY_CAMERA3D: &str = "bevy_camera::components::Camera3d";
 pub(super) const TYPE_BEVY_ENTITY: &str = "bevy_ecs::entity::Entity";
+pub(super) const TYPE_BEVY_GLOBAL_TRANSFORM: &str =
+    "bevy_transform::components::global_transform::GlobalTransform";
+pub(super) const TYPE_BEVY_GLYPH_ATLAS_LOCATION: &str = "bevy_text::glyph::GlyphAtlasLocation";
 pub(super) const TYPE_BEVY_NAME: &str = "bevy_ecs::name::Name";
+pub(super) const TYPE_BEVY_VIDEO_MODE: &str = "bevy_window::monitor::VideoMode";
+pub(super) const TYPE_BEVY_WINDOW_RESOLUTION: &str = "bevy_window::window::WindowResolution";
 pub(super) const TYPE_BLOOM: &str = "bevy_post_process::bloom::settings::Bloom";
 
 // bevy math type constants
@@ -29,6 +37,16 @@ pub(super) const TYPE_BEVY_VEC3: &str = "bevy_math::vec3::Vec3";
 pub(super) const TYPE_BEVY_VEC3A: &str = "bevy_math::vec3a::Vec3A";
 pub(super) const TYPE_BEVY_VEC4: &str = "bevy_math::vec4::Vec4";
 
+// bevy time type constants
+pub(super) const TYPE_BEVY_FIXED: &str = "bevy_time::fixed::Fixed";
+pub(super) const TYPE_BEVY_TIME_FIXED_CONTAINER: &str =
+    "bevy_time::time::Time<bevy_time::fixed::Fixed>";
+pub(super) const TYPE_BEVY_TIME_REAL_CONTAINER: &str =
+    "bevy_time::time::Time<bevy_time::real::Real>";
+pub(super) const TYPE_BEVY_TIME_VIRTUAL_CONTAINER: &str =
+    "bevy_time::time::Time<bevy_time::virt::Virtual>";
+pub(super) const TYPE_BEVY_VIRTUAL: &str = "bevy_time::virt::Virtual";
+
 // example generation constants
 /// Maximum recursion depth for type example generation to prevent stack overflow
 pub(super) const MAX_TYPE_RECURSION_DEPTH: usize = 10;
@@ -36,6 +54,9 @@ pub(super) const MAX_TYPE_RECURSION_DEPTH: usize = 10;
 // glam type constants
 pub(super) const TYPE_GLAM_AFFINE2: &str = "glam::Affine2";
 pub(super) const TYPE_GLAM_AFFINE3A: &str = "glam::Affine3A";
+pub(super) const TYPE_GLAM_DVEC2: &str = "glam::DVec2";
+pub(super) const TYPE_GLAM_DVEC3: &str = "glam::DVec3";
+pub(super) const TYPE_GLAM_DVEC4: &str = "glam::DVec4";
 pub(super) const TYPE_GLAM_IVEC2: &str = "glam::IVec2";
 pub(super) const TYPE_GLAM_IVEC3: &str = "glam::IVec3";
 pub(super) const TYPE_GLAM_IVEC4: &str = "glam::IVec4";
@@ -61,6 +82,20 @@ pub(super) const NOT_MUTABLE_FIELD: &str = "not_mutable";
 pub(super) const PARTIALLY_MUTABLE_FIELD: &str = "partially_mutable";
 pub(super) const WINDOW_TARGET_FIELD: &str = "Window";
 pub(super) const WINDOW_TARGET_PRIMARY: &str = "Primary";
+
+// non-zero integer type constants
+pub(super) const TYPE_CORE_NON_ZERO_I8: &str = "core::num::NonZeroI8";
+pub(super) const TYPE_CORE_NON_ZERO_I16: &str = "core::num::NonZeroI16";
+pub(super) const TYPE_CORE_NON_ZERO_I32: &str = "core::num::NonZeroI32";
+pub(super) const TYPE_CORE_NON_ZERO_I64: &str = "core::num::NonZeroI64";
+pub(super) const TYPE_CORE_NON_ZERO_I128: &str = "core::num::NonZeroI128";
+pub(super) const TYPE_CORE_NON_ZERO_ISIZE: &str = "core::num::NonZeroIsize";
+pub(super) const TYPE_CORE_NON_ZERO_U8: &str = "core::num::NonZeroU8";
+pub(super) const TYPE_CORE_NON_ZERO_U16: &str = "core::num::NonZeroU16";
+pub(super) const TYPE_CORE_NON_ZERO_U32: &str = "core::num::NonZeroU32";
+pub(super) const TYPE_CORE_NON_ZERO_U64: &str = "core::num::NonZeroU64";
+pub(super) const TYPE_CORE_NON_ZERO_U128: &str = "core::num::NonZeroU128";
+pub(super) const TYPE_CORE_NON_ZERO_USIZE: &str = "core::num::NonZeroUsize";
 
 // operation guidance constants
 /// Guidance for `resource` when type is a Resource

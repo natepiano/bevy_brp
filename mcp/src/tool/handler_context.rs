@@ -172,14 +172,14 @@ impl HandlerContext {
         &self,
         response: ToolCallJsonResponse,
     ) -> Result<ToolCallJsonResponse> {
-        let config = LargeResponseConfig::default();
+        let large_response_config = LargeResponseConfig::default();
 
         // Check size and handle
         let response_json = serde_json::to_string(&response)
             .change_context(Error::General("Failed to serialize response".to_string()))?;
         let estimated_tokens = response_json.len() / CHARS_PER_TOKEN;
 
-        if estimated_tokens > config.max_tokens
+        if estimated_tokens > large_response_config.max_tokens
             && let Some(result_field) = &response.result
         {
             // Generate filename using self.tool_def.tool_name
@@ -191,10 +191,10 @@ impl HandlerContext {
             let sanitized_identifier = self.tool_def.tool_name.to_string().replace(['/', ' '], "_");
             let filename = format!(
                 "{}{}{}.json",
-                config.file_prefix, sanitized_identifier, timestamp
+                large_response_config.file_prefix, sanitized_identifier, timestamp
             );
 
-            let filepath = config.temp_dir.join(&filename);
+            let filepath = large_response_config.temp_dir.join(&filename);
 
             let result_json = serde_json::to_string_pretty(result_field).change_context(
                 Error::General("Failed to serialize result field".to_string()),

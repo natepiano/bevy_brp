@@ -279,7 +279,7 @@ pub(super) fn determine_parent_mutability(
                 "Sets"
             };
 
-            let reason = NotMutableReason::from_partial_mutability(
+            let not_mutable_reason = NotMutableReason::from_partial_mutability(
                 context.type_name().clone(),
                 mutability_issues,
                 format!(
@@ -288,7 +288,7 @@ pub(super) fn determine_parent_mutability(
                 ),
             );
 
-            return (Mutability::NotMutable, Some(reason));
+            return (Mutability::NotMutable, Some(not_mutable_reason));
         }
     }
 

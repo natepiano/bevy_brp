@@ -551,7 +551,7 @@ async fn start_watch_task(
 
     // Create log path and logger
     let log_path = BufferedWatchLogger::get_watch_log_path(watch_id, entity_id, watch_type);
-    let logger = BufferedWatchLogger::new(log_path.clone());
+    let buffered_watch_logger = BufferedWatchLogger::new(log_path.clone());
 
     // Create initial log entry
     let log_data = match params.clone() {
@@ -571,7 +571,9 @@ async fn start_watch_task(
     };
 
     // If logging fails, we haven't registered anything yet
-    let log_result = logger.write_update("WATCH_STARTED", log_data).await;
+    let log_result = buffered_watch_logger
+        .write_update("WATCH_STARTED", log_data)
+        .await;
 
     if let Err(e) = log_result {
         return Err(error_stack::Report::new(Error::WatchOperation(format!(
@@ -589,7 +591,7 @@ async fn start_watch_task(
             params,
             port,
         },
-        logger,
+        buffered_watch_logger,
     ));
 
     // Register immediately while still holding the lock

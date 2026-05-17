@@ -139,10 +139,10 @@ pub fn process_matches_name_exact(process: &Process, target: &str) -> bool {
 
 /// Get the PID for a process listening on the specified port
 pub fn get_pid_for_port(port: Port) -> Option<u32> {
-    let af_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
-    let proto_flags = ProtocolFlags::TCP;
+    let address_family_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
+    let protocol_flags = ProtocolFlags::TCP;
 
-    netstat2::get_sockets_info(af_flags, proto_flags)
+    netstat2::get_sockets_info(address_family_flags, protocol_flags)
         .ok()?
         .into_iter()
         .find_map(|socket_info| {

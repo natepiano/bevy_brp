@@ -39,10 +39,10 @@ impl ToolDef {
         roots: Vec<PathBuf>,
     ) -> std::result::Result<CallToolResult, ErrorData> {
         // Create HandlerContext - all tools use the same context
-        let context = HandlerContext::new(self.clone(), request, roots);
+        let handler_context = HandlerContext::new(self.clone(), request, roots);
 
         // Tools now always return `CallToolResult` - errors are already formatted as responses
-        Ok(self.handler.call_erased(context).await)
+        Ok(self.handler.call_erased(handler_context).await)
     }
 
     /// Generate unified output schema from the actual [`ToolCallJsonResponse`] struct

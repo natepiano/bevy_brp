@@ -404,9 +404,9 @@ fn build_variant_example(
         VariantSignature::Tuple(types) => {
             let mut tuple_values = Vec::new();
             for index in 0..types.len() {
-                let descriptor = MutationPathDescriptor::from(index.to_string());
+                let mutation_path_descriptor = MutationPathDescriptor::from(index.to_string());
                 let example = children
-                    .get(&descriptor)
+                    .get(&mutation_path_descriptor)
                     .cloned()
                     .unwrap_or(Example::NotApplicable);
                 tuple_values.push(example.to_value());

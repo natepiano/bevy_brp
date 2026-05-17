@@ -183,8 +183,8 @@ async fn handle_impl(params: ShutdownParams) -> Result<ShutdownResult> {
 /// Try to gracefully shutdown via `bevy_brp_extras`
 async fn try_graceful_shutdown(port: Port) -> Result<Option<Value>> {
     debug!("Starting graceful shutdown attempt on port {port}");
-    let client = BrpClient::new(BrpMethod::BrpShutdown, port, None);
-    match client.execute_raw().await {
+    let brp_client = BrpClient::new(BrpMethod::BrpShutdown, port, None);
+    match brp_client.execute_raw().await {
         Ok(ResponseStatus::Success(result)) => {
             // Graceful shutdown succeeded
             debug!("BRP extras shutdown successful: {result:?}");

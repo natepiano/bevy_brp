@@ -116,11 +116,11 @@ impl TracingLevel {
         let log_path = Self::get_trace_log_path();
 
         // Create lazy file writer that only creates file on first write
-        let lazy_writer = LazyFileWriter::new(log_path);
+        let lazy_file_writer = LazyFileWriter::new(log_path);
 
         // Create the subscriber with dynamic filtering
         let file_layer = tracing_subscriber::fmt::layer()
-            .with_writer(lazy_writer)
+            .with_writer(lazy_file_writer)
             .with_ansi(false)
             .with_target(true)
             .with_file(true)

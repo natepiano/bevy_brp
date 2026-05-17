@@ -28,9 +28,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Uses lazy file creation - file only created on first log write
     TracingLevel::init_file_tracing();
 
-    let service = McpService::new();
+    let mcp_service = McpService::new();
 
-    let server = service.serve(transport::stdio()).await?;
+    let server = mcp_service.serve(transport::stdio()).await?;
     server.waiting().await?;
 
     Ok(())

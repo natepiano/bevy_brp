@@ -156,9 +156,9 @@ pub fn launch_bevy_target(
         })
         .collect();
 
-    let error = UnifiedTargetNotFoundError::new(params.target, available);
+    let unified_target_not_found_error = UnifiedTargetNotFoundError::new(params.target, available);
     Err(Error::Structured {
-        result: Box::new(error),
+        result: Box::new(unified_target_not_found_error),
     }
     .into())
 }
