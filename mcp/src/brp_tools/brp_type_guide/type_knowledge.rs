@@ -13,6 +13,7 @@ use serde_json::json;
 
 use super::BrpTypeName;
 use super::constants;
+use super::constants::DEFAULT_WRAP_PERIOD_SECS;
 use super::constants::TYPE_ALLOC_STRING;
 use super::constants::TYPE_BEVY_ALPHA_MODE_2D;
 use super::constants::TYPE_BEVY_CAMERA;
@@ -666,7 +667,10 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // run_fixed_main_schedule
         map.insert(
             KnowledgeKey::struct_field(TYPE_BEVY_TIME_FIXED_CONTAINER, "wrap_period"),
-            TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(
+                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, 0),
+                TYPE_CORE_DURATION,
+            ),
         );
 
         // timestep must be non-zero for fixed timestep to function
@@ -684,7 +688,10 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Default is 3600 seconds (1 hour) - setting to zero causes app crash
         map.insert(
             KnowledgeKey::struct_field(TYPE_BEVY_TIME_VIRTUAL_CONTAINER, "wrap_period"),
-            TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(
+                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, 0),
+                TYPE_CORE_DURATION,
+            ),
         );
 
         // max_delta must be non-zero to allow virtual time to advance
@@ -702,7 +709,10 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Default is 3600 seconds (1 hour) - setting to zero causes app crash
         map.insert(
             KnowledgeKey::struct_field(TYPE_BEVY_TIME_REAL_CONTAINER, "wrap_period"),
-            TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(
+                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, 0),
+                TYPE_CORE_DURATION,
+            ),
         );
 
         // ===== Time<()> field-specific values =====
@@ -710,7 +720,10 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Default is 3600 seconds (1 hour) - setting to zero causes app crash
         map.insert(
             KnowledgeKey::struct_field("bevy_time::time::Time<()>", "wrap_period"),
-            TypeKnowledge::as_root_value(constants::duration_value(3600, 0), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(
+                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, 0),
+                TYPE_CORE_DURATION,
+            ),
         );
 
         // ===== AlphaMode2d enum variant signatures =====

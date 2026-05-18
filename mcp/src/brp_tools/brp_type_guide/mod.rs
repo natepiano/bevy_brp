@@ -8,7 +8,7 @@ mod brp_type_name;
 mod constants;
 mod guide;
 mod mutation_path_builder;
-mod response_types;
+mod response;
 mod struct_field_name;
 mod tool_all_types;
 mod tool_type_guide;

@@ -18,8 +18,8 @@ use serde_json::json;
 
 use super::brp_type_name::BrpTypeName;
 use super::guide::TypeGuide;
-use super::response_types::TypeGuideResponse;
-use super::response_types::TypeGuideSummary;
+use super::response::TypeGuideResponse;
+use super::response::TypeGuideSummary;
 use crate::brp_tools::BrpClient;
 use crate::brp_tools::Port;
 use crate::brp_tools::ResponseStatus;

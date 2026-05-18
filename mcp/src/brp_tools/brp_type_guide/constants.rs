@@ -37,6 +37,11 @@ pub(super) const TYPE_BEVY_VEC3: &str = "bevy_math::vec3::Vec3";
 pub(super) const TYPE_BEVY_VEC3A: &str = "bevy_math::vec3a::Vec3A";
 pub(super) const TYPE_BEVY_VEC4: &str = "bevy_math::vec4::Vec4";
 
+// bevy time default values
+/// Default value for `Time<_>::wrap_period` (one hour, in seconds). Bevy panics
+/// or stalls when this is zero, so the BRP type guide ships a non-zero default.
+pub(super) const DEFAULT_WRAP_PERIOD_SECS: u64 = 3600;
+
 // bevy time type constants
 pub(super) const TYPE_BEVY_FIXED: &str = "bevy_time::fixed::Fixed";
 pub(super) const TYPE_BEVY_TIME_FIXED_CONTAINER: &str =
