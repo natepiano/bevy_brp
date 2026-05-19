@@ -14,9 +14,9 @@ use super::key_code::KeyCodeWrapper;
 /// enabling text input simulation that works with Bevy's text input systems.
 pub(super) fn create_keyboard_events(
     wrappers: &[KeyCodeWrapper],
-    state: ButtonState,
+    button_state: ButtonState,
 ) -> Vec<KeyboardInput> {
-    create_keyboard_events_with_text(wrappers, state, None)
+    create_keyboard_events_with_text(wrappers, button_state, None)
 }
 
 /// Create keyboard events with an optional target character override.
@@ -26,7 +26,7 @@ pub(super) fn create_keyboard_events(
 /// shifted characters (e.g., `!` requires Shift+1, but text should be `!`).
 pub(super) fn create_keyboard_events_with_text(
     wrappers: &[KeyCodeWrapper],
-    state: ButtonState,
+    button_state: ButtonState,
     target_char: Option<char>,
 ) -> Vec<KeyboardInput> {
     // Find the last non-modifier key index (that's where we set the text)
@@ -63,7 +63,7 @@ pub(super) fn create_keyboard_events_with_text(
                 char_opt.map_or((Key::Unidentified(NativeKey::Unidentified), None), |c| {
                     let s: String = c.to_string();
                     // Only populate text on press events, not release, and only for the target key
-                    let text = if state == ButtonState::Pressed && is_target_key {
+                    let text = if button_state == ButtonState::Pressed && is_target_key {
                         Some(s.clone().into())
                     } else {
                         None
@@ -72,7 +72,7 @@ pub(super) fn create_keyboard_events_with_text(
                 });
 
             KeyboardInput {
-                state,
+                state: button_state,
                 key_code,
                 logical_key,
                 window: Entity::PLACEHOLDER,

@@ -29,6 +29,44 @@ pub(super) struct BrpHttpClient {
     params: Option<Value>,
 }
 
+enum ReqwestErrorKind {
+    Timeout,
+    Connection,
+    Request,
+    Body,
+    Decode,
+    Other,
+}
+
+impl ReqwestErrorKind {
+    fn classify(error: &reqwest::Error) -> Self {
+        if error.is_timeout() {
+            Self::Timeout
+        } else if error.is_connect() {
+            Self::Connection
+        } else if error.is_request() {
+            Self::Request
+        } else if error.is_body() {
+            Self::Body
+        } else if error.is_decode() {
+            Self::Decode
+        } else {
+            Self::Other
+        }
+    }
+
+    const fn label(self) -> &'static str {
+        match self {
+            Self::Timeout => "Timeout",
+            Self::Connection => "Connection failed",
+            Self::Request => "Request error",
+            Self::Body => "Body error",
+            Self::Decode => "Decode error",
+            Self::Other => "Unknown error type",
+        }
+    }
+}
+
 impl BrpHttpClient {
     /// Create a new BRP HTTP client
     pub(super) const fn new(method: BrpMethod, port: Port, params: Option<Value>) -> Self {
@@ -186,19 +224,7 @@ impl BrpHttpClient {
         }
 
         // Determine error type and details
-        let error_type = if e.is_timeout() {
-            "Timeout"
-        } else if e.is_connect() {
-            "Connection failed"
-        } else if e.is_request() {
-            "Request error"
-        } else if e.is_body() {
-            "Body error"
-        } else if e.is_decode() {
-            "Decode error"
-        } else {
-            "Unknown error type"
-        };
+        let error_type = ReqwestErrorKind::classify(&e).label();
 
         context_info.push(format!("Error type: {error_type}"));
 
