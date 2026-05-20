@@ -11,7 +11,6 @@ use std::vec::IntoIter;
 use serde_json::Value;
 
 use super::TypeKindBuilder;
-use super::ValueMutationBuilder;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::BuilderError;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::NotMutableReason;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_example::Example;
@@ -19,6 +18,8 @@ use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::Mutation
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::PathKind;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::recursion_context::RecursionContext;
 use crate::error::Result;
+
+pub struct ValueMutationBuilder;
 
 impl TypeKindBuilder for ValueMutationBuilder {
     type Item = PathKind;

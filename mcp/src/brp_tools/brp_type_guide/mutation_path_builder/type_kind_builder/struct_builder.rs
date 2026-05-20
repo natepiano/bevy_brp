@@ -13,7 +13,6 @@ use std::vec::IntoIter;
 use serde_json::Value;
 use serde_json::json;
 
-use super::StructMutationBuilder;
 use super::TypeKindBuilder;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::BuilderError;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_example::Example;
@@ -25,6 +24,8 @@ use crate::brp_tools::brp_type_guide::struct_field_name::StructFieldName;
 use crate::error::Error;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;
+
+pub struct StructMutationBuilder;
 
 impl TypeKindBuilder for StructMutationBuilder {
     type Item = PathKind;

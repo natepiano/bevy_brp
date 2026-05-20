@@ -21,13 +21,13 @@ mod struct_builder;
 mod tuple_builder;
 mod value_builder;
 
-pub(super) struct ArrayMutationBuilder;
-pub(super) struct ListMutationBuilder;
-pub(super) struct MapMutationBuilder;
-pub(super) struct SetMutationBuilder;
-pub(super) struct StructMutationBuilder;
-pub(super) struct TupleMutationBuilder;
-pub(super) struct ValueMutationBuilder;
+pub(super) use array_builder::ArrayMutationBuilder;
+pub(super) use list_builder::ListMutationBuilder;
+pub(super) use map_builder::MapMutationBuilder;
+pub(super) use set_builder::SetMutationBuilder;
+pub(super) use struct_builder::StructMutationBuilder;
+pub(super) use tuple_builder::TupleMutationBuilder;
+pub(super) use value_builder::ValueMutationBuilder;
 
 /// Trait for building mutation paths for different type kinds.
 ///
