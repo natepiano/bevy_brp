@@ -95,7 +95,7 @@ impl NotMutableReason {
             path_statuses
                 .entry(path_str)
                 .or_default()
-                .insert(mutability_issue.status);
+                .insert(mutability_issue.mutability);
         }
 
         // Second pass: Categorize each unique path based on its status diversity
@@ -113,9 +113,9 @@ impl NotMutableReason {
                 // Example: `.color_lut.0.0` is mutable in Uuid variant but not_mutable in Strong
                 // variant
                 partially_mutable.push(path_str);
-            } else if let Some(&status) = statuses.iter().next() {
+            } else if let Some(&mutability) = statuses.iter().next() {
                 // Path has consistent status across all variants → use that status
-                match status {
+                match mutability {
                     Mutability::Mutable => mutable.push(path_str),
                     Mutability::NotMutable => not_mutable.push(path_str),
                     Mutability::PartiallyMutable => partially_mutable.push(path_str),

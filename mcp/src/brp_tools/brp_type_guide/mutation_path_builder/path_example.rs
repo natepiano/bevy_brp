@@ -7,6 +7,8 @@ use serde::Serialize;
 use serde::ser::SerializeMap;
 use serde_json::Value;
 
+use super::constants::RESPONSE_EXAMPLE_FIELD;
+use super::constants::RESPONSE_EXAMPLES_FIELD;
 use super::enum_builder;
 use super::enum_builder::ExampleGroup;
 
@@ -114,13 +116,13 @@ impl Serialize for PathExample {
                     serializer.serialize_map(Some(0))?.end()
                 } else {
                     let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry("example", &value)?;
+                    map.serialize_entry(RESPONSE_EXAMPLE_FIELD, &value)?;
                     map.end()
                 }
             },
             Self::EnumRoot { groups, .. } => {
                 let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry("examples", groups)?;
+                map.serialize_entry(RESPONSE_EXAMPLES_FIELD, groups)?;
                 map.end()
             },
         }

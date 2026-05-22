@@ -295,10 +295,10 @@ pub(super) fn determine_parent_mutability(
     // Extract statuses and aggregate (normal logic for non-Map/Set types)
     let statuses: Vec<Mutability> = child_paths.iter().map(|p| p.mutability).collect();
 
-    let status = support::aggregate_mutability(&statuses);
+    let mutability = support::aggregate_mutability(&statuses);
 
     // Build detailed reason if not fully mutable
-    let reason = match status {
+    let reason = match mutability {
         Mutability::PartiallyMutable => {
             let mutability_issues: Vec<MutabilityIssue> = child_paths
                 .iter()
@@ -320,7 +320,7 @@ pub(super) fn determine_parent_mutability(
         Mutability::Mutable => None,
     };
 
-    (status, reason)
+    (mutability, reason)
 }
 
 impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
@@ -426,7 +426,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     fn build_mutation_path_internal(
         context: &RecursionContext,
         example: PathExample,
-        status: Mutability,
+        mutability: Mutability,
         mutability_reason: Option<NotMutableReason>,
         partial_root_examples: Option<HashMap<Vec<VariantName>, RootExample>>,
     ) -> MutationPathInternal {
@@ -446,7 +446,7 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             example,
             type_name: context.type_name().display_name(),
             path_kind: context.path_kind.clone(),
-            mutability: status,
+            mutability,
             mutability_reason,
             enum_path_info: enum_path_data,
             depth: *context.depth,

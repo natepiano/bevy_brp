@@ -10,8 +10,13 @@ use std::sync::Arc;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::ser::SerializeMap;
+use serde_json::Map;
 use serde_json::Value;
 
+use super::constants::RESPONSE_AGENT_GUIDANCE_FIELD;
+use super::constants::RESPONSE_EXAMPLE_FIELD;
+use super::constants::RESPONSE_RESOURCE_FIELD;
+use super::constants::RESPONSE_SPAWN_FIELD;
 use super::mutation_path_external::MutationPathExternal;
 use super::path_builder;
 use super::path_example::Example;
@@ -29,6 +34,7 @@ use crate::brp_tools::brp_type_guide::constants::SPAWN_COMPONENT_GUIDANCE;
 use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 use crate::error::Error;
 use crate::error::Result;
+use crate::support::JsonObjectAccess;
 
 /// Entry point for building mutation paths from a type name and registry
 ///
@@ -144,54 +150,31 @@ impl Serialize for SpawnInsertExample {
                 agent_guidance,
                 example,
             } => {
-                if example.is_null_equivalent() {
-                    let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry(
-                        "spawn",
-                        &serde_json::json!({
-                            "agent_guidance": agent_guidance
-                        }),
-                    )?;
-                    map.end()
-                } else {
-                    let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry(
-                        "spawn",
-                        &serde_json::json!({
-                            "agent_guidance": agent_guidance,
-                            "example": example.to_value()
-                        }),
-                    )?;
-                    map.end()
-                }
+                let payload = spawn_insert_payload(agent_guidance, example);
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry(RESPONSE_SPAWN_FIELD, &payload)?;
+                map.end()
             },
             Self::Resource {
                 agent_guidance,
                 example,
             } => {
-                if example.is_null_equivalent() {
-                    let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry(
-                        "resource",
-                        &serde_json::json!({
-                            "agent_guidance": agent_guidance
-                        }),
-                    )?;
-                    map.end()
-                } else {
-                    let mut map = serializer.serialize_map(Some(1))?;
-                    map.serialize_entry(
-                        "resource",
-                        &serde_json::json!({
-                            "agent_guidance": agent_guidance,
-                            "example": example.to_value()
-                        }),
-                    )?;
-                    map.end()
-                }
+                let payload = spawn_insert_payload(agent_guidance, example);
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry(RESPONSE_RESOURCE_FIELD, &payload)?;
+                map.end()
             },
         }
     }
+}
+
+fn spawn_insert_payload(agent_guidance: &str, example: &Example) -> Value {
+    let mut payload = Map::new();
+    payload.insert_field(RESPONSE_AGENT_GUIDANCE_FIELD, agent_guidance);
+    if !example.is_null_equivalent() {
+        payload.insert_field(RESPONSE_EXAMPLE_FIELD, example.to_value());
+    }
+    Value::Object(payload)
 }
 
 /// Stub `Deserialize` implementation for `SpawnInsertExample`

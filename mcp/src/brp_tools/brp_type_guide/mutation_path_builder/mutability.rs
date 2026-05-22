@@ -42,16 +42,16 @@ impl Display for MutabilityIssueTarget {
 /// Summary of a mutation issue for diagnostic reporting
 #[derive(Debug, Clone)]
 pub(super) struct MutabilityIssue {
-    pub(super) target: MutabilityIssueTarget,
-    pub(super) status: Mutability,
+    pub(super) target:     MutabilityIssueTarget,
+    pub(super) mutability: Mutability,
 }
 
 impl MutabilityIssue {
     /// Create from an enum variant name (for enum types)
-    pub(super) const fn from_variant_name(variant: VariantName, status: Mutability) -> Self {
+    pub(super) const fn from_variant_name(variant: VariantName, mutability: Mutability) -> Self {
         Self {
             target: MutabilityIssueTarget::Variant(variant),
-            status,
+            mutability,
         }
     }
 }

@@ -110,8 +110,8 @@ impl MutationPathInternal {
     /// Create a `MutabilityIssue` from this mutation path (for non-enum types)
     pub(super) fn to_mutability_issue(&self) -> MutabilityIssue {
         MutabilityIssue {
-            target: MutabilityIssueTarget::Path(self.mutation_path.clone()),
-            status: self.mutability,
+            target:     MutabilityIssueTarget::Path(self.mutation_path.clone()),
+            mutability: self.mutability,
         }
     }
 

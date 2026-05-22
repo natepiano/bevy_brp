@@ -239,93 +239,93 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // ===== Numeric types =====
         map.insert(
             KnowledgeKey::exact(TYPE_I8),
-            TypeKnowledge::as_root_value(json!(42), TYPE_I8),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_I8), TYPE_I8),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I16),
-            TypeKnowledge::as_root_value(json!(1), TYPE_I16),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_I16), TYPE_I16),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I32),
-            TypeKnowledge::as_root_value(json!(1), TYPE_I32),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_I32), TYPE_I32),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I64),
-            TypeKnowledge::as_root_value(json!(1), TYPE_I64),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_I64), TYPE_I64),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I128),
-            TypeKnowledge::as_root_value(json!("123456789012345678901234567890"), TYPE_I128),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_I128), TYPE_I128),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U8),
-            TypeKnowledge::as_root_value(json!(128), TYPE_U8),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_U8), TYPE_U8),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U16),
-            TypeKnowledge::as_root_value(json!(5000), TYPE_U16),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_U16), TYPE_U16),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U32),
-            TypeKnowledge::as_root_value(json!(1_u32), TYPE_U32),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_U32), TYPE_U32),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U64),
-            TypeKnowledge::as_root_value(json!(1_u64), TYPE_U64),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_U64), TYPE_U64),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U128),
-            TypeKnowledge::as_root_value(json!("987654321098765432109876543210"), TYPE_U128),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_U128), TYPE_U128),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_F32),
-            TypeKnowledge::as_root_value(json!(1.0_f32), TYPE_F32),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_F32), TYPE_F32),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_F64),
-            TypeKnowledge::as_root_value(json!(1.0_f64), TYPE_F64),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_F64), TYPE_F64),
         );
 
         // ===== Size types =====
         map.insert(
             KnowledgeKey::exact(TYPE_ISIZE),
-            TypeKnowledge::as_root_value(json!(1_i64), TYPE_ISIZE),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_ISIZE), TYPE_ISIZE),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_USIZE),
-            TypeKnowledge::as_root_value(json!(2_u64), TYPE_USIZE),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_USIZE), TYPE_USIZE),
         );
 
         // ===== Text types =====
         map.insert(
             KnowledgeKey::exact(TYPE_ALLOC_STRING),
-            TypeKnowledge::as_root_value(json!("Hello, World!"), TYPE_STRING),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_STRING), TYPE_STRING),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STD_STRING),
-            TypeKnowledge::as_root_value(json!("Hello, World!"), TYPE_STRING),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_STRING), TYPE_STRING),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STRING),
-            TypeKnowledge::as_root_value(json!("Hello, World!"), TYPE_STRING),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_STRING), TYPE_STRING),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STR_REF),
-            TypeKnowledge::as_root_value(json!("static string"), TYPE_STR),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_STATIC_STR), TYPE_STR),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STR),
-            TypeKnowledge::as_root_value(json!("static string"), TYPE_STR),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_STATIC_STR), TYPE_STR),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CHAR),
-            TypeKnowledge::as_root_value(json!('A'), TYPE_CHAR),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_CHAR), TYPE_CHAR),
         );
 
         // ===== Boolean =====
         map.insert(
             KnowledgeKey::exact(TYPE_BOOL),
-            TypeKnowledge::as_root_value(json!(true), TYPE_BOOL),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_BOOL), TYPE_BOOL),
         );
 
         // ===== Time types =====
@@ -333,159 +333,161 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Serializes as struct with both fields required
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_DURATION),
-            TypeKnowledge::as_root_value(constants::duration_value(0, 0), TYPE_CORE_DURATION),
+            TypeKnowledge::as_root_value(
+                constants::duration_value(constants::ZERO_SECONDS, constants::ZERO_NANOS),
+                TYPE_CORE_DURATION,
+            ),
         );
 
         // ===== Unit tuple =====
         // Unit tuple () serializes as empty array [] in BRP mutations
         // required for `bevy_time::time::Time<()>`
         map.insert(
-            KnowledgeKey::exact("()"),
-            TypeKnowledge::as_root_value(json!([]), "()"),
+            KnowledgeKey::exact(constants::TYPE_UNIT),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_UNIT_ARRAY),
+                constants::SIMPLIFIED_UNIT,
+            ),
         );
 
         // ===== UUID =====
         // Standard UUID v4 format string
         map.insert(
-            KnowledgeKey::exact("uuid::Uuid"),
-            TypeKnowledge::as_root_value(json!("550e8400-e29b-41d4-a716-446655440000"), "Uuid"),
+            KnowledgeKey::exact(constants::TYPE_UUID),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_UUID),
+                constants::SIMPLIFIED_UUID,
+            ),
         );
 
         // ===== Bevy math types (these serialize as arrays, not objects!) =====
         // Vec2
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_VEC2),
-            TypeKnowledge::new(json!([1.0, 2.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_VEC2)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC2),
-            TypeKnowledge::new(json!([1.0, 2.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_VEC2)),
         );
 
         // Vec3
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_VEC3),
-            TypeKnowledge::new(json!([1.0, 2.0, 3.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_VEC3)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_VEC3A),
-            TypeKnowledge::new(json!([1.0, 2.0, 3.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_VEC3)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC3),
-            TypeKnowledge::new(json!([1.0, 2.0, 3.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_VEC3)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC3A),
-            TypeKnowledge::new(json!([1.0, 2.0, 3.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_VEC3)),
         );
 
         // Vec4
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_VEC4),
-            TypeKnowledge::new(json!([1.0, 2.0, 3.0, 4.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_VEC4)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC4),
-            TypeKnowledge::new(json!([1.0, 2.0, 3.0, 4.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_VEC4)),
         );
 
         // Double-precision vectors (f64)
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_DVEC2),
-            TypeKnowledge::new(json!([1.0, 2.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_DVEC2)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_DVEC3),
-            TypeKnowledge::new(json!([1.0, 2.0, 3.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_DVEC3)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_DVEC4),
-            TypeKnowledge::new(json!([1.0, 2.0, 3.0, 4.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_DVEC4)),
         );
 
         // Integer vectors
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_IVEC2),
-            TypeKnowledge::new(json!([0, 0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_IVEC2)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_IVEC3),
-            TypeKnowledge::new(json!([0, 0, 0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_IVEC3)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_IVEC4),
-            TypeKnowledge::new(json!([0, 0, 0, 0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_IVEC4)),
         );
 
         // Unsigned vectors
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_UVEC2),
-            TypeKnowledge::new(json!([0, 0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_UVEC2)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_UVEC3),
-            TypeKnowledge::new(json!([0, 0, 0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_UVEC3)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_UVEC4),
-            TypeKnowledge::new(json!([0, 0, 0, 0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_UVEC4)),
         );
 
         // Quaternion
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_QUAT),
-            TypeKnowledge::new(json!([0.0, 0.0, 0.0, 1.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_QUAT)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_QUAT),
-            TypeKnowledge::new(json!([0.0, 0.0, 0.0, 1.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_QUAT)),
         );
 
         // Matrices
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_MAT2),
-            TypeKnowledge::new(json!([1.0, 0.0, 0.0, 1.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_MAT2)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT2),
-            TypeKnowledge::new(json!([1.0, 0.0, 0.0, 1.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_MAT2)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_MAT3),
-            TypeKnowledge::new(json!([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_MAT3)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT3),
-            TypeKnowledge::new(json!([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_MAT3)),
         );
         // Mat3A - Used in GlobalTransform.0.matrix3, expects flat array not nested object
         // The error was: "invalid type: map, expected a sequence of 9 f32values"
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT3A),
-            TypeKnowledge::new(json!([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_MAT3)),
         );
         // Mat4 - BRP expects flat array of 16 values, not nested 2D array
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_MAT4),
-            TypeKnowledge::new(json!([
-                1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0
-            ])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_MAT4)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT4),
-            TypeKnowledge::new(json!([
-                1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0
-            ])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_MAT4)),
         );
 
         // ===== Bevy math Rect =====
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_RECT),
-            TypeKnowledge::new(json!({
-                "min": [0.0, 0.0],
-                "max": [100.0, 100.0]
-            })), // Has nested paths via Vec2 fields
+            TypeKnowledge::new(constants::rect_value()), // Has nested paths via Vec2 fields
         );
 
         // ===== Bevy ECS types =====
@@ -494,13 +496,13 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // obtained from spawn operations or queries. Using invalid entity IDs will cause errors.
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_ENTITY),
-            TypeKnowledge::as_root_value(json!(8_589_934_670_u64), TYPE_BEVY_ENTITY),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_ENTITY_BITS), TYPE_BEVY_ENTITY),
         );
 
         // Name serializes as a plain string, not as a struct with hash/name fields
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_NAME),
-            TypeKnowledge::as_root_value(json!("Entity Name"), TYPE_STRING),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_NAME), TYPE_STRING),
         );
 
         // ===== Camera field-specific values =====
@@ -510,7 +512,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // window Use TeachAndRecurse to provide safe default while still exposing nested
         // mutation paths
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_CAMERA, "target"),
+            KnowledgeKey::struct_field(TYPE_BEVY_CAMERA, constants::FIELD_CAMERA_TARGET),
             TypeKnowledge::new(constants::primary_window_target_value()),
         );
 
@@ -521,9 +523,15 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // textures! Safe combinations: 16 (RENDER_ATTACHMENT only), 20 (RENDER_ATTACHMENT |
         // TEXTURE_BINDING)
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_CAMERA3D, "depth_texture_usages"),
+            KnowledgeKey::struct_field(
+                TYPE_BEVY_CAMERA3D,
+                constants::FIELD_CAMERA3D_DEPTH_TEXTURE_USAGES,
+            ),
             // RENDER_ATTACHMENT | TEXTURE_BINDING - safe combination, treat as opaque u32
-            TypeKnowledge::as_root_value(json!(20), TYPE_U32),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_CAMERA3D_DEPTH_TEXTURE_USAGES),
+                TYPE_U32,
+            ),
         );
 
         // Screen space specular transmission steps - reasonable value to prevent memory issues
@@ -531,9 +539,12 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         map.insert(
             KnowledgeKey::struct_field(
                 TYPE_BEVY_CAMERA3D,
-                "screen_space_specular_transmission_steps",
+                constants::FIELD_CAMERA3D_SCREEN_SPACE_SPECULAR_TRANSMISSION_STEPS,
             ),
-            TypeKnowledge::as_root_value(json!(1), TYPE_USIZE),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_CAMERA3D_SCREEN_SPACE_SPECULAR_TRANSMISSION_STEPS),
+                TYPE_USIZE,
+            ),
         );
 
         // ===== Transform types =====
@@ -542,16 +553,14 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Registry shows nested object but BRP actually expects flat array
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_GLOBAL_TRANSFORM),
-            TypeKnowledge::new(json!([
-                1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0
-            ])), // Affine matrices don't have simple component access
+            TypeKnowledge::new(json!(constants::EXAMPLE_GLOBAL_TRANSFORM)), // Affine matrices don't have simple component access
         );
 
         // Affine2 - Used in UiGlobalTransform.0, serializes as flat array of 6 f32 values
         // Format: [matrix_row1(2), matrix_row2(2), translation(2)]
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_AFFINE2),
-            TypeKnowledge::new(json!([1.0, 0.0, 0.0, 1.0, 0.0, 0.0])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_AFFINE2)),
         );
 
         // Affine3A - Used as GlobalTransform.0, serializes as flat array of 12 f32 values
@@ -559,9 +568,7 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Has matrix3 and translation fields but doesn't serialize with field names
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_AFFINE3A),
-            TypeKnowledge::new(json!([
-                1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0
-            ])),
+            TypeKnowledge::new(json!(constants::EXAMPLE_AFFINE3A)),
         );
 
         // ===== Asset Handle types =====
@@ -571,94 +578,163 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // ===== WindowResolution field-specific values =====
         // Provide reasonable window dimension values to prevent GPU texture size errors
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_WINDOW_RESOLUTION, "physical_width"),
-            TypeKnowledge::as_root_value(json!(800), TYPE_U32), // Reasonable window width
+            KnowledgeKey::struct_field(
+                TYPE_BEVY_WINDOW_RESOLUTION,
+                constants::FIELD_WINDOW_RESOLUTION_PHYSICAL_WIDTH,
+            ),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_WINDOW_RESOLUTION_PHYSICAL_WIDTH),
+                TYPE_U32,
+            ), // Reasonable window width
         );
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_WINDOW_RESOLUTION, "physical_height"),
-            TypeKnowledge::as_root_value(json!(600), TYPE_U32), // Reasonable window height
+            KnowledgeKey::struct_field(
+                TYPE_BEVY_WINDOW_RESOLUTION,
+                constants::FIELD_WINDOW_RESOLUTION_PHYSICAL_HEIGHT,
+            ),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_WINDOW_RESOLUTION_PHYSICAL_HEIGHT),
+                TYPE_U32,
+            ), // Reasonable window height
         );
 
         // ===== GlyphAtlasLocation field-specific values =====
         // Provide safe glyph index to prevent crashes from out-of-bounds atlas access
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_GLYPH_ATLAS_LOCATION, "glyph_index"),
-            TypeKnowledge::as_root_value(json!(5), TYPE_USIZE),
+            KnowledgeKey::struct_field(
+                TYPE_BEVY_GLYPH_ATLAS_LOCATION,
+                constants::FIELD_GLYPH_ATLAS_LOCATION_GLYPH_INDEX,
+            ),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_GLYPH_INDEX), TYPE_USIZE),
         );
 
         // ===== VideoMode field-specific values =====
         // Provide realistic video mode values to prevent window system crashes
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_VIDEO_MODE, "bit_depth"),
-            TypeKnowledge::as_root_value(json!(32), "u16"), // Standard 32-bit color
+            KnowledgeKey::struct_field(TYPE_BEVY_VIDEO_MODE, constants::FIELD_VIDEO_MODE_BIT_DEPTH),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_VIDEO_MODE_BIT_DEPTH),
+                TYPE_U16,
+            ), // Standard 32-bit color
         );
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_VIDEO_MODE, "physical_size"),
-            TypeKnowledge::as_root_value(json!([1920, 1080]), "UVec2"), /* Standard Full HD
-                                                                         * resolution */
+            KnowledgeKey::struct_field(
+                TYPE_BEVY_VIDEO_MODE,
+                constants::FIELD_VIDEO_MODE_PHYSICAL_SIZE,
+            ),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_VIDEO_MODE_PHYSICAL_SIZE),
+                constants::SIMPLIFIED_UVEC2,
+            ), /* Standard Full HD
+                * resolution */
         );
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_VIDEO_MODE, "refresh_rate_millihertz"),
-            TypeKnowledge::as_root_value(json!(60000), TYPE_U32), // 60 Hz in millihertz
+            KnowledgeKey::struct_field(
+                TYPE_BEVY_VIDEO_MODE,
+                constants::FIELD_VIDEO_MODE_REFRESH_RATE_MILLIHERTZ,
+            ),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_VIDEO_MODE_REFRESH_RATE_MILLIHERTZ),
+                TYPE_U32,
+            ), // 60 Hz in millihertz
         );
 
         // ===== Bloom field-specific values =====
         // Provide safe max_mip_dimension to prevent GPU texture allocation crashes
         // Default is 512, using u32 generic value of 1_000_000 causes rendering pipeline corruption
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BLOOM, "max_mip_dimension"),
-            TypeKnowledge::as_root_value(json!(512), TYPE_U32),
+            KnowledgeKey::struct_field(TYPE_BLOOM, constants::FIELD_BLOOM_MAX_MIP_DIMENSION),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_BLOOM_MAX_MIP_DIMENSION),
+                TYPE_U32,
+            ),
         );
 
         // ===== NonZero types =====
         // These types guarantee the value is never zero
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U8),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroU8"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_U8),
+                constants::SIMPLIFIED_NON_ZERO_U8,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U16),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroU16"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_U16),
+                constants::SIMPLIFIED_NON_ZERO_U16,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U32),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroU32"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_U32),
+                constants::SIMPLIFIED_NON_ZERO_U32,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U64),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroU64"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_U64),
+                constants::SIMPLIFIED_NON_ZERO_U64,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_U128),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroU128"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_U128),
+                constants::SIMPLIFIED_NON_ZERO_U128,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_USIZE),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroUsize"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_USIZE),
+                constants::SIMPLIFIED_NON_ZERO_USIZE,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I8),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroI8"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_I8),
+                constants::SIMPLIFIED_NON_ZERO_I8,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I16),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroI16"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_I16),
+                constants::SIMPLIFIED_NON_ZERO_I16,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I32),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroI32"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_I32),
+                constants::SIMPLIFIED_NON_ZERO_I32,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I64),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroI64"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_I64),
+                constants::SIMPLIFIED_NON_ZERO_I64,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_I128),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroI128"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_I128),
+                constants::SIMPLIFIED_NON_ZERO_I128,
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CORE_NON_ZERO_ISIZE),
-            TypeKnowledge::as_root_value(json!(1), "NonZeroIsize"),
+            TypeKnowledge::as_root_value(
+                json!(constants::EXAMPLE_NON_ZERO_ISIZE),
+                constants::SIMPLIFIED_NON_ZERO_ISIZE,
+            ),
         );
 
         // ===== Time<Fixed> field-specific values =====
@@ -666,9 +742,12 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // Default is 3600 seconds (1 hour) - setting to zero causes panic in
         // run_fixed_main_schedule
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_TIME_FIXED_CONTAINER, "wrap_period"),
+            KnowledgeKey::struct_field(
+                TYPE_BEVY_TIME_FIXED_CONTAINER,
+                constants::FIELD_TIME_WRAP_PERIOD,
+            ),
             TypeKnowledge::as_root_value(
-                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, 0),
+                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, constants::ZERO_NANOS),
                 TYPE_CORE_DURATION,
             ),
         );
@@ -676,9 +755,12 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // timestep must be non-zero for fixed timestep to function
         // Default is 1/64 second (15625000 nanos) - setting to zero causes divide-by-zero panic
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_FIXED, "timestep"),
+            KnowledgeKey::struct_field(TYPE_BEVY_FIXED, constants::FIELD_FIXED_TIMESTEP),
             TypeKnowledge::as_root_value(
-                constants::duration_value(0, 15_625_000),
+                constants::duration_value(
+                    constants::ZERO_SECONDS,
+                    constants::EXAMPLE_FIXED_TIMESTEP_NANOS,
+                ),
                 TYPE_CORE_DURATION,
             ),
         );
@@ -687,9 +769,12 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // wrap_period must be non-zero to prevent divide-by-zero in time wrapping calculations
         // Default is 3600 seconds (1 hour) - setting to zero causes app crash
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_TIME_VIRTUAL_CONTAINER, "wrap_period"),
+            KnowledgeKey::struct_field(
+                TYPE_BEVY_TIME_VIRTUAL_CONTAINER,
+                constants::FIELD_TIME_WRAP_PERIOD,
+            ),
             TypeKnowledge::as_root_value(
-                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, 0),
+                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, constants::ZERO_NANOS),
                 TYPE_CORE_DURATION,
             ),
         );
@@ -697,9 +782,12 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // max_delta must be non-zero to allow virtual time to advance
         // Default is 250ms (250000000 nanos) - setting to zero prevents time updates
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_VIRTUAL, "max_delta"),
+            KnowledgeKey::struct_field(TYPE_BEVY_VIRTUAL, constants::FIELD_VIRTUAL_MAX_DELTA),
             TypeKnowledge::as_root_value(
-                constants::duration_value(0, 250_000_000),
+                constants::duration_value(
+                    constants::ZERO_SECONDS,
+                    constants::EXAMPLE_VIRTUAL_MAX_DELTA_NANOS,
+                ),
                 TYPE_CORE_DURATION,
             ),
         );
@@ -708,9 +796,12 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // wrap_period must be non-zero to prevent divide-by-zero in time wrapping calculations
         // Default is 3600 seconds (1 hour) - setting to zero causes app crash
         map.insert(
-            KnowledgeKey::struct_field(TYPE_BEVY_TIME_REAL_CONTAINER, "wrap_period"),
+            KnowledgeKey::struct_field(
+                TYPE_BEVY_TIME_REAL_CONTAINER,
+                constants::FIELD_TIME_WRAP_PERIOD,
+            ),
             TypeKnowledge::as_root_value(
-                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, 0),
+                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, constants::ZERO_NANOS),
                 TYPE_CORE_DURATION,
             ),
         );
@@ -719,9 +810,12 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // wrap_period must be non-zero to prevent divide-by-zero in time wrapping calculations
         // Default is 3600 seconds (1 hour) - setting to zero causes app crash
         map.insert(
-            KnowledgeKey::struct_field("bevy_time::time::Time<()>", "wrap_period"),
+            KnowledgeKey::struct_field(
+                constants::TYPE_BEVY_TIME_EMPTY_CONTAINER,
+                constants::FIELD_TIME_WRAP_PERIOD,
+            ),
             TypeKnowledge::as_root_value(
-                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, 0),
+                constants::duration_value(DEFAULT_WRAP_PERIOD_SECS, constants::ZERO_NANOS),
                 TYPE_CORE_DURATION,
             ),
         );
@@ -732,9 +826,9 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
             KnowledgeKey::enum_variant_signature(
                 TYPE_BEVY_ALPHA_MODE_2D,
                 VariantSignature::Tuple(vec![BrpTypeName::from(TYPE_F32)]),
-                0,
+                constants::ALPHA_MODE_2D_MASK_SIGNATURE_INDEX,
             ),
-            TypeKnowledge::as_root_value(json!(0.5), TYPE_F32),
+            TypeKnowledge::as_root_value(json!(constants::EXAMPLE_ALPHA_MODE_2D_MASK), TYPE_F32),
         );
 
         map
