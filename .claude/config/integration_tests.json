@@ -8,10 +8,10 @@
       "app_type": null
     },
     {
-      "test_name": "data_operations",
-      "test_file": ".claude/integration_tests/data_operations.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
+      "test_name": "launch_errors",
+      "test_file": ".claude/integration_tests/launch_errors.md",
+      "app_name": "various",
+      "app_type": null
     },
     {
       "test_name": "resource",
@@ -39,8 +39,14 @@
       ]
     },
     {
-      "test_name": "watch_component",
-      "test_file": ".claude/integration_tests/watch_component.md",
+      "test_name": "get",
+      "test_file": ".claude/integration_tests/get.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "query_filtered",
+      "test_file": ".claude/integration_tests/query_filtered.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
@@ -57,8 +63,56 @@
       "app_type": "example"
     },
     {
-      "test_name": "query_filtered",
-      "test_file": ".claude/integration_tests/query_filtered.md",
+      "test_name": "list",
+      "test_file": ".claude/integration_tests/list.md",
+      "app_name": "N/A",
+      "app_type": null
+    },
+    {
+      "test_name": "large_response",
+      "test_file": ".claude/integration_tests/large_response.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "extras_keyboard",
+      "test_file": ".claude/integration_tests/extras_keyboard.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "data_operations",
+      "test_file": ".claude/integration_tests/data_operations.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "watch_list",
+      "test_file": ".claude/integration_tests/watch_list.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "query_basic",
+      "test_file": ".claude/integration_tests/query_basic.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "trigger_event",
+      "test_file": ".claude/integration_tests/trigger_event.md",
+      "app_name": "event_test",
+      "app_type": "example"
+    },
+    {
+      "test_name": "watch_component",
+      "test_file": ".claude/integration_tests/watch_component.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
+      "test_name": "introspection",
+      "test_file": ".claude/integration_tests/introspection.md",
       "app_name": "extras_plugin",
       "app_type": "example"
     },
@@ -85,60 +139,6 @@
           "consumed_by_test": true
         }
       ]
-    },
-    {
-      "test_name": "large_response",
-      "test_file": ".claude/integration_tests/large_response.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "launch_errors",
-      "test_file": ".claude/integration_tests/launch_errors.md",
-      "app_name": "various",
-      "app_type": null
-    },
-    {
-      "test_name": "extras_keyboard",
-      "test_file": ".claude/integration_tests/extras_keyboard.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "watch_list",
-      "test_file": ".claude/integration_tests/watch_list.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "query_basic",
-      "test_file": ".claude/integration_tests/query_basic.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "introspection",
-      "test_file": ".claude/integration_tests/introspection.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "get",
-      "test_file": ".claude/integration_tests/get.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
-    },
-    {
-      "test_name": "trigger_event",
-      "test_file": ".claude/integration_tests/trigger_event.md",
-      "app_name": "event_test",
-      "app_type": "example"
-    },
-    {
-      "test_name": "list",
-      "test_file": ".claude/integration_tests/list.md",
-      "app_name": "N/A",
-      "app_type": null
     },
     {
       "test_name": "extras_capture",
