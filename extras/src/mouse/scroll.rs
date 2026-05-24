@@ -3,6 +3,7 @@
 use bevy::ecs::system::In;
 use bevy::input::mouse::MouseScrollUnit;
 use bevy::input::mouse::MouseWheel;
+use bevy::input::touch::TouchPhase;
 use bevy::prelude::*;
 use bevy_remote::BrpResult;
 use serde::Deserialize;
@@ -58,6 +59,7 @@ pub(crate) fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut Wo
             x: request.x,
             y: request.y,
             window,
+            phase: TouchPhase::Moved,
         },
     );
 

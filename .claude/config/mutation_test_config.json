@@ -1,8 +1,8 @@
 {
-  "ops_per_subagent": 35,
+  "ops_per_subagent": 5,
   "max_subagents": 10,
   "base_port": 30001,
   "stop_after_each_batch": true,
-  "mutation_test_log": "/Users/natemccoy/rust/bevy_brp/.claude/transient/mutation_test.log",
-  "test_plan_file_pattern": "/Users/natemccoy/rust/bevy_brp/.claude/transient/mutation_test_port_{port}.json"
+  "mutation_test_log": ".claude/transient/mutation_test.log",
+  "test_plan_file_pattern": ".claude/transient/mutation_test_port_{port}.json"
 }

@@ -37,13 +37,11 @@ use bevy::camera::primitives::CascadesFrusta;
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::camera::visibility::RenderLayers;
 use bevy::camera::visibility::VisibilityRange;
-use bevy::core_pipeline::Skybox;
 use bevy::core_pipeline::prepass::MotionVectorPrepass;
 use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::gizmos::GizmoAsset;
 use bevy::gizmos::aabb::ShowAabbGizmo;
 use bevy::gizmos::config::GizmoLineConfig;
-use bevy::gizmos::light::ShowLightGizmo;
 use bevy::gizmos::retained::Gizmo;
 use bevy::input::gamepad::Gamepad;
 use bevy::input::gamepad::GamepadSettings;
@@ -63,10 +61,12 @@ use bevy::light::NotShadowCaster;
 use bevy::light::NotShadowReceiver;
 use bevy::light::PointLightTexture;
 use bevy::light::ShadowFilteringMethod;
+use bevy::light::Skybox;
 use bevy::light::SpotLightTexture;
 use bevy::light::VolumetricFog;
 use bevy::light::VolumetricLight;
 use bevy::light::cluster::ClusterConfig;
+use bevy::light::gizmos::ShowLightGizmo;
 use bevy::mesh::morph::MeshMorphWeights;
 use bevy::mesh::morph::MorphWeights;
 use bevy::mesh::skinning::SkinnedMesh;
@@ -88,15 +88,13 @@ use bevy::prelude::ChildOf;
 use bevy::prelude::*;
 use bevy::render::camera::MipBias;
 use bevy::render::camera::TemporalJitter;
-use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::globals::GlobalsUniform;
+use bevy::render::occlusion_culling::OcclusionCulling;
 use bevy::render::render_resource::TextureViewDescriptor;
 use bevy::render::render_resource::TextureViewDimension;
 use bevy::render::view::ColorGrading;
 use bevy::render::view::Msaa;
 use bevy::render::view::window::screenshot::Screenshot;
-use bevy::scene::Scene;
-use bevy::scene::SceneRoot;
 use bevy::sprite::SpritePickingMode;
 use bevy::sprite::SpritePickingSettings;
 use bevy::sprite::Text2dShadow;
@@ -126,6 +124,8 @@ use bevy::window::PrimaryWindow;
 use bevy::window::SystemCursorIcon;
 use bevy::window::WindowPlugin;
 use bevy::window::WindowPosition;
+use bevy::world_serialization::WorldAsset;
+use bevy::world_serialization::WorldAssetRoot;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
@@ -591,8 +591,9 @@ fn main() {
         .init_resource::<GlobalsUniform>()
         .insert_resource(CurrentPort(port))
         .insert_resource(WireframeConfig {
-            global:        true,
+            global: true,
             default_color: Color::WHITE,
+            ..default()
         })
         .insert_resource(Wireframe2dConfig {
             global:        true,
@@ -690,7 +691,7 @@ fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) 
     // Spawn an entity with Skybox for testing mutations
     commands.spawn((
         Skybox {
-            image:      image_handle,
+            image:      Some(image_handle),
             brightness: 1000.0,
             rotation:   Quat::IDENTITY,
         },
@@ -700,8 +701,8 @@ fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) 
     info!("Skybox test entity created with cube texture");
 }
 
-/// Setup a simple scene with `SceneRoot` for testing
-fn setup_scene_test(mut commands: Commands, mut scenes: ResMut<Assets<Scene>>) {
+/// Setup a simple scene with `WorldAssetRoot` for testing
+fn setup_scene_test(mut commands: Commands, mut scenes: ResMut<Assets<WorldAsset>>) {
     // Create a simple scene with a few test entities
     let mut scene_world = World::new();
 
@@ -716,13 +717,16 @@ fn setup_scene_test(mut commands: Commands, mut scenes: ResMut<Assets<Scene>>) {
         Name::new("SceneEntity2"),
     ));
 
-    let scene = Scene::new(scene_world);
+    let scene = WorldAsset::new(scene_world);
     let scene_handle = scenes.add(scene);
 
-    // Spawn entity with SceneRoot for testing
-    commands.spawn((SceneRoot(scene_handle), Name::new("SceneRootTestEntity")));
+    // Spawn entity with WorldAssetRoot for testing
+    commands.spawn((
+        WorldAssetRoot(scene_handle),
+        Name::new("WorldAssetRootTestEntity"),
+    ));
 
-    info!("SceneRoot test entity created");
+    info!("WorldAssetRoot test entity created");
 }
 
 /// Setup test entities for format discovery
@@ -877,8 +881,8 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
         PointLight {
             intensity: 1500.0,
             color: Color::WHITE,
-            shadows_enabled: true, /* Enable shadows to trigger CubemapFrusta and
-                                    * PointLightShadowMap */
+            shadow_maps_enabled: true, /* Enable shadows to trigger CubemapFrusta and
+                                        * PointLightShadowMap */
             ..default()
         },
         Transform::from_xyz(4.0, 8.0, 4.0),
@@ -889,7 +893,7 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
             cubemap_layout: bevy::camera::primitives::CubemapLayout::CrossVertical,
         },
         ShowLightGizmo {
-            color: Some(bevy::gizmos::light::LightGizmoColor::Manual(Color::srgb(
+            color: Some(bevy::light::gizmos::LightGizmoColor::Manual(Color::srgb(
                 1.0, 0.0, 1.0,
             ))),
         },
@@ -900,7 +904,7 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
         DirectionalLight {
             color: Color::WHITE,
             illuminance: 10000.0,
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_4)),
@@ -913,7 +917,7 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
             tiled: true,
         },
         ShowLightGizmo {
-            color: Some(bevy::gizmos::light::LightGizmoColor::MatchLightColor),
+            color: Some(bevy::light::gizmos::LightGizmoColor::MatchLightColor),
         },
     ));
 
@@ -924,7 +928,7 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
             intensity: 2000.0,
             range: 10.0,
             radius: 0.1,
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             inner_angle: 0.6,
             outer_angle: 0.8,
             ..default()
@@ -935,7 +939,7 @@ fn spawn_light_entities(commands: &mut Commands, asset_server: &AssetServer) {
             image: asset_server.load("lightmaps/caustic_directional_texture.png"),
         },
         ShowLightGizmo {
-            color: Some(bevy::gizmos::light::LightGizmoColor::Varied),
+            color: Some(bevy::light::gizmos::LightGizmoColor::Varied),
         },
     ));
 
@@ -1408,11 +1412,12 @@ fn spawn_animation_and_audio_entities(
 
 fn spawn_render_entities(commands: &mut Commands) {
     // Entity with MeshMorphWeights for testing mutations
-    if let Ok(morph_weights) = MeshMorphWeights::new(vec![0.5, 1.0, 0.75]) {
-        commands.spawn((morph_weights, Name::new("MeshMorphWeightsTestEntity")));
-    } else {
-        error!("Failed to create MeshMorphWeights with test values");
-    }
+    commands.spawn((
+        MeshMorphWeights::Value {
+            weights: vec![0.5, 1.0, 0.75],
+        },
+        Name::new("MeshMorphWeightsTestEntity"),
+    ));
 
     // Entity with MorphWeights for testing mutations
     commands.spawn((MorphWeights::default(), Name::new("MorphWeightsTestEntity")));
@@ -1448,7 +1453,7 @@ fn spawn_render_entities(commands: &mut Commands) {
     ));
 
     // Entity with LightProbe for testing mutations
-    commands.spawn((LightProbe, Name::new("LightProbeTestEntity")));
+    commands.spawn((LightProbe::default(), Name::new("LightProbeTestEntity")));
 
     // Entity with ClusterConfig for testing mutations
     commands.spawn((
@@ -1642,7 +1647,7 @@ fn spawn_keyboard_display_text(
             port.0
         )),
         TextFont {
-            font_size: 20.0,
+            font_size: FontSize::Px(20.0),
             ..default()
         },
         TextColor(Color::WHITE),
@@ -1667,6 +1672,7 @@ fn spawn_keyboard_display_text(
             image_mode: bevy::prelude::NodeImageMode::Auto,
             rect: None,
             texture_atlas: None,
+            ..default()
         },
         Name::new("TextBoundsTestEntity"),
     ));
@@ -1708,7 +1714,7 @@ fn spawn_label_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
     parent.spawn((
         Text::new("Test Label"),
         TextFont {
-            font_size: 16.0,
+            font_size: FontSize::Px(16.0),
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 0.0)), // Yellow color
@@ -1741,7 +1747,7 @@ fn spawn_text_input_section(parent: &mut RelatedSpawnerCommands<ChildOf>) {
     parent.spawn((
         Text::new(""),
         TextFont {
-            font_size: 18.0,
+            font_size: FontSize::Px(18.0),
             ..default()
         },
         TextColor(Color::srgb(0.9, 0.9, 0.9)),

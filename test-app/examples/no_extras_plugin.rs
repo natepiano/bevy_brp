@@ -75,7 +75,7 @@ fn setup_ui(mut commands: Commands) {
             "BRP No Plugin Test\nPort: {FIXED_PORT}\n\nBasic BRP only (no extras)"
         )),
         TextFont {
-            font_size: 24.0,
+            font_size: FontSize::Px(24.0),
             ..default()
         },
         TextColor(Color::WHITE),

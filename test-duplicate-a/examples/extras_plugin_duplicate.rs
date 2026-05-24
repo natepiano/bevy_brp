@@ -201,7 +201,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                             port.0
                         )),
                         TextFont {
-                            font_size: 20.0,
+                            font_size: FontSize::Px(20.0),
                             ..default()
                         },
                         TextColor(Color::WHITE),

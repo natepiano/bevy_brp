@@ -28,9 +28,9 @@ mcp__brp__world_insert_resources with parameters:
 {
   "resource": "extras_plugin::TestConfigResource",
   "value": {
-    "setting_a": 3.14,
-    "setting_b": "hello world",
-    "enabled": true
+    "level": 3.14,
+    "label": "hello world",
+    "enabled": "Enabled"
   },
   "port": {{PORT}}
 }
@@ -51,7 +51,7 @@ mcp__brp__world_insert_resources with parameters:
   "value": {
     "frame_count": 100,
     "total_time": 5.5,
-    "debug_mode": false
+    "debug_mode": "Debug"
   },
   "port": {{PORT}}
 }

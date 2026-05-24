@@ -286,7 +286,7 @@ impl MutationPathInternal {
             .take()
             .map_or((None, None,   None), |enum_path_info| {
                 let instructions = match &enum_path_info.root_example {
-                    Some(RootExample::Available { .. }) => Some("Current mutation path is nested within an enum variant. To mutate, first mutate path \"\" to 'root_example', then this path.".to_string()),
+                    Some(RootExample::Available { .. }) => Some("Current mutation path is nested within an enum variant. To mutate, first mutate path \"\" to the 'example' value in 'path_info', then this path.".to_string()),
                     _ => None,  // Unavailable - no instructions
                 };
 

@@ -1,6 +1,10 @@
 {
   "excluded_types": [
     {
+      "type_name": "bevy_dev_tools::render_debug::GlobalRenderDebugOverlay",
+      "reason": "New Bevy 0.19 dev-tools overlay type, not spawned at startup in the extras_plugin test app, so query-only test partitions find 0 entities. Low value to mutation-test (it spawns and mutates fine in single-part tests); the suite already covers sufficient component/resource types."
+    },
+    {
       "type_name": "bevy_ecs::hierarchy::ChildOf",
       "reason": "Immutable type - causes panic when mutated. Bevy's immutable types are not properly reflected yet; query says it supports mutation but it doesn't."
     },

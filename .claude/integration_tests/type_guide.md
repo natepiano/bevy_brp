@@ -29,7 +29,7 @@ Execute `mcp__brp__brp_type_guide` for Transform:
 Verify the response contains:
 - `discovered_count`: 1
 - `summary` with `successful_discoveries`: 1, `failed_discoveries`: 0
-- Type guide entry for Transform with non-empty `type_info`, `mutation_paths`, `spawn_example`, and `schema_info`
+- Type guide entry for Transform with non-empty `type_info`, `mutation_paths`, `spawn`, and `schema_info`
 
 ### 3. Type Schema in Error Responses
 
@@ -69,7 +69,7 @@ that type_guide information produces working BRP operations.
   - type_guide: Embedded type_guide for Transform with correct array format
 
 **STEP 3**: Verify type_guide in error contains:
-- Transform spawn_example showing correct array format for Vec3 fields
+- Transform spawn showing correct array format for Vec3 fields
 - Transform mutation_paths for reference
 - Same structure as direct brp_type_guide response
 
@@ -101,7 +101,7 @@ mcp__brp__world_mutate_components with parameters:
 
 **STEP 3**: Verify mutation-specific type_guide contains:
 - Transform mutation_paths including `.translation` with correct array format
-- Transform spawn_example showing proper Vec3 array structure
+- Transform spawn showing proper Vec3 array structure
 - Clear guidance that Vec3 fields require `[x, y, z]` array format
 
 #### 3c. Test Enum Mutation Error
@@ -134,7 +134,7 @@ mcp__brp__world_mutate_components with parameters:
 ## Success Criteria
 
 ✅ Test passes when:
-- Smoke test retrieves Transform type guide with non-empty type_info, mutation_paths, spawn_example, and schema_info
+- Smoke test retrieves Transform type guide with non-empty type_info, mutation_paths, spawn, and schema_info
 - Format errors include embedded type_guide for failed types
 - Error guidance is clear and actionable for self-correction
 

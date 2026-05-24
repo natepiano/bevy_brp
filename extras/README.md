@@ -14,6 +14,7 @@ bevy_brp_extras does two things
 
 | bevy        | bevy_brp_extras |
 |-------------|-----------------|
+| 0.19        | 0.20.0          |
 | 0.18        | 0.18.0-0.19.0   |
 | 0.17        | 0.17.0-0.17.2   |
 | 0.16        | 0.1 - 0.2       |
@@ -30,7 +31,7 @@ All methods are prefixed with `brp_extras/` (e.g., `brp_extras/screenshot`). See
 
 **Screenshot note**: Your Bevy app must have the `png` feature enabled for screenshots to work. Without it, screenshot files will be created but will be 0 bytes.
 ```toml
-bevy = { version = "0.18", features = ["png"] }
+bevy = { version = "0.19", features = ["png"] }
 ```
 
 **Diagnostics note**: `get_diagnostics` requires the `diagnostics` cargo feature (enabled by default). Disable with `default-features = false` if you don't want `FrameTimeDiagnosticsPlugin` added to your app.
@@ -45,7 +46,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy_brp_extras = "0.19.0"
+bevy_brp_extras = "0.20.0"
 ```
 
 Add the plugin to your Bevy app

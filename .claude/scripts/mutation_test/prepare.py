@@ -54,8 +54,8 @@ class PathInfo(TypedDict, total=False):
     """Path metadata including mutability and root examples."""
 
     mutability: str
-    root_example: object
-    root_example_unavailable_reason: str
+    example: object
+    unavailable_reason: str
 
 
 class MutationPathData(TypedDict, total=False):
@@ -429,8 +429,8 @@ def build_type_data_complete(
             object,
             {
                 "type_name": type_name,
-                "spawn_example": type_data_raw.get("spawn_example"),
-                "resource_example": type_data_raw.get("resource_example"),
+                "spawn": type_data_raw.get("spawn"),
+                "resource": type_data_raw.get("resource"),
                 "agent_guidance": type_data_raw.get("agent_guidance"),
                 "mutation_paths": type_data_raw.get("mutation_paths"),
                 "supported_operations": type_data_raw.get("supported_operations"),
@@ -517,7 +517,7 @@ def contains_entity_placeholder(value: Any) -> bool:  # pyright: ignore[reportEx
 
 def extract_example_value(type_data: TypeDataComplete, mutation_type: str | None) -> object | None:
     """
-    Extract the example value from spawn_example or resource_example.
+    Extract the example value from spawn or resource.
 
     Args:
         type_data: Complete type data
@@ -527,13 +527,13 @@ def extract_example_value(type_data: TypeDataComplete, mutation_type: str | None
         The example value if present, None otherwise
     """
     if mutation_type == "Component":
-        spawn_example = type_data.get("spawn_example")
-        if spawn_example is not None:
-            return spawn_example.get("example")
+        spawn = type_data.get("spawn")
+        if spawn is not None:
+            return spawn.get("example")
     elif mutation_type == "Resource":
-        resource_example = type_data.get("resource_example")
-        if resource_example is not None:
-            return resource_example.get("example")
+        resource = type_data.get("resource")
+        if resource is not None:
+            return resource.get("example")
 
     return None
 
@@ -627,12 +627,12 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
                 continue
 
             # Skip paths with unavailable root examples (unconstructible enum variants)
-            if "root_example_unavailable_reason" in path_metadata_dict:
+            if "unavailable_reason" in path_metadata_dict:
                 continue
 
             # Check for root example requirement (variant-dependent paths)
             # Always emit root example if present - no optimization
-            root_example = path_metadata_dict.get("root_example")
+            root_example = path_metadata_dict.get("example")
             if root_example is not None:
                 # Emit root example operation to set enum variant
                 if mutation_type == "Component":

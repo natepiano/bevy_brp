@@ -37,6 +37,10 @@ pub struct ListActiveWatchesResult {
     #[to_result]
     watches: Vec<WatchInfo>,
 
+    /// Count of active watches
+    #[to_metadata]
+    watch_count: usize,
+
     /// Message template for formatting responses
     #[to_message(message_template = "Found {watch_count} active watches")]
     message_template: String,
@@ -65,5 +69,6 @@ async fn handle_impl(_: NoParams) -> Result<ListActiveWatchesResult> {
         })
         .collect();
 
-    Ok(ListActiveWatchesResult::new(watches))
+    let watch_count = watches.len();
+    Ok(ListActiveWatchesResult::new(watches, watch_count))
 }

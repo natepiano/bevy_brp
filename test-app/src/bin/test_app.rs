@@ -61,7 +61,7 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         Text::new("Test Extras Plugin App"),
         TextFont {
-            font_size: 24.0,
+            font_size: FontSize::Px(24.0),
             ..default()
         },
         TextColor(Color::WHITE),

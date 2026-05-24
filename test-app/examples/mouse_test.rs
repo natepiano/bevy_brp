@@ -554,7 +554,7 @@ fn setup_scene(
             parent.spawn((
                 Text::new("PRIMARY WINDOW - Waiting for input..."),
                 TextFont {
-                    font_size: 11.0,
+                    font_size: FontSize::Px(11.0),
                     ..default()
                 },
                 TextColor(Color::WHITE),
@@ -579,7 +579,7 @@ fn setup_scene(
             parent.spawn((
                 Text::new("SECONDARY WINDOW - Waiting for input..."),
                 TextFont {
-                    font_size: 11.0,
+                    font_size: FontSize::Px(11.0),
                     ..default()
                 },
                 TextColor(Color::WHITE),

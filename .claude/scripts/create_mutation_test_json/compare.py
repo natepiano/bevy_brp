@@ -585,7 +585,9 @@ def calculate_file_statistics(data: dict[str, JsonValue]) -> FileStatsDict:
     spawn_supported = sum(
         1
         for t in data.values()
-        if isinstance(t, dict) and t.get("spawn_example") is not None
+        if isinstance(t, dict)
+        and isinstance((spawn := t.get("spawn")), dict)
+        and spawn.get("example") is not None
     )
     types_with_mutations = sum(
         1 for t in data.values() if isinstance(t, dict) and t.get("mutation_paths")

@@ -31,8 +31,8 @@ class TypeData(TypedDict):
 class TypeDataOptional(TypedDict, total=False):
     """Optional fields for TypeData."""
 
-    spawn_example: dict[str, object] | None
-    resource_example: dict[str, object] | None
+    spawn: dict[str, object] | None
+    resource: dict[str, object] | None
     agent_guidance: str | None
     mutation_paths: list[object] | None
     supported_operations: list[str] | None
@@ -84,13 +84,25 @@ def load_config() -> MutationTestConfig:
     with open(config_path, "r", encoding="utf-8") as f:
         config_data: dict[str, int | bool | str] = json.load(f)  # pyright: ignore[reportAny]
 
+    def resolve_path(raw: str) -> str:
+        """Resolve a config path against the project root when it is relative.
+
+        Absolute paths pass through unchanged. The ``{port}`` placeholder in a
+        pattern is kept as a literal path segment so callers can still
+        ``.format(port=...)`` the result.
+        """
+        path = Path(raw)
+        if not path.is_absolute():
+            path = project_root / path
+        return str(path)
+
     return MutationTestConfig(
         ops_per_subagent=int(config_data["ops_per_subagent"]),
         max_subagents=int(config_data["max_subagents"]),
         base_port=int(config_data["base_port"]),
         stop_after_each_batch=bool(config_data["stop_after_each_batch"]),
-        mutation_test_log=str(config_data["mutation_test_log"]),
-        test_plan_file_pattern=str(config_data["test_plan_file_pattern"]),
+        mutation_test_log=resolve_path(str(config_data["mutation_test_log"])),
+        test_plan_file_pattern=resolve_path(str(config_data["test_plan_file_pattern"])),
     )
 
 
