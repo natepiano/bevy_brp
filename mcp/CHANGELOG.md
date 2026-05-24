@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.20.0-rc.1] - 2026-05-24
 
 ### Breaking Changes
 - Renamed JSON fields inside `RootExample` entries in `brp_type_guide` mutation-path responses: `root_example` → `example` and `root_example_unavailable_reason` → `unavailable_reason`. Clients parsing these inner fields must update to the new names; the outer `root_example: { ... }` field on a mutation path is unchanged.
