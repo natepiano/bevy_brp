@@ -65,6 +65,10 @@ pub struct SchemaInfo {
     /// - Other traits are informational and preserved from Bevy's reflection system
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reflect_traits: Option<Vec<String>>,
+    /// Component metadata from Bevy's ECS registry, available only when this schema represents a
+    /// registered component.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component_info: Option<Value>,
 }
 
 /// response structure

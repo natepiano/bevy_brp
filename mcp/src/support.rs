@@ -43,6 +43,8 @@ pub(crate) enum SchemaField {
     AnyOf,
     /// The `const` field for constant values.
     Const,
+    /// The `componentInfo` field for ECS component metadata.
+    ComponentInfo,
     /// The crate name field.
     CrateName,
     /// The `$defs` field for schema definitions.

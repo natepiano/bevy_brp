@@ -206,6 +206,10 @@ impl TypeGuide {
             .get_field_array(SchemaField::ReflectTypes)
             .map(|arr| arr.iter().filter_map(Value::as_str).into_strings());
 
+        let component_info = registry_schema
+            .get_field(SchemaField::ComponentInfo)
+            .cloned();
+
         SchemaInfo {
             type_kind,
             properties,
@@ -213,6 +217,7 @@ impl TypeGuide {
             module_path,
             crate_name,
             reflect_traits,
+            component_info,
         }
     }
 }
