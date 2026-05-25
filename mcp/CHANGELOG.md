@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Add Bevy ECS component metadata to BRP type guide schema information, following Bevy PR [#23102](https://github.com/bevyengine/bevy/pull/23102)
 
+### Changed
+- Increase the large-response file spill threshold from 15,000 to 25,000 estimated tokens
+
 ## [0.20.0-rc.1] - 2026-05-24
 
 ### Breaking Changes
