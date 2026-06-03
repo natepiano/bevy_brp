@@ -13,6 +13,8 @@ use super::constants::BRP_DEFAULT_HOST;
 use super::constants::BRP_HTTP_PROTOCOL;
 use super::constants::BRP_JSONRPC_PATH;
 use super::constants::ERROR_BODY_PREVIEW_CHARS;
+use super::constants::HTTP_CONTENT_TYPE_JSON;
+use super::constants::HTTP_HEADER_CONTENT_TYPE;
 use super::constants::HTTP_REQUEST_TIMEOUT;
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::Port;
@@ -24,9 +26,9 @@ use crate::tool::ParameterName;
 
 /// HTTP client for BRP communication
 pub(super) struct BrpHttpClient {
-    method: BrpMethod,
-    port:   Port,
-    params: Option<Value>,
+    brp_method: BrpMethod,
+    port:       Port,
+    params:     Option<Value>,
 }
 
 enum ReqwestErrorKind {
@@ -69,9 +71,9 @@ impl ReqwestErrorKind {
 
 impl BrpHttpClient {
     /// Create a new BRP HTTP client
-    pub(super) const fn new(method: BrpMethod, port: Port, params: Option<Value>) -> Self {
+    pub(super) const fn new(brp_method: BrpMethod, port: Port, params: Option<Value>) -> Self {
         Self {
-            method,
+            brp_method,
             port,
             params,
         }
@@ -87,7 +89,7 @@ impl BrpHttpClient {
 
     /// Build the JSON-RPC request body for this client
     fn build_request_body(&self) -> String {
-        let method_str = self.method.as_str();
+        let method_str = self.brp_method.as_str();
         let mut builder = BrpJsonRpcBuilder::new(method_str);
         if let Some(ref params) = self.params {
             debug!(
@@ -108,7 +110,7 @@ impl BrpHttpClient {
 
         let response = client
             .post(&url)
-            .header("Content-Type", "application/json")
+            .header(HTTP_HEADER_CONTENT_TYPE, HTTP_CONTENT_TYPE_JSON)
             .body(body.clone())
             .timeout(HTTP_REQUEST_TIMEOUT)
             .send()
@@ -133,7 +135,7 @@ impl BrpHttpClient {
 
         let response = client
             .post(&url)
-            .header("Content-Type", "application/json")
+            .header(HTTP_HEADER_CONTENT_TYPE, HTTP_CONTENT_TYPE_JSON)
             .body(body.clone())
             .send()
             .await;
@@ -167,7 +169,7 @@ impl BrpHttpClient {
                     ))
                     .attach(format!(
                         "Method: {}, Port: {}",
-                        self.method.as_str(),
+                        self.brp_method.as_str(),
                         self.port
                     )),
             );
@@ -186,7 +188,7 @@ impl BrpHttpClient {
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| d.as_secs()),
-            self.method.as_str(),
+            self.brp_method.as_str(),
             self.port,
             url,
             e
@@ -203,7 +205,7 @@ impl BrpHttpClient {
 
         // Extract additional context from the request body for better error reporting
         let mut context_info = vec![
-            format!("Method: {}", self.method.as_str()),
+            format!("Method: {}", self.brp_method.as_str()),
             format!("Port: {}", self.port),
             format!("URL: {url}"),
         ];
@@ -233,7 +235,7 @@ impl BrpHttpClient {
 
         let error_message = format!(
             "HTTP request failed for {} operation - {error_type}: {e}",
-            self.method.as_str()
+            self.brp_method.as_str()
         );
 
         Err(error_stack::Report::new(Error::JsonRpc(error_message))

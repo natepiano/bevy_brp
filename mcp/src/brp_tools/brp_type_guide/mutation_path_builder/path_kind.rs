@@ -107,7 +107,7 @@ impl PathKind {
     /// matches the parent type (indicating redundancy that should be eliminated in description)
     ///
     /// Example: For path `.0.z` where `parent_type` is "Xyza" and `applicable_variants` is
-    /// [`Color::Xyza`], returns `Some(&VariantName)` to enable integrated description
+    /// `Color::Xyza`, returns `Some(&VariantName)` to enable integrated description
     /// "Mutate the z field of `Color::Xyza` variant" instead of redundant
     /// "Mutate the z field of `Xyza` within `Color::Xyza` variant"
     fn single_variant_matching_parent(

@@ -8,7 +8,7 @@
 //!
 //! ## Control Flow Pattern
 //!
-//! Internal builders return [`MutationResult`] which uses [`NotMutableReason`] as the error type:
+//! Internal builders return `MutationResult` which uses [`NotMutableReason`] as the error type:
 //! ```rust,ignore
 //! pub(super) type MutationResult = Result<Vec<MutationPathInternal>, NotMutableReason>;
 //! ```
@@ -76,7 +76,7 @@ impl NotMutableReason {
     /// deduplicates them and categorizes as `partially_mutable`.
     ///
     /// Example: `Handle<Image>` enum has two variants at `.0`:
-    /// - `Strong` variant: `.0` is `not_mutable` (Arc<StrongHandle> not in registry)
+    /// - `Strong` variant: `.0` is `not_mutable` (`Arc<StrongHandle>` not in registry)
     /// - `Uuid` variant: `.0` is `mutable` (Uuid has hardcoded knowledge)
     ///
     /// Both create the same path string `.color_lut.0.0`, so this function detects the

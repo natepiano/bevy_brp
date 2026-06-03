@@ -22,7 +22,7 @@ struct ParsedTypePath {
     /// e.g., "`core::option::Option`<`bevy_asset::handle::Handle`<`bevy_mesh::mesh::Mesh`>>"
     full_type:       String,
     /// The simplified type name with generics but no module paths
-    /// e.g., "Option<Handle<Mesh>>"
+    /// e.g., "`Option<Handle<Mesh>>`"
     simplified_type: String,
     /// The variant name if present
     /// e.g., "Some"
@@ -61,7 +61,7 @@ fn type_path_inner(input: &str) -> IResult<&str, &str> {
     .parse(input)
 }
 
-/// Parse a complete type path (`module::Type`<Generics>)
+/// Parse a complete type path (`module::Type<Generics>`)
 fn type_path(input: &str) -> IResult<&str, &str> { type_path_inner(input) }
 
 /// Parse the complete type path with optional variant
@@ -201,7 +201,7 @@ fn parse_type_with_variant(input: &str) -> Result<ParsedTypePath, String> {
 
 /// Extract a simplified variant name from a full type path
 /// e.g., "`core::option::Option`<`bevy_asset::handle::Handle`<`bevy_mesh::mesh::Mesh`>>`::Some`"
-///    -> "Option<Handle<Mesh>>`::Some`"
+///    -> "`Option<Handle<Mesh>>::Some`"
 pub(super) fn extract_simplified_variant_name(type_path: &str) -> String {
     match parse_type_with_variant(type_path) {
         Ok(parsed) => {

@@ -1,6 +1,6 @@
 //! `PathBuilder` for List types (Vec, etc.)
 //!
-//! Similar to `ArrayMutationBuilder` but for dynamic containers like Vec<T>.
+//! Similar to `ArrayMutationBuilder` but for dynamic containers like `Vec<T>`.
 //! Lists support indexed access and element-level mutations through BRP.
 //!
 //! **Recursion**: YES - Lists recurse into elements to generate mutation paths

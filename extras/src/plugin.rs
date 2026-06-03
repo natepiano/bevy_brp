@@ -139,7 +139,7 @@ pub const BrpExtrasPlugin: BrpExtrasPlugin = BrpExtrasPlugin::new();
 /// Plugin type for adding extra BRP methods.
 ///
 /// The `HttpConfig` type parameter controls how HTTP transport is configured.
-/// See the [module-level documentation](BrpExtrasPlugin) for usage examples.
+/// See the [module-level documentation](struct@BrpExtrasPlugin) for usage examples.
 pub struct BrpExtrasPlugin<HttpConfig = Unconfigured> {
     http_config:  HttpConfig,
     #[cfg(not(target_arch = "wasm32"))]

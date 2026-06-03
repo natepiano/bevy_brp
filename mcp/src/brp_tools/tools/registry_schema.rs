@@ -24,7 +24,7 @@ pub struct RegistrySchemaParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub without_crates: Option<Vec<String>>,
 
-    /// Exclude types with these reflect traits (e.g., [`RenderResource`])
+    /// Exclude types with these reflect traits (e.g., `RenderResource`)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub without_types: Option<Vec<String>>,
 
