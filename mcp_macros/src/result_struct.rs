@@ -29,8 +29,8 @@ use super::constants::SKIPPED_FIELD;
 use super::constants::STATUS_FIELD;
 use super::constants::TYPE_GUIDE_FIELD;
 use super::constants::UNKNOWN_STATUS;
-use super::shared;
-use super::shared::ComputedField;
+use super::field_extraction;
+use super::field_extraction::ComputedField;
 
 #[derive(Clone, Copy, Default)]
 enum ErrorDetailMode {
@@ -111,7 +111,7 @@ pub(crate) fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
     let fields: Vec<_> = data_struct.fields.iter().collect();
 
     // Extract field information using shared function
-    let extraction_result = shared::extract_field_data(&fields);
+    let extraction_result = field_extraction::extract_field_data(&fields);
 
     // Validate that there's a #[to_message] attribute
     assert!(

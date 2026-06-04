@@ -13,9 +13,9 @@
 
 mod brp_tools;
 mod constants;
+mod field_extraction;
 mod param_struct;
 mod result_struct;
-mod shared;
 mod tool_description;
 mod tool_fn;
 

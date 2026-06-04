@@ -242,7 +242,7 @@ impl BrpHttpClient {
             .attach(context_info.join(", "))
             .attach(format!("Full error: {e:?}"))
             .attach(format!(
-                "Request body (first 500 chars): {}",
+                "Request body (first {ERROR_BODY_PREVIEW_CHARS} chars): {}",
                 &request_body
                     .chars()
                     .take(ERROR_BODY_PREVIEW_CHARS)

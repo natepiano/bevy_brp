@@ -1,4 +1,4 @@
-//! Shared utilities for field placement macros
+//! Field-attribute extraction shared by the field-placement derive macros
 
 use proc_macro2::TokenStream;
 use quote::quote;
