@@ -9,7 +9,17 @@ use serde_json::json;
 use super::cargo_detector::BevyTarget;
 use super::cargo_detector::BrpLevel;
 use super::cargo_detector::CargoDetector;
+use super::constants::BRP_LEVEL_FIELD;
+use super::constants::BUILD_BUILT_FIELD;
+use super::constants::BUILDS_FIELD;
+use super::constants::KIND_FIELD;
+use super::constants::NAME_FIELD;
+use super::constants::PACKAGE_NAME_FIELD;
+use super::constants::PATH_FIELD;
+use super::constants::RELATIVE_PATH_FIELD;
+use super::constants::WORKSPACE_ROOT_FIELD;
 use super::scanning;
+use crate::app_tools::constants::MANIFEST_PATH_FIELD;
 use crate::app_tools::constants::PROFILE_DEBUG;
 use crate::app_tools::constants::PROFILE_RELEASE;
 
@@ -48,8 +58,8 @@ fn create_builds_json(item: &BevyTarget) -> Value {
     for profile in &profiles {
         let binary_path = item.get_binary_path(profile);
         builds[profile] = json!({
-            "path": binary_path.display().to_string(),
-            "built": binary_path.exists()
+            PATH_FIELD: binary_path.display().to_string(),
+            BUILD_BUILT_FIELD: binary_path.exists()
         });
     }
     builds
@@ -123,17 +133,17 @@ impl AllBevyTargetsStrategy {
 
     pub(super) fn serialize_item(item: &EnrichedTarget, relative_path: String) -> Value {
         json!({
-            "name": item.target.name,
-            "kind": item.target.target_type.as_ref(),
-            "package_name": item.target.package_name,
-            "brp_level": item.brp_level.as_str(),
-            "workspace_root": item.target.workspace_root.display().to_string(),
-            "manifest_path": item.target.manifest.display().to_string(),
+            NAME_FIELD: item.target.name,
+            KIND_FIELD: item.target.target_type.as_ref(),
+            PACKAGE_NAME_FIELD: item.target.package_name,
+            BRP_LEVEL_FIELD: item.brp_level.as_str(),
+            WORKSPACE_ROOT_FIELD: item.target.workspace_root.display().to_string(),
+            MANIFEST_PATH_FIELD: item.target.manifest.display().to_string(),
             // The relative_path field is designed for round-trip compatibility with launch functions.
             // This path can be used directly in `brp_launch`'s path parameter
             // to disambiguate between targets with the same name in different locations.
-            "relative_path": relative_path,
-            "builds": create_builds_json(&item.target)
+            RELATIVE_PATH_FIELD: relative_path,
+            BUILDS_FIELD: create_builds_json(&item.target)
         })
     }
 }

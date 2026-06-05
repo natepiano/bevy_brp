@@ -65,10 +65,10 @@ pub struct BrpTypeGuide;
 
 /// Thin orchestration function: build engine and delegate the work to it.
 async fn handle_impl(params: TypeGuideParams) -> Result<TypeGuideResult> {
-    let response = generate_type_guide_response(params.port, &params.types).await?;
-    let type_count = response.discovered_count;
+    let type_guide_response = generate_type_guide_response(params.port, &params.types).await?;
+    let type_count = type_guide_response.discovered_count;
 
-    Ok(TypeGuideResult::new(response, type_count)
+    Ok(TypeGuideResult::new(type_guide_response, type_count)
         .with_message_template(format!("Discovered {type_count} type(s)")))
 }
 

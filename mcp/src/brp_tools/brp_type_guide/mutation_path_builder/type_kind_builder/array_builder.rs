@@ -17,6 +17,7 @@ use super::TypeKindBuilder;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::BuilderError;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::constants::DEFAULT_ARRAY_EXAMPLE_LENGTH;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::constants::FIRST_ELEMENT_DESCRIPTOR;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_example::Example;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::MutationPathDescriptor;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::path_kind::PathKind;
@@ -71,7 +72,7 @@ impl TypeKindBuilder for ArrayMutationBuilder {
         // The key is just "0", not "[0]" - that's how ArrayElement converts to
         // MutationPathDescriptor
         let element_example = children
-            .get("0")
+            .get(FIRST_ELEMENT_DESCRIPTOR)
             .ok_or_else(|| {
                 BuilderError::System(Error::InvalidState(format!(
                 "Protocol violation: Array {} missing element at index 0. Available keys: {:?}",

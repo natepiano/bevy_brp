@@ -12,6 +12,9 @@ use serde_json::Value;
 
 use super::support;
 use super::support::EmptyParamsPolicy;
+use crate::constants::METHOD_DOUBLE_TAP_GESTURE;
+use crate::constants::METHOD_PINCH_GESTURE;
+use crate::constants::METHOD_ROTATION_GESTURE;
 use crate::window_event;
 
 // ============================================================================
@@ -72,7 +75,7 @@ pub(crate) fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut W
         PinchGestureResponse {
             delta: request.delta,
         },
-        "pinch_gesture",
+        METHOD_PINCH_GESTURE,
     )
 }
 
@@ -90,7 +93,7 @@ pub(crate) fn rotation_gesture_handler(
         RotationGestureResponse {
             delta: request.delta,
         },
-        "rotation_gesture",
+        METHOD_ROTATION_GESTURE,
     )
 }
 
@@ -103,5 +106,5 @@ pub(crate) fn double_tap_gesture_handler(
 
     window_event::write_input_event(world, DoubleTapGesture);
 
-    support::serialize_response(DoubleTapGestureResponse {}, "double_tap_gesture")
+    support::serialize_response(DoubleTapGestureResponse {}, METHOD_DOUBLE_TAP_GESTURE)
 }

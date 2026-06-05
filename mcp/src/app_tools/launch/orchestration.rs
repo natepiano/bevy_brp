@@ -12,6 +12,8 @@ use super::build::BuildState;
 use super::config;
 use super::config::LaunchParams;
 use super::config::LaunchResult;
+use super::constants::ERROR_CHAIN_FIELD;
+use super::constants::ERROR_FIELD;
 use crate::app_tools::launch_params::LaunchBevyBinaryParams;
 use crate::app_tools::launch_params::SearchOrder;
 use crate::app_tools::process;
@@ -100,8 +102,8 @@ fn handle_target_discovery_error(error: Report<Error>) -> Report<Error> {
 
     let error_message = format!("{}", error.current_context());
     let details = serde_json::json!({
-        "error": error_message,
-        "error_chain": format!("{:?}", error)
+        ERROR_FIELD: error_message,
+        ERROR_CHAIN_FIELD: format!("{:?}", error)
     });
     Error::tool_call_failed_with_details(error_message, details).into()
 }

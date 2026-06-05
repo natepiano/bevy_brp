@@ -18,6 +18,8 @@ use super::constants::DEFAULT_DOUBLE_CLICK_DELAY_MS;
 use super::constants::DEFAULT_MOUSE_DURATION_MS;
 use super::support;
 use super::support::EmptyParamsPolicy;
+use crate::constants::METHOD_CLICK_MOUSE;
+use crate::constants::METHOD_DOUBLE_CLICK_MOUSE;
 use crate::window_event;
 
 // ============================================================================
@@ -100,7 +102,7 @@ pub(crate) fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut Wor
         ClickMouseResponse {
             button: request.button,
         },
-        "click_mouse",
+        METHOD_CLICK_MOUSE,
     )
 }
 
@@ -145,7 +147,7 @@ pub(crate) fn double_click_mouse_handler(
             button: request.button,
             delay_ms,
         },
-        "double_click_mouse",
+        METHOD_DOUBLE_CLICK_MOUSE,
     )
 }
 

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use super::project_discovery;
 use crate::app_tools::targets::cargo_detector::BevyTarget;
+use crate::app_tools::targets::constants::CURRENT_DIRECTORY_SEGMENT;
 
 /// Compute the relative path from the search roots to the given path.
 ///
@@ -16,7 +17,7 @@ pub fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> PathBuf {
                 if let Some(name) = path_canonical.file_name() {
                     return PathBuf::from(name);
                 }
-                return PathBuf::from(".");
+                return PathBuf::from(CURRENT_DIRECTORY_SEGMENT);
             }
             return relative.to_path_buf();
         }

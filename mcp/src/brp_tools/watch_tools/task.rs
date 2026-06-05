@@ -12,14 +12,51 @@ use tracing::error;
 use tracing::info;
 use tracing::warn;
 
+use super::constants::BUFFER_CONTENT_FIELD;
+use super::constants::BUFFER_SIZE_FIELD;
+use super::constants::CHUNK_SIZE_FIELD;
+use super::constants::CHUNKS_RECEIVED_BEFORE_ERROR_FIELD;
+use super::constants::CONTAINS_DATA_PREFIX_FIELD;
+use super::constants::CONTAINS_NEWLINE_FIELD;
+use super::constants::CONTENT_TYPE_FIELD;
 use super::constants::CONTENT_TYPE_HEADER;
+use super::constants::DATA_LENGTH_FIELD;
+use super::constants::ELAPSED_SECONDS_FIELD;
+use super::constants::EMPTY_LINES_FIELD;
+use super::constants::ENTITY_FIELD;
+use super::constants::ERROR_FIELD;
+use super::constants::FINAL_BUFFER_SIZE_FIELD;
+use super::constants::FULL_DATA_FIELD;
+use super::constants::HAD_INCOMPLETE_LINE_FIELD;
+use super::constants::HAS_ERROR_FIELD;
+use super::constants::HAS_ID_FIELD;
+use super::constants::HAS_RESULT_FIELD;
+use super::constants::HEADERS_COUNT_FIELD;
+use super::constants::IS_SSE_DATA_FIELD;
+use super::constants::JSON_KEYS_FIELD;
 use super::constants::JSON_RPC_ERROR_FIELD;
 use super::constants::JSON_RPC_ID_FIELD;
 use super::constants::JSON_RPC_RESULT_FIELD;
+use super::constants::LINE_BUFFER_SIZE_BEFORE_FIELD;
+use super::constants::LINE_FIELD;
+use super::constants::LINE_LENGTH_FIELD;
+use super::constants::LINES_PROCESSED_FIELD;
 use super::constants::MAX_BUFFER_SIZE;
 use super::constants::MAX_CHUNK_SIZE;
 use super::constants::MAX_PREVIEW_BYTES;
+use super::constants::PREVIEW_FIELD;
+use super::constants::RAW_DATA_FIELD;
+use super::constants::REMAINING_BUFFER_SIZE_FIELD;
+use super::constants::RESPONSE_STATUS_FIELD;
 use super::constants::SSE_DATA_PREFIX;
+use super::constants::STARTS_WITH_DATA_FIELD;
+use super::constants::STATUS_FIELD;
+use super::constants::STATUS_TEXT_FIELD;
+use super::constants::TIMESTAMP_FIELD;
+use super::constants::TOTAL_BUFFER_SIZE_BEFORE_FIELD;
+use super::constants::TOTAL_CHUNKS_RECEIVED_FIELD;
+use super::constants::UNKNOWN_STATUS_TEXT;
+use super::constants::WATCH_TYPE_FIELD;
 use super::logger::BufferedWatchLogger;
 use super::manager::WATCH_MANAGER;
 use super::manager::WatchInfo;
@@ -52,12 +89,12 @@ async fn parse_sse_line(
         .write_debug_update(
             "DEBUG_LINE_RECEIVED",
             serde_json::json!({
-                "watch_type": watch_type,
+                WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
-                "line": line,
-                "line_length": line.len(),
-                "is_sse_data": line.starts_with(SSE_DATA_PREFIX),
-                "timestamp": chrono::Local::now().to_rfc3339()
+                LINE_FIELD: line,
+                LINE_LENGTH_FIELD: line.len(),
+                IS_SSE_DATA_FIELD: line.starts_with(SSE_DATA_PREFIX),
+                TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
             }),
         )
         .await;
@@ -76,11 +113,11 @@ async fn parse_sse_line(
             .write_debug_update(
                 "DEBUG_JSON_PARSE_FAILED",
                 serde_json::json!({
-                    "watch_type": watch_type,
+                    WATCH_TYPE_FIELD: watch_type,
                     ParameterName::Entity: entity_id,
-                    "raw_data": json_str,
-                    "data_length": json_str.len(),
-                    "timestamp": chrono::Local::now().to_rfc3339()
+                    RAW_DATA_FIELD: json_str,
+                    DATA_LENGTH_FIELD: json_str.len(),
+                    TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
                 }),
             )
             .await;
@@ -93,13 +130,13 @@ async fn parse_sse_line(
     let _ = logger.write_debug_update(
         "DEBUG_JSON_PARSED",
         serde_json::json!({
-            "watch_type": watch_type,
+            WATCH_TYPE_FIELD: watch_type,
             ParameterName::Entity: entity_id,
-            "has_result": data.get(JSON_RPC_RESULT_FIELD).is_some(),
-            "has_error": data.get(JSON_RPC_ERROR_FIELD).is_some(),
-            "has_id": data.get(JSON_RPC_ID_FIELD).is_some(),
-            "json_keys": data.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()).unwrap_or_default(),
-            "timestamp": chrono::Local::now().to_rfc3339()
+            HAS_RESULT_FIELD: data.get(JSON_RPC_RESULT_FIELD).is_some(),
+            HAS_ERROR_FIELD: data.get(JSON_RPC_ERROR_FIELD).is_some(),
+            HAS_ID_FIELD: data.get(JSON_RPC_ID_FIELD).is_some(),
+            JSON_KEYS_FIELD: data.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()).unwrap_or_default(),
+            TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
         })
     ).await;
 
@@ -114,10 +151,10 @@ async fn parse_sse_line(
             .write_debug_update(
                 "DEBUG_NO_RESULT",
                 serde_json::json!({
-                    "watch_type": watch_type,
+                    WATCH_TYPE_FIELD: watch_type,
                     ParameterName::Entity: entity_id,
-                    "full_data": data,
-                    "timestamp": chrono::Local::now().to_rfc3339()
+                    FULL_DATA_FIELD: data,
+                    TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
                 }),
             )
             .await;
@@ -151,12 +188,12 @@ async fn process_chunk(
         .write_debug_update(
             "DEBUG_CHUNK_RECEIVED",
             serde_json::json!({
-                "watch_type": watch_type,
+                WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
-                "chunk_size": bytes.len(),
-                "line_buffer_size_before": line_buffer.len(),
-                "total_buffer_size_before": *total_buffer_size,
-                "timestamp": chrono::Local::now().to_rfc3339()
+                CHUNK_SIZE_FIELD: bytes.len(),
+                LINE_BUFFER_SIZE_BEFORE_FIELD: line_buffer.len(),
+                TOTAL_BUFFER_SIZE_BEFORE_FIELD: *total_buffer_size,
+                TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
             }),
         )
         .await;
@@ -216,12 +253,12 @@ async fn process_chunk(
             .write_debug_update(
                 "DEBUG_LINES_PROCESSED",
                 serde_json::json!({
-                    "watch_type": watch_type,
+                    WATCH_TYPE_FIELD: watch_type,
                     ParameterName::Entity: entity_id,
-                    "lines_processed": lines_processed,
-                    "empty_lines": empty_lines,
-                    "remaining_buffer_size": line_buffer.len(),
-                    "timestamp": chrono::Local::now().to_rfc3339()
+                    LINES_PROCESSED_FIELD: lines_processed,
+                    EMPTY_LINES_FIELD: empty_lines,
+                    REMAINING_BUFFER_SIZE_FIELD: line_buffer.len(),
+                    TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
                 }),
             )
             .await;
@@ -233,12 +270,12 @@ async fn process_chunk(
             .write_debug_update(
                 "DEBUG_INCOMPLETE_LINE_IN_BUFFER",
                 serde_json::json!({
-                    "watch_type": watch_type,
+                    WATCH_TYPE_FIELD: watch_type,
                     ParameterName::Entity: entity_id,
-                    "buffer_content": line_buffer,
-                    "buffer_size": line_buffer.len(),
-                    "contains_data_prefix": line_buffer.contains(SSE_DATA_PREFIX),
-                    "timestamp": chrono::Local::now().to_rfc3339()
+                    BUFFER_CONTENT_FIELD: line_buffer,
+                    BUFFER_SIZE_FIELD: line_buffer.len(),
+                    CONTAINS_DATA_PREFIX_FIELD: line_buffer.contains(SSE_DATA_PREFIX),
+                    TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
                 }),
             )
             .await;
@@ -266,12 +303,12 @@ async fn handle_stream_error(
         .write_debug_update(
             "DEBUG_STREAM_ERROR",
             serde_json::json!({
-                "watch_type": watch_type,
+                WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
-                "error": error_string,
-                "chunks_received_before_error": total_chunks,
-                "elapsed_seconds": elapsed.as_secs(),
-                "timestamp": chrono::Local::now().to_rfc3339()
+                ERROR_FIELD: error_string,
+                CHUNKS_RECEIVED_BEFORE_ERROR_FIELD: total_chunks,
+                ELAPSED_SECONDS_FIELD: elapsed.as_secs(),
+                TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
             }),
         )
         .await;
@@ -298,13 +335,13 @@ async fn log_first_chunk(
         .write_debug_update(
             "DEBUG_FIRST_CHUNK",
             serde_json::json!({
-                "watch_type": watch_type,
+                WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
-                "chunk_size": bytes.len(),
-                "preview": preview,
-                "starts_with_data": String::from_utf8_lossy(bytes).starts_with(SSE_DATA_PREFIX.trim_end()),
-                "contains_newline": bytes.contains(&b'\n'),
-                "timestamp": chrono::Local::now().to_rfc3339()
+                CHUNK_SIZE_FIELD: bytes.len(),
+                PREVIEW_FIELD: preview,
+                STARTS_WITH_DATA_FIELD: String::from_utf8_lossy(bytes).starts_with(SSE_DATA_PREFIX.trim_end()),
+                CONTAINS_NEWLINE_FIELD: bytes.contains(&b'\n'),
+                TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
             }),
         )
         .await;
@@ -322,7 +359,10 @@ async fn process_watch_stream(
         let error_message = format!(
             "server returned {}: {}",
             response.status(),
-            response.status().canonical_reason().unwrap_or("Unknown")
+            response
+                .status()
+                .canonical_reason()
+                .unwrap_or(UNKNOWN_STATUS_TEXT)
         );
         error!("Failed to process watch stream: {error_message}");
         return Err(error_stack::Report::new(Error::BrpCommunication(format!(
@@ -335,10 +375,10 @@ async fn process_watch_stream(
         .write_debug_update(
             "DEBUG_STREAM_STARTED",
             serde_json::json!({
-                "watch_type": watch_type,
+                WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
-                "response_status": response.status().as_u16(),
-                "timestamp": chrono::Local::now().to_rfc3339()
+                RESPONSE_STATUS_FIELD: response.status().as_u16(),
+                TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
             }),
         )
         .await;
@@ -405,12 +445,12 @@ async fn consume_stream_chunks(
         .write_debug_update(
             "DEBUG_STREAM_ENDED",
             serde_json::json!({
-                "watch_type": watch_type,
+                WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
-                "total_chunks_received": total_chunks,
-                "final_buffer_size": line_buffer.len(),
-                "had_incomplete_line": !line_buffer.trim().is_empty(),
-                "timestamp": chrono::Local::now().to_rfc3339()
+                TOTAL_CHUNKS_RECEIVED_FIELD: total_chunks,
+                FINAL_BUFFER_SIZE_FIELD: line_buffer.len(),
+                HAD_INCOMPLETE_LINE_FIELD: !line_buffer.trim().is_empty(),
+                TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
             }),
         )
         .await;
@@ -434,11 +474,11 @@ async fn handle_connection_error(
         .write_update(
             "CONNECTION_ERROR",
             serde_json::json!({
-                "watch_type": &conn_params.kind,
+                WATCH_TYPE_FIELD: &conn_params.kind,
                 ParameterName::Entity: conn_params.entity_id,
-                "error": error_string,
-                "elapsed_seconds": elapsed.as_secs(),
-                "timestamp": chrono::Local::now().to_rfc3339()
+                ERROR_FIELD: error_string,
+                ELAPSED_SECONDS_FIELD: elapsed.as_secs(),
+                TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
             }),
         )
         .await;
@@ -468,16 +508,16 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
                 .write_debug_update(
                     "DEBUG_HTTP_RESPONSE",
                     serde_json::json!({
-                        "watch_type": &conn_params.kind,
+                        WATCH_TYPE_FIELD: &conn_params.kind,
                         ParameterName::Entity: conn_params.entity_id,
-                        "status": response.status().as_u16(),
-                        "status_text": response.status().canonical_reason().unwrap_or("Unknown"),
-                        "headers_count": response.headers().len(),
-                        "content_type": response
+                        STATUS_FIELD: response.status().as_u16(),
+                        STATUS_TEXT_FIELD: response.status().canonical_reason().unwrap_or(UNKNOWN_STATUS_TEXT),
+                        HEADERS_COUNT_FIELD: response.headers().len(),
+                        CONTENT_TYPE_FIELD: response
                             .headers()
                             .get(CONTENT_TYPE_HEADER)
                             .and_then(|value| value.to_str().ok()),
-                        "timestamp": chrono::Local::now().to_rfc3339()
+                        TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
                     }),
                 )
                 .await;
@@ -505,7 +545,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
             "WATCH_ENDED",
             serde_json::json!({
                 ParameterName::Entity: conn_params.entity_id,
-                "timestamp": chrono::Local::now().to_rfc3339()
+                TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
             }),
         )
         .await;
@@ -558,7 +598,7 @@ async fn start_watch_task(
         Value::Object(mut map) => {
             map.insert(String::from(ParameterName::Port), serde_json::json!(port));
             map.insert(
-                "timestamp".to_string(),
+                TIMESTAMP_FIELD.to_string(),
                 serde_json::json!(chrono::Local::now().to_rfc3339()),
             );
             Value::Object(map)
@@ -566,7 +606,7 @@ async fn start_watch_task(
         _ => serde_json::json!({
             ParameterName::Entity: entity_id,
             ParameterName::Port: port,
-            "timestamp": chrono::Local::now().to_rfc3339()
+            TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
         }),
     };
 
@@ -652,7 +692,7 @@ pub(super) async fn start_entity_watch_task(
 /// Start a background task for entity list watching
 pub(super) async fn start_list_watch_task(entity_id: u64, port: Port) -> Result<(u32, PathBuf)> {
     let params = serde_json::json!({
-        "entity": entity_id
+        ENTITY_FIELD: entity_id
     });
 
     start_watch_task(

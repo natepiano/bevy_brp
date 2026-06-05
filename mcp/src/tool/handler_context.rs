@@ -17,6 +17,11 @@ use super::ResultStruct;
 use super::ToolDef;
 use super::ToolResult;
 use super::constants::CHARS_PER_TOKEN;
+use super::constants::FILEPATH_FIELD;
+use super::constants::INSTRUCTIONS_FIELD;
+use super::constants::LARGE_RESPONSE_INSTRUCTIONS;
+use super::constants::ORIGINAL_SIZE_TOKENS_FIELD;
+use super::constants::SAVED_TO_FILE_FIELD;
 use super::json_response::AnySchemaValue;
 use super::json_response::ToolCallJsonResponse;
 use super::large_response::LargeResponseConfig;
@@ -207,10 +212,10 @@ impl HandlerContext {
 
             let mut modified_response = response;
             modified_response.result = Some(AnySchemaValue(json!({
-                "saved_to_file": true,
-                "filepath": filepath.to_string_lossy(),
-                "instructions": "Use Read tool to examine, Grep to search, or jq commands to filter the data.",
-                "original_size_tokens": estimated_tokens
+                SAVED_TO_FILE_FIELD: true,
+                FILEPATH_FIELD: filepath.to_string_lossy(),
+                INSTRUCTIONS_FIELD: LARGE_RESPONSE_INSTRUCTIONS,
+                ORIGINAL_SIZE_TOKENS_FIELD: estimated_tokens
             })));
 
             return Ok(modified_response);

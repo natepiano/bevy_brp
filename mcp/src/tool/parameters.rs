@@ -13,6 +13,8 @@ use serde_json::Value;
 use strum::Display;
 use strum::EnumString;
 
+use super::constants::VALUE_TYPE_NAME;
+use crate::constants::SCHEMA_REF_PREFIX;
 use crate::support::IntoStrings;
 use crate::support::JsonObjectAccess;
 use crate::support::JsonSchemaType;
@@ -412,7 +414,7 @@ fn handle_any_of_schema(any_of: &[Value]) -> ParameterType {
                 .and_then(Value::as_str)
             {
                 // serde_json::Value refs should fall through to Any
-                if ref_str.contains("Value") {
+                if ref_str.contains(VALUE_TYPE_NAME) {
                     continue;
                 }
                 // For other $ref types (like `BrpQueryFilter`), treat as Object
@@ -497,7 +499,7 @@ fn resolve_schema_value<'a>(
         .and_then(Value::as_str)
         .and_then(|ref_path| {
             ref_path
-                .strip_prefix("#/$defs/")
+                .strip_prefix(SCHEMA_REF_PREFIX)
                 .and_then(|type_name| defs.and_then(|definitions| definitions.get(type_name)))
         })
         .unwrap_or(field_value)
@@ -581,10 +583,10 @@ pub(super) fn normalize_arguments_for<T: JsonSchema>(arguments: &mut Map<String,
 /// to build the parameters from the schema
 pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
     let schema = schemars::schema_for!(T);
-    let mut builder = ParameterBuilder::new();
+    let mut parameter_builder = ParameterBuilder::new();
 
     let Some(root_obj) = schema.as_object() else {
-        return builder;
+        return parameter_builder;
     };
 
     // let Some(properties) = root_obj
@@ -595,7 +597,7 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
     // };
 
     let Some(properties) = root_obj.get_properties() else {
-        return builder;
+        return parameter_builder;
     };
 
     // Get the $defs section for resolving $ref references
@@ -631,24 +633,32 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
             .unwrap_or(field_name.as_str());
 
         // Add to builder based on type
-        builder = match param_type {
-            ParameterType::String => builder.add_string_property(field_name, description, required),
-            ParameterType::Number => builder.add_number_property(field_name, description, required),
+        parameter_builder = match param_type {
+            ParameterType::String => {
+                parameter_builder.add_string_property(field_name, description, required)
+            },
+            ParameterType::Number => {
+                parameter_builder.add_number_property(field_name, description, required)
+            },
             ParameterType::Boolean => {
-                builder.add_boolean_property(field_name, description, required)
+                parameter_builder.add_boolean_property(field_name, description, required)
             },
             ParameterType::StringArray => {
-                builder.add_string_array_property(field_name, description, required)
+                parameter_builder.add_string_array_property(field_name, description, required)
             },
             ParameterType::NumberArray => {
-                builder.add_number_array_property(field_name, description, required)
+                parameter_builder.add_number_array_property(field_name, description, required)
             },
-            ParameterType::Object => builder.add_object_property(field_name, description, required),
-            ParameterType::Any => builder.add_any_property(field_name, description, required),
+            ParameterType::Object => {
+                parameter_builder.add_object_property(field_name, description, required)
+            },
+            ParameterType::Any => {
+                parameter_builder.add_any_property(field_name, description, required)
+            },
         };
     }
 
-    builder
+    parameter_builder
 }
 
 impl From<ParameterName> for String {

@@ -9,6 +9,8 @@ use syn::LitStr;
 use syn::Type;
 use syn::meta::ParseNestedMeta;
 
+use super::constants::OPTION_TYPE_PREFIX;
+
 /// Information about a computed field
 pub(crate) struct ComputedField {
     pub field_name: Ident,
@@ -173,7 +175,7 @@ fn generate_response_data_field(
     let type_str = quote!(#field_type).to_string();
 
     // Handle Option types with skip_if_none
-    if type_str.starts_with("Option <") && skip_if_none.skips_none() {
+    if type_str.starts_with(OPTION_TYPE_PREFIX) && skip_if_none.skips_none() {
         quote! {
             if let Some(val) = &self.#field_name {
                 builder = builder.add_field_to(#response_field_name, val, #placement)?;

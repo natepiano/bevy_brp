@@ -12,6 +12,16 @@ use bevy_remote::error_codes::INTERNAL_ERROR;
 use serde_json::Value;
 use serde_json::json;
 
+use crate::constants::DIAGNOSTICS_AVERAGE_FIELD;
+use crate::constants::DIAGNOSTICS_CURRENT_FIELD;
+use crate::constants::DIAGNOSTICS_FPS_FIELD;
+use crate::constants::DIAGNOSTICS_FRAME_COUNT_FIELD;
+use crate::constants::DIAGNOSTICS_FRAME_TIME_MS_FIELD;
+use crate::constants::DIAGNOSTICS_HISTORY_DURATION_SECS_FIELD;
+use crate::constants::DIAGNOSTICS_HISTORY_LEN_FIELD;
+use crate::constants::DIAGNOSTICS_MAX_HISTORY_LEN_FIELD;
+use crate::constants::DIAGNOSTICS_SMOOTHED_FIELD;
+
 /// Handler for `get_diagnostics` requests
 ///
 /// Returns FPS and frame time diagnostics from Bevy's `DiagnosticsStore`.
@@ -48,19 +58,19 @@ pub(crate) fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult 
     let total_frames = frame_count.and_then(Diagnostic::value);
 
     Ok(json!({
-        "fps": {
-            "current": fps_value,
-            "average": fps_avg,
-            "smoothed": fps_smoothed,
-            "history_len": fps_history_len,
-            "max_history_len": fps_max_history,
-            "history_duration_secs": fps_duration_secs,
+        DIAGNOSTICS_FPS_FIELD: {
+            DIAGNOSTICS_CURRENT_FIELD: fps_value,
+            DIAGNOSTICS_AVERAGE_FIELD: fps_avg,
+            DIAGNOSTICS_SMOOTHED_FIELD: fps_smoothed,
+            DIAGNOSTICS_HISTORY_LEN_FIELD: fps_history_len,
+            DIAGNOSTICS_MAX_HISTORY_LEN_FIELD: fps_max_history,
+            DIAGNOSTICS_HISTORY_DURATION_SECS_FIELD: fps_duration_secs,
         },
-        "frame_time_ms": {
-            "current": frame_time_value,
-            "average": frame_time_avg,
-            "smoothed": frame_time_smoothed,
+        DIAGNOSTICS_FRAME_TIME_MS_FIELD: {
+            DIAGNOSTICS_CURRENT_FIELD: frame_time_value,
+            DIAGNOSTICS_AVERAGE_FIELD: frame_time_avg,
+            DIAGNOSTICS_SMOOTHED_FIELD: frame_time_smoothed,
         },
-        "frame_count": total_frames,
+        DIAGNOSTICS_FRAME_COUNT_FIELD: total_frames,
     }))
 }

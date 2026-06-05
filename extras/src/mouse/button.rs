@@ -17,6 +17,7 @@ use super::constants::DEFAULT_MOUSE_DURATION_MS;
 use super::constants::MAX_MOUSE_DURATION_MS;
 use super::support;
 use super::support::EmptyParamsPolicy;
+use crate::constants::METHOD_SEND_MOUSE_BUTTON;
 
 // ============================================================================
 // Types
@@ -96,7 +97,7 @@ pub(crate) fn send_mouse_button_handler(
             button: request.button,
             duration_ms,
         },
-        "send_mouse_button",
+        METHOD_SEND_MOUSE_BUTTON,
     )
 }
 

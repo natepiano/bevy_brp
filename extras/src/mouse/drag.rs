@@ -20,6 +20,7 @@ use serde_json::Value;
 use super::cursor::SimulatedCursorPosition;
 use super::support;
 use super::support::EmptyParamsPolicy;
+use crate::constants::METHOD_DRAG_MOUSE;
 
 // ============================================================================
 // Types
@@ -88,7 +89,7 @@ pub(super) struct DragOperation {
     /// Current frame index
     pub current_frame: u32,
     /// Current state of the drag operation
-    pub state:         DragState,
+    pub drag_state:    DragState,
 }
 
 // ============================================================================
@@ -118,7 +119,7 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
         end:           request.end,
         total_frames:  request.frames,
         current_frame: 0,
-        state:         DragState::Pressed,
+        drag_state:    DragState::Pressed,
     });
 
     support::serialize_response(
@@ -128,7 +129,7 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
             end:    request.end,
             frames: request.frames,
         },
-        "drag_mouse",
+        METHOD_DRAG_MOUSE,
     )
 }
 
@@ -155,7 +156,7 @@ pub(super) fn process_drag_operations(
     for (entity, mut drag) in &mut query {
         let window = support::resolve_window_entity(drag.window);
 
-        match drag.state {
+        match drag.drag_state {
             DragState::Pressed => {
                 // Send button press
                 let btn_event = MouseButtonInput {
@@ -187,7 +188,7 @@ pub(super) fn process_drag_operations(
                 }
 
                 // Transition to dragging
-                drag.state = DragState::Dragging;
+                drag.drag_state = DragState::Dragging;
             },
             DragState::Dragging => {
                 // Calculate interpolation factor
@@ -219,7 +220,7 @@ pub(super) fn process_drag_operations(
 
                 // Check if done (use > to ensure we interpolate to t=1.0)
                 if drag.current_frame > drag.total_frames {
-                    drag.state = DragState::Released;
+                    drag.drag_state = DragState::Released;
                 }
             },
             DragState::Released => {

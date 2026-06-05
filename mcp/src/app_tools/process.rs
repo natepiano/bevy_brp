@@ -12,6 +12,9 @@ use netstat2::ProtocolFlags;
 use netstat2::ProtocolSocketInfo;
 use sysinfo::Process;
 
+use super::constants::APP_EXTENSION_SUFFIX;
+use super::constants::BIN_EXTENSION_SUFFIX;
+use super::constants::EXE_EXTENSION_SUFFIX;
 use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
@@ -110,9 +113,9 @@ pub fn normalize_process_name(name: &str) -> String {
 
     // Remove common executable extensions
     base_name
-        .strip_suffix(".exe")
-        .or_else(|| base_name.strip_suffix(".app"))
-        .or_else(|| base_name.strip_suffix(".bin"))
+        .strip_suffix(EXE_EXTENSION_SUFFIX)
+        .or_else(|| base_name.strip_suffix(APP_EXTENSION_SUFFIX))
+        .or_else(|| base_name.strip_suffix(BIN_EXTENSION_SUFFIX))
         .unwrap_or(base_name)
         .to_string()
 }

@@ -13,6 +13,11 @@ use serde_json::json;
 
 use crate::constants::IMAGE_EXTENSION_PNG;
 use crate::constants::PARAM_PATH;
+use crate::constants::RESPONSE_NOTE_FIELD;
+use crate::constants::RESPONSE_SUCCESS_FIELD;
+use crate::constants::RESPONSE_WORKING_DIRECTORY_FIELD;
+use crate::constants::SCREENSHOT_CAPTURE_NOTE;
+use crate::constants::UNKNOWN_WORKING_DIRECTORY;
 
 /// Handler for screenshot requests
 ///
@@ -119,9 +124,9 @@ pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpRe
     info!("Screenshot entity spawned with ID: {:?}", entity);
 
     Ok(json!({
-        "success": true,
-        "path": absolute_path_str,
-        "working_directory": std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("unknown")).to_string_lossy(),
-        "note": "Screenshot capture initiated. File I/O will be performed asynchronously on background thread."
+        RESPONSE_SUCCESS_FIELD: true,
+        PARAM_PATH: absolute_path_str,
+        RESPONSE_WORKING_DIRECTORY_FIELD: std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(UNKNOWN_WORKING_DIRECTORY)).to_string_lossy(),
+        RESPONSE_NOTE_FIELD: SCREENSHOT_CAPTURE_NOTE
     }))
 }

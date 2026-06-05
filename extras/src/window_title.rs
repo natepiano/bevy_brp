@@ -10,6 +10,11 @@ use serde_json::Value;
 use serde_json::json;
 
 use crate::constants::PARAM_TITLE;
+use crate::constants::RESPONSE_MESSAGE_FIELD;
+use crate::constants::RESPONSE_NEW_TITLE_FIELD;
+use crate::constants::RESPONSE_OLD_TITLE_FIELD;
+use crate::constants::RESPONSE_STATUS_FIELD;
+use crate::constants::RESPONSE_STATUS_SUCCESS;
 
 /// Handler for `set_window_title` requests
 pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
@@ -41,9 +46,9 @@ pub(crate) fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpRe
     window.title = String::from(title);
 
     Ok(json!({
-        "status": "success",
-        "old_title": old_title,
-        "new_title": title,
-        "message": format!("Window title changed from '{old_title}' to '{title}'")
+        RESPONSE_STATUS_FIELD: RESPONSE_STATUS_SUCCESS,
+        RESPONSE_OLD_TITLE_FIELD: old_title,
+        RESPONSE_NEW_TITLE_FIELD: title,
+        RESPONSE_MESSAGE_FIELD: format!("Window title changed from '{old_title}' to '{title}'")
     }))
 }

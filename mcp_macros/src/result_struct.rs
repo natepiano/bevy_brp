@@ -21,14 +21,19 @@ use super::constants::DEFAULT_DURATION_MS;
 use super::constants::DURATION_MS_FIELD;
 use super::constants::ENTITY_FIELD;
 use super::constants::ERRORS_FIELD;
+use super::constants::EXTRACT_OPERATION_PREFIX;
 use super::constants::KEYS_SENT_FIELD;
 use super::constants::MESSAGE_FIELD;
 use super::constants::METHODS_FIELD;
+use super::constants::OPTION_STRING_TYPE;
+use super::constants::OPTION_TYPE_PREFIX;
+use super::constants::OPTION_VALUE_TYPE;
 use super::constants::RESULT_FIELD;
 use super::constants::SKIPPED_FIELD;
 use super::constants::STATUS_FIELD;
 use super::constants::TYPE_GUIDE_FIELD;
 use super::constants::UNKNOWN_STATUS;
+use super::constants::WARNING_FIELD;
 use super::field_extraction;
 use super::field_extraction::ComputedField;
 
@@ -53,14 +58,14 @@ struct BrpResultAttrs {
 fn parse_brp_result_attr(attributes: &[Attribute]) -> Option<BrpResultAttrs> {
     for attribute in attributes {
         if attribute.path().is_ident("brp_result") {
-            let mut result = BrpResultAttrs::default();
+            let mut brp_result_attrs = BrpResultAttrs::default();
 
             // Parse attribute arguments if any
             drop(attribute.parse_nested_meta(|meta| {
                 if meta.path.is_ident("enhanced_errors") {
                     let value = meta.value()?;
                     let lit: LitBool = value.parse()?;
-                    result.enhanced_errors = if lit.value() {
+                    brp_result_attrs.enhanced_errors = if lit.value() {
                         ErrorDetailMode::IncludeTypeGuide
                     } else {
                         ErrorDetailMode::Basic
@@ -69,7 +74,7 @@ fn parse_brp_result_attr(attributes: &[Attribute]) -> Option<BrpResultAttrs> {
                 Ok(())
             }));
 
-            return Some(result);
+            return Some(brp_result_attrs);
         }
     }
     None
@@ -184,7 +189,7 @@ fn generate_get_template_impl(
             .map(|f| &f.ty);
 
         let is_option_type = message_field_type
-            .is_some_and(|field_type| quote!(#field_type).to_string().contains("Option <"));
+            .is_some_and(|field_type| quote!(#field_type).to_string().contains(OPTION_TYPE_PREFIX));
 
         if is_option_type {
             quote! {
@@ -350,7 +355,7 @@ fn template_field_initializer(
     default_template: Option<&str>,
 ) -> proc_macro2::TokenStream {
     let type_str = quote!(#field_type).to_string();
-    let is_option = type_str.contains("Option <");
+    let is_option = type_str.contains(OPTION_TYPE_PREFIX);
 
     if let Some(template) = default_template {
         let converted = convert_template_braces(template);
@@ -372,7 +377,7 @@ fn is_option_message_field(field_name: &Ident, regular_fields: &[(Ident, Type)])
         .iter()
         .find(|(name, _)| name == field_name)
         .map(|(_, field_type)| field_type)
-        .is_some_and(|field_type| quote!(#field_type).to_string().contains("Option <"))
+        .is_some_and(|field_type| quote!(#field_type).to_string().contains(OPTION_TYPE_PREFIX))
 }
 
 /// Generate a builder-pattern constructor for `Option<String>` template fields without defaults.
@@ -572,10 +577,12 @@ fn classify_generated_field<'a>(
 
     let type_str = quote!(#field_type).to_string();
     match field_name.to_string().as_str() {
-        "result" if type_str.contains("Option < Value >") => Some(GeneratedFieldKind::ResultValue),
+        RESULT_FIELD if type_str.contains(OPTION_VALUE_TYPE) => {
+            Some(GeneratedFieldKind::ResultValue)
+        },
         "format_corrections" => Some(GeneratedFieldKind::FormatCorrections),
         "format_corrected" => Some(GeneratedFieldKind::FormatCorrected),
-        "warning" if type_str.contains("Option < String >") => Some(GeneratedFieldKind::Warning),
+        WARNING_FIELD if type_str.contains(OPTION_STRING_TYPE) => Some(GeneratedFieldKind::Warning),
         _ => None,
     }
 }
@@ -756,7 +763,7 @@ fn generate_extract_computation(
         }),
         "extract_old_title" | "extract_new_title" => {
             let json_key = operation
-                .strip_prefix("extract_")
+                .strip_prefix(EXTRACT_OPERATION_PREFIX)
                 .expect("has extract_ prefix");
             Some(quote! {
                 #source.as_ref()

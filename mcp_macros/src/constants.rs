@@ -1,8 +1,15 @@
+// generated field probes
+pub(crate) const EXTRACT_OPERATION_PREFIX: &str = "extract_";
+pub(crate) const OPTION_STRING_TYPE: &str = "Option < String >";
+pub(crate) const OPTION_TYPE_PREFIX: &str = "Option <";
+pub(crate) const OPTION_VALUE_TYPE: &str = "Option < Value >";
+pub(crate) const WARNING_FIELD: &str = "warning";
+
 // result struct
-pub(crate) const DEFAULT_DURATION_MS: u32 = 100;
 pub(crate) const CHARS_QUEUED_FIELD: &str = "chars_queued";
 pub(crate) const COMPONENTS_FIELD: &str = "components";
 pub(crate) const DEBUG_ENABLED_FIELD: &str = "debug_enabled";
+pub(crate) const DEFAULT_DURATION_MS: u32 = 100;
 pub(crate) const DURATION_MS_FIELD: &str = "duration_ms";
 pub(crate) const ENTITY_FIELD: &str = "entity";
 pub(crate) const ERRORS_FIELD: &str = "errors";

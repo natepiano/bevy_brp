@@ -17,6 +17,21 @@ use bevy_remote::http::RemoteHttpPlugin;
 use super::DEFAULT_REMOTE_PORT;
 use super::constants::BRP_EXTRAS_PORT_ENV_VAR;
 use super::constants::EXTRAS_COMMAND_PREFIX;
+use super::constants::METHOD_CLICK_MOUSE;
+use super::constants::METHOD_DOUBLE_CLICK_MOUSE;
+use super::constants::METHOD_DOUBLE_TAP_GESTURE;
+use super::constants::METHOD_DRAG_MOUSE;
+use super::constants::METHOD_GET_DIAGNOSTICS;
+use super::constants::METHOD_MOVE_MOUSE;
+use super::constants::METHOD_PINCH_GESTURE;
+use super::constants::METHOD_ROTATION_GESTURE;
+use super::constants::METHOD_SCREENSHOT;
+use super::constants::METHOD_SCROLL_MOUSE;
+use super::constants::METHOD_SEND_KEYS;
+use super::constants::METHOD_SEND_MOUSE_BUTTON;
+use super::constants::METHOD_SET_WINDOW_TITLE;
+use super::constants::METHOD_SHUTDOWN;
+use super::constants::METHOD_TYPE_TEXT;
 #[cfg(feature = "diagnostics")]
 use super::diagnostics;
 use super::keyboard;
@@ -383,66 +398,66 @@ fn add_managed_http_transport(app: &mut App, configured_port: Option<u16>) {
 fn register_extras_methods(world: &mut World) {
     let mut methods = vec![
         (
-            format!("{EXTRAS_COMMAND_PREFIX}click_mouse"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_CLICK_MOUSE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::click_mouse_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}double_click_mouse"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_DOUBLE_CLICK_MOUSE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::double_click_mouse_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}double_tap_gesture"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_DOUBLE_TAP_GESTURE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::double_tap_gesture_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}drag_mouse"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_DRAG_MOUSE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::drag_mouse_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}move_mouse"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_MOVE_MOUSE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::move_mouse_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}pinch_gesture"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_PINCH_GESTURE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::pinch_gesture_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}rotation_gesture"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_ROTATION_GESTURE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::rotation_gesture_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}screenshot"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SCREENSHOT}"),
             RemoteMethodSystemId::Instant(world.register_system(screenshot::handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}scroll_mouse"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SCROLL_MOUSE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::scroll_mouse_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}send_keys"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SEND_KEYS}"),
             RemoteMethodSystemId::Instant(world.register_system(keyboard::send_keys_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}send_mouse_button"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SEND_MOUSE_BUTTON}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::send_mouse_button_handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}set_window_title"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SET_WINDOW_TITLE}"),
             RemoteMethodSystemId::Instant(world.register_system(window_title::handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}shutdown"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SHUTDOWN}"),
             RemoteMethodSystemId::Instant(world.register_system(shutdown::handler)),
         ),
         (
-            format!("{EXTRAS_COMMAND_PREFIX}type_text"),
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_TYPE_TEXT}"),
             RemoteMethodSystemId::Instant(world.register_system(keyboard::type_text_handler)),
         ),
     ];
 
     #[cfg(feature = "diagnostics")]
     methods.push((
-        format!("{EXTRAS_COMMAND_PREFIX}get_diagnostics"),
+        format!("{EXTRAS_COMMAND_PREFIX}{METHOD_GET_DIAGNOSTICS}"),
         RemoteMethodSystemId::Instant(world.register_system(diagnostics::handler)),
     ));
 

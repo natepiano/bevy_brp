@@ -17,9 +17,17 @@ use strum::EnumString;
 
 use super::constants::BEVY_CRATE_NAME;
 use super::constants::BEVY_REMOTE_FEATURE;
+use super::constants::BEVY_REMOTE_GLOB_IMPORT_PREFIX;
+use super::constants::BEVY_REMOTE_PLUGIN_IMPORT;
+use super::constants::BEVY_REMOTE_REMOTE_GLOB_IMPORT_PREFIX;
+use super::constants::BEVY_REMOTE_REMOTE_PLUGIN_IMPORT;
+use super::constants::BRP_EXTRAS_GLOB_IMPORT_PREFIX;
+use super::constants::BRP_EXTRAS_PLUGIN_IMPORT;
+use super::constants::BRP_EXTRAS_PLUGIN_NAME;
 use super::constants::CARGO_EXAMPLES_DIRECTORY;
 use super::constants::CARGO_SRC_DIRECTORY;
 use super::constants::MCP_CRATE_NAME;
+use super::constants::REMOTE_PLUGIN_NAME;
 use super::constants::RUST_SOURCE_EXTENSION;
 use super::constants::TARGET_DIRECTORY_NAME;
 use crate::app_tools::constants::CARGO_BIN_FLAG;
@@ -318,16 +326,19 @@ impl CargoDetector {
 
     /// Check if file content imports `BrpExtrasPlugin`
     fn content_has_extras_plugin(content: &str) -> bool {
-        content.contains("use bevy_brp_extras::BrpExtrasPlugin")
-            || (content.contains("use bevy_brp_extras::{") && content.contains("BrpExtrasPlugin"))
+        content.contains(BRP_EXTRAS_PLUGIN_IMPORT)
+            || (content.contains(BRP_EXTRAS_GLOB_IMPORT_PREFIX)
+                && content.contains(BRP_EXTRAS_PLUGIN_NAME))
     }
 
     /// Check if file content imports `RemotePlugin` (via `bevy::remote` or `bevy_remote`)
     fn content_has_remote_plugin(content: &str) -> bool {
-        content.contains("use bevy::remote::RemotePlugin")
-            || (content.contains("use bevy::remote::{") && content.contains("RemotePlugin"))
-            || content.contains("use bevy_remote::RemotePlugin")
-            || (content.contains("use bevy_remote::{") && content.contains("RemotePlugin"))
+        content.contains(BEVY_REMOTE_PLUGIN_IMPORT)
+            || (content.contains(BEVY_REMOTE_GLOB_IMPORT_PREFIX)
+                && content.contains(REMOTE_PLUGIN_NAME))
+            || content.contains(BEVY_REMOTE_REMOTE_PLUGIN_IMPORT)
+            || (content.contains(BEVY_REMOTE_REMOTE_GLOB_IMPORT_PREFIX)
+                && content.contains(REMOTE_PLUGIN_NAME))
     }
 
     /// Check if a specific file uses `RemotePlugin` or `BrpExtrasPlugin` (any BRP support)

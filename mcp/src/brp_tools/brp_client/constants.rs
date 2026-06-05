@@ -45,6 +45,15 @@ pub(super) const ERROR_PATTERNS: &[&str] = &[
     r"([a-zA-Z0-9_:]+) is invalid:",
 ];
 
+// format error details
+pub(super) const FORMAT_ERROR_HELP_FIELD: &str = "help";
+pub(super) const FORMAT_ERROR_HELP_MESSAGE: &str = "Unable to determine specific types that failed. Use the brp_type_guide tool to get spawn/insert/mutation information for the types you're working with.";
+pub(super) const FORMAT_ERROR_ORIGINAL_ERROR_FIELD: &str = "original_error";
+pub(super) const FORMAT_ERROR_SUGGESTED_ACTION: &str =
+    "Check your BRP method parameters and ensure they match expected structure";
+pub(super) const FORMAT_ERROR_SUGGESTED_ACTION_FIELD: &str = "suggested_action";
+pub(super) const FORMAT_ERROR_TYPE_GUIDE_FIELD: &str = "type_guide";
+
 // json-rpc constants
 pub(super) const JSONRPC_DEFAULT_ID: u64 = 1;
 pub(super) const JSONRPC_FIELD: &str = "jsonrpc";

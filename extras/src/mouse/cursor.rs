@@ -15,6 +15,7 @@ use serde_json::Value;
 
 use super::support;
 use super::support::EmptyParamsPolicy;
+use crate::constants::METHOD_MOVE_MOUSE;
 
 // ============================================================================
 // Types
@@ -161,7 +162,7 @@ pub(crate) fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
             new_position,
             delta,
         },
-        "move_mouse",
+        METHOD_MOVE_MOUSE,
     )
 }
 

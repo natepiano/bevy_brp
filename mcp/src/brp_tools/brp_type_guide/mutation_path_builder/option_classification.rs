@@ -6,6 +6,7 @@
 //! - `Some(value)` -> `value` (unwrapped)
 
 use super::constants::OPTION_PREFIX;
+use super::constants::OPTION_SOME_FIELD;
 use super::constants::OPTION_SUFFIX;
 use super::path_example::Example;
 use super::variant_name::VariantName;
@@ -56,11 +57,11 @@ pub(super) fn apply_option_transformation(
     // Transform Option variants for BRP mutations
     match variant_name.short_name() {
         "None" => Example::OptionNone,
-        "Some" => {
+        OPTION_SOME_FIELD => {
             // Extract the inner value from {"Some": value}
             if let Example::Json(val) = &example
                 && let Some(obj) = val.as_object()
-                && let Some(value) = obj.get("Some")
+                && let Some(value) = obj.get(OPTION_SOME_FIELD)
             {
                 return Example::Json(value.clone());
             }

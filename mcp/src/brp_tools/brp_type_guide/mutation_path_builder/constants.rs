@@ -2,8 +2,12 @@
 /// Default element count used when an array's size cannot be inferred from its type name
 pub(super) const DEFAULT_ARRAY_EXAMPLE_LENGTH: usize = 2;
 
+// child descriptors
+pub(super) const FIRST_ELEMENT_DESCRIPTOR: &str = "0";
+
 // option type classification
 pub(super) const OPTION_PREFIX: &str = "core::option::Option<";
+pub(super) const OPTION_SOME_FIELD: &str = "Some";
 pub(super) const OPTION_SUFFIX: char = '>';
 
 // response fields

@@ -12,6 +12,12 @@ use tracing::warn;
 
 use super::constants::BRP_EXTRAS_PREFIX;
 use super::constants::ERROR_PATTERNS;
+use super::constants::FORMAT_ERROR_HELP_FIELD;
+use super::constants::FORMAT_ERROR_HELP_MESSAGE;
+use super::constants::FORMAT_ERROR_ORIGINAL_ERROR_FIELD;
+use super::constants::FORMAT_ERROR_SUGGESTED_ACTION;
+use super::constants::FORMAT_ERROR_SUGGESTED_ACTION_FIELD;
+use super::constants::FORMAT_ERROR_TYPE_GUIDE_FIELD;
 use super::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use super::http_client::BrpHttpClient;
 use super::operation::Operation;
@@ -254,10 +260,10 @@ impl BrpClient {
         Err(Error::tool_call_failed_with_details(
             "Format error occurred but could not extract type information",
             serde_json::json!({
-                "original_error": error.get_message(),
-                "type_guide": {
-                    "help": "Unable to determine specific types that failed. Use the brp_type_guide tool to get spawn/insert/mutation information for the types you're working with.",
-                    "suggested_action": "Check your BRP method parameters and ensure they match expected structure"
+                FORMAT_ERROR_ORIGINAL_ERROR_FIELD: error.get_message(),
+                FORMAT_ERROR_TYPE_GUIDE_FIELD: {
+                    FORMAT_ERROR_HELP_FIELD: FORMAT_ERROR_HELP_MESSAGE,
+                    FORMAT_ERROR_SUGGESTED_ACTION_FIELD: FORMAT_ERROR_SUGGESTED_ACTION
                 }
             }),
         )
@@ -276,8 +282,8 @@ impl BrpClient {
         Err(Error::tool_call_failed_with_details(
             "Format error - see 'type_guide' field for correct format",
             serde_json::json!({
-                "original_error": error.get_message(),
-                "type_guide": type_guide_response
+                FORMAT_ERROR_ORIGINAL_ERROR_FIELD: error.get_message(),
+                FORMAT_ERROR_TYPE_GUIDE_FIELD: type_guide_response
             }),
         )
         .into())

@@ -12,6 +12,7 @@ use serde_json::Value;
 
 use super::support;
 use super::support::EmptyParamsPolicy;
+use crate::constants::METHOD_SCROLL_MOUSE;
 use crate::window_event;
 
 // ============================================================================
@@ -69,6 +70,6 @@ pub(crate) fn scroll_mouse_handler(In(params): In<Option<Value>>, world: &mut Wo
             y:    request.y,
             unit: request.unit,
         },
-        "scroll_mouse",
+        METHOD_SCROLL_MOUSE,
     )
 }

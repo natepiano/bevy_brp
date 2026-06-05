@@ -21,6 +21,7 @@ use crate::app_tools::constants::CARGO_EXAMPLE_FLAG;
 use crate::app_tools::constants::CARGO_MESSAGE_FORMAT_JSON_FLAG;
 use crate::app_tools::constants::CARGO_RUN_SUBCOMMAND;
 use crate::app_tools::constants::PROFILE_RELEASE;
+use crate::app_tools::constants::USER_ARGUMENT_SEPARATOR;
 use crate::app_tools::targets::TargetType;
 use crate::brp_tools::BRP_EXTRAS_PORT_ENV_VAR;
 use crate::brp_tools::Port;
@@ -95,7 +96,7 @@ pub(super) fn build_cargo_example_command(
     }
 
     if let Some(user_arguments) = command_line_arguments {
-        command.arg("--").args(user_arguments);
+        command.arg(USER_ARGUMENT_SEPARATOR).args(user_arguments);
     }
 
     set_brp_env_vars(&mut command, port);

@@ -1,3 +1,17 @@
+// error response fields
+pub(super) const CALL_INFO_FIELD: &str = "call_info";
+pub(super) const ERROR_STATUS: &str = "error";
+pub(super) const MESSAGE_FIELD: &str = "message";
+pub(super) const STATUS_FIELD: &str = "status";
+
+// large response fields
+pub(super) const FILEPATH_FIELD: &str = "filepath";
+pub(super) const INSTRUCTIONS_FIELD: &str = "instructions";
+pub(super) const LARGE_RESPONSE_INSTRUCTIONS: &str =
+    "Use Read tool to examine, Grep to search, or jq commands to filter the data.";
+pub(super) const ORIGINAL_SIZE_TOKENS_FIELD: &str = "original_size_tokens";
+pub(super) const SAVED_TO_FILE_FIELD: &str = "saved_to_file";
+
 // large response token calculation constants
 /// Estimated characters per token for response size calculation
 pub(super) const CHARS_PER_TOKEN: usize = 4;
@@ -16,3 +30,6 @@ pub(super) const SKIP_NULL_FIELD_SENTINEL: &str = "__SKIP_NULL_FIELD__";
 
 // response tracking fields
 pub(super) const OPTIONAL_PARAMETERS_NOT_PROVIDED_FIELD: &str = "optional_parameters_not_provided";
+
+// schema probes
+pub(super) const VALUE_TYPE_NAME: &str = "Value";

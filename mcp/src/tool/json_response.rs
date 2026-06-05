@@ -9,6 +9,10 @@ use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
 
+use super::constants::CALL_INFO_FIELD;
+use super::constants::ERROR_STATUS;
+use super::constants::MESSAGE_FIELD;
+use super::constants::STATUS_FIELD;
 use super::name::CallInfo;
 
 /// Wrapper for Value that produces an empty object schema `{}` instead of `true` or specific types.
@@ -54,9 +58,9 @@ impl ToolCallJsonResponse {
         // Convert self to Value
         let value = serde_json::to_value(self).unwrap_or_else(|e| {
             serde_json::json!({
-                "status": "error",
-                "message": format!("Failed to serialize response: {e}"),
-                "call_info": self.call_info
+                STATUS_FIELD: ERROR_STATUS,
+                MESSAGE_FIELD: format!("Failed to serialize response: {e}"),
+                CALL_INFO_FIELD: self.call_info
             })
         });
 

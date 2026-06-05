@@ -7,6 +7,9 @@ use serde_json::Value;
 use serde_json::json;
 
 use super::constants::DEFERRED_SHUTDOWN_FRAMES;
+use super::constants::RESPONSE_MESSAGE_FIELD;
+use super::constants::RESPONSE_PID_FIELD;
+use super::constants::RESPONSE_SUCCESS_FIELD;
 
 /// Resource to track pending shutdown
 #[derive(Resource)]
@@ -33,9 +36,9 @@ pub(crate) fn handler(In(_): In<Option<Value>>, world: &mut World) -> BrpResult 
     info!("Shutdown scheduled - will exit in {DEFERRED_SHUTDOWN_FRAMES} frames");
 
     Ok(json!({
-        "success": true,
-        "message": format!("Shutdown initiated - will exit in {DEFERRED_SHUTDOWN_FRAMES} frames"),
-        "pid": std::process::id()
+        RESPONSE_SUCCESS_FIELD: true,
+        RESPONSE_MESSAGE_FIELD: format!("Shutdown initiated - will exit in {DEFERRED_SHUTDOWN_FRAMES} frames"),
+        RESPONSE_PID_FIELD: std::process::id()
     }))
 }
 

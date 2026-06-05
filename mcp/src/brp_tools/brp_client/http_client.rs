@@ -90,16 +90,16 @@ impl BrpHttpClient {
     /// Build the JSON-RPC request body for this client
     fn build_request_body(&self) -> String {
         let method_str = self.brp_method.as_str();
-        let mut builder = BrpJsonRpcBuilder::new(method_str);
+        let mut brp_json_rpc_builder = BrpJsonRpcBuilder::new(method_str);
         if let Some(ref params) = self.params {
             debug!(
                 "BRP execute_brp_method: Added params - {}",
                 serde_json::to_string(params)
                     .unwrap_or_else(|_| "Failed to serialize params".to_string())
             );
-            builder = builder.params(params.clone());
+            brp_json_rpc_builder = brp_json_rpc_builder.params(params.clone());
         }
-        builder.build().to_string()
+        brp_json_rpc_builder.build().to_string()
     }
 
     /// Send an HTTP request with timeout

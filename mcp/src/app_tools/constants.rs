@@ -15,6 +15,12 @@ pub(super) const CARGO_EXAMPLE_FLAG: &str = "--example";
 pub(super) const CARGO_MANIFEST_FILE: &str = "Cargo.toml";
 pub(super) const CARGO_MESSAGE_FORMAT_JSON_FLAG: &str = "--message-format=json";
 pub(super) const CARGO_RUN_SUBCOMMAND: &str = "run";
+pub(super) const USER_ARGUMENT_SEPARATOR: &str = "--";
+
+// executable suffixes
+pub(super) const APP_EXTENSION_SUFFIX: &str = ".app";
+pub(super) const BIN_EXTENSION_SUFFIX: &str = ".bin";
+pub(super) const EXE_EXTENSION_SUFFIX: &str = ".exe";
 
 // instance count constants
 /// Maximum number of instances (100)
