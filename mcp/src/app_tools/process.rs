@@ -35,41 +35,41 @@ pub(super) fn launch_detached_process(
         .attach(format!("Process: {process_name}, Operation: launch"))?;
 
     // Create a new command from the provided one
-    let mut new_cmd = std::process::Command::new(command.get_program());
+    let mut new_command = std::process::Command::new(command.get_program());
 
     // Copy args
     for arg in command.get_args() {
-        new_cmd.arg(arg);
+        new_command.arg(arg);
     }
 
     // Set working directory and CARGO_MANIFEST_DIR
-    new_cmd
+    new_command
         .current_dir(working_dir)
         .env("CARGO_MANIFEST_DIR", working_dir);
 
     // Copy other environment variables
     for (key, value) in command.get_envs() {
         if let Some(value) = value {
-            new_cmd.env(key, value);
+            new_command.env(key, value);
         }
     }
 
     // Set stdio
-    new_cmd
+    new_command
         .stdin(Stdio::null())
         .stdout(Stdio::from(log_file))
         .stderr(Stdio::from(log_file_for_stderr));
 
     // Create new process group for true detachment (Unix only)
     #[cfg(unix)]
-    new_cmd.process_group(0);
+    new_command.process_group(0);
 
     // Spawn the process
     tracing::debug!("Preparing to spawn process: {process_name}");
-    tracing::debug!("Command: {:?}", new_cmd);
+    tracing::debug!("Command: {:?}", new_command);
     tracing::debug!("Working directory: {}", working_dir.display());
 
-    match new_cmd.spawn() {
+    match new_command.spawn() {
         Ok(mut child) => {
             // Get the PID
             let process_id = child.id();
@@ -122,15 +122,15 @@ pub fn normalize_process_name(name: &str) -> String {
 
 /// Check if a process exactly matches a target app name.
 ///
-/// Checks `cmd[0]` (the full binary path) first since it is not subject to
+/// Checks the command path first since it is not subject to
 /// OS-level process name truncation (macOS truncates to 16 chars, Linux to 15).
-/// Falls back to the kernel-reported process name when `cmd` is unavailable.
+/// Falls back to the kernel-reported process name when the command path is unavailable.
 pub fn process_matches_name_exact(process: &Process, target: &str) -> bool {
     let normalized_target = normalize_process_name(target);
 
-    // Prefer cmd[0] — full binary path, not subject to kernel truncation
-    if let Some(cmd) = process.cmd().first()
-        && normalize_process_name(&cmd.to_string_lossy()) == normalized_target
+    // Prefer the full binary path because it is not subject to kernel truncation.
+    if let Some(command_path) = process.cmd().first()
+        && normalize_process_name(&command_path.to_string_lossy()) == normalized_target
     {
         return true;
     }

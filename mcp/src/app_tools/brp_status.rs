@@ -142,8 +142,8 @@ fn process_matches_app_substring(process: &Process, target_app: &str) -> bool {
 
     // Check first command argument (usually the binary path) for substring matches
     // but skip generic process names that wouldn't be helpful
-    if let Some(cmd) = process.cmd().first() {
-        let command_string = cmd.to_string_lossy();
+    if let Some(command_path) = process.cmd().first() {
+        let command_string = command_path.to_string_lossy();
         let normalized_command = process::normalize_process_name(&command_string);
 
         // Skip if it's a generic utility that happens to have the target in its args
@@ -205,8 +205,8 @@ fn extract_app_name(process: &Process) -> String {
     }
 
     // For processes run directly, check the first command argument
-    if let Some(cmd) = process.cmd().first() {
-        let command_string = cmd.to_string_lossy();
+    if let Some(command_path) = process.cmd().first() {
+        let command_string = command_path.to_string_lossy();
         if command_string.contains(TARGET_DEBUG_PATH)
             || command_string.contains(TARGET_RELEASE_PATH)
             || command_string.contains(EXAMPLES_PATH_SEGMENT)
