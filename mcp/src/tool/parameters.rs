@@ -672,32 +672,41 @@ mod tests {
     use crate::app_tools::LaunchBevyBinaryParams;
     use crate::brp_tools::MutateComponentsParams;
 
+    const TEST_COMPONENT_ID: &str = "42";
+    const TEST_INSTANCE_COUNT: &str = "3";
+    const TEST_PORT: u16 = 15702;
+    const TEST_PORT_TEXT: &str = "15702";
+    const TEST_TARGET_NAME: &str = "42";
+
     #[test]
     fn normalize_arguments_for_does_not_coerce_numeric_strings() {
         let mut arguments = Map::new();
         arguments.insert(
             String::from("instance_count"),
-            Value::String(String::from("3")),
+            Value::String(String::from(TEST_INSTANCE_COUNT)),
         );
-        arguments.insert(String::from("port"), Value::String(String::from("15702")));
+        arguments.insert(
+            String::from("port"),
+            Value::String(String::from(TEST_PORT_TEXT)),
+        );
         arguments.insert(
             String::from("target_name"),
-            Value::String(String::from("42")),
+            Value::String(String::from(TEST_TARGET_NAME)),
         );
 
         normalize_arguments_for::<LaunchBevyBinaryParams>(&mut arguments);
 
         assert_eq!(
             arguments.get("instance_count"),
-            Some(&Value::String(String::from("3")))
+            Some(&Value::String(String::from(TEST_INSTANCE_COUNT)))
         );
         assert_eq!(
             arguments.get("port"),
-            Some(&Value::String(String::from("15702")))
+            Some(&Value::String(String::from(TEST_PORT_TEXT)))
         );
         assert_eq!(
             arguments.get("target_name"),
-            Some(&Value::String(String::from("42")))
+            Some(&Value::String(String::from(TEST_TARGET_NAME)))
         );
     }
 
@@ -705,24 +714,27 @@ mod tests {
     fn normalize_arguments_for_mutation_params_parses_stringified_json() {
         let mut arguments = Map::new();
         arguments.insert(String::from("entity"), serde_json::json!(1));
-        arguments.insert(String::from("component"), Value::String(String::from("42")));
+        arguments.insert(
+            String::from("component"),
+            Value::String(String::from(TEST_COMPONENT_ID)),
+        );
         arguments.insert(
             String::from("value"),
             Value::String(String::from(r#"{"nested":true}"#)),
         );
-        arguments.insert(String::from("port"), serde_json::json!(15702));
+        arguments.insert(String::from("port"), serde_json::json!(TEST_PORT));
 
         normalize_arguments_for::<MutateComponentsParams>(&mut arguments);
 
         assert_eq!(
             arguments.get("component"),
-            Some(&Value::String(String::from("42")))
+            Some(&Value::String(String::from(TEST_COMPONENT_ID)))
         );
         assert_eq!(
             arguments.get("value"),
             Some(&serde_json::json!({ "nested": true }))
         );
-        assert_eq!(arguments.get("port"), Some(&serde_json::json!(15702)));
+        assert_eq!(arguments.get("port"), Some(&serde_json::json!(TEST_PORT)));
     }
 
     /// Regression test: `add_any_property` must emit anyOf where the array branch

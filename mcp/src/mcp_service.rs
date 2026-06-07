@@ -34,14 +34,13 @@ impl McpService {
     pub(crate) fn new() -> Self {
         let all_defs = tool::get_all_tool_definitions();
 
-        // Initialize tool_defs HashMap
+        // Build the `ToolDef` lookup table.
         let tool_defs = all_defs
             .iter()
             .map(|tool_def| (tool_def.name().to_string(), tool_def.clone()))
             .collect();
 
-        // initialize vec of tools
-        // sort it once for subsequent list operations - it's a cheap pre-optimization
+        // Store a sorted `Vec<Tool>` for `McpService::list_mcp_tools`.
         let tools: Vec<_> = all_defs
             .iter()
             .map(ToolDef::to_tool)

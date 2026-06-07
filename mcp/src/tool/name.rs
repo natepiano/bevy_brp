@@ -447,11 +447,10 @@ impl ToolName {
         }
     }
 
-    /// Get annotations for this tool - the annotations will show up in the
-    /// mcp tool rather than the raw tool name. Makes it more human-readable as well as
-    /// coding agent readable.
+    /// Build `Annotation` metadata for the MCP `Tool` title and behavior hints.
     ///
-    /// so many ways to construct the annotations. this is one of those ways.
+    /// `ToolName` is macro-generated, while `Annotation::new` calls stay manual
+    /// because each variant uses tool-specific text and risk metadata.
     #[allow(
         clippy::too_many_lines,
         reason = "trivial per-variant constructor calls"
@@ -698,12 +697,11 @@ impl ToolName {
         }
     }
 
-    /// Get parameter builder function for this tool
-    /// thought about having the macro construct this but at this point
-    /// the macro only constructs brp tool `ToolFn` implementations as there is no way
-    /// i could think of to easily have it construct the custom implementations - although i suppose
-    /// its possible it could have created a shell and we implement the rest manually
-    /// but there's already enough indirection going on and so this is fine.
+    /// Return the `ParameterBuilder` constructor for variants with parameter structs.
+    ///
+    /// The BRP macro generates `ToolFn` implementations, while
+    /// `ToolName::get_parameters` also covers local tool variants with custom
+    /// `ParameterBuilder` implementations.
     #[allow(
         clippy::too_many_lines,
         reason = "trivial per-variant constructor calls"
@@ -796,13 +794,13 @@ impl ToolName {
             },
             Self::BrpDeleteLogs => Some(parameters::build_parameters_from::<DeleteLogsParams>),
 
-            // this lot has no parametrers
+            // Parameterless `ToolName` variants
             #[cfg(feature = "mcp-debug")]
             Self::BrpGetTraceLogPath => None,
             Self::BrpListActiveWatches => None,
             Self::BrpListBevy => Some(parameters::build_parameters_from::<ListBevyParams>),
 
-            // and thest of these app and watch tools do have parameters
+            // App and watch `ToolName` variants with `ParameterBuilder` implementations
             Self::BrpLaunch => Some(parameters::build_parameters_from::<LaunchBevyBinaryParams>),
             Self::BrpStopWatch => Some(parameters::build_parameters_from::<StopWatchParams>),
             Self::BrpListLogs => Some(parameters::build_parameters_from::<ListLogsParams>),

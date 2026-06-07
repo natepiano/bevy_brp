@@ -144,14 +144,10 @@ pub trait ToolFn: Send + Sync {
     }
 }
 
-/// Type-erased version for heterogeneous storage
-/// Provides consistent formatting the `Result` for all tool calls - reducing potential bugs
-/// Also allows us to pass the typed `Result` to the formatter although
-/// the formatter does serialize it right away so this may be of dubious value
+/// Type-erased wrapper for heterogeneous `ToolFn` storage.
 ///
-/// Without some kind of type erasure, we can't use the associated types on `ToolFn`
-/// If retaining the type info is deemed unnecessary, we could serialize result, get rid of
-/// the type erasure and and simplify the call flow a bit.
+/// `ErasedToolFn` preserves `ToolFn::Output` and `ToolFn::Params` until
+/// `ResponseBuilder` formats the MCP response.
 pub trait ErasedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,

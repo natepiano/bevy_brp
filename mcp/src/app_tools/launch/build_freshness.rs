@@ -281,6 +281,8 @@ mod tests {
     use super::*;
     use crate::app_tools::targets::TargetType;
 
+    const FILE_TIMESTAMP_ADVANCE_MS: u64 = 20;
+
     fn test_target(workspace_root: &Path, manifest_path: &Path, name: &str) -> BevyTarget {
         BevyTarget {
             name:           name.to_string(),
@@ -331,7 +333,7 @@ mod tests {
         fs::write(workspace_root.join("Cargo.lock"), "# lock\n").expect("write lock");
         fs::write(&src_path, "fn main() {}\n").expect("write source");
 
-        thread::sleep(Duration::from_millis(20));
+        thread::sleep(Duration::from_millis(FILE_TIMESTAMP_ADVANCE_MS));
         fs::write(&binary_path, "binary").expect("write binary");
         fs::write(
             &dep_info_path,
@@ -366,7 +368,7 @@ mod tests {
         fs::write(workspace_root.join("Cargo.lock"), "# lock\n").expect("write lock");
         fs::write(&binary_path, "binary").expect("write binary");
 
-        thread::sleep(Duration::from_millis(20));
+        thread::sleep(Duration::from_millis(FILE_TIMESTAMP_ADVANCE_MS));
         fs::write(&src_path, "fn main() {}\n").expect("write source");
         fs::write(
             &dep_info_path,

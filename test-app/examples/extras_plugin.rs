@@ -1851,7 +1851,7 @@ fn track_keyboard_input(
             },
         }
 
-        // Remove this - we now update last_keys only when all keys are released
+        // `KeyHistory::last_keys` is assigned after all keys are released.
     }
 
     // Update modifiers based on currently active keys

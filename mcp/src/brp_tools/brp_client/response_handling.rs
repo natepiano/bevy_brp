@@ -42,13 +42,12 @@ impl BrpClientError {
     /// Get the error message
     pub fn get_message(&self) -> &str { &self.message }
 
-    /// Check if this error indicates a format issue that can be recovered
-    /// This function was constructed through trial and error via vibe coding with claude
-    /// There is a bug in `bevy_remote` right now that we get a spurious "Unknown component type"
-    /// when a `Component` doesn't have `Serialize`/`Deserialize` traits - this doesn't affect
-    /// `Resource`s so the first section is probably correct.
-    /// the second section I think is less correct but it will take some time to validate that
-    /// moving to an "error codes only" approach doesn't have other issues
+    /// Return true when a BRP JSON-RPC error can trigger format discovery.
+    ///
+    /// `bevy_remote` can report `BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE` for a
+    /// `Component` missing `Serialize`/`Deserialize`; `Resource` errors usually
+    /// arrive as JSON-RPC format codes. `BRP_ERROR_ACCESS_ERROR` remains included
+    /// until component and resource mutation failures have narrower code coverage.
     pub const fn has_format_error_code(&self) -> bool {
         // Common format error codes that indicate type issues
         matches!(

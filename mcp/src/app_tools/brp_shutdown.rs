@@ -77,9 +77,8 @@ pub struct Shutdown;
 async fn shutdown_app(app_name: &str, port: Port) -> ShutdownOutcome {
     debug!("Starting shutdown process for app '{app_name}' on port {port}");
 
-    // Try graceful shutdown via bevy_brp_extras
-    // Extraction shouldn't return 0 with the udpated data extras but it's possible we could be
-    // running against an older version
+    // Try graceful shutdown via `bevy_brp_extras`.
+    // Older `bevy_brp_extras` versions can return zero extracted entities.
     match try_graceful_shutdown(port).await {
         Ok(Some(result)) => {
             debug!("Graceful shutdown succeeded");

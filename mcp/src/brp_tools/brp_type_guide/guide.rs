@@ -30,9 +30,11 @@ use crate::support::IntoStrings;
 use crate::support::JsonObjectAccess;
 use crate::support::SchemaField;
 
-/// this is all of the information we provide about a type
-/// we serialize this to our output - and we call it `type_guide`
-/// because that's what's on the tin
+/// Serialized `type_guide` payload returned for a single `BrpTypeName`.
+///
+/// `TypeGuide` combines `RegistryPresence`, `SpawnInsertExample`,
+/// `MutationPathExternal`, `SchemaInfo`, and `TypeGuide::agent_guidance` for
+/// MCP clients.
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeGuide {
     /// Fully-qualified type name

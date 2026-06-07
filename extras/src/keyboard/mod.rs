@@ -40,6 +40,8 @@ mod tests {
     use super::keys::TimedKeyRelease;
     use super::send_keys_handler;
 
+    const CUSTOM_KEY_DURATION_MS: u32 = 500;
+
     #[test]
     fn test_duration_validation_exceeds_maximum() {
         // Create a minimal Bevy app
@@ -215,7 +217,7 @@ mod tests {
         // Test with custom duration
         let custom_params = json!({
             "keys": ["Space", "Enter"],
-            "duration_ms": 500
+            "duration_ms": CUSTOM_KEY_DURATION_MS
         });
 
         let custom_result = send_keys_handler(In(Some(custom_params)), app.world_mut());
@@ -224,7 +226,7 @@ mod tests {
         if let Ok(response_value) = custom_result {
             let response: SendKeysResponse =
                 serde_json::from_value(response_value).expect("Failed to deserialize response");
-            assert_eq!(response.duration_ms, 500);
+            assert_eq!(response.duration_ms, CUSTOM_KEY_DURATION_MS);
             assert_eq!(response.keys_sent.len(), 2);
         }
     }
@@ -272,7 +274,7 @@ mod tests {
         // Test with custom duration
         let params = json!({
             "keys": ["Space", "Enter"],
-            "duration_ms": 500
+            "duration_ms": CUSTOM_KEY_DURATION_MS
         });
 
         let result = send_keys_handler(In(Some(params)), app.world_mut());
@@ -323,7 +325,7 @@ mod tests {
         // Test with empty keys array
         let params = json!({
             "keys": [],
-            "duration_ms": 500
+            "duration_ms": CUSTOM_KEY_DURATION_MS
         });
 
         let result = send_keys_handler(In(Some(params)), app.world_mut());
