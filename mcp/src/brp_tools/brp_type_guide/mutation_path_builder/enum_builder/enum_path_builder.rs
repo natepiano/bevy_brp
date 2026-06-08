@@ -238,27 +238,27 @@ fn group_variants_by_signature(
             )))
         })?;
 
-    // the first map gets a VariantKind which contains the variant signature and name
-    // the second map iterates over the result and then groups them by signature
-    // returning the `HashMap` via `.into_group_map()`
+    // The first map parses schema variants into `VariantKind` values; the second
+    // groups `VariantName`s by `VariantSignature` via `.into_group_map()`.
     Ok(one_of_array
         .iter()
         .map(|v| VariantKind::from_schema_variant(v, &context.registry, context.type_name()))
         .collect::<Result<Vec<_>>>()?
         .into_iter()
-        .map(|variant_kind| (variant_kind.signature, variant_kind.name))
+        .map(|variant_kind| (variant_kind.signature, variant_kind.variant_name))
         .into_group_map())
 }
 
 /// Process a single path within a signature group, recursively building child paths
 fn process_signature_path(
-    path: PathKind,
+    path_kind: PathKind,
     applicable_variants: &[VariantName],
     signature: &VariantSignature,
     context: &RecursionContext,
     child_examples: &mut HashMap<MutationPathDescriptor, Example>,
 ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
-    let mut child_context = context.create_recursion_context(path.clone(), PathAction::Create)?;
+    let mut child_context =
+        context.create_recursion_context(path_kind.clone(), PathAction::Create)?;
 
     // Set parent variant signature context for the child
     // Note: enum type is already in child_context.path_kind.parent_type
@@ -272,7 +272,7 @@ fn process_signature_path(
     }
 
     // Recursively process child and collect paths
-    let child_descriptor = path.to_mutation_path_descriptor();
+    let child_descriptor = path_kind.to_mutation_path_descriptor();
     let child_schema = child_context.require_registry_schema()?;
     let child_type_kind: TypeKind = child_schema.into();
 

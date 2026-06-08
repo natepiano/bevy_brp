@@ -48,9 +48,12 @@ pub(super) struct MutabilityIssue {
 
 impl MutabilityIssue {
     /// Create from an enum variant name (for enum types)
-    pub(super) const fn from_variant_name(variant: VariantName, mutability: Mutability) -> Self {
+    pub(super) const fn from_variant_name(
+        variant_name: VariantName,
+        mutability: Mutability,
+    ) -> Self {
         Self {
-            target: MutabilityIssueTarget::Variant(variant),
+            target: MutabilityIssueTarget::Variant(variant_name),
             mutability,
         }
     }

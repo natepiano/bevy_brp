@@ -253,9 +253,9 @@ impl RecursionContext {
     }
 
     /// Helper to get a schema field as an array
-    fn get_schema_field_as_array(schema: &Value, field: SchemaField) -> Option<&[Value]> {
+    fn get_schema_field_as_array(schema: &Value, schema_field: SchemaField) -> Option<&[Value]> {
         schema
-            .get_field(field)
+            .get_field(schema_field)
             .and_then(Value::as_array)
             .map(Vec::as_slice)
     }

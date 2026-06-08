@@ -131,8 +131,8 @@ pub(crate) trait JsonObjectAccess {
 
     /// Extract a single type reference from a schema field such as `Items`,
     /// `KeyType`, or `ValueType`.
-    fn get_type(&self, field: SchemaField) -> Option<BrpTypeName> {
-        let field_value = self.get_field(field)?;
+    fn get_type(&self, schema_field: SchemaField) -> Option<BrpTypeName> {
+        let field_value = self.get_field(schema_field)?;
         field_value.extract_field_type()
     }
 

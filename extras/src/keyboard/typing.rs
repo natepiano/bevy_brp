@@ -17,6 +17,7 @@ use serde_json::json;
 
 use super::events;
 use super::key_code::KeyCodeWrapper;
+use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
 
 /// Phase of the text typing state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -138,7 +139,7 @@ pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World
     } else {
         return Err(BrpError {
             code:    INVALID_PARAMS,
-            message: "Missing request parameters".to_string(),
+            message: MISSING_REQUEST_PARAMETERS_MESSAGE.to_string(),
             data:    None,
         });
     };

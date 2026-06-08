@@ -33,5 +33,5 @@ impl From<&str> for StructFieldName {
 }
 
 impl From<SchemaField> for StructFieldName {
-    fn from(field: SchemaField) -> Self { Self(field.to_string()) }
+    fn from(schema_field: SchemaField) -> Self { Self(schema_field.to_string()) }
 }

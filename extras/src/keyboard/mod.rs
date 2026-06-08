@@ -39,6 +39,7 @@ mod tests {
     use super::keys::SendKeysResponse;
     use super::keys::TimedKeyRelease;
     use super::send_keys_handler;
+    use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
 
     const CUSTOM_KEY_DURATION_MS: u32 = 500;
 
@@ -241,7 +242,7 @@ mod tests {
 
         assert!(result.is_err());
         if let Err(error) = result {
-            assert_eq!(error.message, "Missing request parameters");
+            assert_eq!(error.message, MISSING_REQUEST_PARAMETERS_MESSAGE);
         }
     }
 

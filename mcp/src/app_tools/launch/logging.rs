@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use error_stack::ResultExt;
 
+use super::constants::LOG_WRITE_ERROR_MESSAGE;
 use crate::app_tools::targets::TargetType;
 use crate::brp_tools::Port;
 use crate::error::Error;
@@ -35,27 +36,20 @@ pub(super) fn create_log_file(
         .attach(format!("Path: {}", log_file_path.display()))?;
 
     // Write header
-    writeln!(log_file, "=== Bevy BRP MCP Launch Log ===").change_context(Error::LogOperation(
-        "Failed to write to log file".to_string(),
-    ))?;
-    writeln!(log_file, "Started at: {:?}", std::time::SystemTime::now()).change_context(
-        Error::LogOperation("Failed to write to log file".to_string()),
-    )?;
-    writeln!(log_file, "{target_type}: {name}").change_context(Error::LogOperation(
-        "Failed to write to log file".to_string(),
-    ))?;
-    writeln!(log_file, "Profile: {profile}").change_context(Error::LogOperation(
-        "Failed to write to log file".to_string(),
-    ))?;
-    writeln!(log_file, "Binary: {}", binary_path.display()).change_context(Error::LogOperation(
-        "Failed to write to log file".to_string(),
-    ))?;
-    writeln!(log_file, "Working directory: {}", manifest_dir.display()).change_context(
-        Error::LogOperation("Failed to write to log file".to_string()),
-    )?;
-    writeln!(log_file, "============================================\n").change_context(
-        Error::LogOperation("Failed to write to log file".to_string()),
-    )?;
+    writeln!(log_file, "=== Bevy BRP MCP Launch Log ===")
+        .change_context(Error::LogOperation(LOG_WRITE_ERROR_MESSAGE.to_owned()))?;
+    writeln!(log_file, "Started at: {:?}", std::time::SystemTime::now())
+        .change_context(Error::LogOperation(LOG_WRITE_ERROR_MESSAGE.to_owned()))?;
+    writeln!(log_file, "{target_type}: {name}")
+        .change_context(Error::LogOperation(LOG_WRITE_ERROR_MESSAGE.to_owned()))?;
+    writeln!(log_file, "Profile: {profile}")
+        .change_context(Error::LogOperation(LOG_WRITE_ERROR_MESSAGE.to_owned()))?;
+    writeln!(log_file, "Binary: {}", binary_path.display())
+        .change_context(Error::LogOperation(LOG_WRITE_ERROR_MESSAGE.to_owned()))?;
+    writeln!(log_file, "Working directory: {}", manifest_dir.display())
+        .change_context(Error::LogOperation(LOG_WRITE_ERROR_MESSAGE.to_owned()))?;
+    writeln!(log_file, "============================================\n")
+        .change_context(Error::LogOperation(LOG_WRITE_ERROR_MESSAGE.to_owned()))?;
     log_file
         .sync_all()
         .change_context(Error::LogOperation("Failed to sync log file".to_string()))?;
@@ -84,9 +78,8 @@ pub(super) fn append_to_log_file(log_file_path: &Path, content: &str) -> Result<
         ))
         .attach(format!("Path: {}", log_file_path.display()))?;
 
-    write!(file, "{content}").change_context(Error::LogOperation(
-        "Failed to write to log file".to_string(),
-    ))?;
+    write!(file, "{content}")
+        .change_context(Error::LogOperation(LOG_WRITE_ERROR_MESSAGE.to_owned()))?;
 
     file.sync_all()
         .change_context(Error::LogOperation("Failed to sync log file".to_string()))?;

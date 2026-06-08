@@ -23,6 +23,9 @@ pub(crate) const METHOD_TYPE_TEXT: &str = "type_text";
 /// Environment variable that overrides the BRP extras HTTP port
 pub(crate) const BRP_EXTRAS_PORT_ENV_VAR: &str = "BRP_EXTRAS_PORT";
 
+// error messages
+pub(crate) const MISSING_REQUEST_PARAMETERS_MESSAGE: &str = "Missing request parameters";
+
 // network constants
 /// Default port for remote control connections
 ///

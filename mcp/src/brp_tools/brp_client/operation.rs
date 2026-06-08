@@ -47,8 +47,8 @@ impl Display for Operation {
 impl TryFrom<BrpMethod> for Operation {
     type Error = Error;
 
-    fn try_from(method: BrpMethod) -> std::result::Result<Self, Self::Error> {
-        match method {
+    fn try_from(brp_method: BrpMethod) -> std::result::Result<Self, Self::Error> {
+        match brp_method {
             BrpMethod::WorldSpawnEntity | BrpMethod::WorldInsertComponents => {
                 Ok(Self::SpawnInsert {
                     parameter_name: ParameterName::Components,
@@ -68,7 +68,7 @@ impl TryFrom<BrpMethod> for Operation {
             }),
 
             _ => Err(Error::InvalidArgument(format!(
-                "Method {method:?} is not supported for format discovery"
+                "Method {brp_method:?} is not supported for format discovery"
             ))),
         }
     }

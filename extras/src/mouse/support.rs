@@ -18,6 +18,7 @@ use serde_json::Value;
 
 use super::button::TimedButtonRelease;
 use super::cursor::SimulatedCursorPosition;
+use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
 use crate::window_event;
 
 /// Whether `parse_request` should accept `None` params by treating them as an empty object.
@@ -54,7 +55,7 @@ pub(super) fn parse_request<T: serde::de::DeserializeOwned>(
 
     let params = params.ok_or_else(|| BrpError {
         code:    INVALID_PARAMS,
-        message: "Missing request parameters".to_string(),
+        message: MISSING_REQUEST_PARAMETERS_MESSAGE.to_string(),
         data:    None,
     })?;
 

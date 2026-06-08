@@ -19,6 +19,7 @@ use super::constants::DEFAULT_KEY_DURATION_MS;
 use super::constants::MAX_KEY_DURATION_MS;
 use super::events;
 use super::key_code::KeyCodeWrapper;
+use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
 use crate::window_event;
 
 /// Component that tracks keys that need to be released after a duration
@@ -96,7 +97,7 @@ pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World
     } else {
         return Err(BrpError {
             code:    INVALID_PARAMS,
-            message: "Missing request parameters".to_string(),
+            message: MISSING_REQUEST_PARAMETERS_MESSAGE.to_string(),
             data:    None,
         });
     };

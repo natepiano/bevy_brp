@@ -19,8 +19,8 @@ use crate::support::SchemaField;
 /// Type-safe enum variant information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct VariantKind {
-    pub(super) name:      VariantName,
-    pub(super) signature: VariantSignature,
+    pub(super) variant_name: VariantName,
+    pub(super) signature:    VariantSignature,
 }
 
 impl VariantKind {
@@ -42,8 +42,8 @@ impl VariantKind {
 
             let qualified_name = format!("{type_name}::{variant_str}");
             return Ok(Self {
-                name:      VariantName::from(qualified_name),
-                signature: VariantSignature::Unit,
+                variant_name: VariantName::from(qualified_name),
+                signature:    VariantSignature::Unit,
             });
         }
 
@@ -53,21 +53,21 @@ impl VariantKind {
         // Check what type of variant this is
         if let Some(signature) = extract_tuple_variant_signature(v, registry) {
             return Ok(Self {
-                name: variant_name,
+                variant_name,
                 signature,
             });
         }
 
         if let Some(signature) = extract_struct_variant_signature(v, registry) {
             return Ok(Self {
-                name: variant_name,
+                variant_name,
                 signature,
             });
         }
 
         // Unit variant (no fields)
         Ok(Self {
-            name:      variant_name,
+            variant_name,
             signature: VariantSignature::Unit,
         })
     }

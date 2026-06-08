@@ -19,3 +19,6 @@ pub(super) const CARGO_LOCK_FILE: &str = "Cargo.lock";
 pub(super) const DEP_INFO_EXTENSION: &str = "d";
 pub(super) const RUST_TOOLCHAIN_FILE: &str = "rust-toolchain";
 pub(super) const RUST_TOOLCHAIN_TOML_FILE: &str = "rust-toolchain.toml";
+
+// logging
+pub(super) const LOG_WRITE_ERROR_MESSAGE: &str = "Failed to write to log file";
