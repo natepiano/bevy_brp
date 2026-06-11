@@ -456,10 +456,10 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
     /// Build `partial_root_examples` from children on ascending from recursion
     ///
-    /// This method propagates partial root examples needed for enum variants to
-    /// ensure the root example is set so that this particular variant chain can be mutated
-    /// `path_builder` propagates these for all the non-enum path builders generically
-    /// a similar thing is done within `enum_path_builder` with necessarily more complex logic
+    /// `MutationPathBuilder` propagates `partial_root_examples` for non-enum builders
+    /// so the root example contains the selected `variant_chain`.
+    /// `enum_path_builder` performs the corresponding enum-path propagation with
+    /// `build_variant_paths` because enum variants need signature grouping.
     ///
     /// For each variant chain present in any child:
     /// 1. Collect each child's value for that chain

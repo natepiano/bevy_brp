@@ -16,11 +16,25 @@ use super::constants::BUFFER_CONTENT_FIELD;
 use super::constants::BUFFER_SIZE_FIELD;
 use super::constants::CHUNK_SIZE_FIELD;
 use super::constants::CHUNKS_RECEIVED_BEFORE_ERROR_FIELD;
+use super::constants::COMPONENT_UPDATE_EVENT;
+use super::constants::CONNECTION_ERROR_EVENT;
 use super::constants::CONTAINS_DATA_PREFIX_FIELD;
 use super::constants::CONTAINS_NEWLINE_FIELD;
 use super::constants::CONTENT_TYPE_FIELD;
 use super::constants::CONTENT_TYPE_HEADER;
 use super::constants::DATA_LENGTH_FIELD;
+use super::constants::DEBUG_CHUNK_RECEIVED_EVENT;
+use super::constants::DEBUG_FIRST_CHUNK_EVENT;
+use super::constants::DEBUG_HTTP_RESPONSE_EVENT;
+use super::constants::DEBUG_INCOMPLETE_LINE_IN_BUFFER_EVENT;
+use super::constants::DEBUG_JSON_PARSE_FAILED_EVENT;
+use super::constants::DEBUG_JSON_PARSED_EVENT;
+use super::constants::DEBUG_LINE_RECEIVED_EVENT;
+use super::constants::DEBUG_LINES_PROCESSED_EVENT;
+use super::constants::DEBUG_NO_RESULT_EVENT;
+use super::constants::DEBUG_STREAM_ENDED_EVENT;
+use super::constants::DEBUG_STREAM_ERROR_EVENT;
+use super::constants::DEBUG_STREAM_STARTED_EVENT;
 use super::constants::ELAPSED_SECONDS_FIELD;
 use super::constants::EMPTY_LINES_FIELD;
 use super::constants::ENTITY_FIELD;
@@ -56,6 +70,8 @@ use super::constants::TIMESTAMP_FIELD;
 use super::constants::TOTAL_BUFFER_SIZE_BEFORE_FIELD;
 use super::constants::TOTAL_CHUNKS_RECEIVED_FIELD;
 use super::constants::UNKNOWN_STATUS_TEXT;
+use super::constants::WATCH_ENDED_EVENT;
+use super::constants::WATCH_STARTED_EVENT;
 use super::constants::WATCH_TYPE_FIELD;
 use super::logger::BufferedWatchLogger;
 use super::manager::WATCH_MANAGER;
@@ -87,7 +103,7 @@ async fn parse_sse_line(
     // Log EVERY line received for debugging
     let _ = logger
         .write_debug_update(
-            "DEBUG_LINE_RECEIVED",
+            DEBUG_LINE_RECEIVED_EVENT,
             serde_json::json!({
                 WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
@@ -111,7 +127,7 @@ async fn parse_sse_line(
         // Log parse failure
         let _ = logger
             .write_debug_update(
-                "DEBUG_JSON_PARSE_FAILED",
+                DEBUG_JSON_PARSE_FAILED_EVENT,
                 serde_json::json!({
                     WATCH_TYPE_FIELD: watch_type,
                     ParameterName::Entity: entity_id,
@@ -128,7 +144,7 @@ async fn parse_sse_line(
 
     // Log successful JSON parsing
     let _ = logger.write_debug_update(
-        "DEBUG_JSON_PARSED",
+        DEBUG_JSON_PARSED_EVENT,
         serde_json::json!({
             WATCH_TYPE_FIELD: watch_type,
             ParameterName::Entity: entity_id,
@@ -149,7 +165,7 @@ async fn parse_sse_line(
         // Log missing result field
         let _ = logger
             .write_debug_update(
-                "DEBUG_NO_RESULT",
+                DEBUG_NO_RESULT_EVENT,
                 serde_json::json!({
                     WATCH_TYPE_FIELD: watch_type,
                     ParameterName::Entity: entity_id,
@@ -164,7 +180,7 @@ async fn parse_sse_line(
 
 /// Log a watch update with error handling
 async fn log_update(logger: &BufferedWatchLogger, result: Value) -> Result<()> {
-    if let Err(e) = logger.write_update("COMPONENT_UPDATE", result).await {
+    if let Err(e) = logger.write_update(COMPONENT_UPDATE_EVENT, result).await {
         error!("Failed to write watch update to log: {e}");
         return Err(error_stack::Report::new(Error::failed_to(
             "write watch update to log",
@@ -186,7 +202,7 @@ async fn process_chunk(
     // Log chunk size
     let _ = logger
         .write_debug_update(
-            "DEBUG_CHUNK_RECEIVED",
+            DEBUG_CHUNK_RECEIVED_EVENT,
             serde_json::json!({
                 WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
@@ -251,7 +267,7 @@ async fn process_chunk(
     if lines_processed > 0 || empty_lines > 0 {
         let _ = logger
             .write_debug_update(
-                "DEBUG_LINES_PROCESSED",
+                DEBUG_LINES_PROCESSED_EVENT,
                 serde_json::json!({
                     WATCH_TYPE_FIELD: watch_type,
                     ParameterName::Entity: entity_id,
@@ -268,7 +284,7 @@ async fn process_chunk(
     if !line_buffer.is_empty() {
         let _ = logger
             .write_debug_update(
-                "DEBUG_INCOMPLETE_LINE_IN_BUFFER",
+                DEBUG_INCOMPLETE_LINE_IN_BUFFER_EVENT,
                 serde_json::json!({
                     WATCH_TYPE_FIELD: watch_type,
                     ParameterName::Entity: entity_id,
@@ -301,7 +317,7 @@ async fn handle_stream_error(
     // Log stream error
     let _ = logger
         .write_debug_update(
-            "DEBUG_STREAM_ERROR",
+            DEBUG_STREAM_ERROR_EVENT,
             serde_json::json!({
                 WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
@@ -333,7 +349,7 @@ async fn log_first_chunk(
 
     let _ = logger
         .write_debug_update(
-            "DEBUG_FIRST_CHUNK",
+            DEBUG_FIRST_CHUNK_EVENT,
             serde_json::json!({
                 WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
@@ -373,7 +389,7 @@ async fn process_watch_stream(
     // Log stream start
     let _ = logger
         .write_debug_update(
-            "DEBUG_STREAM_STARTED",
+            DEBUG_STREAM_STARTED_EVENT,
             serde_json::json!({
                 WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
@@ -443,7 +459,7 @@ async fn consume_stream_chunks(
     // Log stream end with details
     let _ = logger
         .write_debug_update(
-            "DEBUG_STREAM_ENDED",
+            DEBUG_STREAM_ENDED_EVENT,
             serde_json::json!({
                 WATCH_TYPE_FIELD: watch_type,
                 ParameterName::Entity: entity_id,
@@ -472,7 +488,7 @@ async fn handle_connection_error(
 
     let _ = logger
         .write_update(
-            "CONNECTION_ERROR",
+            CONNECTION_ERROR_EVENT,
             serde_json::json!({
                 WATCH_TYPE_FIELD: &conn_params.kind,
                 ParameterName::Entity: conn_params.entity_id,
@@ -506,7 +522,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
             // Log initial HTTP response
             let _ = logger
                 .write_debug_update(
-                    "DEBUG_HTTP_RESPONSE",
+                    DEBUG_HTTP_RESPONSE_EVENT,
                     serde_json::json!({
                         WATCH_TYPE_FIELD: &conn_params.kind,
                         ParameterName::Entity: conn_params.entity_id,
@@ -542,7 +558,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
     // Write final log entry
     let _ = logger
         .write_update(
-            "WATCH_ENDED",
+            WATCH_ENDED_EVENT,
             serde_json::json!({
                 ParameterName::Entity: conn_params.entity_id,
                 TIMESTAMP_FIELD: chrono::Local::now().to_rfc3339()
@@ -612,7 +628,7 @@ async fn start_watch_task(
 
     // If logging fails, we haven't registered anything yet
     let log_result = buffered_watch_logger
-        .write_update("WATCH_STARTED", log_data)
+        .write_update(WATCH_STARTED_EVENT, log_data)
         .await;
 
     if let Err(e) = log_result {

@@ -332,7 +332,8 @@ fn determine_signature_mutability(
         .collect();
 
     if signature_field_statuses.is_empty() {
-        // No fields (shouldn't happen, but handle gracefully)
+        // `build_variant_mutability` expects non-unit variant signatures to have
+        // at least one direct child in `signature_field_statuses`.
         Mutability::Mutable
     } else {
         support::aggregate_mutability(&signature_field_statuses)
@@ -766,7 +767,8 @@ fn analyze_variant_constructibility(
         .collect();
 
     if problematic_fields.is_empty() {
-        // Shouldn't happen for PartiallyMutable, but handle gracefully
+        // `PartiallyMutable` variants should have at least one entry in
+        // `problematic_fields` explaining the incomplete field data.
         return Ok(());
     }
 

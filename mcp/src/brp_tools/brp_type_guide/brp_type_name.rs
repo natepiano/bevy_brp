@@ -131,11 +131,8 @@ impl From<String> for BrpTypeName {
     fn from(s: String) -> Self { Self(s) }
 }
 
-// this one is because in `type_knowledge` we allow
-// passing in an impl Into<BrpTypeName>
-// useful for passing in &str and String
-// but we also want to be able to pass in a `&BrpTypeName`
-// hence this odd beast
+// `type_knowledge` APIs accept `impl Into<BrpTypeName>` so call sites can pass
+// `&str`, `String`, owned `BrpTypeName`, or borrowed `BrpTypeName` values.
 impl From<&Self> for BrpTypeName {
     fn from(type_name: &Self) -> Self { type_name.clone() }
 }

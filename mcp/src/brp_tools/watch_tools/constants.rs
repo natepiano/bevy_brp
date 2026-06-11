@@ -67,3 +67,21 @@ pub(super) const SSE_DATA_PREFIX: &str = "data: ";
 // timing constants
 /// Interval between automatic log buffer flushes
 pub(super) const WATCH_LOG_FLUSH_INTERVAL: Duration = std::time::Duration::from_millis(100);
+
+// watch event tags
+pub(super) const COMPONENT_UPDATE_EVENT: &str = "COMPONENT_UPDATE";
+pub(super) const CONNECTION_ERROR_EVENT: &str = "CONNECTION_ERROR";
+pub(super) const DEBUG_CHUNK_RECEIVED_EVENT: &str = "DEBUG_CHUNK_RECEIVED";
+pub(super) const DEBUG_FIRST_CHUNK_EVENT: &str = "DEBUG_FIRST_CHUNK";
+pub(super) const DEBUG_HTTP_RESPONSE_EVENT: &str = "DEBUG_HTTP_RESPONSE";
+pub(super) const DEBUG_INCOMPLETE_LINE_IN_BUFFER_EVENT: &str = "DEBUG_INCOMPLETE_LINE_IN_BUFFER";
+pub(super) const DEBUG_JSON_PARSE_FAILED_EVENT: &str = "DEBUG_JSON_PARSE_FAILED";
+pub(super) const DEBUG_JSON_PARSED_EVENT: &str = "DEBUG_JSON_PARSED";
+pub(super) const DEBUG_LINE_RECEIVED_EVENT: &str = "DEBUG_LINE_RECEIVED";
+pub(super) const DEBUG_LINES_PROCESSED_EVENT: &str = "DEBUG_LINES_PROCESSED";
+pub(super) const DEBUG_NO_RESULT_EVENT: &str = "DEBUG_NO_RESULT";
+pub(super) const DEBUG_STREAM_ENDED_EVENT: &str = "DEBUG_STREAM_ENDED";
+pub(super) const DEBUG_STREAM_ERROR_EVENT: &str = "DEBUG_STREAM_ERROR";
+pub(super) const DEBUG_STREAM_STARTED_EVENT: &str = "DEBUG_STREAM_STARTED";
+pub(super) const WATCH_ENDED_EVENT: &str = "WATCH_ENDED";
+pub(super) const WATCH_STARTED_EVENT: &str = "WATCH_STARTED";
