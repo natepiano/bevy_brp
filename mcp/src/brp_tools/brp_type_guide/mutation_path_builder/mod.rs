@@ -2,6 +2,8 @@ mod api;
 mod builder_error;
 mod constants;
 mod enum_builder;
+mod enum_path_info;
+mod example_group;
 mod mutability;
 mod mutation_path;
 mod mutation_path_external;

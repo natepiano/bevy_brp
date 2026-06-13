@@ -35,8 +35,8 @@ where
             return false;
         }
 
-        let current_level = TracingLevel::from_code(CURRENT_LEVEL.load(Ordering::Relaxed));
-        let metadata_level = TracingLevel::from_level(*metadata.level());
+        let current_level = TracingLevel::from(CURRENT_LEVEL.load(Ordering::Relaxed));
+        let metadata_level = TracingLevel::from(*metadata.level());
         metadata_level.code() <= current_level.code()
     }
 }
@@ -68,18 +68,8 @@ impl FromStr for TracingLevel {
     }
 }
 
-impl TracingLevel {
-    const fn code(self) -> u8 {
-        match self {
-            Self::Error => 0,
-            Self::Warn => 1,
-            Self::Info => 2,
-            Self::Debug => 3,
-            Self::Trace => 4,
-        }
-    }
-
-    const fn from_code(level_code: u8) -> Self {
+impl From<u8> for TracingLevel {
+    fn from(level_code: u8) -> Self {
         match level_code {
             0 => Self::Error,
             2 => Self::Info,
@@ -88,14 +78,28 @@ impl TracingLevel {
             _ => Self::Warn,
         }
     }
+}
 
-    const fn from_level(level: Level) -> Self {
+impl From<Level> for TracingLevel {
+    fn from(level: Level) -> Self {
         match level {
             Level::ERROR => Self::Error,
             Level::WARN => Self::Warn,
             Level::INFO => Self::Info,
             Level::DEBUG => Self::Debug,
             Level::TRACE => Self::Trace,
+        }
+    }
+}
+
+impl TracingLevel {
+    const fn code(self) -> u8 {
+        match self {
+            Self::Error => 0,
+            Self::Warn => 1,
+            Self::Info => 2,
+            Self::Debug => 3,
+            Self::Trace => 4,
         }
     }
 
@@ -135,9 +139,7 @@ impl TracingLevel {
     }
 
     /// Get the current tracing level
-    pub fn get_current_tracing_level() -> Self {
-        Self::from_code(CURRENT_LEVEL.load(Ordering::Relaxed))
-    }
+    pub fn get_current_tracing_level() -> Self { Self::from(CURRENT_LEVEL.load(Ordering::Relaxed)) }
 
     /// Set the current tracing level dynamically
     #[cfg(feature = "mcp-debug")]

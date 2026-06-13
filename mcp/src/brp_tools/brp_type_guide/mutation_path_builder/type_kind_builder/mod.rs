@@ -1,7 +1,22 @@
+mod array_builder;
+mod list_builder;
+mod map_builder;
+mod set_builder;
+mod struct_builder;
+mod tuple_builder;
+mod value_builder;
+
 use std::collections::HashMap;
 
+pub(super) use array_builder::ArrayMutationBuilder;
+pub(super) use list_builder::ListMutationBuilder;
+pub(super) use map_builder::MapMutationBuilder;
 use serde_json::Value;
 use serde_json::json;
+pub(super) use set_builder::SetMutationBuilder;
+pub(super) use struct_builder::StructMutationBuilder;
+pub(super) use tuple_builder::TupleMutationBuilder;
+pub(super) use value_builder::ValueMutationBuilder;
 
 use super::BuilderError;
 use super::NotMutableReason;
@@ -12,22 +27,6 @@ use super::recursion_context::PathAction;
 use super::recursion_context::RecursionContext;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;
-
-mod array_builder;
-mod list_builder;
-mod map_builder;
-mod set_builder;
-mod struct_builder;
-mod tuple_builder;
-mod value_builder;
-
-pub(super) use array_builder::ArrayMutationBuilder;
-pub(super) use list_builder::ListMutationBuilder;
-pub(super) use map_builder::MapMutationBuilder;
-pub(super) use set_builder::SetMutationBuilder;
-pub(super) use struct_builder::StructMutationBuilder;
-pub(super) use tuple_builder::TupleMutationBuilder;
-pub(super) use value_builder::ValueMutationBuilder;
 
 /// Trait for building mutation paths for different type kinds.
 ///
