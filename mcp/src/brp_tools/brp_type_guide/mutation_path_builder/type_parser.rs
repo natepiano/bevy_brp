@@ -230,7 +230,8 @@ pub(super) fn extract_simplified_variant_name(type_path: &str) -> String {
     reason = "tests should panic on unexpected values"
 )]
 mod tests {
-    use super::*;
+    use super::extract_simplified_variant_name;
+    use super::parse_type_with_variant;
 
     #[test]
     fn test_simple_enum_variant() {

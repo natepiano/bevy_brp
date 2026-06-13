@@ -38,11 +38,9 @@ async fn handle_impl(params: ListComponentsWatchParams) -> Result<WatchStartResu
             wrap_watch_error::wrap_watch_error("Failed to start list watch", Some(params.entity), e)
         });
 
-    match result {
-        Ok((watch_id, log_path)) => Ok(WatchStartResult::new(
-            watch_id,
-            log_path.to_string_lossy().to_string(),
-        )),
-        Err(e) => Err(Error::tool_call_failed(e.to_string()).into()),
-    }
+    result
+        .map(|(watch_id, log_path)| {
+            WatchStartResult::new(watch_id, log_path.to_string_lossy().to_string())
+        })
+        .map_err(|error| Error::tool_call_failed(error.to_string()).into())
 }

@@ -668,7 +668,12 @@ impl From<ParameterName> for String {
 mod tests {
     use std::error::Error;
 
-    use super::*;
+    use serde_json::Map;
+    use serde_json::Value;
+
+    use super::ParameterBuilder;
+    use super::Required;
+    use super::normalize_arguments_for;
     use crate::app_tools::LaunchBevyBinaryParams;
     use crate::brp_tools::MutateComponentsParams;
 

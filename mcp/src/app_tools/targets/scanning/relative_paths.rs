@@ -49,7 +49,9 @@ mod tests {
     use std::path::Path;
     use std::path::PathBuf;
 
-    use super::*;
+    use super::compute_relative_path;
+    use super::filter_targets_by_path_scope;
+    use crate::app_tools::targets::BevyTarget;
     use crate::app_tools::targets::cargo_detector::TargetType;
 
     fn make_target(name: &str, package_name: &str, manifest_path: &str) -> BevyTarget {

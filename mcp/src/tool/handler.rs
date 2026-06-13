@@ -165,10 +165,10 @@ impl<T: ToolFn> ErasedToolFn for T {
             // we're making a judgement call that we passed a reference to call()
 
             let result = self.call(context.clone()).await;
-            match result {
-                Ok(tool_result) => context.format_result(tool_result),
-                Err(e) => context.format_framework_error(e),
-            }
+            result.map_or_else(
+                |error| context.format_framework_error(error),
+                |tool_result| context.format_result(tool_result),
+            )
         })
     }
 }

@@ -45,12 +45,10 @@ async fn handle_impl(params: StopWatchParams) -> Result<StopWatchResult> {
     };
 
     // Convert result to our typed response
-    match result {
-        Ok(()) => Ok(StopWatchResult::new(params.watch_id)),
-        Err(e) => Err(Error::tool_call_failed(format!(
-            "Failed to stop watch {}: {e}",
-            params.watch_id
-        ))
-        .into()),
-    }
+    result
+        .map(|()| StopWatchResult::new(params.watch_id))
+        .map_err(|error| {
+            Error::tool_call_failed(format!("Failed to stop watch {}: {error}", params.watch_id))
+                .into()
+        })
 }

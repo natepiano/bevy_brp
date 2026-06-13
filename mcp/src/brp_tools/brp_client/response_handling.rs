@@ -107,7 +107,9 @@ pub enum FormatCorrectionStatus {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE;
+    use super::BrpClientError;
+    use super::JSON_RPC_ERROR_INVALID_PARAMS;
     use crate::brp_tools::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 
     #[test]

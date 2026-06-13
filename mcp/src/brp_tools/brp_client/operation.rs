@@ -144,7 +144,11 @@ fn extract_single_resource_type(params: &Value) -> Vec<String> {
 mod tests {
     use serde_json::json;
 
-    use super::*;
+    use super::Operation;
+    use super::extract_from_components_object;
+    use super::extract_from_resource_field;
+    use super::extract_single_component_type;
+    use super::extract_single_resource_type;
     use crate::tool::ParameterName;
 
     #[test]

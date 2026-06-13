@@ -327,7 +327,11 @@ mod tests {
 
     use tempfile::TempDir;
 
-    use super::*;
+    use super::ProjectType;
+    use super::iter_cargo_project_paths;
+    use super::process_cargo_toml;
+    use super::safe_canonicalize;
+    use super::should_skip_directory;
 
     fn write_binary_project(project_dir: &Path, name: &str, edition_line: &str) {
         fs::create_dir_all(project_dir.join("src")).expect("Failed to create src dir");

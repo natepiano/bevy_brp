@@ -30,10 +30,8 @@ pub(super) fn check_target_freshness(target: &BevyTarget, profile: &str) -> Fres
         );
     }
 
-    match try_check_target_freshness(target, profile) {
-        Ok(result) => result,
-        Err(error) => FreshnessCheckResult::Unknown(format!("{error}")),
-    }
+    try_check_target_freshness(target, profile)
+        .unwrap_or_else(|error| FreshnessCheckResult::Unknown(format!("{error}")))
 }
 
 fn try_check_target_freshness(target: &BevyTarget, profile: &str) -> Result<FreshnessCheckResult> {
@@ -273,12 +271,17 @@ fn push_dependency(dependencies: &mut Vec<PathBuf>, current: &mut String, base_d
 )]
 mod tests {
     use std::fs;
+    use std::path::Path;
+    use std::path::PathBuf;
     use std::thread;
     use std::time::Duration;
 
     use tempfile::tempdir;
 
-    use super::*;
+    use super::FreshnessCheckResult;
+    use super::check_target_freshness;
+    use super::parse_dep_info_dependencies;
+    use crate::app_tools::targets::BevyTarget;
     use crate::app_tools::targets::TargetType;
 
     const FILE_TIMESTAMP_ADVANCE_MS: u64 = 20;
