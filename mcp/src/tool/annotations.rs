@@ -34,7 +34,7 @@ pub enum ToolCategory {
 #[derive(Debug, Clone)]
 pub struct Annotation {
     pub title:                 String,
-    pub category:              ToolCategory,
+    pub tool_category:         ToolCategory,
     pub environment_impact:    EnvironmentImpact,
     pub domain_of_interaction: DomainOfInteraction,
 }
@@ -66,12 +66,12 @@ pub enum DomainOfInteraction {
 impl Annotation {
     pub(super) fn new(
         title: impl Into<String>,
-        category: ToolCategory,
+        tool_category: ToolCategory,
         environment_impact: EnvironmentImpact,
     ) -> Self {
         Self {
             title: title.into(),
-            category,
+            tool_category,
             environment_impact,
             domain_of_interaction: DomainOfInteraction::LocalOnly, // Default for all our tools
         }

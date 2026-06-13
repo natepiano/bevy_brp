@@ -76,7 +76,7 @@ impl ToolDef {
             let mut enhanced = self.annotations.clone();
 
             // Start with category prefix
-            let category_prefix = enhanced.category.as_ref();
+            let category_prefix = enhanced.tool_category.as_ref();
             let base_title = &enhanced.title;
 
             // All tools use the same title format now
