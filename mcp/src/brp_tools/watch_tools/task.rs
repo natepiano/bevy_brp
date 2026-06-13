@@ -655,7 +655,7 @@ async fn start_watch_task(
         watch_id,
         (
             WatchInfo {
-                watch_id,
+                id: watch_id,
                 entity_id,
                 kind: watch_type.to_string(),
                 log_path: log_path.clone(),

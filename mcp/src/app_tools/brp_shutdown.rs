@@ -43,8 +43,9 @@ pub struct ShutdownResult {
     #[to_metadata]
     pid:              u32,
     /// Shutdown method used
+    #[serde(rename = "shutdown_method")]
     #[to_metadata]
-    shutdown_method:  String,
+    method:           String,
     /// Port where shutdown was attempted
     #[to_metadata]
     port:             u16,
