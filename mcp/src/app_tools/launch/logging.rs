@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::UNIX_EPOCH;
 
 use error_stack::ResultExt;
 
@@ -21,7 +22,7 @@ pub(super) fn create_log_file(
 ) -> Result<(PathBuf, File)> {
     // Generate unique log file name in temp directory
     let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+        .duration_since(UNIX_EPOCH)
         .change_context(Error::LogOperation("Failed to get timestamp".to_string()))
         .attach("System time error")?
         .as_millis();

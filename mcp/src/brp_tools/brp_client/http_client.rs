@@ -4,6 +4,8 @@
 //! It encapsulates all HTTP-related operations including URL building, request sending,
 //! status checking, and response parsing.
 
+use std::time::UNIX_EPOCH;
+
 use reqwest::Response;
 use serde_json::Value;
 use tracing::debug;
@@ -186,7 +188,7 @@ impl BrpHttpClient {
         let error_details = format!(
             "HTTP Error at {}\nMethod: {}\nPort: {}\nURL: {}\nError: {:?}\n",
             std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
+                .duration_since(UNIX_EPOCH)
                 .map_or(0, |d| d.as_secs()),
             self.brp_method.as_str(),
             self.port,
