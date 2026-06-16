@@ -2,6 +2,7 @@
 
 use std::fmt::Write;
 use std::path::PathBuf;
+use std::time::UNIX_EPOCH;
 
 use chrono::DateTime;
 use chrono::Local;
@@ -87,7 +88,7 @@ impl BufferedWatchLogger {
     /// Get the log file path for a watch (same as before)
     pub(super) fn get_watch_log_path(watch_id: u32, entity_id: u64, watch_type: &str) -> PathBuf {
         let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
+            .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.as_secs());
 
         let filename =
