@@ -16,8 +16,6 @@ A Model Context Protocol (MCP) server that enables AI coding assistants to launc
 | 0.17        | 0.17.0-0.17.2   |
 | 0.16        | 0.1             |
 
-The bevy_brp_mcp crate uses its own version numbering, which diverged from Bevy's starting with Bevy 0.19 (crate 0.20.x). Use the table above to match a bevy_brp_mcp version to your Bevy version.
-
 ## Features
 
 ### Core BRP Operations
