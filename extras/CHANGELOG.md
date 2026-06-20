@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Update `bevy_kana` to 0.1.0 so the crate resolves against Bevy 0.19.0 instead of Bevy 0.19 release candidates.
+
 ## [0.20.0] - 2026-06-19
 
 ### Changed
