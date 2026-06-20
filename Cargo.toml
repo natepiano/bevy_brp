@@ -14,12 +14,12 @@ repository = "https://github.com/natepiano/bevy_brp"
 
 [workspace.dependencies]
 # Bevy with no default features - each crate specifies what it needs
-bevy            = { version = "0.19.0-rc.2", default-features = false }
+bevy            = { version = "0.19.0", default-features = false }
 bevy_brp_extras = { path = "extras" }
 bevy_kana       = "0.1.0-rc.1"
-bevy_mesh       = { version = "0.19.0-rc.2" }
-bevy_remote     = { version = "0.19.0-rc.2", default-features = false }
-bevy_winit      = { version = "0.19.0-rc.2" }
+bevy_mesh       = { version = "0.19.0" }
+bevy_remote     = { version = "0.19.0", default-features = false }
+bevy_winit      = { version = "0.19.0" }
 
 # Core dependencies (shared between extras and mcp)
 anyhow = "1.0"
@@ -28,10 +28,10 @@ bevy_brp_mcp_macros = { version = "0.20.0-dev", path = "mcp_macros" }
 cargo_metadata = "0.23"
 chrono = "0.4"
 either = "1.16"
-error-stack = { version = "0.7.0", features = ["spantrace"] }
+error-stack = { version = "0.7.1", features = ["spantrace"] }
 futures = "0.3"
 heck = "0.5.0"
-itertools = "0.14.0"
+itertools = "0.15.0"
 json-pretty-compact = "0.1.2"
 netstat2 = "0.11"
 nom = "8.0.0"
@@ -39,16 +39,16 @@ once_cell = "1.21.4"
 paste = "1.0"
 proc-macro2 = "1.0.106"
 quote = "1.0.45"
-regex = "1.12.3"
-reqwest = { version = "0.13.3", features = ["blocking", "json", "stream"] }
+regex = "1.12.4"
+reqwest = { version = "0.13.4", features = ["blocking", "json", "stream"] }
 rmcp = { version = "1.7.0", features = ["server", "transport-io"] }
 schemars = "1.2.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.150", features = ["preserve_order"] }
 strum = "0.28.0"
 strum_macros = "0.28.0"
-syn = { version = "2.0.117", features = ["extra-traits", "full"] }
-sysinfo = "0.39.2"
+syn = { version = "2.0.118", features = ["extra-traits", "full"] }
+sysinfo = "0.39.3"
 tempfile = "3.27.0"
 thiserror = "2.0"
 tokio = { version = "1.52.3", features = ["full", "signal"] }
@@ -60,7 +60,7 @@ tracing = { version = "0.1.44", features = [
 ] }
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "1.23.1", features = ["v4"] }
+uuid = { version = "1.23.3", features = ["v4"] }
 
 # Shared lints configuration
 [workspace.lints.rust]
