@@ -15,10 +15,13 @@ use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_remote::http::RemoteHttpPlugin;
 
+const CUSTOM_HTTP_PLUGIN_PORT: u16 = 9000;
+const LISTEN_ADDRESS: [u8; 4] = [0, 0, 0, 0];
+
 fn main() {
     let http_plugin = RemoteHttpPlugin::default()
-        .with_port(9000)
-        .with_address([0, 0, 0, 0]);
+        .with_port(CUSTOM_HTTP_PLUGIN_PORT)
+        .with_address(LISTEN_ADDRESS);
 
     App::new()
         .add_plugins(DefaultPlugins)

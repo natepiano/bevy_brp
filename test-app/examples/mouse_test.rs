@@ -32,23 +32,47 @@ use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
 // Mouse test constants
+const AUDIT_DISPLAY_FONT_SIZE: f32 = 11.0;
+const BACKGROUND_COLOR: Color = Color::srgb(0.15, 0.15, 0.2);
+const BACKGROUND_DEPTH: f32 = 0.1;
+const BACKGROUND_HEIGHT: f32 = 20.0;
+const BACKGROUND_OFFSET_Z: f32 = -3.0;
+const BACKGROUND_WIDTH: f32 = 20.0;
 /// Size of the pickable cuboid (used for both mesh and gizmo outline)
 const CUBOID_SIZE: f32 = 1.5;
 
 /// Double-click detection threshold in seconds
 const DOUBLE_CLICK_THRESHOLD: f32 = 0.4;
 
+const PRIMARY_AUDIT_TEXT: &str = "PRIMARY WINDOW - Waiting for input...";
+const PRIMARY_CAMERA_ORDER: isize = 0;
+const PRIMARY_CAMERA_TRANSLATION: Vec3 = Vec3::new(0.0, 1.5, 5.0);
+const PRIMARY_LIGHT_TRANSLATION: Vec3 = Vec3::new(2.0, 4.0, 3.0);
+const PRIMARY_WINDOW_HEIGHT: u32 = 400;
+const PRIMARY_WINDOW_POSITION: IVec2 = IVec2::new(50, 50);
+const PRIMARY_WINDOW_TITLE: &str = "Mouse Test - Primary";
+const PRIMARY_WINDOW_WIDTH: u32 = 600;
+const SCENE_ILLUMINANCE: f32 = 2000.0;
+const SECONDARY_AUDIT_TEXT: &str = "SECONDARY WINDOW - Waiting for input...";
+const SECONDARY_CAMERA_ORDER: isize = 1;
+const SECONDARY_CAMERA_TRANSLATION: Vec3 = Vec3::new(SECONDARY_SCENE_OFFSET, 1.5, 5.0);
+const SECONDARY_LIGHT_TRANSLATION: Vec3 = Vec3::new(SECONDARY_SCENE_OFFSET + 2.0, 4.0, 3.0);
 /// X offset for the secondary window scene (far enough that cameras don't see each other's cuboids)
 const SECONDARY_SCENE_OFFSET: f32 = 100.0;
+const SECONDARY_SCENE_TARGET: Vec3 = Vec3::new(SECONDARY_SCENE_OFFSET, 0.0, 0.0);
+const SECONDARY_WINDOW_TITLE: &str = "Mouse Test - Secondary";
+const UI_FILL_PERCENT: f32 = 100.0;
+const UI_PADDING: f32 = 10.0;
+const WINDOW_GAP: i32 = 20;
 
 fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
-                    title: "Mouse Test - Primary".to_string(),
-                    resolution: WindowResolution::new(600, 400),
-                    position: WindowPosition::At(IVec2::new(50, 50)),
+                    title: PRIMARY_WINDOW_TITLE.to_string(),
+                    resolution: WindowResolution::new(PRIMARY_WINDOW_WIDTH, PRIMARY_WINDOW_HEIGHT),
+                    position: WindowPosition::At(PRIMARY_WINDOW_POSITION),
                     mode: WindowMode::Windowed,
                     ..default()
                 }),
@@ -365,8 +389,8 @@ fn setup_windows(mut commands: Commands) {
     // Spawn secondary window - will be repositioned in PostStartup
     commands.spawn((
         Window {
-            title: "Mouse Test - Secondary".to_string(),
-            resolution: WindowResolution::new(600, 400),
+            title: SECONDARY_WINDOW_TITLE.to_string(),
+            resolution: WindowResolution::new(PRIMARY_WINDOW_WIDTH, PRIMARY_WINDOW_HEIGHT),
             position: WindowPosition::Automatic,
             mode: WindowMode::Windowed,
             ..default()
@@ -397,8 +421,7 @@ fn position_secondary_window(mut windows: ParamSet<(PrimaryWindowQuery, Secondar
         return;
     };
 
-    let gap = 20; // 20px gap between windows
-    let secondary_x = primary_pos.x + primary_width.cast_signed() + gap;
+    let secondary_x = primary_pos.x + primary_width.cast_signed() + WINDOW_GAP;
 
     info!(
         "Positioning windows - Primary: x={}, width={}, ends at {}. Secondary: x={}",
@@ -438,9 +461,13 @@ fn setup_scene(
         base_color: Color::from(CORNFLOWER_BLUE),
         ..default()
     });
-    let background_mesh = meshes.add(Cuboid::new(20.0, 20.0, 0.1));
+    let background_mesh = meshes.add(Cuboid::new(
+        BACKGROUND_WIDTH,
+        BACKGROUND_HEIGHT,
+        BACKGROUND_DEPTH,
+    ));
     let background_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.15, 0.15, 0.2),
+        base_color: BACKGROUND_COLOR,
         ..default()
     });
 
@@ -450,10 +477,10 @@ fn setup_scene(
         .spawn((
             Camera3d::default(),
             Camera {
-                order: 0,
+                order: PRIMARY_CAMERA_ORDER,
                 ..default()
             },
-            Transform::from_xyz(0.0, 1.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            Transform::from_translation(PRIMARY_CAMERA_TRANSLATION).looking_at(Vec3::ZERO, Vec3::Y),
             RenderTarget::Window(WindowRef::Entity(primary_window)),
         ))
         .id();
@@ -474,7 +501,7 @@ fn setup_scene(
         .spawn((
             Mesh3d(background_mesh.clone()),
             MeshMaterial3d(background_material.clone()),
-            Transform::from_xyz(0.0, 0.0, -3.0),
+            Transform::from_xyz(0.0, 0.0, BACKGROUND_OFFSET_Z),
             PrimaryBackground,
             Pickable::default(),
         ))
@@ -483,10 +510,10 @@ fn setup_scene(
     // Primary light
     commands.spawn((
         DirectionalLight {
-            illuminance: 2000.0,
+            illuminance: SCENE_ILLUMINANCE,
             ..default()
         },
-        Transform::from_xyz(2.0, 4.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_translation(PRIMARY_LIGHT_TRANSLATION).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
     // === Secondary window scene (offset by SECONDARY_SCENE_OFFSET on X) ===
@@ -495,11 +522,11 @@ fn setup_scene(
         .spawn((
             Camera3d::default(),
             Camera {
-                order: 1,
+                order: SECONDARY_CAMERA_ORDER,
                 ..default()
             },
-            Transform::from_xyz(SECONDARY_SCENE_OFFSET, 1.5, 5.0)
-                .looking_at(Vec3::new(SECONDARY_SCENE_OFFSET, 0.0, 0.0), Vec3::Y),
+            Transform::from_translation(SECONDARY_CAMERA_TRANSLATION)
+                .looking_at(SECONDARY_SCENE_TARGET, Vec3::Y),
             RenderTarget::Window(WindowRef::Entity(secondary_window)),
         ))
         .id();
@@ -520,7 +547,7 @@ fn setup_scene(
         .spawn((
             Mesh3d(background_mesh),
             MeshMaterial3d(background_material),
-            Transform::from_xyz(SECONDARY_SCENE_OFFSET, 0.0, -3.0),
+            Transform::from_xyz(SECONDARY_SCENE_OFFSET, 0.0, BACKGROUND_OFFSET_Z),
             SecondaryBackground,
             Pickable::default(),
         ))
@@ -529,11 +556,11 @@ fn setup_scene(
     // Secondary light
     commands.spawn((
         DirectionalLight {
-            illuminance: 2000.0,
+            illuminance: SCENE_ILLUMINANCE,
             ..default()
         },
-        Transform::from_xyz(SECONDARY_SCENE_OFFSET + 2.0, 4.0, 3.0)
-            .looking_at(Vec3::new(SECONDARY_SCENE_OFFSET, 0.0, 0.0), Vec3::Y),
+        Transform::from_translation(SECONDARY_LIGHT_TRANSLATION)
+            .looking_at(SECONDARY_SCENE_TARGET, Vec3::Y),
     ));
 
     // === UI overlays (text displays) ===
@@ -542,9 +569,9 @@ fn setup_scene(
     commands
         .spawn((
             Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                padding: UiRect::all(Val::Px(10.0)),
+                width: Val::Percent(UI_FILL_PERCENT),
+                height: Val::Percent(UI_FILL_PERCENT),
+                padding: UiRect::all(Val::Px(UI_PADDING)),
                 ..default()
             },
             Pickable::IGNORE,
@@ -552,9 +579,9 @@ fn setup_scene(
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new("PRIMARY WINDOW - Waiting for input..."),
+                Text::new(PRIMARY_AUDIT_TEXT),
                 TextFont {
-                    font_size: FontSize::Px(11.0),
+                    font_size: FontSize::Px(AUDIT_DISPLAY_FONT_SIZE),
                     ..default()
                 },
                 TextColor(Color::WHITE),
@@ -567,9 +594,9 @@ fn setup_scene(
     commands
         .spawn((
             Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                padding: UiRect::all(Val::Px(10.0)),
+                width: Val::Percent(UI_FILL_PERCENT),
+                height: Val::Percent(UI_FILL_PERCENT),
+                padding: UiRect::all(Val::Px(UI_PADDING)),
                 ..default()
             },
             Pickable::IGNORE,
@@ -577,9 +604,9 @@ fn setup_scene(
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new("SECONDARY WINDOW - Waiting for input..."),
+                Text::new(SECONDARY_AUDIT_TEXT),
                 TextFont {
-                    font_size: FontSize::Px(11.0),
+                    font_size: FontSize::Px(AUDIT_DISPLAY_FONT_SIZE),
                     ..default()
                 },
                 TextColor(Color::WHITE),

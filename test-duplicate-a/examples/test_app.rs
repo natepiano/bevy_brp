@@ -18,22 +18,28 @@ use bevy::window::WindowPosition;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
+const MARKER_FLAG: &str = "--marker";
+const SEARCH_ORDER_EXAMPLE_TEXT: &str = "search_order test example";
+const SEARCH_ORDER_FONT_SIZE: f32 = 24.0;
+const WINDOW_HEIGHT: u32 = 300;
+const WINDOW_WIDTH: u32 = 400;
+
 fn main() {
-    let brp_plugin = BrpExtrasPlugin::new().port_in_title(PortDisplay::Always);
-    let (port, _) = brp_plugin.get_effective_port();
+    let brp_extras_plugin = BrpExtrasPlugin::new().port_in_title(PortDisplay::Always);
+    let (port, _) = brp_extras_plugin.get_effective_port();
 
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: format!("search_order test example - Port {port}"),
-                resolution: (400, 300).into(),
+                resolution: (WINDOW_WIDTH, WINDOW_HEIGHT).into(),
                 focused: false,
                 position: WindowPosition::Centered(MonitorSelection::Primary),
                 ..default()
             }),
             ..default()
         }))
-        .add_plugins(brp_plugin)
+        .add_plugins(brp_extras_plugin)
         .add_systems(Startup, (setup, minimize_window_on_start))
         .run();
 }
@@ -55,9 +61,9 @@ fn minimize_window_on_start(mut windows: Query<&mut Window, With<PrimaryWindow>>
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
     commands.spawn((
-        Text::new("search_order test example"),
+        Text::new(SEARCH_ORDER_EXAMPLE_TEXT),
         TextFont {
-            font_size: FontSize::Px(24.0),
+            font_size: FontSize::Px(SEARCH_ORDER_FONT_SIZE),
             ..default()
         },
         TextColor(Color::WHITE),
@@ -65,7 +71,7 @@ fn setup(mut commands: Commands) {
 
     // Log --marker value if provided (used by args integration test)
     let args: Vec<String> = std::env::args().collect();
-    if let Some(pos) = args.iter().position(|a| a == "--marker")
+    if let Some(pos) = args.iter().position(|a| a == MARKER_FLAG)
         && let Some(value) = args.get(pos + 1)
     {
         info!("MARKER:{value}");

@@ -48,9 +48,9 @@ pub(super) fn apply_option_transformation(
     variant_name: &VariantName,
     enum_type: &BrpTypeName,
 ) -> Example {
-    let type_category: OptionClassification = enum_type.into();
+    let option_classification: OptionClassification = enum_type.into();
 
-    if !type_category.is_option() {
+    if !option_classification.is_option() {
         return example;
     }
 

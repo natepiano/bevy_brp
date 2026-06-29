@@ -225,20 +225,20 @@ fn parse_dep_info_dependencies(contents: &str, base_dir: &Path) -> Vec<PathBuf> 
 
     let mut dependencies = Vec::new();
     let mut current = String::new();
-    let mut escaped = BackslashState::ReadingToken;
+    let mut backslash_state = BackslashState::ReadingToken;
 
     for ch in dependency_text.chars() {
-        if escaped.is_escaped() {
+        if backslash_state.is_escaped() {
             match ch {
                 '\n' | '\r' => {},
                 _ => current.push(ch),
             }
-            escaped = BackslashState::ReadingToken;
+            backslash_state = BackslashState::ReadingToken;
             continue;
         }
 
         match ch {
-            '\\' => escaped = BackslashState::Escaped,
+            '\\' => backslash_state = BackslashState::Escaped,
             c if c.is_whitespace() => {
                 push_dependency(&mut dependencies, &mut current, base_dir);
             },

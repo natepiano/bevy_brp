@@ -119,15 +119,16 @@ impl TypeGuideEngine {
             .iter()
             .map(|s| BrpTypeName::from(s.as_str()))
             .map(|brp_type_name| {
-                let type_info = TypeGuide::build(brp_type_name.clone(), Arc::clone(&self.registry))
-                    .unwrap_or_else(|e| {
-                        // Processing failed - type was found but building failed
-                        TypeGuide::processing_failed(
-                            brp_type_name.clone(),
-                            format!("Failed to process type: {e}"),
-                        )
-                    });
-                (brp_type_name, type_info)
+                let type_guide =
+                    TypeGuide::build(brp_type_name.clone(), Arc::clone(&self.registry))
+                        .unwrap_or_else(|e| {
+                            // Processing failed - type was found but building failed
+                            TypeGuide::processing_failed(
+                                brp_type_name.clone(),
+                                format!("Failed to process type: {e}"),
+                            )
+                        });
+                (brp_type_name, type_guide)
             })
             .collect();
 

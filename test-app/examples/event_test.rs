@@ -8,6 +8,10 @@ use bevy::window::WindowPlugin;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 
+const EVENT_TEST_TITLE: &str = "Event Test";
+const EVENT_TEST_WINDOW_HEIGHT: u32 = 300;
+const EVENT_TEST_WINDOW_WIDTH: u32 = 400;
+
 /// Test event with no payload
 #[derive(Event, Reflect, Clone)]
 #[reflect(Event)]
@@ -35,8 +39,8 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Event Test".to_string(),
-                resolution: (400, 300).into(),
+                title: EVENT_TEST_TITLE.to_string(),
+                resolution: (EVENT_TEST_WINDOW_WIDTH, EVENT_TEST_WINDOW_HEIGHT).into(),
                 ..default()
             }),
             ..default()

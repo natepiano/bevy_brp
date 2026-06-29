@@ -109,14 +109,14 @@ fn parse_placement_attr(
         attribute.parse_nested_meta(|meta| match PlacementAttrKey::parse(&meta)? {
             PlacementAttrKey::From => {
                 let value = meta.value()?;
-                let string: LitStr = value.parse()?;
-                *source_path = Some(string.value());
+                let lit_str: LitStr = value.parse()?;
+                *source_path = Some(lit_str.value());
                 Ok(())
             },
             PlacementAttrKey::FieldType => {
                 let value = meta.value()?;
-                let string: LitStr = value.parse()?;
-                *field_type = Some(string.value());
+                let lit_str: LitStr = value.parse()?;
+                *field_type = Some(lit_str.value());
                 Ok(())
             },
             PlacementAttrKey::SkipIfNone => {
@@ -125,8 +125,8 @@ fn parse_placement_attr(
             },
             PlacementAttrKey::ResultOperation => {
                 let value = meta.value()?;
-                let string: LitStr = value.parse()?;
-                *result_operation = Some(string.value());
+                let lit_str: LitStr = value.parse()?;
+                *result_operation = Some(lit_str.value());
                 Ok(())
             },
         }),
@@ -138,8 +138,8 @@ pub(crate) fn parse_computed_attr(attribute: &Attribute, result_operation: &mut 
     drop(attribute.parse_nested_meta(|meta| {
         if meta.path.is_ident("operation") {
             let value = meta.value()?;
-            let string: LitStr = value.parse()?;
-            *result_operation = Some(string.value());
+            let lit_str: LitStr = value.parse()?;
+            *result_operation = Some(lit_str.value());
             Ok(())
         } else {
             Err(meta.error("unsupported computed attribute"))
@@ -153,8 +153,8 @@ pub(crate) fn parse_to_message_attr(attribute: &Attribute) -> Option<String> {
     drop(attribute.parse_nested_meta(|meta| {
         if meta.path.is_ident("message_template") {
             let value = meta.value()?;
-            let string: LitStr = value.parse()?;
-            message_template = Some(string.value());
+            let lit_str: LitStr = value.parse()?;
+            message_template = Some(lit_str.value());
             Ok(())
         } else {
             Err(meta.error("unsupported to_message attribute"))
@@ -198,8 +198,8 @@ fn serde_field_rename(field: &Field) -> Option<String> {
             drop(attribute.parse_nested_meta(|meta| {
                 if meta.path.is_ident("rename") {
                     let value = meta.value()?;
-                    let string: LitStr = value.parse()?;
-                    rename = Some(string.value());
+                    let lit_str: LitStr = value.parse()?;
+                    rename = Some(lit_str.value());
                 }
                 Ok(())
             }));

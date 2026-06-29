@@ -322,16 +322,16 @@ fn extract_tool_attr(attributes: &[Attribute]) -> ToolAttrs {
             drop(attribute.parse_nested_meta(|meta| {
                 if meta.path.is_ident("params") {
                     let value = meta.value()?;
-                    let s: LitStr = value.parse()?;
-                    tool_attrs.params = Some(s.value());
+                    let lit_str: LitStr = value.parse()?;
+                    tool_attrs.params = Some(lit_str.value());
                 } else if meta.path.is_ident("result") {
                     let value = meta.value()?;
-                    let s: LitStr = value.parse()?;
-                    tool_attrs.result = Some(s.value());
+                    let lit_str: LitStr = value.parse()?;
+                    tool_attrs.result = Some(lit_str.value());
                 } else if meta.path.is_ident("brp_method") {
                     let value = meta.value()?;
-                    let s: LitStr = value.parse()?;
-                    tool_attrs.brp_method = s.value(); // Set required field
+                    let lit_str: LitStr = value.parse()?;
+                    tool_attrs.brp_method = lit_str.value(); // Set required field
                 } else {
                     return Err(meta.error("unsupported tool attribute"));
                 }

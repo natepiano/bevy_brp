@@ -51,7 +51,7 @@ impl ErrorDetailMode {
 /// Attributes for #[`brp_result`(...)]
 #[derive(Default)]
 struct BrpResultAttrs {
-    enhanced_errors: ErrorDetailMode,
+    error_detail_mode: ErrorDetailMode,
 }
 
 /// Parse #[`brp_result`(...)] attribute
@@ -64,8 +64,8 @@ fn parse_brp_result_attr(attributes: &[Attribute]) -> Option<BrpResultAttrs> {
             drop(attribute.parse_nested_meta(|meta| {
                 if meta.path.is_ident("enhanced_errors") {
                     let value = meta.value()?;
-                    let lit: LitBool = value.parse()?;
-                    brp_result_attrs.enhanced_errors = if lit.value() {
+                    let lit_bool: LitBool = value.parse()?;
+                    brp_result_attrs.error_detail_mode = if lit_bool.value() {
                         ErrorDetailMode::IncludeTypeGuide
                     } else {
                         ErrorDetailMode::Basic
@@ -236,7 +236,7 @@ fn generate_brp_trait_impls(
     };
 
     let brp_tool_config_impl = if let Some(attributes) = brp_attrs {
-        let add_type_guide_to_error = attributes.enhanced_errors.includes_type_guide();
+        let add_type_guide_to_error = attributes.error_detail_mode.includes_type_guide();
         quote! {
             impl crate::brp_tools::BrpToolConfig for #struct_name {
                 const ADD_TYPE_GUIDE_TO_ERROR: bool = #add_type_guide_to_error;

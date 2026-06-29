@@ -65,7 +65,7 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
 
     let mut params_type = None;
     let mut output_type = None;
-    let mut with_context = ContextPassing::Excluded;
+    let mut context_passing = ContextPassing::Excluded;
 
     // Parse the attribute arguments
     tool_fn_attr.parse_nested_meta(|meta| {
@@ -82,7 +82,7 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
                 output_type = Some(s.value());
             }
         } else if meta.path.is_ident("with_context") {
-            with_context = ContextPassing::Included;
+            context_passing = ContextPassing::Included;
         }
         Ok(())
     })?;
@@ -101,7 +101,7 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
         .map_err(|_| Error::new_spanned(tool_fn_attr, "Invalid output type"))?;
 
     // Generate the implementation based on whether context is needed
-    let handle_impl_call = if with_context.includes_context() {
+    let handle_impl_call = if context_passing.includes_context() {
         quote! { handle_impl(context.clone(), params.clone()).await }
     } else {
         quote! { handle_impl(params.clone()).await }

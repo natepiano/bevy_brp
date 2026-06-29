@@ -65,8 +65,8 @@ fn extract_path(attributes: &[Attribute]) -> String {
                 .parse_nested_meta(|meta| {
                     if meta.path.is_ident("path") {
                         let value = meta.value()?;
-                        let s: LitStr = value.parse()?;
-                        path = Some(s.value());
+                        let lit_str: LitStr = value.parse()?;
+                        path = Some(lit_str.value());
                         Ok(())
                     } else {
                         Err(meta.error("unsupported tool_description attribute"))

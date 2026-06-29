@@ -11,13 +11,20 @@ use bevy_brp_extras::PortDisplay;
 const BRP_EXTRAS_PORT_DEFAULT: &str = "15702";
 const BRP_EXTRAS_PORT_ENV_VAR: &str = "BRP_EXTRAS_PORT";
 const MARKER_FLAG: &str = "--marker";
+const SPRITE_COLOR: Color = Color::srgb(0.5, 0.7, 0.9);
+const SPRITE_SIZE: Vec2 = Vec2::new(100.0, 100.0);
+const TEXT_FONT_SIZE: f32 = 24.0;
+const TEXT_POSITION: Vec3 = Vec3::new(-100.0, 120.0, 0.0);
+const TEST_APP_TITLE: &str = "Test Extras Plugin App";
+const WINDOW_HEIGHT: u32 = 300;
+const WINDOW_WIDTH: u32 = 400;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Test Extras Plugin App".to_string(),
-                resolution: (400, 300).into(),
+                title: TEST_APP_TITLE.to_string(),
+                resolution: (WINDOW_WIDTH, WINDOW_HEIGHT).into(),
                 focused: false,
                 position: WindowPosition::Centered(MonitorSelection::Primary),
                 ..default()
@@ -49,8 +56,8 @@ fn setup(mut commands: Commands) {
     // Simple sprite that rotates
     commands.spawn((
         Sprite {
-            color: Color::srgb(0.5, 0.7, 0.9),
-            custom_size: Some(Vec2::new(100.0, 100.0)),
+            color: SPRITE_COLOR,
+            custom_size: Some(SPRITE_SIZE),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),
@@ -59,13 +66,13 @@ fn setup(mut commands: Commands) {
 
     // Text showing app name
     commands.spawn((
-        Text::new("Test Extras Plugin App"),
+        Text::new(TEST_APP_TITLE),
         TextFont {
-            font_size: FontSize::Px(24.0),
+            font_size: FontSize::Px(TEXT_FONT_SIZE),
             ..default()
         },
         TextColor(Color::WHITE),
-        Transform::from_xyz(-100.0, 120.0, 0.0),
+        Transform::from_translation(TEXT_POSITION),
     ));
 }
 
