@@ -12,6 +12,7 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+use super::constants::TRACE_LOG_FILENAME;
 use super::constants::TRACING_FILTERED_TARGET_PREFIXES;
 use super::lazy_file_writer::LazyFileWriter;
 
@@ -158,5 +159,5 @@ impl TracingLevel {
 
     /// Get the path to the trace log file
     /// Useful for testing and troubleshooting
-    pub fn get_trace_log_path() -> PathBuf { std::env::temp_dir().join("bevy_brp_mcp_trace.log") }
+    pub fn get_trace_log_path() -> PathBuf { std::env::temp_dir().join(TRACE_LOG_FILENAME) }
 }

@@ -17,6 +17,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
+use super::constants::MIN_DRAG_FRAMES;
 use super::cursor::SimulatedCursorPosition;
 use super::support;
 use super::support::EmptyParamsPolicy;
@@ -101,7 +102,7 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
     let request: DragMouseRequest = support::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     // Validate frames
-    if request.frames == 0 {
+    if request.frames < MIN_DRAG_FRAMES {
         return Err(BrpError {
             code:    INVALID_PARAMS,
             message: "Frames must be greater than 0".to_string(),

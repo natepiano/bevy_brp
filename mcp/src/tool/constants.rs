@@ -12,6 +12,10 @@ pub(super) const LARGE_RESPONSE_INSTRUCTIONS: &str =
 pub(super) const ORIGINAL_SIZE_TOKENS_FIELD: &str = "original_size_tokens";
 pub(super) const SAVED_TO_FILE_FIELD: &str = "saved_to_file";
 
+// large response filename constants
+pub(super) const LARGE_RESPONSE_FILENAME_REPLACEMENT: &str = "_";
+pub(super) const LARGE_RESPONSE_FILENAME_SANITIZE_CHARS: [char; 2] = ['/', ' '];
+
 // large response token calculation constants
 /// Estimated characters per token for response size calculation
 pub(super) const CHARS_PER_TOKEN: usize = 4;

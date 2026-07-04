@@ -19,6 +19,8 @@ use super::ToolResult;
 use super::constants::CHARS_PER_TOKEN;
 use super::constants::FILEPATH_FIELD;
 use super::constants::INSTRUCTIONS_FIELD;
+use super::constants::LARGE_RESPONSE_FILENAME_REPLACEMENT;
+use super::constants::LARGE_RESPONSE_FILENAME_SANITIZE_CHARS;
 use super::constants::LARGE_RESPONSE_INSTRUCTIONS;
 use super::constants::ORIGINAL_SIZE_TOKENS_FIELD;
 use super::constants::SAVED_TO_FILE_FIELD;
@@ -193,7 +195,10 @@ impl HandlerContext {
                 .change_context(Error::General("Failed to get timestamp".to_string()))?
                 .as_secs();
 
-            let sanitized_identifier = self.tool_def.tool_name.to_string().replace(['/', ' '], "_");
+            let sanitized_identifier = self.tool_def.tool_name.to_string().replace(
+                LARGE_RESPONSE_FILENAME_SANITIZE_CHARS,
+                LARGE_RESPONSE_FILENAME_REPLACEMENT,
+            );
             let filename = format!(
                 "{}{}{}.json",
                 large_response_config.file_prefix, sanitized_identifier, timestamp

@@ -47,9 +47,9 @@ impl ToolDef {
 
     /// Generate unified output schema from the actual [`ToolCallJsonResponse`] struct
     fn generate_output_schema() -> Arc<JsonObject> {
-        let mut settings = SchemaSettings::default();
-        settings.inline_subschemas = true;
-        let generator = settings.into_generator();
+        let mut schema_settings = SchemaSettings::default();
+        schema_settings.inline_subschemas = true;
+        let generator = schema_settings.into_generator();
         let schema = generator.into_root_schema_for::<ToolCallJsonResponse>();
 
         let Ok(schema_value) = serde_json::to_value(schema) else {

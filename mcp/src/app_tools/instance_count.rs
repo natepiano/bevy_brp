@@ -11,6 +11,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::constants::MIN_INSTANCE_COUNT;
 use super::constants::VALID_INSTANCE_RANGE;
 
 /// Count of instances to launch in sequence
@@ -36,7 +37,7 @@ impl TryFrom<u16> for InstanceCount {
 }
 
 impl Default for InstanceCount {
-    fn default() -> Self { Self(1) }
+    fn default() -> Self { Self(MIN_INSTANCE_COUNT) }
 }
 
 impl Display for InstanceCount {

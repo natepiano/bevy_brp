@@ -35,6 +35,10 @@ pub(super) const VALID_INSTANCE_RANGE: RangeInclusive<u16> =
 pub(super) const MANIFEST_PATH_FIELD: &str = "manifest_path";
 pub(super) const PID_FIELD: &str = "pid";
 
+// process matching constants
+pub(super) const GENERIC_PROCESS_NAMES: &[&str] =
+    &["tail", "grep", "cat", "less", "more", "head", "sed", "awk"];
+
 // profile constants
 pub(super) const DEFAULT_PROFILE: &str = PROFILE_DEBUG;
 pub(super) const PROFILE_DEBUG: &str = "debug";

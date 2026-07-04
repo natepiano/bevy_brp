@@ -13,6 +13,7 @@ use super::constants::CARGO_COMMAND_NAME;
 use super::constants::CARGO_EXAMPLE_FLAG;
 use super::constants::CARGO_RUN_SUBCOMMAND;
 use super::constants::EXAMPLES_PATH_SEGMENT;
+use super::constants::GENERIC_PROCESS_NAMES;
 use super::constants::MCP_BINARY_NAME;
 use super::constants::STATUS_MAX_RETRIES;
 use super::constants::STATUS_POLL_INTERVAL;
@@ -147,8 +148,7 @@ fn process_matches_app_substring(process: &Process, target_app: &str) -> bool {
         let normalized_command = process::normalize_process_name(&command_string);
 
         // Skip if it's a generic utility that happens to have the target in its args
-        let generic_utils = ["tail", "grep", "cat", "less", "more", "head", "sed", "awk"];
-        if !generic_utils.contains(&normalized_process_name.as_str())
+        if !GENERIC_PROCESS_NAMES.contains(&normalized_process_name.as_str())
             && normalized_command.contains(&normalized_target)
         {
             return true;
