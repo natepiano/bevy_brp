@@ -28,6 +28,13 @@ use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
 
+#[derive(Debug, Clone, Copy)]
+pub(super) enum BuildState {
+    NotFound,
+    Fresh,
+    Rebuilt,
+}
+
 pub(super) fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path> {
     manifest_path.parent().ok_or_else(|| {
         Report::new(Error::FileOrPathNotFound(
@@ -118,13 +125,6 @@ pub(super) fn build_app_command(
     set_brp_env_vars(&mut command, port);
     set_user_env_vars(&mut command, env);
     command
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(super) enum BuildState {
-    NotFound,
-    Fresh,
-    Rebuilt,
 }
 
 fn build_cargo_command(

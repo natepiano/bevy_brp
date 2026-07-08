@@ -37,7 +37,7 @@ pub(super) struct LaunchConfig<T> {
     instance_count: InstanceCount,
     env:            Option<HashMap<String, String>>,
     arguments:      Option<Vec<String>>,
-    phantom:        PhantomData<T>,
+    phantom_data:   PhantomData<T>,
 }
 
 impl<T> LaunchConfig<T> {
@@ -58,7 +58,7 @@ impl<T> LaunchConfig<T> {
             instance_count,
             env,
             arguments,
-            phantom: PhantomData,
+            phantom_data: PhantomData,
         }
     }
 }

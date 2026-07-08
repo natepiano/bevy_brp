@@ -19,6 +19,16 @@ use crate::error::Result;
 static APP_LOG_REGEX: LazyLock<Option<Regex>> =
     LazyLock::new(|| Regex::new(r"^bevy_brp_mcp_(.+?)_port\d+_(\d+)_\d+\.log$").ok());
 
+/// Represents a log file entry with metadata
+#[derive(Debug, Clone)]
+pub(super) struct LogFileEntry {
+    pub(super) filename:  String,
+    pub(super) app_name:  String,
+    pub(super) timestamp: String,
+    pub(super) path:      PathBuf,
+    pub(super) metadata:  Metadata,
+}
+
 /// Validates if a filename follows the `bevy_brp_mcp` log naming convention
 pub(super) fn is_valid_log_filename(filename: &str) -> bool {
     filename.starts_with(LOG_PREFIX) && filename.ends_with(LOG_EXTENSION)
@@ -101,16 +111,6 @@ pub(super) fn get_log_directory() -> PathBuf { std::env::temp_dir() }
 
 /// Gets the full path for a log file given its filename
 pub(super) fn get_log_file_path(filename: &str) -> PathBuf { get_log_directory().join(filename) }
-
-/// Represents a log file entry with metadata
-#[derive(Debug, Clone)]
-pub(super) struct LogFileEntry {
-    pub(super) filename:  String,
-    pub(super) app_name:  String,
-    pub(super) timestamp: String,
-    pub(super) path:      PathBuf,
-    pub(super) metadata:  Metadata,
-}
 
 /// Iterates over app log files (port pattern only) in the temp directory with optional filtering
 /// The filter function receives a `LogFileEntry` and returns true to include it

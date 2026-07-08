@@ -11,20 +11,6 @@ use crate::app_tools::constants::CARGO_MANIFEST_FILE;
 use crate::app_tools::targets::constants::HIDDEN_DIRECTORY_PREFIX;
 use crate::app_tools::targets::constants::TARGET_DIRECTORY_NAME;
 
-/// Safely canonicalize a path.
-///
-/// Returns the canonicalized path when available; otherwise returns the
-/// original path unchanged.
-pub(super) fn safe_canonicalize(path: &Path) -> PathBuf {
-    match path.canonicalize() {
-        Ok(canonical) => canonical,
-        Err(error) => {
-            debug!("Failed to canonicalize '{}': {error}", path.display());
-            path.to_path_buf()
-        },
-    }
-}
-
 #[derive(Debug, Clone)]
 enum ProjectType {
     /// A workspace member with its workspace root.
@@ -39,6 +25,26 @@ struct DiscoveredProject {
     path:         PathBuf,
     /// Type of project (workspace member or standalone).
     project_type: ProjectType,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RootDirectorySkipPolicy {
+    Apply,
+    Bypass,
+}
+
+/// Safely canonicalize a path.
+///
+/// Returns the canonicalized path when available; otherwise returns the
+/// original path unchanged.
+pub(super) fn safe_canonicalize(path: &Path) -> PathBuf {
+    match path.canonicalize() {
+        Ok(canonical) => canonical,
+        Err(error) => {
+            debug!("Failed to canonicalize '{}': {error}", path.display());
+            path.to_path_buf()
+        },
+    }
 }
 
 /// Iterate over all valid Cargo project paths found in the given search paths.
@@ -232,12 +238,6 @@ fn shallow_scan(
         discovered_projects,
         RootDirectorySkipPolicy::Bypass,
     );
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum RootDirectorySkipPolicy {
-    Apply,
-    Bypass,
 }
 
 fn shallow_scan_internal(

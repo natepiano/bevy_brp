@@ -76,8 +76,9 @@ struct ProcessNotFoundError {
     #[to_error_info(skip_if_none)]
     similar_app_name: Option<String>,
 
+    #[serde(rename = "brp_responding_on_port")]
     #[to_error_info]
-    brp_responding_on_port: BrpPortStatus,
+    brp_port_status: BrpPortStatus,
 
     #[to_error_info]
     port: u16,

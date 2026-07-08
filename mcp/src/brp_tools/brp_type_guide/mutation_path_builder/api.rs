@@ -36,6 +36,70 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;
 
+/// Spawn/insert example with educational guidance for AI agents
+///
+/// Serializes differently based on variant:
+/// - `Spawn` → `{"spawn": {"agent_guidance": "...", "example": <value>}}`
+/// - `Resource` → `{"resource": {"agent_guidance": "...", "example": <value>}}`
+///
+/// When `example` is `Example::NotApplicable`, only `agent_guidance` is included.
+///
+/// Note: Only derives `Debug` and `Clone` (NOT `Deserialize`) because we implement
+/// `Deserialize` manually below with a stub that returns an error.
+#[derive(Debug, Clone)]
+pub enum SpawnInsertExample {
+    Spawn {
+        agent_guidance: String,
+        example:        Example,
+    },
+    Resource {
+        agent_guidance: String,
+        example:        Example,
+    },
+}
+
+impl Serialize for SpawnInsertExample {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::Spawn {
+                agent_guidance,
+                example,
+            } => {
+                let payload = spawn_insert_payload(agent_guidance, example);
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry(RESPONSE_SPAWN_FIELD, &payload)?;
+                map.end()
+            },
+            Self::Resource {
+                agent_guidance,
+                example,
+            } => {
+                let payload = spawn_insert_payload(agent_guidance, example);
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry(RESPONSE_RESOURCE_FIELD, &payload)?;
+                map.end()
+            },
+        }
+    }
+}
+
+/// Stub `Deserialize` implementation for `SpawnInsertExample`
+///
+/// Required by serde's flatten attribute but never actually used.
+impl<'de> Deserialize<'de> for SpawnInsertExample {
+    fn deserialize<D>(_: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Err(serde::de::Error::custom(
+            "SpawnInsertExample deserialization not implemented - this type is write-only",
+        ))
+    }
+}
+
 /// Entry point for building mutation paths from a type name and registry
 ///
 /// This is the public facade that hides internal implementation details (`PathKind`,
@@ -118,56 +182,6 @@ pub fn extract_spawn_insert_example(
     }
 }
 
-/// Spawn/insert example with educational guidance for AI agents
-///
-/// Serializes differently based on variant:
-/// - `Spawn` → `{"spawn": {"agent_guidance": "...", "example": <value>}}`
-/// - `Resource` → `{"resource": {"agent_guidance": "...", "example": <value>}}`
-///
-/// When `example` is `Example::NotApplicable`, only `agent_guidance` is included.
-///
-/// Note: Only derives `Debug` and `Clone` (NOT `Deserialize`) because we implement
-/// `Deserialize` manually below with a stub that returns an error.
-#[derive(Debug, Clone)]
-pub enum SpawnInsertExample {
-    Spawn {
-        agent_guidance: String,
-        example:        Example,
-    },
-    Resource {
-        agent_guidance: String,
-        example:        Example,
-    },
-}
-
-impl Serialize for SpawnInsertExample {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            Self::Spawn {
-                agent_guidance,
-                example,
-            } => {
-                let payload = spawn_insert_payload(agent_guidance, example);
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry(RESPONSE_SPAWN_FIELD, &payload)?;
-                map.end()
-            },
-            Self::Resource {
-                agent_guidance,
-                example,
-            } => {
-                let payload = spawn_insert_payload(agent_guidance, example);
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry(RESPONSE_RESOURCE_FIELD, &payload)?;
-                map.end()
-            },
-        }
-    }
-}
-
 fn spawn_insert_payload(agent_guidance: &str, example: &Example) -> Value {
     let mut payload = Map::new();
     payload.insert_field(RESPONSE_AGENT_GUIDANCE_FIELD, agent_guidance);
@@ -175,18 +189,4 @@ fn spawn_insert_payload(agent_guidance: &str, example: &Example) -> Value {
         payload.insert_field(RESPONSE_EXAMPLE_FIELD, example.to_value());
     }
     Value::Object(payload)
-}
-
-/// Stub `Deserialize` implementation for `SpawnInsertExample`
-///
-/// Required by serde's flatten attribute but never actually used.
-impl<'de> Deserialize<'de> for SpawnInsertExample {
-    fn deserialize<D>(_: D) -> std::result::Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        Err(serde::de::Error::custom(
-            "SpawnInsertExample deserialization not implemented - this type is write-only",
-        ))
-    }
 }

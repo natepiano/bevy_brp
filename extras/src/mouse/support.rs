@@ -35,16 +35,16 @@ pub(super) enum EmptyParamsPolicy {
 ///
 /// # Arguments
 /// * `params` - Optional JSON value from BRP request
-/// * `empty_policy` - `Allow` permits None params (creates empty object for deserialization);
-///   `Reject` returns an error when params is None
+/// * `empty_params_policy` - `Allow` permits None params (creates empty object for
+///   deserialization); `Reject` returns an error when params is None
 ///
 /// # Returns
 /// Parsed request struct or BRP error with `INVALID_PARAMS` code
 pub(super) fn parse_request<T: serde::de::DeserializeOwned>(
     params: Option<Value>,
-    empty_policy: EmptyParamsPolicy,
+    empty_params_policy: EmptyParamsPolicy,
 ) -> Result<T, BrpError> {
-    if matches!(empty_policy, EmptyParamsPolicy::Allow) && params.is_none() {
+    if matches!(empty_params_policy, EmptyParamsPolicy::Allow) && params.is_none() {
         // For requests with no required fields (e.g., `DoubleTapGestureRequest`)
         return serde_json::from_value(Value::Object(Map::default())).map_err(|e| BrpError {
             code:    INVALID_PARAMS,
