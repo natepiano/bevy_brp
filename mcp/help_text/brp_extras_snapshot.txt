@@ -1,0 +1,9 @@
+Recursive YAML outline of a Bevy UI entity tree via bevy_brp_extras.
+
+Behavior:
+- Walks the UI tree from `root` (or every top-level `Node` if omitted)
+- Each row: entity id, a short component-type label, and any text content
+
+Prerequisites:
+- bevy_brp_extras dependency required
+- BrpExtrasPlugin must be registered

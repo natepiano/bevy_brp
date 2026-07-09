@@ -89,6 +89,8 @@ use crate::brp_tools::RotationGestureParams;
 use crate::brp_tools::RotationGestureResult;
 use crate::brp_tools::RpcDiscoverParams;
 use crate::brp_tools::RpcDiscoverResult;
+use crate::brp_tools::ScreenshotEntityParams;
+use crate::brp_tools::ScreenshotEntityResult;
 use crate::brp_tools::ScreenshotParams;
 use crate::brp_tools::ScreenshotResult;
 use crate::brp_tools::ScrollMouseParams;
@@ -99,6 +101,8 @@ use crate::brp_tools::SendMouseButtonParams;
 use crate::brp_tools::SendMouseButtonResult;
 use crate::brp_tools::SetWindowTitleParams;
 use crate::brp_tools::SetWindowTitleResult;
+use crate::brp_tools::SnapshotParams;
+use crate::brp_tools::SnapshotResult;
 use crate::brp_tools::SpawnEntityParams;
 use crate::brp_tools::SpawnEntityResult;
 use crate::brp_tools::StopWatchParams;
@@ -298,6 +302,20 @@ pub enum ToolName {
         result = "ScreenshotResult"
     )]
     BrpExtrasScreenshot,
+    /// `brp_extras_screenshot_entity` - Capture a cropped screenshot of one UI entity
+    #[brp_tool(
+        brp_method = "brp_extras/screenshot_entity",
+        params = "ScreenshotEntityParams",
+        result = "ScreenshotEntityResult"
+    )]
+    BrpExtrasScreenshotEntity,
+    /// `brp_extras_snapshot` - Recursive YAML outline of a UI entity tree
+    #[brp_tool(
+        brp_method = "brp_extras/snapshot",
+        params = "SnapshotParams",
+        result = "SnapshotResult"
+    )]
+    BrpExtrasSnapshot,
     /// `brp_extras_send_keys` - Send keyboard input
     #[brp_tool(
         brp_method = "brp_extras/send_keys",
@@ -552,6 +570,16 @@ impl ToolName {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
+            Self::BrpExtrasScreenshotEntity => Annotation::new(
+                "take entity screenshot",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasSnapshot => Annotation::new(
+                "snapshot UI entity tree",
+                ToolCategory::Extras,
+                EnvironmentImpact::ReadOnly,
+            ),
             Self::BrpExtrasSendKeys => Annotation::new(
                 "send keys",
                 ToolCategory::Extras,
@@ -755,6 +783,10 @@ impl ToolName {
             Self::BrpExtrasScreenshot => {
                 Some(parameters::build_parameters_from::<ScreenshotParams>)
             },
+            Self::BrpExtrasScreenshotEntity => {
+                Some(parameters::build_parameters_from::<ScreenshotEntityParams>)
+            },
+            Self::BrpExtrasSnapshot => Some(parameters::build_parameters_from::<SnapshotParams>),
             Self::BrpExtrasSendKeys => Some(parameters::build_parameters_from::<SendKeysParams>),
             Self::BrpExtrasTypeText => Some(parameters::build_parameters_from::<TypeTextParams>),
             Self::BrpExtrasSetWindowTitle => {
@@ -840,6 +872,8 @@ impl ToolName {
             Self::WorldSpawnEntity => Arc::new(WorldSpawnEntity),
             Self::WorldTriggerEvent => Arc::new(WorldTriggerEvent),
             Self::BrpExtrasScreenshot => Arc::new(BrpExtrasScreenshot),
+            Self::BrpExtrasScreenshotEntity => Arc::new(BrpExtrasScreenshotEntity),
+            Self::BrpExtrasSnapshot => Arc::new(BrpExtrasSnapshot),
             Self::BrpExtrasSendKeys => Arc::new(BrpExtrasSendKeys),
             Self::BrpExtrasTypeText => Arc::new(BrpExtrasTypeText),
             Self::BrpExtrasSetWindowTitle => Arc::new(BrpExtrasSetWindowTitle),

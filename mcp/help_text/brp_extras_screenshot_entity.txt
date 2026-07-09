@@ -1,0 +1,11 @@
+Capture a cropped screenshot of a single UI entity via bevy_brp_extras.
+
+Behavior:
+- Captures the current frame via bevy_brp_extras/screenshot_entity
+- Crops to the entity's laid-out `ComputedNode`/`UiGlobalTransform` rect
+- Saves to specified path
+
+Prerequisites:
+- bevy_brp_extras dependency required
+- BrpExtrasPlugin must be registered
+- Entity must be a laid-out UI node (has ComputedNode + UiGlobalTransform)

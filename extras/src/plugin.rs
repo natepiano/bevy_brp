@@ -26,11 +26,13 @@ use super::constants::METHOD_MOVE_MOUSE;
 use super::constants::METHOD_PINCH_GESTURE;
 use super::constants::METHOD_ROTATION_GESTURE;
 use super::constants::METHOD_SCREENSHOT;
+use super::constants::METHOD_SCREENSHOT_ENTITY;
 use super::constants::METHOD_SCROLL_MOUSE;
 use super::constants::METHOD_SEND_KEYS;
 use super::constants::METHOD_SEND_MOUSE_BUTTON;
 use super::constants::METHOD_SET_WINDOW_TITLE;
 use super::constants::METHOD_SHUTDOWN;
+use super::constants::METHOD_SNAPSHOT;
 use super::constants::METHOD_TYPE_TEXT;
 #[cfg(feature = "diagnostics")]
 use super::diagnostics;
@@ -39,7 +41,9 @@ use super::keyboard::KeyboardPlugin;
 use super::mouse;
 use super::mouse::MousePlugin;
 use super::screenshot;
+use super::screenshot_entity;
 use super::shutdown;
+use super::snapshot;
 use super::window_title;
 
 // ---------------------------------------------------------------------------
@@ -428,6 +432,14 @@ fn register_extras_methods(world: &mut World) {
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SCREENSHOT}"),
             RemoteMethodSystemId::Instant(world.register_system(screenshot::handler)),
+        ),
+        (
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SCREENSHOT_ENTITY}"),
+            RemoteMethodSystemId::Instant(world.register_system(screenshot_entity::handler)),
+        ),
+        (
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SNAPSHOT}"),
+            RemoteMethodSystemId::Instant(world.register_system(snapshot::handler)),
         ),
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SCROLL_MOUSE}"),

@@ -12,11 +12,13 @@ pub(crate) const METHOD_MOVE_MOUSE: &str = "move_mouse";
 pub(crate) const METHOD_PINCH_GESTURE: &str = "pinch_gesture";
 pub(crate) const METHOD_ROTATION_GESTURE: &str = "rotation_gesture";
 pub(crate) const METHOD_SCREENSHOT: &str = "screenshot";
+pub(crate) const METHOD_SCREENSHOT_ENTITY: &str = "screenshot_entity";
 pub(crate) const METHOD_SCROLL_MOUSE: &str = "scroll_mouse";
 pub(crate) const METHOD_SEND_KEYS: &str = "send_keys";
 pub(crate) const METHOD_SEND_MOUSE_BUTTON: &str = "send_mouse_button";
 pub(crate) const METHOD_SET_WINDOW_TITLE: &str = "set_window_title";
 pub(crate) const METHOD_SHUTDOWN: &str = "shutdown";
+pub(crate) const METHOD_SNAPSHOT: &str = "snapshot";
 pub(crate) const METHOD_TYPE_TEXT: &str = "type_text";
 
 // environment variables
@@ -36,7 +38,12 @@ pub(crate) const IMAGE_EXTENSION_PNG: &str = "png";
 
 // parameter fields
 pub(crate) const PARAM_PATH: &str = "path";
+pub(crate) const PARAM_ROOT: &str = "root";
 pub(crate) const PARAM_TITLE: &str = "title";
+
+// snapshot / screenshot_entity response fields
+pub(crate) const RESPONSE_RECT_FIELD: &str = "rect";
+pub(crate) const RESPONSE_YAML_FIELD: &str = "yaml";
 
 // response fields
 pub(crate) const DIAGNOSTICS_AVERAGE_FIELD: &str = "average";

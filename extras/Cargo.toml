@@ -20,9 +20,12 @@ version = "0.21.0-dev"
 # - bevy_log: info!/warn!/error! macros in bevy::prelude
 # - serialize: Serialize/Deserialize impls on bevy input types (MouseButton, MouseScrollUnit, etc.)
 # - png: screenshot PNG support and ImageFormat::from_extension("png") check
+# - bevy_ui / bevy_text: UI node tree walk + text content for snapshot/screenshot_entity
 bevy = { workspace = true, features = [
   "bevy_log",
   "bevy_render",
+  "bevy_text",
+  "bevy_ui",
   "png",
   "serialize",
 ] }

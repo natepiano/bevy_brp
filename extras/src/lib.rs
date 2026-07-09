@@ -134,6 +134,23 @@
 //! ### `brp_extras/rotation_gesture`
 //! Sends a rotation gesture.
 //! - `delta` (f32, required): rotation in radians
+//!
+//! ## UI Inspection
+//!
+//! ### `brp_extras/snapshot`
+//! Recursive outline of the UI entity tree (Bevy UI `Node` roots), returned
+//! as YAML: entity id, a short component-type label, and any text content.
+//! - `root` (entity id, optional): restrict the outline to one entity's
+//!   subtree instead of every root `Node` in the world
+//!
+//! ### `brp_extras/screenshot_entity`
+//! PNG crop of a single UI node's on-screen rect. Reuses the same
+//! window-screenshot + async-save path as `brp_extras/screenshot`.
+//! - `entity` (entity id, required): must have `ComputedNode` +
+//!   `UiGlobalTransform` (i.e. be a laid-out UI node)
+//! - `path` (string, required): file path where the crop will be saved
+//!
+//! **Note**: Requires Bevy's `png` feature enabled, same as `screenshot`.
 
 mod constants;
 #[cfg(feature = "diagnostics")]
@@ -142,7 +159,9 @@ mod keyboard;
 mod mouse;
 mod plugin;
 mod screenshot;
+mod screenshot_entity;
 mod shutdown;
+mod snapshot;
 mod window_event;
 mod window_title;
 
