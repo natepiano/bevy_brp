@@ -7,6 +7,7 @@ pub(crate) const METHOD_CLICK_MOUSE: &str = "click_mouse";
 pub(crate) const METHOD_DOUBLE_CLICK_MOUSE: &str = "double_click_mouse";
 pub(crate) const METHOD_DOUBLE_TAP_GESTURE: &str = "double_tap_gesture";
 pub(crate) const METHOD_DRAG_MOUSE: &str = "drag_mouse";
+pub(crate) const METHOD_FIND_ENTITIES_BY_NAME: &str = "find_entities_by_name";
 pub(crate) const METHOD_GET_DIAGNOSTICS: &str = "get_diagnostics";
 pub(crate) const METHOD_MOVE_MOUSE: &str = "move_mouse";
 pub(crate) const METHOD_PINCH_GESTURE: &str = "pinch_gesture";
@@ -37,6 +38,7 @@ pub const DEFAULT_REMOTE_PORT: u16 = 15702;
 pub(crate) const IMAGE_EXTENSION_PNG: &str = "png";
 
 // parameter fields
+pub(crate) const PARAM_NAME: &str = "name";
 pub(crate) const PARAM_PATH: &str = "path";
 pub(crate) const PARAM_ROOT: &str = "root";
 pub(crate) const PARAM_TITLE: &str = "title";
@@ -44,6 +46,10 @@ pub(crate) const PARAM_TITLE: &str = "title";
 // snapshot / screenshot_entity response fields
 pub(crate) const RESPONSE_RECT_FIELD: &str = "rect";
 pub(crate) const RESPONSE_YAML_FIELD: &str = "yaml";
+
+// find_entities_by_name response fields
+pub(crate) const RESPONSE_ENTITY_FIELD: &str = "entity";
+pub(crate) const RESPONSE_NAME_FIELD: &str = "name";
 
 // response fields
 pub(crate) const DIAGNOSTICS_AVERAGE_FIELD: &str = "average";

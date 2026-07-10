@@ -137,6 +137,13 @@
 //!
 //! ## UI Inspection
 //!
+//! ### `brp_extras/find_entities_by_name`
+//! Finds entities by their `Name` component value. Supports a small wildcard
+//! syntax on the pattern: `*suffix` (ends-with), `prefix*` (starts-with),
+//! `*substr*` (contains), otherwise exact match. An entity whose name equals
+//! the raw pattern exactly is sorted first.
+//! - `name` (string, required): the query pattern
+//!
 //! ### `brp_extras/snapshot`
 //! Recursive outline of the UI entity tree (Bevy UI `Node` roots), returned
 //! as YAML: entity id, a short component-type label, and any text content.
@@ -155,6 +162,7 @@
 mod constants;
 #[cfg(feature = "diagnostics")]
 mod diagnostics;
+mod find_by_name;
 mod keyboard;
 mod mouse;
 mod plugin;

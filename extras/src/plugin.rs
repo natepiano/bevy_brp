@@ -21,6 +21,7 @@ use super::constants::METHOD_CLICK_MOUSE;
 use super::constants::METHOD_DOUBLE_CLICK_MOUSE;
 use super::constants::METHOD_DOUBLE_TAP_GESTURE;
 use super::constants::METHOD_DRAG_MOUSE;
+use super::constants::METHOD_FIND_ENTITIES_BY_NAME;
 use super::constants::METHOD_GET_DIAGNOSTICS;
 use super::constants::METHOD_MOVE_MOUSE;
 use super::constants::METHOD_PINCH_GESTURE;
@@ -36,6 +37,7 @@ use super::constants::METHOD_SNAPSHOT;
 use super::constants::METHOD_TYPE_TEXT;
 #[cfg(feature = "diagnostics")]
 use super::diagnostics;
+use super::find_by_name;
 use super::keyboard;
 use super::keyboard::KeyboardPlugin;
 use super::mouse;
@@ -416,6 +418,10 @@ fn register_extras_methods(world: &mut World) {
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_DRAG_MOUSE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::drag_mouse_handler)),
+        ),
+        (
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_FIND_ENTITIES_BY_NAME}"),
+            RemoteMethodSystemId::Instant(world.register_system(find_by_name::handler)),
         ),
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_MOVE_MOUSE}"),

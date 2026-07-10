@@ -1,0 +1,29 @@
+Finds entities by their `Name` component value via bevy_brp_extras.
+
+`world.query` can only filter by component presence (`with`/`without`), not
+by a component's value — there is no BRP-level way to ask "which entity is
+named X". This tool fills that gap for `Name` lookups specifically.
+
+Wildcard syntax (based on `*` placement in `name`):
+- `foo`   - exact match
+- `foo*`  - starts with "foo"
+- `*foo`  - ends with "foo"
+- `*foo*` - contains "foo" (substring)
+
+Ordering: an entity whose `Name` equals the raw pattern exactly (byte-for-byte,
+stars included or not) sorts first. Remaining matches are ordered by entity id
+for determinism. This mainly matters for wildcard queries that could return
+multiple hits — it surfaces the one exact-name match, if any, before the rest.
+
+Response: JSON array of `{ "entity": <u64>, "name": "<string>" }`.
+
+Example:
+```json
+{"name": "*List"}
+```
+Matches any entity whose Name ends with "List" (e.g. "LiamsList").
+
+Prerequisites:
+- bevy_brp_extras dependency required
+- BrpExtrasPlugin must be registered
+- Only entities with a `Name` component are searched

@@ -72,9 +72,13 @@ fn write_snapshot_node(world: &World, entity: Entity, indent: usize, out: &mut S
     let pad = "  ".repeat(indent);
     out.push_str(&format!(
         "{pad}- entity: {}\n{pad}  type: {}\n",
-        entity,
+        entity.to_bits(),
         entity_label(world, entity)
     ));
+
+    if let Some(name) = world.get::<Name>(entity) {
+        out.push_str(&format!("{pad}  name: \"#{}\"\n", name.as_str()));
+    }
 
     if let Some(text) = world.get::<Text>(entity) {
         out.push_str(&format!("{pad}  text: {:?}\n", text.0));

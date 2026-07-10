@@ -39,6 +39,8 @@ pub use tools::DoubleTapGestureParams;
 pub use tools::DoubleTapGestureResult;
 pub use tools::DragMouseParams;
 pub use tools::DragMouseResult;
+pub use tools::FindEntitiesByNameParams;
+pub use tools::FindEntitiesByNameResult;
 pub use tools::ExecuteParams;
 pub use tools::GetComponentsParams;
 pub use tools::GetComponentsResult;

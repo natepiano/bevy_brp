@@ -51,6 +51,8 @@ use crate::brp_tools::DoubleTapGestureResult;
 use crate::brp_tools::DragMouseParams;
 use crate::brp_tools::DragMouseResult;
 use crate::brp_tools::ExecuteParams;
+use crate::brp_tools::FindEntitiesByNameParams;
+use crate::brp_tools::FindEntitiesByNameResult;
 use crate::brp_tools::GetComponentsParams;
 use crate::brp_tools::GetComponentsResult;
 use crate::brp_tools::GetComponentsWatchParams;
@@ -316,6 +318,13 @@ pub enum ToolName {
         result = "SnapshotResult"
     )]
     BrpExtrasSnapshot,
+    /// `brp_extras_find_entities_by_name` - Find entities by `Name` value
+    #[brp_tool(
+        brp_method = "brp_extras/find_entities_by_name",
+        params = "FindEntitiesByNameParams",
+        result = "FindEntitiesByNameResult"
+    )]
+    BrpExtrasFindEntitiesByName,
     /// `brp_extras_send_keys` - Send keyboard input
     #[brp_tool(
         brp_method = "brp_extras/send_keys",
@@ -580,6 +589,11 @@ impl ToolName {
                 ToolCategory::Extras,
                 EnvironmentImpact::ReadOnly,
             ),
+            Self::BrpExtrasFindEntitiesByName => Annotation::new(
+                "find entities by name",
+                ToolCategory::Extras,
+                EnvironmentImpact::ReadOnly,
+            ),
             Self::BrpExtrasSendKeys => Annotation::new(
                 "send keys",
                 ToolCategory::Extras,
@@ -787,6 +801,9 @@ impl ToolName {
                 Some(parameters::build_parameters_from::<ScreenshotEntityParams>)
             },
             Self::BrpExtrasSnapshot => Some(parameters::build_parameters_from::<SnapshotParams>),
+            Self::BrpExtrasFindEntitiesByName => {
+                Some(parameters::build_parameters_from::<FindEntitiesByNameParams>)
+            },
             Self::BrpExtrasSendKeys => Some(parameters::build_parameters_from::<SendKeysParams>),
             Self::BrpExtrasTypeText => Some(parameters::build_parameters_from::<TypeTextParams>),
             Self::BrpExtrasSetWindowTitle => {
@@ -874,6 +891,7 @@ impl ToolName {
             Self::BrpExtrasScreenshot => Arc::new(BrpExtrasScreenshot),
             Self::BrpExtrasScreenshotEntity => Arc::new(BrpExtrasScreenshotEntity),
             Self::BrpExtrasSnapshot => Arc::new(BrpExtrasSnapshot),
+            Self::BrpExtrasFindEntitiesByName => Arc::new(BrpExtrasFindEntitiesByName),
             Self::BrpExtrasSendKeys => Arc::new(BrpExtrasSendKeys),
             Self::BrpExtrasTypeText => Arc::new(BrpExtrasTypeText),
             Self::BrpExtrasSetWindowTitle => Arc::new(BrpExtrasSetWindowTitle),
