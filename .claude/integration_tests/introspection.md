@@ -12,29 +12,39 @@ Validate BRP introspection capabilities including RPC discovery, schema operatio
 - Verify response includes at least 20 methods
 - Check for presence of core methods: `world.list_components`, `world.query`, `world.spawn_entity`, `rpc.discover`
 - Check for brp_extras methods: `brp_extras/screenshot`, `brp_extras/shutdown`
+- Check for the application-defined method: `test/multiply`
 - Verify response includes OpenRPC version and server info
 
-### 2. Registry Schema Discovery
+### 2. Application-defined Method Execution
+- Read `test-app/examples/extras_plugin.rs` to determine the parameters accepted by `test/multiply`
+- Execute `mcp__brp__brp_execute` with that method, integer `value` and `factor` parameters, and the assigned port
+- Verify the response echoes `value` and `factor` and returns their product
+- Call `test/multiply` without `factor`
+- Verify the application error retains JSON-RPC code `-32602` and data describing the expected fields
+- Call an unregistered `test/missing` method
+- Verify the error identifies the discovery stage and lists `test/multiply` among the available methods
+
+### 3. Registry Schema Discovery
 - Execute `mcp__brp__registry_schema` with port parameter and filters:
   - Use `with_crates: ["bevy_transform"]` filter to avoid large response
-- Verify response returns around 25 schemas
+- Verify response returns around 50 schemas
 - Check for specific schemas: `Transform`, `GlobalTransform`
 - Verify schema objects include required fields: `shortPath`, `typePath`, `kind`, `reflectTypes`
 - Verify Transform schema has `properties` with `translation`, `rotation`, `scale` fields
 
-### 3. Component Listing
+### 4. Component Listing
 - Execute `mcp__brp__world_list_components` with port parameter (without entity parameter)
 - Verify response returns around 95+ registered components
 - Check for presence of specific components: `Transform`, `Name`, `Camera`, `Visibility`
 - Verify response format includes component count in metadata
 
-### 4. Resource Listing
+### 5. Resource Listing
 - Execute `mcp__brp__world_list_resources` with port parameter
 - Verify response returns around 10+ registered resources
 - Check for specific resources: `ClearColor`, `Time<()>`, `Time<Real>`, `Time<Virtual>`
 - Verify response format includes resource count in metadata
 
-### 5. Entity-Specific Component Listing (Positive Case)
+### 6. Entity-Specific Component Listing (Positive Case)
 - Execute `mcp__brp__world_query` with proper parameters:
   - `filter: {"with": ["bevy_transform::components::transform::Transform"]}`
   - `data: {"components": ["bevy_transform::components::transform::Transform"]}`
@@ -44,7 +54,7 @@ Validate BRP introspection capabilities including RPC discovery, schema operatio
 - Verify components are listed for the existing entity (should include Transform, GlobalTransform, etc.)
 - Check response format includes component count and component list
 
-### 6. Entity-Specific Component Listing (Negative Case)
+### 7. Entity-Specific Component Listing (Negative Case)
 - Execute `mcp__brp__world_list_components` with port parameter and invalid entity ID (0)
 - Verify proper error response is returned (not a crash)
 - Confirm error message contains "not a valid entity" or similar indication
@@ -52,6 +62,7 @@ Validate BRP introspection capabilities including RPC discovery, schema operatio
 
 ## Expected Results
 - ✅ RPC discovery returns complete method list
+- ✅ Application-defined BRP method execution accepts typed parameters and preserves handler errors
 - ✅ Registry schema provides filtered type information
 - ✅ Component listing shows registered types
 - ✅ Resource listing shows available resources

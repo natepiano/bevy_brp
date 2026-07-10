@@ -545,7 +545,7 @@ impl ToolName {
             Self::BrpExecute => Annotation::new(
                 "execute brp method",
                 ToolCategory::DynamicBrp,
-                EnvironmentImpact::AdditiveIdempotent,
+                EnvironmentImpact::DestructiveNonIdempotent,
             ),
             Self::BrpExtrasScreenshot => Annotation::new(
                 "take screenshot",
@@ -891,4 +891,20 @@ impl ToolName {
     /// Get a short human-readable title for this tool
     /// Extracted from the annotation data we already have
     pub(super) fn short_title(self) -> String { self.get_annotations().title }
+}
+
+#[cfg(test)]
+mod tests {
+    use rmcp::model::ToolAnnotations;
+
+    use super::ToolName;
+
+    #[test]
+    fn brp_execute_annotations_are_conservative() {
+        let annotations = ToolAnnotations::from(ToolName::BrpExecute.get_annotations());
+
+        assert_eq!(annotations.read_only_hint, Some(false));
+        assert_eq!(annotations.destructive_hint, Some(true));
+        assert_eq!(annotations.idempotent_hint, Some(false));
+    }
 }

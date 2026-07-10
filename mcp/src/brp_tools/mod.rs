@@ -16,6 +16,7 @@ pub use brp_client::FormatCorrectionStatus;
 pub use brp_client::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 pub use brp_client::ResponseStatus;
 pub use brp_client::ResultStructBrpExt;
+pub(crate) use brp_client::method_not_found_message;
 //
 // Export brp_type_guide tools
 pub use brp_type_guide::AllTypeGuidesParams;

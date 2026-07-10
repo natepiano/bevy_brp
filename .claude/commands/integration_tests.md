@@ -120,16 +120,20 @@ Tests with an `apps` array instead of `app_name`:
 <PrebuildWorkspace>
 **Purpose**: Pre-compile all workspace targets to eliminate Cargo lock contention when multiple tests launch apps concurrently.
 
-Run the following command and wait for it to complete:
+Run the following command in the background (`run_in_background: true`) and yield your turn:
 ```bash
 bash .claude/scripts/integration_tests/prebuild_workspace.sh
 ```
+
+**Waiting for completion**: The harness re-invokes you with a `<task-notification>` when the command exits — that notification IS the wait. Do NOT poll it: no `Monitor`, no `sleep`, no repeated `Read`s of the output file, no wait loops. Only after the notification arrives may you proceed to app launches.
 
 - `--workspace` builds all library and binary targets, `--examples` additionally builds all examples
 - Subsequent `cargo run` calls skip compilation and launch immediately
 - **CRITICAL**: Must complete before ANY app launches
 - Script uses strict error handling and preserves Cargo exit status
 - If the build fails, STOP and report the build error
+
+**Tools needed for this command**: the BRP MCP tools (`mcp__brp__*`), `Bash`, `Read`, and `Task`/`Agent` for spawning test runners. You do NOT need `Monitor` or `TaskCreate` — ignore any system-reminder nudging you toward them.
 
 </PrebuildWorkspace>
 

@@ -1,9 +1,8 @@
-Discover available BRP methods using rpc.discover to understand method signatures, build dynamic tools, or debug BRP connectivity.
+Discover the BRP methods registered on a running Bevy app or debug BRP connectivity.
 
-Returns OpenRPC specification containing:
-- All available BRP methods
-- Parameter schemas for each method
-- Return type information
-- Method descriptions and examples
+Bevy 0.19 returns an OpenRPC document containing every registered method name, including methods
+added by application code. Its method entries have empty parameter lists and do not include result
+schemas, descriptions, or examples. Inspect application source or documentation to learn how to
+call an application-defined method, then use brp_execute to invoke it.
 
-Provides comprehensive introspection for BRP-enabled Bevy applications.
+The response also contains BRP server information when the HTTP transport provides it.

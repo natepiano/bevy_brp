@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Allow `brp_execute` to invoke application-defined methods reported by `rpc.discover`, with live method-name validation on the selected port.
+- Correct `rpc_discover` guidance for Bevy 0.19, which reports registered method names without parameter or result schemas.
+
 ## [0.20.1] - 2026-06-20
 
 ### Changed

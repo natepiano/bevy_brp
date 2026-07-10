@@ -115,6 +115,27 @@ fn main() {
 
 In either case you'll need to make sure to enable bevy's "bevy_remote" feature.
 
+### Application-defined BRP methods
+
+`rpc_discover` lists methods added to Bevy's `RemoteMethods` resource by application code as well
+as Bevy's built-in methods. Bevy 0.19 reports their names but not their parameter formats. Inspect
+the application's handler or documentation, then pass the method name and raw JSON parameters to
+`brp_execute`:
+
+```json
+{
+  "port": 15702,
+  "method": "test/multiply",
+  "params": {
+    "value": 6,
+    "factor": 7
+  }
+}
+```
+
+`brp_execute` confirms that the selected app reports the method through `rpc.discover` before
+forwarding the request.
+
 ## Example Workflow
 
 1. **Discover**: Use `brp_list_bevy` to find available applications and examples

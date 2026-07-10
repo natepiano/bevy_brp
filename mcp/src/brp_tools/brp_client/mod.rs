@@ -7,6 +7,7 @@ mod response_handling;
 
 // Re-export public items
 pub use client::BrpClient;
+pub(crate) use client::method_not_found_message;
 // Re-export error constant needed by external modules
 pub use constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 // Re-export types needed by result_struct macro and client operations

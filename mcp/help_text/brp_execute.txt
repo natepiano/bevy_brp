@@ -1,1 +1,6 @@
-Execute any Bevy Remote Protocol (BRP) method on a running Bevy app to send arbitrary commands and receive responses.
+Execute any BRP method registered on a running Bevy app.
+
+The tool first calls rpc.discover on the selected port and requires an exact method-name match. It
+then forwards the caller-supplied params as raw JSON. rpc.discover does not describe the parameter
+format, so inspect the application's source, documentation, or catalog methods before calling an
+application-defined method.

@@ -21,7 +21,7 @@ Validate the `world_trigger_event` tool for triggering Bevy events remotely.
 ### 3. Verify Unit Event Triggered
 - Tool: `mcp__brp__world_get_resources`
 - Resource: `event_test::EventTriggerTracker`
-- Verify: `unit_event_count` = 1
+- Verify: `unit_events` = 1
 
 ### 4. Trigger Payload Event
 - Tool: `mcp__brp__world_trigger_event`
@@ -31,7 +31,7 @@ Validate the `world_trigger_event` tool for triggering Bevy events remotely.
 ### 5. Verify Payload Event Data
 - Tool: `mcp__brp__world_get_resources`
 - Resource: `event_test::EventTriggerTracker`
-- Verify: `payload_event_count` = 1, `last_payload_message` = "Hello", `last_payload_value` = 42
+- Verify: `payload_events` = 1, `last_payload_message` = "Hello", `last_payload_value` = 42
 
 ### 6. Error Case - Unknown Event
 - Tool: `mcp__brp__world_trigger_event`

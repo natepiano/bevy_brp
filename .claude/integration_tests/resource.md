@@ -30,7 +30,7 @@ mcp__brp__world_insert_resources with parameters:
   "value": {
     "level": 3.14,
     "label": "hello world",
-    "enabled": "Enabled"
+    "toggle_state": "Enabled"
   },
   "port": {{PORT}}
 }
@@ -51,7 +51,7 @@ mcp__brp__world_insert_resources with parameters:
   "value": {
     "frame_count": 100,
     "total_time": 5.5,
-    "debug_mode": "Debug"
+    "runtime_mode": "Debug"
   },
   "port": {{PORT}}
 }

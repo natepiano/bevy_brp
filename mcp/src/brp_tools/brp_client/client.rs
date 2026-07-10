@@ -36,16 +36,50 @@ use crate::tool::ParameterName;
 
 /// Client for executing a BRP operation
 pub struct BrpClient {
-    brp_method: BrpMethod,
+    brp_method: BrpMethodName,
     port:       Port,
     params:     Option<Value>,
+}
+
+enum BrpMethodName {
+    Known(BrpMethod),
+    Application(String),
+}
+
+impl BrpMethodName {
+    const fn as_str(&self) -> &str {
+        match self {
+            Self::Known(method) => method.as_str(),
+            Self::Application(method) => method.as_str(),
+        }
+    }
+
+    const fn known(&self) -> Option<BrpMethod> {
+        match self {
+            Self::Known(method) => Some(*method),
+            Self::Application(_) => None,
+        }
+    }
 }
 
 impl BrpClient {
     /// Create a new BRP client for the given method, port, and parameters
     pub const fn new(brp_method: BrpMethod, port: Port, params: Option<Value>) -> Self {
         Self {
-            brp_method,
+            brp_method: BrpMethodName::Known(brp_method),
+            port,
+            params,
+        }
+    }
+
+    /// Create a BRP client for an application-defined method.
+    pub(crate) const fn for_application(
+        brp_method: String,
+        port: Port,
+        params: Option<Value>,
+    ) -> Self {
+        Self {
+            brp_method: BrpMethodName::Application(brp_method),
             port,
             params,
         }
@@ -128,7 +162,8 @@ impl BrpClient {
     /// to prevent recursion when `TypeSchemaEngine` needs to fetch registry data.
     pub async fn execute_direct_internal_no_enhancement(&self) -> Result<ResponseStatus> {
         // Create HTTP client with our data
-        let brp_http_client = BrpHttpClient::new(self.brp_method, self.port, self.params.clone());
+        let brp_http_client =
+            BrpHttpClient::new(self.brp_method.as_str(), self.port, self.params.clone());
 
         // Send HTTP request (includes status check)
         let response = brp_http_client.send_request().await?;
@@ -150,7 +185,8 @@ impl BrpClient {
     /// - Provides the same rich error context as other `BrpClient` methods
     pub async fn execute_streaming(&self) -> Result<Response> {
         // Create HTTP client with our data
-        let brp_http_client = BrpHttpClient::new(self.brp_method, self.port, self.params.clone());
+        let brp_http_client =
+            BrpHttpClient::new(self.brp_method.as_str(), self.port, self.params.clone());
 
         // Send HTTP request using streaming version (no timeout, includes status check)
         let response = brp_http_client.send_streaming_request().await?;
@@ -164,7 +200,8 @@ impl BrpClient {
     /// and the like.
     async fn execute_direct_internal(&self) -> Result<ResponseStatus> {
         // Create HTTP client with our data
-        let brp_http_client = BrpHttpClient::new(self.brp_method, self.port, self.params.clone());
+        let brp_http_client =
+            BrpHttpClient::new(self.brp_method.as_str(), self.port, self.params.clone());
 
         // Send HTTP request (includes status check)
         let response = brp_http_client.send_request().await?;
@@ -234,13 +271,14 @@ impl BrpClient {
     /// Enhanced format error creation with type guide embedding
     async fn try_add_type_guide_to_error(&self, error: &BrpClientError) -> Result<ResponseStatus> {
         // Step 1: Try parameter-based extraction using Operation enum
-        let mut extracted_types = Operation::try_from(self.brp_method).map_or_else(
-            |_| Vec::new(),
-            |operation| {
+        let mut extracted_types = self
+            .brp_method
+            .known()
+            .and_then(|method| Operation::try_from(method).ok())
+            .map_or_else(Vec::new, |operation| {
                 let params = self.params.as_ref().unwrap_or(&Value::Null);
                 operation.extract_type_names(params)
-            },
-        );
+            });
 
         // Step 2: Fallback to error message parsing if parameter extraction failed
         if extracted_types.is_empty() {
@@ -298,13 +336,8 @@ impl BrpClient {
             );
 
             // Check if this is a bevy_brp_extras method that's not found
-            let enhanced_message = if error.code == JSON_RPC_ERROR_METHOD_NOT_FOUND
-                && self.brp_method.as_str().starts_with(BRP_EXTRAS_PREFIX)
-            {
-                format!(
-                    "{}. This method requires the bevy_brp_extras crate to be added to your Bevy app with the BrpExtrasPlugin",
-                    error.message
-                )
+            let enhanced_message = if error.code == JSON_RPC_ERROR_METHOD_NOT_FOUND {
+                method_not_found_message(self.brp_method.as_str(), &error.message)
             } else {
                 error.message
             };
@@ -317,5 +350,15 @@ impl BrpClient {
         } else {
             ResponseStatus::Success(brp_response_json.result)
         }
+    }
+}
+
+pub(crate) fn method_not_found_message(method: &str, message: &str) -> String {
+    if method.starts_with(BRP_EXTRAS_PREFIX) {
+        format!(
+            "{message}. This method requires the bevy_brp_extras crate to be added to your Bevy app with the BrpExtrasPlugin"
+        )
+    } else {
+        message.to_string()
     }
 }

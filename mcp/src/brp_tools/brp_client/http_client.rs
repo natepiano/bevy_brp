@@ -23,12 +23,11 @@ use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
 use crate::support::JsonObjectAccess;
-use crate::tool::BrpMethod;
 use crate::tool::ParameterName;
 
 /// HTTP client for BRP communication
-pub(super) struct BrpHttpClient {
-    brp_method: BrpMethod,
+pub(super) struct BrpHttpClient<'method> {
+    brp_method: &'method str,
     port:       Port,
     params:     Option<Value>,
 }
@@ -71,9 +70,9 @@ impl ReqwestErrorKind {
     }
 }
 
-impl BrpHttpClient {
+impl<'method> BrpHttpClient<'method> {
     /// Create a new BRP HTTP client
-    pub(super) const fn new(brp_method: BrpMethod, port: Port, params: Option<Value>) -> Self {
+    pub(super) const fn new(brp_method: &'method str, port: Port, params: Option<Value>) -> Self {
         Self {
             brp_method,
             port,
@@ -91,8 +90,7 @@ impl BrpHttpClient {
 
     /// Build the JSON-RPC request body for this client
     fn build_request_body(&self) -> String {
-        let method_str = self.brp_method.as_str();
-        let mut brp_json_rpc_builder = BrpJsonRpcBuilder::new(method_str);
+        let mut brp_json_rpc_builder = BrpJsonRpcBuilder::new(self.brp_method);
         if let Some(ref params) = self.params {
             debug!(
                 "BRP execute_brp_method: Added params - {}",
@@ -169,11 +167,7 @@ impl BrpHttpClient {
                             .canonical_reason()
                             .unwrap_or("Unknown error")
                     ))
-                    .attach(format!(
-                        "Method: {}, Port: {}",
-                        self.brp_method.as_str(),
-                        self.port
-                    )),
+                    .attach(format!("Method: {}, Port: {}", self.brp_method, self.port)),
             );
         }
 
@@ -190,7 +184,7 @@ impl BrpHttpClient {
             std::time::SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_or(0, |d| d.as_secs()),
-            self.brp_method.as_str(),
+            self.brp_method,
             self.port,
             url,
             e
@@ -207,7 +201,7 @@ impl BrpHttpClient {
 
         // Extract additional context from the request body for better error reporting
         let mut context_info = vec![
-            format!("Method: {}", self.brp_method.as_str()),
+            format!("Method: {}", self.brp_method),
             format!("Port: {}", self.port),
             format!("URL: {url}"),
         ];
@@ -237,7 +231,7 @@ impl BrpHttpClient {
 
         let error_message = format!(
             "HTTP request failed for {} operation - {error_type}: {e}",
-            self.brp_method.as_str()
+            self.brp_method
         );
 
         Err(error_stack::Report::new(Error::JsonRpc(error_message))
@@ -245,7 +239,7 @@ impl BrpHttpClient {
             .attach(format!("Full error: {e:?}"))
             .attach(format!(
                 "Request body (first {ERROR_BODY_PREVIEW_CHARS} chars): {}",
-                &request_body
+                request_body
                     .chars()
                     .take(ERROR_BODY_PREVIEW_CHARS)
                     .collect::<String>()
