@@ -72,34 +72,15 @@ where
 ///
 /// # Implementation Requirements
 ///
-/// Tools must implement either `handle_impl` (most common) or `handle_impl_with_context` (when
-/// context is needed):
+/// Tools implement `handle_impl` to process typed parameters:
 ///
-/// ## Most tools (no context needed):
 /// ```rust
 /// impl ToolFn for MyTool {
 ///     type Output = MyResult;
 ///     type Params = MyParams;
 ///
 ///     async fn handle_impl(&self, params: MyParams) -> Result<MyResult> {
-///         // Your implementation here - no context parameter
-///     }
-/// }
-/// ```
-///
-/// ## Context-needing tools (e.g., list tools that need workspace roots):
-/// ```rust
-/// impl ToolFn for ListTool {
-///     type Output = ListResult;
-///     type Params = NoParams;
-///
-///     async fn handle_impl_with_context(
-///         &self,
-///         ctx: HandlerContext,
-///         _: NoParams,
-///     ) -> Result<ListResult> {
-///         let search_paths = &ctx.roots;
-///         // Implementation using context
+///         // Your implementation here
 ///     }
 /// }
 /// ```
@@ -110,32 +91,21 @@ pub trait ToolFn: Send + Sync {
     /// The parameter type for this handler
     type Params: ParamStruct;
 
-    /// Handle the request with just parameters (most common case)
-    /// Default implementation panics - tools must implement either this or
-    /// `handle_impl_with_context`
+    /// Handle the request with typed parameters
+    /// Default implementation panics - tools must implement this
     async fn handle_impl(&self, _: Self::Params) -> Result<Self::Output> {
-        unimplemented!("Must implement either handle_impl or handle_impl_with_context")
-    }
-
-    /// Handle the request with context (for tools that need `HandlerContext`)
-    /// Default implementation ignores context and calls `handle_impl`
-    async fn handle_impl_with_context(
-        &self,
-        _: HandlerContext,
-        params: Self::Params,
-    ) -> Result<Self::Output> {
-        self.handle_impl(params).await
+        unimplemented!("Must implement handle_impl")
     }
 
     /// Handle the request and return `ToolResult`
-    /// Default implementation extracts parameters and calls `handle_impl_with_context`
+    /// Default implementation extracts parameters and calls `handle_impl`
     fn call(
         &self,
         context: HandlerContext,
     ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             let params: Self::Params = super::extract_parameter_values(&context)?;
-            let result = self.handle_impl_with_context(context, params).await;
+            let result = self.handle_impl(params).await;
             Ok(ToolResult {
                 result,
                 params: None, // Don't include params in response if we can't clone them

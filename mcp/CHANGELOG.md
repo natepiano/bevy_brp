@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+- Target discovery for `brp_launch` and `brp_list_bevy` no longer queries the MCP client for workspace roots (MCP Roots). The server now searches only its current working directory, or the explicit `path` parameter when supplied. Automatic discovery across multiple client-provided workspace folders is removed — pass `path` to target projects outside the server's working directory.
+
 ### Changed
+- Upgrade `rmcp` from 1.7.0 to 2.2.0, removing the deprecated `roots/list` (`peer.list_roots()`) call that rmcp 2.x deprecates following the MCP Roots deprecation (SEP-2577).
 - Allow `brp_execute` to invoke application-defined methods reported by `rpc.discover`, with live method-name validation on the selected port.
 - Correct `rpc_discover` guidance for Bevy 0.19, which reports registered method names without parameter or result schemas.
 

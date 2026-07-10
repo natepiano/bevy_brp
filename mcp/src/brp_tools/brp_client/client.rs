@@ -73,11 +73,7 @@ impl BrpClient {
     }
 
     /// Create a BRP client for an application-defined method.
-    pub(crate) const fn for_application(
-        brp_method: String,
-        port: Port,
-        params: Option<Value>,
-    ) -> Self {
+    pub const fn for_application(brp_method: String, port: Port, params: Option<Value>) -> Self {
         Self {
             brp_method: BrpMethodName::Application(brp_method),
             port,

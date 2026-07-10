@@ -6,7 +6,3 @@ pub(crate) const MSG_MISSING_PREFIX: &str = "Missing";
 // json schema constants
 /// JSON Schema reference prefix for type definitions.
 pub(crate) const SCHEMA_REF_PREFIX: &str = "#/$defs/";
-
-// uri scheme constants
-/// `file://` URI scheme prefix used by MCP roots.
-pub(crate) const FILE_URI_SCHEME: &str = "file://";

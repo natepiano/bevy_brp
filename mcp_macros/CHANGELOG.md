@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+- `ToolFn` derive: remove the `with_context` attribute flag. Generated `call` implementations now always invoke `handle_impl(params)`. The context-passing variant existed solely to thread MCP roots into handlers, which are no longer used.
+
 ## [0.20.1] - 2026-06-20
 
 ### Changed

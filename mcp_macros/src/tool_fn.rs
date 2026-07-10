@@ -6,16 +6,6 @@ use syn::Lit;
 use syn::Result;
 use syn::parse2;
 
-#[derive(Clone, Copy)]
-enum ContextPassing {
-    Excluded,
-    Included,
-}
-
-impl ContextPassing {
-    const fn includes_context(self) -> bool { matches!(self, Self::Included) }
-}
-
 /// Derive macro for implementing the `ToolFn` trait
 ///
 /// This macro generates the standard `ToolFn` implementation pattern that is
@@ -30,21 +20,11 @@ impl ContextPassing {
 /// pub struct MyTool;
 /// ```
 ///
-/// Or with context passing:
-/// ```rust
-/// #[derive(ToolFn)]
-/// #[tool_fn(params = "MyParams", output = "MyOutput", with_context)]
-/// pub struct MyTool;
-/// ```
-///
 /// The macro expects:
 /// - A `params` attribute specifying the parameter type
 /// - An `output` attribute specifying the output type
-/// - An optional `with_context` flag to pass `HandlerContext` to `handle_impl`
-/// - A `handle_impl` function in scope with signature:
-///   - Without context: `async fn handle_impl(params: MyParams) -> Result<MyOutput>`
-///   - With context: `async fn handle_impl(ctx: HandlerContext, params: MyParams) ->
-///     Result<MyOutput>`
+/// - A `handle_impl` function in scope with signature: `async fn handle_impl(params: MyParams) ->
+///   Result<MyOutput>`
 pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
     let input: DeriveInput = parse2(input)?;
 
@@ -65,7 +45,6 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
 
     let mut params_type = None;
     let mut output_type = None;
-    let mut context_passing = ContextPassing::Excluded;
 
     // Parse the attribute arguments
     tool_fn_attr.parse_nested_meta(|meta| {
@@ -81,8 +60,6 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
             if let Lit::Str(s) = lit {
                 output_type = Some(s.value());
             }
-        } else if meta.path.is_ident("with_context") {
-            context_passing = ContextPassing::Included;
         }
         Ok(())
     })?;
@@ -100,12 +77,7 @@ pub(crate) fn derive_tool_fn(input: TokenStream) -> Result<TokenStream> {
         .parse()
         .map_err(|_| Error::new_spanned(tool_fn_attr, "Invalid output type"))?;
 
-    // Generate the implementation based on whether context is needed
-    let handle_impl_call = if context_passing.includes_context() {
-        quote! { handle_impl(context.clone(), params.clone()).await }
-    } else {
-        quote! { handle_impl(params.clone()).await }
-    };
+    let handle_impl_call = quote! { handle_impl(params.clone()).await };
 
     let expanded = quote! {
         impl ToolFn for #struct_name {

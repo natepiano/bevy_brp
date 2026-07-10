@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::PathBuf;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
@@ -37,21 +36,12 @@ use crate::error::Result;
 pub struct HandlerContext {
     pub(super) tool_def: ToolDef,
     request:             CallToolRequestParams,
-    pub roots:           Vec<PathBuf>,
 }
 
 impl HandlerContext {
     /// Create a new `HandlerContext`
-    pub(super) const fn new(
-        tool_def: ToolDef,
-        request: CallToolRequestParams,
-        roots: Vec<PathBuf>,
-    ) -> Self {
-        Self {
-            tool_def,
-            request,
-            roots,
-        }
+    pub(super) const fn new(tool_def: ToolDef, request: CallToolRequestParams) -> Self {
+        Self { tool_def, request }
     }
 
     /// Common parameter extraction methods (used by both BRP and local handlers)

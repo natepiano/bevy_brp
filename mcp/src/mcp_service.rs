@@ -1,9 +1,7 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 use itertools::Itertools;
 use rmcp::ErrorData as McpError;
-use rmcp::Peer;
 use rmcp::RoleServer;
 use rmcp::ServerHandler;
 use rmcp::model::CallToolRequestParams;
@@ -17,7 +15,6 @@ use rmcp::service::RequestContext;
 
 use super::tool;
 use super::tool::ToolDef;
-use crate::constants::FILE_URI_SCHEME;
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
@@ -67,74 +64,6 @@ impl McpService {
             tools:       self.tools.clone(),
         }
     }
-
-    /// Fetch roots from the client and return the search paths
-    ///
-    /// # Errors
-    /// Returns an error if the MCP client cannot be contacted or if the `list_roots` call fails.
-    async fn fetch_roots_and_get_paths(
-        &self,
-        peer: Peer<RoleServer>,
-    ) -> Result<Vec<PathBuf>, McpError> {
-        // Fetch current roots from client
-        tracing::debug!("Fetching current roots from client...");
-
-        match peer.list_roots().await {
-            Ok(result) => {
-                tracing::debug!("Received {} roots from client", result.roots.len());
-                for (i, root) in result.roots.iter().enumerate() {
-                    tracing::debug!(
-                        "  Root {}: {} ({})",
-                        i + 1,
-                        root.uri,
-                        root.name.as_deref().unwrap_or("unnamed")
-                    );
-                }
-
-                let paths: Vec<PathBuf> = result
-                    .roots
-                    .iter()
-                    .filter_map(|root| {
-                        // Parse the file:// URI
-                        root.uri.strip_prefix(FILE_URI_SCHEME).map_or_else(
-                            || {
-                                tracing::warn!("Ignoring non-file URI: {}", root.uri);
-                                None
-                            },
-                            |path| Some(PathBuf::from(path)),
-                        )
-                    })
-                    .collect();
-
-                if !paths.is_empty() {
-                    tracing::debug!("Processed roots: {paths:?}");
-                    return Ok(paths);
-                }
-                tracing::warn!(
-                    "Client returned no usable file roots. Falling back to current directory."
-                );
-            },
-            Err(e) => {
-                tracing::warn!(
-                    "Client does not support roots/list: {e}. Falling back to current directory."
-                );
-            },
-        }
-
-        // Common fallback: use current directory
-        std::env::current_dir()
-            .map(|cwd| {
-                tracing::debug!("Using current directory as root: {}", cwd.display());
-                vec![cwd]
-            })
-            .map_err(|current_directory_error| {
-                tracing::error!("Failed to get current directory: {current_directory_error}");
-                McpError::internal_error(
-                    "Failed to list roots and no current directory available".to_string(),
-                    None,
-                )
-            })
-    }
 }
 
 impl ServerHandler for McpService {
@@ -155,15 +84,12 @@ impl ServerHandler for McpService {
     async fn call_tool(
         &self,
         request: CallToolRequestParams,
-        context: RequestContext<RoleServer>,
+        _: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        // Fetch roots and get paths
-        let roots = self.fetch_roots_and_get_paths(context.peer.clone()).await?;
-
         let tool_def = self.get_tool_def(&request.name).ok_or_else(|| {
             McpError::invalid_params(format!("unknown tool: {}", request.name), None)
         })?;
 
-        tool_def.call_tool(request, roots).await
+        tool_def.call_tool(request).await
     }
 }

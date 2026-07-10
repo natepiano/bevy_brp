@@ -9,11 +9,11 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::rpc_discover::discover_method_names;
+use super::rpc_discover;
+use crate::brp_tools;
 use crate::brp_tools::BrpClient;
 use crate::brp_tools::Port;
 use crate::brp_tools::ResponseStatus;
-use crate::brp_tools::method_not_found_message;
 use crate::error::Error;
 use crate::error::Result;
 use crate::tool::ToolFn;
@@ -52,7 +52,7 @@ impl ToolFn for BrpExecute {
     type Params = ExecuteParams;
 
     async fn handle_impl(&self, params: ExecuteParams) -> Result<ExecuteResult> {
-        let method_names = discover_method_names(params.port).await?;
+        let method_names = rpc_discover::discover_method_names(params.port).await?;
         if !method_is_registered(&method_names, &params.method) {
             let mut available_methods = method_names;
             available_methods.sort_unstable();
@@ -61,7 +61,7 @@ impl ToolFn for BrpExecute {
                 params.method, params.port
             );
             return Err(Error::tool_call_failed_with_details(
-                method_not_found_message(&params.method, &message),
+                brp_tools::method_not_found_message(&params.method, &message),
                 serde_json::json!({
                     "stage": "discovery",
                     "method": params.method,

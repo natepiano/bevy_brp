@@ -1,6 +1,5 @@
 //! Unified tool definition that can handle both BRP and Local tools
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use rmcp::ErrorData;
@@ -36,10 +35,9 @@ impl ToolDef {
     pub async fn call_tool(
         &self,
         request: CallToolRequestParams,
-        roots: Vec<PathBuf>,
     ) -> std::result::Result<CallToolResult, ErrorData> {
         // Create HandlerContext - all tools use the same context
-        let handler_context = HandlerContext::new(self.clone(), request, roots);
+        let handler_context = HandlerContext::new(self.clone(), request);
 
         // Tools now always return `CallToolResult` - errors are already formatted as responses
         Ok(self.handler.call_erased(handler_context).await)

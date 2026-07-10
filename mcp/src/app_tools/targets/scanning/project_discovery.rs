@@ -10,6 +10,8 @@ use tracing::debug;
 use crate::app_tools::constants::CARGO_MANIFEST_FILE;
 use crate::app_tools::targets::constants::HIDDEN_DIRECTORY_PREFIX;
 use crate::app_tools::targets::constants::TARGET_DIRECTORY_NAME;
+use crate::error::Error;
+use crate::error::Result;
 
 #[derive(Debug, Clone)]
 enum ProjectType {
@@ -45,6 +47,29 @@ pub(super) fn safe_canonicalize(path: &Path) -> PathBuf {
             path.to_path_buf()
         },
     }
+}
+
+/// Resolve the search paths to scan for Bevy targets.
+///
+/// An explicit path takes precedence; otherwise the server's current working
+/// directory is the sole search root.
+///
+/// # Errors
+/// Returns an error when no explicit path is supplied and the current working
+/// directory cannot be determined.
+pub fn resolve_search_paths(explicit_path: Option<&str>) -> Result<Vec<PathBuf>> {
+    if let Some(path) = explicit_path {
+        return Ok(vec![PathBuf::from(path)]);
+    }
+
+    std::env::current_dir()
+        .map(|current_directory| vec![current_directory])
+        .map_err(|current_directory_error| {
+            Error::tool_call_failed(format!(
+                "Failed to determine current working directory: {current_directory_error}"
+            ))
+            .into()
+        })
 }
 
 /// Iterate over all valid Cargo project paths found in the given search paths.

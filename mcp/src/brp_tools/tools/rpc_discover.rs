@@ -3,6 +3,7 @@
 use bevy::remote::schemas::open_rpc::OpenRpcDocument;
 use bevy_brp_mcp_macros::ParamStruct;
 use bevy_brp_mcp_macros::ResultStruct;
+use error_stack::Report;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
@@ -102,7 +103,7 @@ fn decode_method_names(value: Value, port: Port) -> Result<Vec<String>> {
     Ok(methods)
 }
 
-fn discovery_decode_error(port: Port, error: impl ToString) -> error_stack::Report<Error> {
+fn discovery_decode_error(port: Port, error: impl ToString) -> Report<Error> {
     Error::tool_call_failed_with_details(
         format!("Unable to decode rpc.discover response from port {port}"),
         serde_json::json!({

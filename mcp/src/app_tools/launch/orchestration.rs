@@ -110,15 +110,11 @@ fn handle_target_discovery_error(error: Report<Error>) -> Report<Error> {
 
 pub fn launch_bevy_target(
     typed_params: LaunchBevyBinaryParams,
-    roots: Vec<PathBuf>,
     default_profile: &'static str,
 ) -> Result<LaunchResult> {
     let params = typed_params.to_launch_params(default_profile);
 
-    let search_roots = params
-        .path
-        .as_ref()
-        .map_or(roots, |path| vec![PathBuf::from(path)]);
+    let search_roots = targets::resolve_search_paths(params.path.as_deref())?;
 
     let (first, second) = match params.search_order {
         SearchOrder::App => (TargetType::App, TargetType::Example),

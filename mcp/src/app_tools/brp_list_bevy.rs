@@ -42,18 +42,15 @@ pub struct ListBevyResult {
 }
 
 #[derive(ToolFn)]
-#[tool_fn(params = "ListBevyParams", output = "ListBevyResult", with_context)]
+#[tool_fn(params = "ListBevyParams", output = "ListBevyResult")]
 pub struct ListBevy;
 
 #[allow(
     clippy::unused_async,
     reason = "ToolFn trait requires async handler signature"
 )]
-async fn handle_impl(context: HandlerContext, params: ListBevyParams) -> Result<ListBevyResult> {
-    let search_paths = params
-        .path
-        .as_ref()
-        .map_or(context.roots, |path| vec![PathBuf::from(path)]);
+async fn handle_impl(params: ListBevyParams) -> Result<ListBevyResult> {
+    let search_paths = targets::resolve_search_paths(params.path.as_deref())?;
     let mut items = targets::collect_all_bevy_targets(&search_paths);
 
     // When a user-specified path is provided, post-filter to only targets whose
