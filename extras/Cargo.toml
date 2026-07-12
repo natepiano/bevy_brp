@@ -50,6 +50,7 @@ diagnostics = []
 [dev-dependencies]
 async-channel.workspace = true
 reqwest.workspace = true
+wgpu.workspace = true
 
 [lints]
 workspace = true

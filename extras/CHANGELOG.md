@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add terminal AABB entity capture to the existing `brp_extras/screenshot` method with optional entity ID, camera ID, and physical-pixel padding fields.
+- Add immutable entity, name, camera, bounds-kind, and crop-rectangle metadata to successful entity capture responses.
+
+### Changed
+- Batch full and entity jobs by normalized render target while preserving one screenshot entity and RGB conversion per target.
+- Reject camera and padding fields without an entity, entity names in extras requests, hidden or off-layer entities, ambiguous cameras, and unsupported camera targets.
+
 ## [0.21.0] - 2026-07-10
 
 ### Changed

@@ -44,10 +44,22 @@
 //! ## App Lifecycle
 //!
 //! ### `brp_extras/screenshot`
-//! Captures a screenshot of the primary window and saves it to a file.
-//! - `path` (string, required): file path where the screenshot will be saved
+//! Captures either the primary window or an AABB-backed entity and publishes a complete PNG.
+//! The watching request returns only after publication.
+//! - `path` (string, required): destination file path
+//! - `capture_id` (string, optional): bounded nonempty watcher identity
+//! - `entity` (u64, optional): exact Bevy entity ID; omission captures the primary window
+//! - `camera` (u64, optional): active camera for entity capture; requires `entity`
+//! - `padding` (u32, optional): physical pixels added around entity bounds; requires `entity` and
+//!   defaults to zero
 //!
-//! **Note**: Requires Bevy's `png` feature enabled, otherwise files will be 0 bytes.
+//! Entity capture projects the selected entity's [`Aabb`](bevy::camera::primitives::Aabb) through
+//! the selected camera. It captures the camera's complete render target and publishes a physical
+//! crop of the final composited image, so overlapping content and post-processing remain visible.
+//! The method never resolves names or descendants. If `camera` is omitted, exactly one active,
+//! initialized camera with a screenshot-capable target must exist.
+//!
+//! Requires Bevy's `png` feature. Calls fail before enqueueing when PNG support is unavailable.
 //!
 //! ### `brp_extras/shutdown`
 //! Schedules a graceful application shutdown. No parameters.

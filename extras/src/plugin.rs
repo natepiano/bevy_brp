@@ -517,3 +517,22 @@ fn maybe_add_port_title_system(
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const UNEXPECTED_ENTITY_CAPTURE_METHOD: &str = "brp_extras/screenshot_entity";
+
+    #[test]
+    fn entity_capture_uses_only_the_existing_screenshot_method() {
+        let mut app = App::new();
+        app.add_plugins(RemotePlugin::default());
+        register_extras_methods(app.world_mut());
+        let methods = app.world().resource::<RemoteMethods>();
+        let screenshot_method = format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SCREENSHOT}");
+
+        assert!(methods.get(&screenshot_method).is_some());
+        assert!(methods.get(UNEXPECTED_ENTITY_CAPTURE_METHOD).is_none());
+    }
+}

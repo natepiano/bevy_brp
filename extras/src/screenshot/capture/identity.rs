@@ -33,11 +33,21 @@ impl TryFrom<String> for CaptureToken {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RequestFingerprint {
-    path: PathBuf,
+    path:  PathBuf,
+    scope: RequestScopeFingerprint,
 }
 
-impl From<PathBuf> for RequestFingerprint {
-    fn from(path: PathBuf) -> Self { Self { path } }
+impl RequestFingerprint {
+    pub(super) const fn new(path: PathBuf, scope: RequestScopeFingerprint) -> Self {
+        Self { path, scope }
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub(super) struct RequestScopeFingerprint {
+    pub(super) camera:  Option<u64>,
+    pub(super) entity:  Option<u64>,
+    pub(super) padding: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]

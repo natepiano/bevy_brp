@@ -29,7 +29,18 @@ bevy_brp_extras does two things
 
 All methods are prefixed with `brp_extras/` (e.g., `brp_extras/screenshot`). See [docs.rs](https://docs.rs/bevy_brp_extras/) for parameter details.
 
-**Screenshot note**: Your Bevy app must have the `png` feature enabled for screenshots to work. Without it, screenshot files will be created but will be 0 bytes.
+### Screenshots
+
+`brp_extras/screenshot` is a terminal watching method: a successful response means the complete PNG has replaced the destination. The request always requires `path` and optionally accepts a bounded nonempty `capture_id`.
+
+With no `entity`, the method captures the primary window. `camera` and `padding` are invalid in this mode.
+
+With an `entity` ID, the method projects that entity's `Aabb` and `GlobalTransform` through an active camera, then crops the camera's final composited render target in physical pixels. Optional `padding` defaults to zero. Optional `camera` selects an exact camera ID; otherwise exactly one eligible active camera must exist. Extras accepts entity IDs only and does not resolve names.
+
+Entity capture honors visibility, render layers, the camera frustum, viewport, target bounds, and available selected-view visibility data. Entities marked `NoCpuCulling` still must pass visibility, layer, and frustum checks. Generic AABB capture cannot prove that a custom renderer contributes pixels to the selected target. The output can include overlapping UI, geometry, background, post-processing, and occluders. Use padding for effects extending outside the AABB. Only the selected entity is resolved; descendants are not included automatically. Procedural, custom-rendered, and skinned entities must maintain an AABB that covers their rendered content.
+
+Your Bevy app must have the `png` feature enabled. Without it, the request fails before capture begins.
+
 ```toml
 bevy = { version = "0.19", features = ["png"] }
 ```

@@ -22,19 +22,22 @@ use super::identity::CaptureIdentity;
 use super::identity::PathGeneration;
 use super::target_rgb_image::EncodedCapture;
 use super::target_rgb_image::TargetRgbImage;
+use crate::screenshot::CaptureResponseMetadata;
 
 pub(super) type ImageConverter = fn(Image) -> BrpResult<TargetRgbImage>;
 
 pub(super) struct ScreenshotJob {
-    pub(super) path:            PathBuf,
-    pub(super) crop:            Option<URect>,
-    pub(super) identity:        CaptureIdentity,
-    pub(super) path_generation: PathGeneration,
-    pub(super) deadline:        Instant,
+    pub(super) path:              PathBuf,
+    pub(super) crop:              Option<URect>,
+    pub(super) identity:          CaptureIdentity,
+    pub(super) path_generation:   PathGeneration,
+    pub(super) deadline:          Instant,
+    pub(super) response_metadata: CaptureResponseMetadata,
 }
 
 pub(super) struct CaptureMetadata {
-    pub(super) dimensions: UVec2,
+    pub(super) dimensions:        UVec2,
+    pub(super) response_metadata: CaptureResponseMetadata,
 }
 
 pub(super) struct OwnedTempCapture {
@@ -148,7 +151,8 @@ fn write_temporary_capture(
         OwnedTempCapture {
             identity: job.identity.clone(),
             metadata: CaptureMetadata {
-                dimensions: encoded_capture.dimensions,
+                dimensions:        encoded_capture.dimensions,
+                response_metadata: job.response_metadata.clone(),
             },
             path_generation: job.path_generation,
             temp_path,
@@ -227,7 +231,8 @@ mod tests {
     use tempfile::TempDir;
 
     use super::*;
-    use crate::screenshot::capture::RequestFingerprint;
+    use crate::screenshot::CaptureResponseMetadata;
+    use crate::screenshot::capture;
 
     const FIRST_PIXEL: [u8; 4] = [10, 20, 30, 240];
     const SECOND_PIXEL: [u8; 4] = [40, 50, 60, 230];
@@ -257,11 +262,17 @@ mod tests {
 
     fn job(path: PathBuf, crop: Option<URect>) -> ScreenshotJob {
         ScreenshotJob {
-            identity: CaptureIdentity::Legacy(RequestFingerprint::from(path.clone())),
+            identity: CaptureIdentity::Legacy(capture::request_fingerprint(
+                path.clone(),
+                None,
+                None,
+                None,
+            )),
             path,
             crop,
             path_generation: TEST_PATH_GENERATION,
             deadline: Instant::now(),
+            response_metadata: CaptureResponseMetadata::Full,
         }
     }
 

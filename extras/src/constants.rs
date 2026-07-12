@@ -42,10 +42,16 @@ pub(crate) const IMAGE_EXTENSION_PNG: &str = "png";
 
 // parameter fields
 #[cfg(not(target_arch = "wasm32"))]
+pub(crate) const PARAM_CAMERA: &str = "camera";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const PARAM_ENTITY: &str = "entity";
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) const PARAM_PATH: &str = "path";
 pub(crate) const PARAM_TITLE: &str = "title";
 
 // response fields
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const CAMERA_CANDIDATES_FIELD: &str = "camera_candidates";
 #[cfg(feature = "diagnostics")]
 pub(crate) const DIAGNOSTICS_AVERAGE_FIELD: &str = "average";
 #[cfg(feature = "diagnostics")]
@@ -64,23 +70,47 @@ pub(crate) const DIAGNOSTICS_HISTORY_LEN_FIELD: &str = "history_len";
 pub(crate) const DIAGNOSTICS_MAX_HISTORY_LEN_FIELD: &str = "max_history_len";
 #[cfg(feature = "diagnostics")]
 pub(crate) const DIAGNOSTICS_SMOOTHED_FIELD: &str = "smoothed";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const RESPONSE_BOUNDS_KIND_FIELD: &str = "bounds_kind";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const RESPONSE_CAPTURE_KIND_FIELD: &str = "capture_kind";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const RESPONSE_HEIGHT_FIELD: &str = "height";
 pub(crate) const RESPONSE_MESSAGE_FIELD: &str = "message";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const RESPONSE_NAME_FIELD: &str = "name";
 pub(crate) const RESPONSE_NEW_TITLE_FIELD: &str = "new_title";
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const RESPONSE_NOTE_FIELD: &str = "note";
 pub(crate) const RESPONSE_OLD_TITLE_FIELD: &str = "old_title";
 pub(crate) const RESPONSE_PID_FIELD: &str = "pid";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const RESPONSE_REASON_FIELD: &str = "reason";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const RESPONSE_RECT_FIELD: &str = "rect";
 pub(crate) const RESPONSE_STATUS_FIELD: &str = "status";
 pub(crate) const RESPONSE_STATUS_SUCCESS: &str = "success";
 pub(crate) const RESPONSE_SUCCESS_FIELD: &str = "success";
 #[cfg(not(target_arch = "wasm32"))]
+pub(crate) const RESPONSE_WIDTH_FIELD: &str = "width";
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) const RESPONSE_WORKING_DIRECTORY_FIELD: &str = "working_directory";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const RESPONSE_X_FIELD: &str = "x";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const RESPONSE_Y_FIELD: &str = "y";
 
 // screenshot constants
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const MAX_SCREENSHOT_CAPTURE_ID_BYTES: usize = 128;
 #[cfg(not(target_arch = "wasm32"))]
+pub(crate) const SCREENSHOT_BOUNDS_KIND_AABB: &str = "aabb";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const SCREENSHOT_CAMERA_REASON_AMBIGUOUS: &str = "ambiguous_camera";
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) const SCREENSHOT_CAPTURE_DEADLINE: Duration = Duration::from_secs(25);
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const SCREENSHOT_CAPTURE_KIND_ENTITY: &str = "entity";
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const SCREENSHOT_CAPTURE_NOTE: &str =
     "Screenshot capture completed and the PNG was published.";
@@ -88,6 +118,8 @@ pub(crate) const SCREENSHOT_CAPTURE_NOTE: &str =
 pub(crate) const SCREENSHOT_ENTITY_NAME: &str = "BRP Screenshot Capture";
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const SCREENSHOT_STATUS_COMPLETED: &str = "completed";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const SCREENSHOT_ZERO_PADDING: u32 = 0;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const UNKNOWN_WORKING_DIRECTORY: &str = "unknown";
 

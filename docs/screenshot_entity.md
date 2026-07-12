@@ -151,7 +151,7 @@ Gate native publication under `cfg(not(target_arch = "wasm32"))`. On WASM, retai
 - Replaced the impossible fixed-image full-screenshot oracle with a full-target reference entity and added a separate isolated-port no-extras fixture for discovery.
 - No user decisions remain from this review; every change is mechanical sequencing or clarification.
 
-### Phase 2 — AABB entity capture through the existing extras method  · status: todo
+### Phase 2 — AABB entity capture through the existing extras method  · status: done (`f37a0211`)
 
 #### Work Order
 
@@ -209,7 +209,8 @@ Document that entity output is a crop of the final composited target and may inc
 - `extras/src/screenshot/capture/identity.rs` — add raw immutable entity scope to `RequestFingerprint`.
 - `extras/src/screenshot/capture/mod.rs` — extend the narrow facade with concrete/normalized targets, crop, and metadata.
 - `extras/src/screenshot/capture/screenshot_job.rs` — carry crop and immutable response metadata through the existing worker path.
-- `extras/src/screenshot/capture/pending_screenshot_captures.rs` — only the generic target/crop/metadata reservation seam; no request decoding, camera queries, bounds logic, or response DTO construction.
+- `extras/src/screenshot/capture/pending_screenshot_captures/mod.rs` — only the generic target/crop/metadata reservation seam and capture-stage cancellation; no request decoding, camera queries, bounds logic, or response DTO construction.
+- `extras/src/screenshot/capture/pending_screenshot_captures/tests.rs` — ownership-focused lifecycle and entity-capture tests split from the production module.
 - `extras/src/lib.rs` — consolidated screenshot method docs.
 - `extras/README.md` — full/AABB entity API, limitations, and terminal semantics.
 - `extras/CHANGELOG.md` — release entry.
@@ -217,6 +218,37 @@ Document that entity output is a crop of the final composited target and may inc
 **Constraints from prior phases:** Phase 1 owns `CapturePlugin`, frame-stamped terminal tombstones, the one-frame `ReadyToPublish` liveness confirmation, generation-wide deadlines, destination fingerprint sharing/conflicts, target batching, generation-checked `TempPath::persist`, and stale-worker acknowledgement/ownership. Preserve all of them. Do not add feature logic to the 1,651-line `pending_screenshot_captures.rs`; limit edits to its generic seam, and if it grows materially move inline tests to a focused child test module. Do not add another observer, handler, plugin, or flat capture module.
 
 **Acceptance gate:** Tests cover typed full/entity conversion, zero padding, invalid field combinations, proof extras has no name selector, same-token scope reuse, distinct-scope destination conflicts, and inherited generation deadlines. Camera tests cover explicit, single inferred, zero/multiple candidates with stable data, inactive/uninitialized/unsupported targets, and `RenderTarget::None`. AABB tests cover translated, rotated, non-uniformly scaled, and reflected boxes; logical/physical scaling; viewport offsets; fractional/negative extrema; hard-edge padding; empty/offscreen output; near/far conservative fallback; hidden entities; layers; selected-view membership; `NoCpuCulling`; and custom-renderer limitations. Method tests prove legacy full behavior, terminal entity metadata including snapshotted name, moving/despawned inputs after enqueue, one concrete screenshot entity and RGB conversion per normalized target, shared full/entity capture, deferred errors, and absence of a screenshot-entity method. `cargo check -p bevy_brp_extras --no-default-features`, workspace checks, relevant nextest tests, full clippy, and nightly formatting pass without dormant code or lint suppressions.
+
+#### Retrospective
+
+**What worked:**
+- The AABB entity path shipped as one lint-clean vertical slice: typed request, camera selection, bounds resolution, generic target/crop submission, immutable terminal metadata, docs, and method-level tests are all production-used.
+- Existing-identity and matching-reservation reads happen before entity/camera/bounds resolution, so moving or despawned inputs cannot change an accepted request.
+- The capture facade now supports concrete and normalized targets while retaining one screenshot entity and RGB conversion per target batch.
+
+**What deviated from the plan:**
+- Live target eligibility checks `Window`, `Assets<Image>`, render-world usage, and `ManualTextureViews`; cached `Camera::physical_target_size()` alone was insufficient.
+- Capture-stage batches now own their spawned screenshot entity and can cancel/acknowledge a never-captured generation at deadline. Once a batch enters encoding, the existing late-worker acknowledgement rule still owns cleanup.
+- `pending_screenshot_captures.rs` became directory-form `pending_screenshot_captures/mod.rs`, with its large lifecycle tests moved to `tests.rs`. Test-only manual texture resources use a dev-only `wgpu` noop device.
+
+**Surprises:**
+- `Entity::from_bits` can panic for invalid remote bit patterns; request decoding must use `Entity::try_from_bits` and return field-specific parameter errors.
+- Bevy may retain cached camera target size after an image/manual target disappears, while its screenshot system produces no completion event.
+- A valid render-target image may be `RENDER_WORLD`-only; requiring main-world asset usage would reject a supported target.
+
+**Implications for remaining phases:**
+- UI target selection must reuse the live concrete/normalized target validation and the single capture facade; it must not trust cached camera target dimensions or create a UI-specific observer.
+- UI metadata must be snapshotted before submission and carried through the existing reservation/job response seam.
+- Runtime fixtures should use real image/manual target resources and terminal publication paths rather than fabricated camera computed state.
+- Capture-stage cancellation and encoding-stage late acknowledgement are now separate invariants and must remain separate.
+
+### Phase 2 Review
+
+- Required Phase 3 to classify complete/partial UI component families before generic AABB camera inference, so `ComputedUiTargetCamera` owns UI selection without false world-camera ambiguity.
+- Required UI bounds to pass through Phase 2's live target validation and intersect both the live target extent and physical viewport before capture submission.
+- Made Phase 4's internal standard-BRP `world.query` request/response path explicit for a fresh delegate.
+- Required Phase 6 image/manual fixtures to retain handles/backing resources for the full runtime test and use one validated target for reference and cropped entities.
+- No user decisions or phase resequencing remain.
 
 ### Phase 3 — Optional UI entity bounds  · status: todo
 
@@ -228,7 +260,7 @@ Document that entity output is a crop of the final composited target and may inc
 
 Add `ui = ["bevy/bevy_ui"]` to `bevy_brp_extras` and include it in default features beside `diagnostics`. Gate all UI imports, queries, and resolver code. Bevy 0.19 UI necessarily enables its required text/sprite dependency family; add no separate textual snapshot behavior or direct text/PBR feature. With UI disabled, a non-AABB entity returns an unsupported-bounds error naming disabled UI support as a possible cause.
 
-For a complete UI component family, use UI precedence over an incidental AABB. A partial family returns an uninitialized-UI error rather than falling through. Read `ComputedNode`, `UiGlobalTransform`, `ComputedUiTargetCamera`, `ComputedUiRenderTargetInfo`, optional `CalculatedClip`, and inherited visibility:
+Classify the selected entity's UI component family before invoking generic AABB camera inference. Define complete/partial UI state from UI-specific components (`ComputedNode`, `UiGlobalTransform`, `ComputedUiTargetCamera`, and `ComputedUiRenderTargetInfo`), not generic `InheritedVisibility`, which AABB entities may also carry. A complete UI family uses UI precedence over an incidental AABB; a partial family returns an uninitialized-UI error rather than falling through. Read the complete family, optional `CalculatedClip`, and inherited visibility:
 
 1. Build four local corners from `ComputedNode::size()` around the node origin and transform them with `UiGlobalTransform::affine()`.
 2. Take axis-aligned physical min/max. UI transform and clip coordinates are camera-viewport-local; do not scale again.
@@ -238,7 +270,7 @@ For a complete UI component family, use UI precedence over an incidental AABB. A
 6. Apply zero-default padding, then intersect with translated clip, physical camera viewport, and target bounds.
 7. Reject an empty crop.
 
-Use `ComputedUiTargetCamera` and its concrete screenshot-capable target, including non-primary windows and images; reject a different explicitly supplied camera. Reject UI according to `InheritedVisibility`. Do not apply AABB `RenderLayers` rules to UI. Submit the concrete and normalized target, crop, and immutable metadata through the Phase 2 facade. Snapshot `BoundsKind::Ui` and the final rectangle for terminal response construction.
+Use `ComputedUiTargetCamera` and reject a different explicitly supplied camera. Pass that computed camera through Phase 2's live `Window`/`Assets<Image>`/`ManualTextureViews` target validation; do not trust cached physical target size. Intersect viewport-local UI bounds with both the live target extent and physical camera viewport before submission. Reject UI according to `InheritedVisibility`. Do not apply AABB `RenderLayers` rules to UI. Submit the validated concrete and normalized target, crop, and immutable metadata through the Phase 2 facade. Snapshot `BoundsKind::Ui` and the final rectangle for terminal response construction.
 
 **Files:**
 - `extras/Cargo.toml` — default-enabled optional UI feature.
@@ -260,7 +292,7 @@ Use `ComputedUiTargetCamera` and its concrete screenshot-capable target, includi
 
 **Spec:**
 
-Implement a local MCP composite tool using existing `BrpClient`/`ToolHandler` patterns. Call standard `world.query`, requiring and retrieving `bevy_ecs::name::Name`, then parse/filter locally. Request fields are `name`, typed `match_mode`, and `port`; modes are `exact`, `prefix`, `suffix`, and `contains`, defaulting to exact. Match case-sensitively and treat `*` literally. Return `{ entity: u64, name: String }` entries sorted by entity ID. Expose the internal query/parse/match operation so the screenshot MCP handler can reuse unique exact resolution without making an MCP sub-tool call.
+Implement a local MCP composite tool using existing `BrpClient`/`ToolHandler` patterns. Build the internal standard-BRP `world.query` request with `bevy_ecs::name::Name` in both required and returned components, execute it directly through `BrpClient`/`BrpMethod::WorldQuery`, parse successful raw entity/component rows locally, and propagate raw BRP errors. Do not call the generated `WorldQuery` MCP wrapper or make an MCP sub-tool call. Request fields are `name`, typed `match_mode`, and `port`; modes are `exact`, `prefix`, `suffix`, and `contains`, defaulting to exact. Match case-sensitively and treat `*` literally. Return `{ entity: u64, name: String }` entries sorted by entity ID. Expose the internal query/parse/match operation so the screenshot MCP handler can reuse unique exact resolution.
 
 Register schema, local routing, read-only annotations, help, README, and changelog. The target app needs standard BRP and reflected `Name`, never the extras plugin. Explain non-exact discovery followed by canonical-ID operations.
 
@@ -318,7 +350,7 @@ Update the existing help text with one-call examples for full, ID, and `name: "N
 
 **Spec:**
 
-Add stable named fixtures: fixed-size UI; rotated/clipped UI; transformed 2D AABB with `Camera2d`; transformed 3D AABB with `Camera3d`; unsupported entity; duplicate/unique/unnamed names including `NatesList`; explicit nonzero viewport; hidden entities; disjoint render layers; and distinctive interior/edge colors. Render exact-coordinate cases to a fixed-size image target. Add a named reference entity whose bounds cover that entire image target; compare smaller entity crops against this reference entity's PNG because full scope intentionally captures only the primary window. Retain a separate primary-window full-capture smoke fixture. Keep the second camera inactive except in the ambiguity case so it does not invalidate ordinary inferred-camera cases.
+Add stable named fixtures: fixed-size UI; rotated/clipped UI; transformed 2D AABB with `Camera2d`; transformed 3D AABB with `Camera3d`; unsupported entity; duplicate/unique/unnamed names including `NatesList`; explicit nonzero viewport; hidden entities; disjoint render layers; and distinctive interior/edge colors. Render exact-coordinate cases to a fixed-size image/manual target and retain its asset handle plus every backing GPU/manual-view resource for the entire runtime test. Use that same live-validated camera/target for the named reference entity whose bounds cover the entire target and for every cropped comparison entity. Compare smaller entity crops against the reference PNG because full scope intentionally captures only the primary window. Retain a separate primary-window full-capture smoke fixture. Keep the second camera inactive except in the ambiguity case so it does not invalidate ordinary inferred-camera cases.
 
 Update `test-app/examples/no_extras_plugin.rs` to accept the runner-provided isolated BRP port rather than hard-coding port 25000. Configure it as a second runtime fixture for extras-independent discovery. It enables standard BRP and reflected `Name`, but never `bevy_brp_extras`.
 
