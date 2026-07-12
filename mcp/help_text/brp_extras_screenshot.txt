@@ -2,7 +2,10 @@ Capture screenshots from running Bevy applications using bevy_brp_extras.
 
 Behavior:
 - Captures current frame via bevy_brp_extras/screenshot
-- Saves to specified path
+- Keeps the tool call open while Bevy captures and encodes the frame
+- Returns only after the complete PNG has replaced the specified path
+- Returns a terminal error if capture, encoding, or publication fails or exceeds the server deadline
+- Does not require filesystem polling
 
 Prerequisites:
 - bevy_brp_extras dependency required

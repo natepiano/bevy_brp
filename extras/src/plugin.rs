@@ -1,5 +1,6 @@
 //! Plugin implementation for extra BRP methods
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Mutex;
 
 #[cfg(feature = "diagnostics")]
@@ -15,12 +16,14 @@ use bevy_remote::http::RemoteHttpPlugin;
 
 #[cfg(not(target_arch = "wasm32"))]
 use super::DEFAULT_REMOTE_PORT;
+#[cfg(not(target_arch = "wasm32"))]
 use super::constants::BRP_EXTRAS_PORT_ENV_VAR;
 use super::constants::EXTRAS_COMMAND_PREFIX;
 use super::constants::METHOD_CLICK_MOUSE;
 use super::constants::METHOD_DOUBLE_CLICK_MOUSE;
 use super::constants::METHOD_DOUBLE_TAP_GESTURE;
 use super::constants::METHOD_DRAG_MOUSE;
+#[cfg(feature = "diagnostics")]
 use super::constants::METHOD_GET_DIAGNOSTICS;
 use super::constants::METHOD_MOVE_MOUSE;
 use super::constants::METHOD_PINCH_GESTURE;
@@ -39,6 +42,7 @@ use super::keyboard::KeyboardPlugin;
 use super::mouse;
 use super::mouse::MousePlugin;
 use super::screenshot;
+use super::screenshot::ScreenshotPlugin;
 use super::shutdown;
 use super::window_title;
 
@@ -353,6 +357,7 @@ fn build_shared(app: &mut App) {
 
     app.add_plugins(KeyboardPlugin);
     app.add_plugins(MousePlugin);
+    app.add_plugins(ScreenshotPlugin);
 
     // Add the system to handle deferred shutdown
     app.add_systems(Update, shutdown::deferred_shutdown_system);
@@ -396,7 +401,7 @@ fn add_managed_http_transport(app: &mut App, configured_port: Option<u16>) {
 
 /// Register all extras BRP methods into the world's `RemoteMethods` resource.
 fn register_extras_methods(world: &mut World) {
-    let mut methods = vec![
+    let methods = vec![
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_CLICK_MOUSE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::click_mouse_handler)),
@@ -427,7 +432,7 @@ fn register_extras_methods(world: &mut World) {
         ),
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SCREENSHOT}"),
-            RemoteMethodSystemId::Instant(world.register_system(screenshot::handler)),
+            RemoteMethodSystemId::Watching(world.register_system(screenshot::handler)),
         ),
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SCROLL_MOUSE}"),
@@ -456,10 +461,14 @@ fn register_extras_methods(world: &mut World) {
     ];
 
     #[cfg(feature = "diagnostics")]
-    methods.push((
-        format!("{EXTRAS_COMMAND_PREFIX}{METHOD_GET_DIAGNOSTICS}"),
-        RemoteMethodSystemId::Instant(world.register_system(diagnostics::handler)),
-    ));
+    let methods = {
+        let mut methods = methods;
+        methods.push((
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_GET_DIAGNOSTICS}"),
+            RemoteMethodSystemId::Instant(world.register_system(diagnostics::handler)),
+        ));
+        methods
+    };
 
     let mut remote_methods = world.resource_mut::<RemoteMethods>();
     for (name, system_id) in methods {

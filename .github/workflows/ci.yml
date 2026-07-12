@@ -154,6 +154,26 @@ jobs:
           # Force mold linker to avoid rust-lld/LLVM crashes on CI runners
           RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
 
+  windows-publication:
+    name: Windows Screenshot Publication
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Run replacement publication test
+        run: >-
+          cargo nextest run -p bevy_brp_extras --no-tests fail -- --exact
+          screenshot::capture::pending_screenshot_captures::tests::atomic_publication_replaces_existing_and_creates_absent_destinations
+
   mend:
     name: Mend Check
     runs-on: ubuntu-latest

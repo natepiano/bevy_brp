@@ -587,14 +587,17 @@ dependencies = [
 name = "bevy_brp_extras"
 version = "0.22.0-dev"
 dependencies = [
+ "async-channel",
  "bevy",
  "bevy_kana",
  "bevy_remote",
+ "image",
  "reqwest",
  "serde",
  "serde_json",
  "strum",
  "strum_macros",
+ "tempfile",
 ]
 
 [[package]]

@@ -9,17 +9,17 @@ use serde_json::Value;
 
 use crate::brp_tools::Port;
 
-/// Parameters for the `brp_extras/screenshot` tool
+/// Parameters for the terminal `brp_extras/screenshot` tool.
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ScreenshotParams {
-    /// File path where the screenshot should be saved
+    /// File path where the complete PNG should be published.
     pub path: String,
     /// The BRP port (default: 15702)
     #[serde(default)]
     pub port: Port,
 }
 
-/// Result for the `brp_extras/screenshot` tool
+/// Result returned after the complete PNG has been published.
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
 pub struct ScreenshotResult {
