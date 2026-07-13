@@ -68,7 +68,10 @@
         {
           "app_name": "extras_plugin",
           "app_type": "example",
-          "label": "extras_app"
+          "label": "extras_app",
+          "env": {
+            "BEVY_BRP_SCREENSHOT_TEST": "1"
+          }
         },
         {
           "app_name": "no_extras_plugin",

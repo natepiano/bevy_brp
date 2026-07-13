@@ -114,7 +114,7 @@ Tests with an `apps` array instead of `app_name`:
    - This handles Cargo lock contention during concurrent launches
 2. **Validation**: Confirm status is "running_with_brp"
 3. **Error Handling**: If verification fails after all retries, stop and report
-4. **Window Title**: Set title using `brp_extras_set_window_title` with format "{test_name} test - {app_name} - port {port}"
+4. **Window Title**: For extras-capable apps, set the title using `brp_extras_set_window_title` with format "{test_name} test - {app_name} - port {port}". Skip this extras call for apps without extras.
 </VerifyBrpConnectivity>
 
 <PrebuildWorkspace>
@@ -190,8 +190,8 @@ For tests with an `apps` array, launch all app instances:
 For tests with an `apps` array, verify all instances and set window titles:
 1. **For each app** in the `apps` array:
    - Execute <VerifyBrpConnectivity/> on the assigned port (from the label→port map)
-   - **Skip BRP verification** for apps that don't have BRP (e.g., no_extras_plugin) — instead just verify the process launched using `brp_status` to confirm a PID exists
-2. **Set Window Titles**: For each app with BRP, set title using format: `"{test_name} test - {label} - {app_name} - port {port}"`
+   - All current multi-app instances, including `no_extras_plugin`, provide standard BRP and must pass the normal BRP connectivity retry and `"running_with_brp"` validation
+2. **Set Window Titles**: For each extras-capable app, set the title using format: `"{test_name} test - {label} - {app_name} - port {port}"`. Explicitly skip `brp_extras_set_window_title` for `no_extras_plugin`, because title mutation requires extras.
 </VerifyMultiAppConnectivity>
 
 ## Sub-agent Prompt Templates
@@ -329,9 +329,12 @@ Use only the exact types, values, and tool parameters specified in the test file
 - Objective: [TEST_OBJECTIVE]
 
 **FAILURE HANDLING PROTOCOL:**
-- **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop all testing
+- **STOP FUNCTIONAL SEQUENCE ON FIRST FAILURE**: When ANY ordinary test step fails, immediately stop the functional sequence and do not execute later ordinary test cases
+- **ALWAYS RUN TEST-OWNED MANDATORY CLEANUP**: Before reporting, execute the test file's explicitly marked mandatory cleanup/final-state section even after an earlier failure
+- **ATTEMPT EVERY CLEANUP ACTION**: Continue through every action in that mandatory section even if a cleanup or final-state action fails
+- **RECORD CLEANUP FAILURES**: Capture and report complete responses for failures in mandatory cleanup or final-state assertions in addition to the original failure
 - **CAPTURE EVERYTHING**: Include complete tool responses for all failed operations
-- **NO CONTINUATION**: Do not attempt further test steps after first failure
+- **NO ORDINARY CONTINUATION**: Mandatory cleanup/final-state work is the only allowed continuation after the first failure
 
 **CRITICAL: NO ISSUE IS MINOR - EVERY ISSUE IS A FAILURE**
 - Error message quality issues are FAILURES, not minor issues

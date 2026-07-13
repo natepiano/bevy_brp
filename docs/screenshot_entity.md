@@ -486,7 +486,7 @@ Add a read-only Python-standard-library helper for the emitted non-interlaced 8-
 - Added the integration-tester agent file to Phase 7 so retiring polling also removes its stale Bash guidance and example.
 - No user decisions or phase-order changes remain.
 
-### Phase 7 — MCP runtime integration execution  · status: todo
+### Phase 7 — MCP runtime integration execution  · status: done (`a1cd662e`)
 
 #### Work Order
 
@@ -494,7 +494,7 @@ Add a read-only Python-standard-library helper for the emitted non-interlaced 8-
 
 **Spec:**
 
-Rewrite `.claude/integration_tests/extras_capture.md` around the runner-prelaunched `extras_app` and `no_extras_app` label-specific ports; do not retain the old single `{{PORT}}` wording and do not launch or stop either app. On `extras_app`, resolve these exact names before capture: `ScreenshotPrimaryWindowCamera`, `Screenshot2dUiCamera`, `Screenshot3dCamera`, `Screenshot2dUiReference`, `NatesList`, `ScreenshotRotatedClippedUi`, `Screenshot2dAabb`, `Screenshot3dReference`, `Screenshot3dAabb`, and every error fixture used below. Use `world_mutate_components` with component `bevy_camera::camera::Camera`, path `.is_active`, and boolean values to drive this exact sequence:
+Rewrite `.claude/integration_tests/extras_capture.md` around the runner-prelaunched `extras_app` and `no_extras_app` label-specific ports; do not retain the old single `{{PORT}}` wording and do not launch or stop either app. On `extras_app`, resolve these exact names before capture: `ScreenshotPrimaryWindowCamera`, `ScreenshotPrimaryWindowTarget`, `Screenshot2dUiCamera`, `Screenshot3dCamera`, `Screenshot2dUiReference`, `NatesList`, `ScreenshotRotatedClippedUi`, `Screenshot2dAabb`, `Screenshot3dReference`, `Screenshot3dAabb`, and every error fixture used below. Use `world_mutate_components` with component `bevy_camera::camera::Camera`, path `.is_active`, and boolean values to drive this exact sequence:
 
 1. Primary-window smoke: primary `true`, 2D/UI `false`, 3D `false`.
 2. 2D/UI epoch: primary `false`, 2D/UI `true`, 3D `false`.
@@ -502,7 +502,9 @@ Rewrite `.claude/integration_tests/extras_capture.md` around the runner-prelaunc
 4. Ambiguity case only: primary `false`, 2D/UI `true`, 3D `true`.
 5. Cleanup: restore the initial state, primary `false`, 2D/UI `true`, 3D `false`.
 
-The full-window smoke PNG is 800x600. Each epoch reference PNG is 224x168 and has target-space origin (16, 12). Bake these zero-padding rectangles into response and helper assertions:
+For the full-window smoke capture, resolve exactly one `ScreenshotPrimaryWindowTarget` and store its canonical entity ID. After the primary-window camera mutations and immediately before capture, read `bevy_window::window::Window` from that entity with `world_get_components`; require `resolution.physical_width` and `resolution.physical_height` to be positive integers and store them. Immediately after the terminal screenshot returns, read the same component again before running the dimensions helper or making any other BRP call. Require exact pre/post width and height equality so a resize race fails explicitly, then require the full PNG dimensions to equal those stable live physical dimensions exactly and report RGB. This full-window case proves terminal stable-size RGB compatibility, not nonuniform scene content: OS presentation may legitimately be black when the primary window is minimized, hidden, screen-locked, headless, or fully occluded. Do not force a post-creation window resize: resize application is asynchronous and can race screenshot extraction.
+
+The retained offscreen target remains exactly 256x192. Each epoch reference PNG remains exactly 224x168, has target-space origin (16, 12), and must be nonuniform. These deterministic offscreen entity references carry the marker and crop-identity proof without depending on primary-window presentation. Bake these zero-padding rectangles into response and helper assertions:
 
 | Fixture | `(x, y, width, height)` |
 |---|---|
@@ -516,7 +518,7 @@ The full-window smoke PNG is 800x600. Each epoch reference PNG is 224x168 and ha
 
 Use target-space marker checks for yellow `(255, 255, 0)` at (52, 44), (112, 128), and (168, 114), plus magenta `(255, 0, 255)` at (100, 56). Compare every crop pixel against the matching reference from the same unchanged epoch, passing reference origin (16, 12) to the helper. Cover one-call `name: "NatesList"`, the same entity by direct canonical ID, UI/2D/3D, generic `contains` discovery followed by ID, zero/default/padded bounds, offset viewport, clipping, explicit camera, and both-active ambiguity.
 
-Use a unique absolute destination for each capture, clean any old file first, and call the helper's `absent` mode immediately before each screenshot except the deterministic write-failure case. A successful MCP call is terminal: assert raw BRP fields under `result`—`success`, `status: "completed"`, `path`, `note`, `working_directory`, and scoped entity fields—then validate the returned file without polling. Scoped captures always have `metadata.entity`; only a name-selected capture has `metadata.name`. A direct-ID capture may retain the entity's name inside raw `result`, but must not synthesize `metadata.name`. Neither requests nor public responses contain `capture_id`. UI success specifically asserts raw `bounds_kind: "ui"`, the computed 2D/UI camera ID, and the final clipped rectangle.
+Use a unique absolute destination for each capture, clean any old file first, and call the helper's `absent` mode immediately before each screenshot except the deterministic write-failure case. For the full-window smoke capture, the mandatory pre-capture `Window` read is the only operation between that absence proof and the screenshot call. A successful MCP call is terminal: assert raw BRP fields under `result`—`success`, `status: "completed"`, `path`, `note`, `working_directory`, and scoped entity fields—then validate the returned file without polling. Scoped captures always have `metadata.entity`; only a name-selected capture has `metadata.name`. A direct-ID capture may retain the entity's name inside raw `result`, but must not synthesize `metadata.name`. Neither requests nor public responses contain `capture_id`. UI success specifically asserts raw `bounds_kind: "ui"`, the computed 2D/UI camera ID, and the final clipped rectangle.
 
 Map negative cases to the shipped fixtures: duplicate-name composition uses `ScreenshotDuplicateName`; incomplete UI uses `ScreenshotPartialUi`; unsupported bounds use `ScreenshotUnsupported`; visibility/layer checks use `ScreenshotHiddenUi`, `ScreenshotHiddenAabb`, and `ScreenshotDisjointLayer`; UI camera mismatch explicitly requests the 3D camera for `NatesList`; and camera ambiguity captures an AABB while both fixture cameras are active. For ambiguity, assert error data reason `ambiguous_camera` and sorted candidate camera IDs. The existing `<cwd>/mcp` directory is the screenshot destination for deterministic publication failure and is exempt from the absence assertion because it must already exist; assert JSON-RPC code `-32603`, publication-failure text, and that the directory was not replaced.
 
@@ -531,8 +533,34 @@ In `.claude/integration_tests/introspection.md`, assert exact presence of `brp_e
 - `.claude/integration_tests/introspection.md` — consolidated BRP discovery assertions.
 - `.claude/scripts/integration_tests/extras_test_poll_screenshot.sh` — delete obsolete polling after removing its final references.
 - `.claude/agents/integration-tester.md` — remove obsolete poll-only Bash guidance while retaining exact PNG-helper and cleanup authorization.
-- `.claude/config/integration_tests.json` — verify registrations; edit only if necessary.
+- `.claude/commands/integration_tests.md` — require standard BRP readiness for the no-extras app, skip only extras-specific title mutation, and always run test-owned cleanup after a failure.
+- `.claude/config/integration_tests.json` — set `BEVY_BRP_SCREENSHOT_TEST=1` only for the screenshot test's `extras_app` runner entry.
+- `test-app/examples/extras_plugin.rs` — under `BEVY_BRP_SCREENSHOT_TEST`, use a 1.0 scale-factor override and skip startup minimization; without the flag, preserve the example's ordinary resolution and minimization behavior.
+- `test-app/examples/extras_plugin/screenshot_fixtures.rs` — align the unsupported fixture with the live 2D camera layer so its missing-bounds error is reachable.
+- `extras/README.md` — document terminal publication versus scene-content guarantees.
+- `extras/src/lib.rs` — document terminal publication versus scene-content guarantees in crate docs.
+- `mcp/README.md` — document terminal publication versus scene-content guarantees for MCP users.
+- `mcp/help_text/brp_extras_screenshot.txt` — include the same boundary in tool help.
 
 **Constraints from prior phases:** Phase 6 provides deterministic `extras_app`/`no_extras_app` fixtures, the exact initial 2D-only camera state and names above, separate 2D/UI and 3D reference epochs on one retained target, and the standard-library PNG helper with path-absence mode. Phases 1–3 provide the terminal full/entity extras method; Phase 4 provides extras-independent name discovery; Phase 5 provides the single MCP screenshot tool, exact-name composition, resolved entity/name metadata, and an internal-only capture UUID. Phase 1 already covers same-target concurrency, frame-stamped delivery tombstones, one-frame publication confirmation, generation-wide deadlines, destination sharing/conflicts, real watcher disconnects, stale-worker ownership, and exact Windows replacement selection; keep those as deterministic App/nextest tests rather than duplicating them in MCP integration. Runtime cases never poll screenshot paths or supply the hidden token. The write-failure destination is the sole pre-call absence exception. Restore camera state and delete all generated files before the test ends.
 
-**Acceptance gate:** Run the full `clippy` skill, workspace/default/no-default/WASM checks, `cargo nextest run --workspace`, and `/test extras_capture,introspection` after MCP reinstall/restart. Tests prove 800x600 full capture; one-call `NatesList` and direct-ID semantics; exact raw-result/MCP-metadata placement; the pinned 2D/UI and 3D rectangles, markers, and crop epochs; UI metadata; explicit camera and sorted ambiguity details; zero/default/padding behavior; terminal success and deterministic `-32603` publication failure; FPS diagnostics; generic discovery without extras; exact `-32601` BRP method-not-found details against the no-extras app; exact prohibited BRP method absence; Phase 5's MCP registry assertion; removal of polling; exact authorization; restored 2D-only camera state; and artifact cleanup.
+**Acceptance gate:** Run the full `clippy` skill, workspace/default/no-default/WASM checks, `cargo nextest run --workspace`, and `/test extras_capture,introspection` after MCP reinstall/restart. Tests prove the full capture's pre/post live primary-window physical dimensions are positive and stable and the terminal RGB PNG matches them exactly, without asserting nonuniform scene content because OS presentation may legitimately be black; the deterministic offscreen 2D/UI and 3D references remain nonuniform and carry the pinned rectangle, marker, and crop-identity proof; one-call `NatesList` and direct-ID semantics; exact raw-result/MCP-metadata placement; UI metadata; explicit camera and sorted ambiguity details; zero/default/padding behavior; terminal success and deterministic `-32603` publication failure; FPS diagnostics; generic discovery without extras; exact `-32601` BRP method-not-found details against the no-extras app; exact prohibited BRP method absence; Phase 5's MCP registry assertion; removal of polling; exact authorization; restored 2D-only camera state; and artifact cleanup.
+
+#### Retrospective
+
+**What worked:**
+- The terminal MCP call made every returned PNG immediately decodable without filesystem polling; the final live run passed all 15 capture sections and all seven introspection sections.
+- Fixed offscreen 2D/UI and 3D targets provided nonuniform marker and pixel-for-pixel crop proof even when the fully occluded primary window captured black.
+- Isolated `extras_app` and `no_extras_app` ports proved generic name discovery is independent of extras while screenshot invocation still reports the exact BRP method-not-found error without extras.
+
+**What deviated from the plan:**
+- Primary-window acceptance moved from a hardcoded 800x600 nonuniform image to positive, stable live physical dimensions and RGB completeness because macOS reported 1600x1200 and a fully occluded surface legitimately captured black.
+- `ScreenshotUnsupported` needed `TWO_D_RENDER_LAYER` so visibility validation could pass before the intended missing-`Aabb` error; `ScreenshotDisjointLayer` remains the dedicated layer-mismatch fixture.
+
+**Surprises:**
+- A successful terminal screenshot proves complete encoding and atomic publication, but the OS may stop presenting useful primary-window content when another application fully occludes it.
+- Live execution exposed fixture validation order that compile-time and deterministic unit coverage could not reveal; a fresh rerun then passed all 22 numbered sections, restored the initial camera epoch, removed 23 screenshot paths, and stopped every app.
+
+### Phase 7 Review
+
+- The final architectural review confirmed that all seven phases are complete; no follow-up phase, forward-propagated constraint, sequencing change, or user decision remains.

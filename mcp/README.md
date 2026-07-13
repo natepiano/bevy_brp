@@ -202,6 +202,12 @@ composited result, so other layers and partially covered pixels inside the bound
 Camera inference is available only when one eligible camera is unambiguous; Bevy has no universal
 primary camera.
 
+Success means the PNG is fully encoded and atomically published; it does not assert that scene
+content is nonuniform. A minimized, hidden, or fully occluded primary-window surface may
+legitimately produce a black image on platforms that stop presenting it. Entity captures reflect
+the selected camera target; retained image or other offscreen targets avoid primary-window
+presentation dependence when the application is designed to use them.
+
 Generic AABB crops are supported. Complete Bevy UI components use UI bounds when the default-enabled
 `bevy_brp_extras` `ui` feature is enabled. That feature gates the extras crate's UI resolver,
 imports, and capability; it is not a promise that upstream UI crates vanish from `cargo tree`,

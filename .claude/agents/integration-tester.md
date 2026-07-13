@@ -37,9 +37,11 @@ EOF
 ```
 
 **Bash Usage:**
-- Bash is ONLY for: reading files with the poll scripts, cleanup operations
+- Bash is ONLY for the exact PNG assertion, directory assertion, and screenshot
+  cleanup command forms listed below
 - Bash is NEVER for: creating test data, calling BRP methods, writing scripts
-- When invoking a helper script, use the EXACT path written in the test file (e.g., `bash .claude/scripts/integration_tests/extras_test_poll_screenshot.sh`). Do NOT convert relative paths to absolute paths — the permission allowlist only matches the relative form.
+- Use the relative command paths exactly as written. Do NOT convert them to absolute
+  paths; the permission allowlist only matches the relative forms.
 
 **PNG Helper Authorization:**
 - The helper is read-only and never calls BRP. BRP calls still use MCP tools directly.
@@ -51,6 +53,12 @@ EOF
   - `python3 .claude/scripts/integration_tests/extras_assert_png.py marker <path> <image_x> <image_y> <marker_x> <marker_y> <red> <green> <blue>`
   - `python3 .claude/scripts/integration_tests/extras_assert_png.py marker <path> <image_x> <image_y> <marker_x> <marker_y> <red> <green> <blue> <alpha>`
   - `python3 .claude/scripts/integration_tests/extras_assert_png.py crop <crop_path> <reference_path> <crop_x> <crop_y> <reference_x> <reference_y> <width> <height>`
+- The only authorized cleanup command form is:
+  - `bash .claude/scripts/integration_tests/cleanup_screenshots.sh <absolute_path>`
+- The only authorized directory assertion command form is:
+  - `test -d <cwd>/mcp`
+- A zero exit status from the directory assertion proves that `<cwd>/mcp` exists
+  as a directory.
 - Do not invoke the helper by absolute path, import it, add flags, or use any other Python command.
 
 **Port Requirement:**

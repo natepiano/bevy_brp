@@ -46,6 +46,11 @@
 //! ### `brp_extras/screenshot`
 //! Captures either the primary window or a bounds-backed entity and publishes a complete PNG.
 //! The watching request returns only after publication.
+//! Success means the PNG is fully encoded and atomically published; it does not assert that scene
+//! content is nonuniform. A minimized, hidden, or fully occluded primary-window surface may
+//! legitimately produce a black image on platforms that stop presenting it. Entity captures
+//! reflect the selected camera target; retained image or other offscreen targets avoid
+//! primary-window presentation dependence when the application is designed to use them.
 //! - `path` (string, required): destination file path
 //! - `capture_id` (string, optional): bounded nonempty watcher identity
 //! - `entity` (u64, optional): exact Bevy entity ID; omission captures the primary window

@@ -11,7 +11,11 @@ Validate BRP introspection capabilities including RPC discovery, schema operatio
 - Execute `mcp__brp__rpc_discover` with port parameter
 - Verify response includes at least 20 methods
 - Check for presence of core methods: `world.list_components`, `world.query`, `world.spawn_entity`, `rpc.discover`
-- Check for brp_extras methods: `brp_extras/screenshot`, `brp_extras/shutdown`
+- Check for exact presence of brp_extras methods: `brp_extras/screenshot`, `brp_extras/shutdown`
+- Check for exact absence of `brp_extras/screenshot_entity` and
+  `brp_extras/find_entities_by_name`
+- Do not use MCP tool-list inspection as proof here; this case covers only the BRP
+  methods returned by `rpc.discover`
 - Check for the application-defined method: `test/multiply`
 - Verify response includes OpenRPC version and server info
 
@@ -62,6 +66,8 @@ Validate BRP introspection capabilities including RPC discovery, schema operatio
 
 ## Expected Results
 - ✅ RPC discovery returns complete method list
+- ✅ RPC discovery includes `brp_extras/screenshot` and excludes the prohibited
+  screenshot-entity and extras name-discovery BRP methods
 - ✅ Application-defined BRP method execution accepts typed parameters and preserves handler errors
 - ✅ Registry schema provides filtered type information
 - ✅ Component listing shows registered types

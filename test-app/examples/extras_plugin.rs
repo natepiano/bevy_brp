@@ -127,6 +127,7 @@ use bevy::window::PrimaryWindow;
 use bevy::window::SystemCursorIcon;
 use bevy::window::WindowPlugin;
 use bevy::window::WindowPosition;
+use bevy::window::WindowResolution;
 use bevy::world_serialization::WorldAsset;
 use bevy::world_serialization::WorldAssetRoot;
 use bevy_brp_extras::BrpExtrasPlugin;
@@ -452,6 +453,8 @@ const UI_MARGIN: f32 = 10.0;
 const UI_NODE_SIZE: f32 = 200.0;
 
 // window
+const SCREENSHOT_TEST_ENVIRONMENT_VARIABLE: &str = "BEVY_BRP_SCREENSHOT_TEST";
+const SCREENSHOT_TEST_SCALE_FACTOR: f32 = 1.0;
 const WINDOW_HEIGHT: u32 = 600;
 const WINDOW_WIDTH: u32 = 800;
 
@@ -946,6 +949,11 @@ fn invalid_multiply_params(error: impl ToString) -> BrpError {
 fn main() {
     let brp_extras_plugin = BrpExtrasPlugin::new().port_in_title(PortDisplay::Always);
     let (port, _) = brp_extras_plugin.get_effective_port();
+    let screenshot_test_flag = std::env::var_os(SCREENSHOT_TEST_ENVIRONMENT_VARIABLE);
+    let mut resolution: WindowResolution = (WINDOW_WIDTH, WINDOW_HEIGHT).into();
+    if screenshot_test_flag.is_some() {
+        resolution.set_scale_factor_override(Some(SCREENSHOT_TEST_SCALE_FACTOR));
+    }
 
     info!("Starting BRP Extras Test on port {port}");
 
@@ -953,7 +961,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: BRP_EXTRAS_TEST_TITLE.to_string(),
-                resolution: (WINDOW_WIDTH, WINDOW_HEIGHT).into(),
+                resolution,
                 focused: false,
                 position: WindowPosition::Centered(MonitorSelection::Primary),
                 ..default()
@@ -998,7 +1006,11 @@ fn main() {
         .insert_resource(InputFocus::default())
         .add_systems(
             Startup,
-            (setup_test_entities, setup_ui, minimize_window_on_start),
+            (
+                setup_test_entities,
+                setup_ui,
+                minimize_window_on_start.run_if(move || screenshot_test_flag.is_none()),
+            ),
         )
         .add_systems(PostStartup, (setup_skybox_test, setup_scene_test))
         .add_systems(

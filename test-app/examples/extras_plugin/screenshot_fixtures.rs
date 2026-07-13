@@ -383,7 +383,10 @@ fn spawn_three_d_fixtures(
 
 fn spawn_error_and_name_fixtures(commands: &mut Commands) {
     commands.spawn((ComputedNode::default(), Name::new(PARTIAL_UI_NAME)));
-    commands.spawn(Name::new(UNSUPPORTED_NAME));
+    commands.spawn((
+        RenderLayers::layer(TWO_D_RENDER_LAYER),
+        Name::new(UNSUPPORTED_NAME),
+    ));
     commands.spawn(Name::new(UNIQUE_NAME));
     commands.spawn(Name::new(DUPLICATE_NAME));
     commands.spawn(Name::new(DUPLICATE_NAME));
