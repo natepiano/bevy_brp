@@ -41,6 +41,7 @@ pub use tools::DoubleTapGestureResult;
 pub use tools::DragMouseParams;
 pub use tools::DragMouseResult;
 pub use tools::ExecuteParams;
+pub use tools::FindEntitiesByNameParams;
 pub use tools::GetComponentsParams;
 pub use tools::GetComponentsResult;
 pub use tools::GetDiagnosticsParams;
@@ -93,6 +94,7 @@ pub use tools::TriggerEventParams;
 pub use tools::TriggerEventResult;
 pub use tools::TypeTextParams;
 pub use tools::TypeTextResult;
+pub use tools::WorldFindEntitiesByName;
 //
 // Export watch tools
 pub use watch_tools::BevyListWatch;

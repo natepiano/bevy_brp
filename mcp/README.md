@@ -23,6 +23,7 @@ A Model Context Protocol (MCP) server that enables AI coding assistants to launc
 - **Component Operations**: Get, insert, list, remove, and mutate components on entities
 - **Resource Management**: Get, insert, list, remove, and mutate resources
 - **Query System**: Entity querying with filters
+- **Name Discovery**: Find canonical entity IDs with exact, prefix, suffix, or contains matching
 - **Hierarchy Operations**: Reparent entities
 - **Type Guide**: Get proper JSON formats for BRP operations using the `brp_type_guide` tool, which provides spawn/insert examples and mutation paths for components and resources
 
@@ -136,11 +137,32 @@ the application's handler or documentation, then pass the method name and raw JS
 `brp_execute` confirms that the selected app reports the method through `rpc.discover` before
 forwarding the request.
 
+### Find entities by name
+
+`world_find_entities_by_name` is an MCP-local convenience tool built from the standard BRP
+`world.query` method. It requires `RemotePlugin` and reflected `bevy_ecs::name::Name` components,
+but does not require `bevy_brp_extras`.
+
+Names are matched case-sensitively. Set `match_mode` to `exact` (the default), `prefix`, `suffix`,
+or `contains`; `*` is always a literal character, not wildcard syntax. Results contain each full
+name and canonical `u64` entity ID, sorted by entity ID. Duplicate names return multiple entries.
+
+Use a non-exact mode to discover candidates, then pass the returned canonical entity ID to later
+inspection, mutation, watch, or screenshot operations:
+
+```json
+{
+  "name": "List",
+  "match_mode": "suffix",
+  "port": 15702
+}
+```
+
 ## Example Workflow
 
 1. **Discover**: Use `brp_list_bevy` to find available applications and examples
 2. **Launch**: Use `brp_launch` to start your game with proper logging
-3. **Inspect**: Use `world_query` to find entities of interest
+3. **Inspect**: Use `world_query` or `world_find_entities_by_name` to find entities of interest
 4. **Monitor**: Use `world_get_components_watch` to observe entity changes in real-time
 5. **Modify**: Use `world_mutate_components` to adjust entity properties
 6. **Trigger**: Use `world_trigger_event` to trigger events for your observers

@@ -51,6 +51,7 @@ use crate::brp_tools::DoubleTapGestureResult;
 use crate::brp_tools::DragMouseParams;
 use crate::brp_tools::DragMouseResult;
 use crate::brp_tools::ExecuteParams;
+use crate::brp_tools::FindEntitiesByNameParams;
 use crate::brp_tools::GetComponentsParams;
 use crate::brp_tools::GetComponentsResult;
 use crate::brp_tools::GetComponentsWatchParams;
@@ -107,6 +108,7 @@ use crate::brp_tools::TriggerEventResult;
 use crate::brp_tools::TypeGuideParams;
 use crate::brp_tools::TypeTextParams;
 use crate::brp_tools::TypeTextResult;
+use crate::brp_tools::WorldFindEntitiesByName;
 use crate::brp_tools::WorldGetComponentsWatch;
 use crate::log_tools::DeleteLogs;
 use crate::log_tools::DeleteLogsParams;
@@ -250,6 +252,8 @@ pub enum ToolName {
         result = "QueryResult"
     )]
     WorldQuery,
+    /// `world_find_entities_by_name` - Discover canonical entity IDs by reflected names
+    WorldFindEntitiesByName,
     /// `world_spawn_entity` - Spawn entities with components
     #[brp_tool(
         brp_method = "world.spawn_entity",
@@ -507,6 +511,11 @@ impl ToolName {
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
+            Self::WorldFindEntitiesByName => Annotation::new(
+                "find entities by name",
+                ToolCategory::Discovery,
+                EnvironmentImpact::ReadOnly,
+            ),
             Self::RegistrySchema => Annotation::new(
                 "get type schemas using 'registry.schema' method",
                 ToolCategory::Discovery,
@@ -736,6 +745,9 @@ impl ToolName {
                 Some(parameters::build_parameters_from::<MutateResourcesParams>)
             },
             Self::WorldQuery => Some(parameters::build_parameters_from::<QueryParams>),
+            Self::WorldFindEntitiesByName => {
+                Some(parameters::build_parameters_from::<FindEntitiesByNameParams>)
+            },
             Self::RegistrySchema => Some(parameters::build_parameters_from::<RegistrySchemaParams>),
             Self::WorldRemoveComponents => {
                 Some(parameters::build_parameters_from::<RemoveComponentsParams>)
@@ -832,6 +844,7 @@ impl ToolName {
             Self::WorldMutateComponents => Arc::new(WorldMutateComponents),
             Self::WorldMutateResources => Arc::new(WorldMutateResources),
             Self::WorldQuery => Arc::new(WorldQuery),
+            Self::WorldFindEntitiesByName => Arc::new(WorldFindEntitiesByName),
             Self::RegistrySchema => Arc::new(RegistrySchema),
             Self::WorldRemoveComponents => Arc::new(WorldRemoveComponents),
             Self::WorldRemoveResources => Arc::new(WorldRemoveResources),
@@ -896,6 +909,7 @@ impl ToolName {
 #[cfg(test)]
 mod tests {
     use rmcp::model::ToolAnnotations;
+    use serde_json::Value;
 
     use super::ToolName;
 
@@ -906,5 +920,41 @@ mod tests {
         assert_eq!(annotations.read_only_hint, Some(false));
         assert_eq!(annotations.destructive_hint, Some(true));
         assert_eq!(annotations.idempotent_hint, Some(false));
+    }
+
+    #[test]
+    fn name_discovery_is_a_registered_read_only_local_tool() {
+        let tool_name = ToolName::WorldFindEntitiesByName;
+        let annotations = ToolAnnotations::from(tool_name.get_annotations());
+
+        assert_eq!(tool_name.to_string(), "world_find_entities_by_name");
+        assert_eq!(tool_name.to_brp_method(), None);
+        assert_eq!(annotations.read_only_hint, Some(true));
+        assert_eq!(annotations.destructive_hint, None);
+        assert!(tool_name.description().contains("standard BRP"));
+        assert!(
+            crate::tool::get_all_tool_definitions()
+                .iter()
+                .any(|definition| definition.tool_name == tool_name)
+        );
+    }
+
+    #[test]
+    fn name_discovery_schema_registers_typed_parameters() {
+        let parameters = ToolName::WorldFindEntitiesByName.get_parameters();
+        assert!(parameters.is_some());
+
+        if let Some(build_parameters) = parameters {
+            let schema = build_parameters().build();
+            let properties = schema.get("properties").and_then(Value::as_object);
+            assert!(properties.is_some());
+
+            if let Some(properties) = properties {
+                assert!(properties.contains_key("name"));
+                assert!(properties.contains_key("match_mode"));
+                assert!(properties.contains_key("port"));
+            }
+            assert_eq!(schema.get("required"), Some(&serde_json::json!(["name"])));
+        }
     }
 }

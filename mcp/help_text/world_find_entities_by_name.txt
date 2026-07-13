@@ -1,0 +1,28 @@
+Discover canonical entity IDs by matching reflected Bevy Name components through standard BRP.
+
+This MCP-local composite calls world.query directly. It requires RemotePlugin and a reflected
+bevy_ecs::name::Name component, but it does not require bevy_brp_extras.
+
+Parameters:
+- name: Case-sensitive text to match.
+- match_mode: exact (default), prefix, suffix, or contains.
+- port: BRP port, default 15702.
+
+Match modes are explicit. Asterisks are ordinary characters and never act as wildcards.
+
+The result contains entries with:
+- entity: canonical u64 entity ID.
+- name: complete reflected Name value.
+
+Entries are sorted by entity ID. Duplicate names return every matching entity. No matches return an
+empty list.
+
+Examples:
+- Exact: {"name":"NatesList"}
+- Prefix: {"name":"Nates","match_mode":"prefix"}
+- Suffix: {"name":"List","match_mode":"suffix"}
+- Contains: {"name":"tesL","match_mode":"contains"}
+
+Use non-exact matching for discovery, then pass the returned canonical entity ID to mutation,
+inspection, watch, or screenshot operations. Entity IDs are the unambiguous identifier when names
+are duplicated.

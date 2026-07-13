@@ -313,7 +313,7 @@ Use `ComputedUiTargetCamera` and reject a different explicitly supplied camera. 
 - Required Phase 7 to prove UI resolver metadata and to distinguish MCP tool registration from an extras BRP method-not-found response on the no-extras fixture.
 - No user decisions or phase resequencing remain.
 
-### Phase 4 — Generic MCP entity-name discovery  · status: todo
+### Phase 4 — Generic MCP entity-name discovery  · status: done (`61061216`)
 
 #### Work Order
 
@@ -338,6 +338,33 @@ Register schema, local routing, read-only annotations, help, README, and changel
 
 **Acceptance gate:** Tests prove standard query parameters, operation without extras discovery, exact/prefix/suffix/contains, default exact, case sensitivity, literal asterisk, stable entity-ID ordering, no matches, duplicates, malformed BRP data, and clear BRP errors. Registry/schema/help tests pass with workspace check and relevant nextest tests.
 
+#### Retrospective
+
+**What worked:**
+- The generic finder is an MCP-local tool with no BRP method mapping and composes standard `world.query` directly through `BrpClient`, so applications need reflected `Name` but never `bevy_brp_extras`.
+- Typed exact/prefix/suffix/contains matching stays case-sensitive, treats asterisks literally, preserves duplicate matches, and sorts canonical entity IDs before returning them.
+- Static registration, parameters, read-only annotations, help, README, changelog, raw response decoding, and structured BRP errors landed together with focused and workspace coverage.
+
+**What deviated from the plan:**
+- No product or architecture behavior deviated. The implementation uses private minimal query wire structs instead of the public generated `world_query` parameter type, which keeps the local composite independent of the MCP wrapper while producing the specified BRP shape.
+
+**Surprises:**
+- The local `ToolName` marker needs no `brp_tool` mapping; explicit parameter registration and `ToolFn` routing make `to_brp_method()` correctly return `None` while retaining a normal MCP schema.
+- The style pass required repeated domain-specific test names and entity IDs to move into test-module constants before the final lint gate.
+
+**Implications for remaining phases:**
+- Phase 5 should reuse the shipped `pub(super)` async lookup with `NameMatchMode::Exact`, then enforce zero/one/many semantics without changing the generic finder's duplicate-preserving behavior.
+- The name resolver already returns sorted canonical IDs and structured query/decode failures; the screenshot composite should preserve those errors rather than issuing another query or calling an MCP sub-tool.
+- Runtime no-extras coverage must distinguish this registered local MCP tool from the absent extras BRP screenshot method.
+
+### Phase 4 Review
+
+- Pinned Phase 5 to `find_entities_by_name(&name, NameMatchMode::Exact, port)` and preserved the shipped sorted duplicates plus structured query/decode errors.
+- Added the module/facade re-exports Phase 5 needs when the existing screenshot tool becomes a concrete local marker; Phase 4's finder marker is already complete.
+- Made the runtime specification runner-managed with labeled extras and no-extras apps on isolated ports rather than launching the second app inside the test.
+- Kept MCP registry proof in Phase 5 and narrowed Phase 7 introspection to BRP method discovery, which is the boundary `rpc.discover` can actually prove.
+- No user decisions or phase resequencing remain.
+
 ### Phase 5 — Optional entity/name scope on the existing MCP screenshot tool  · status: todo
 
 #### Work Order
@@ -350,24 +377,25 @@ Extend existing `ScreenshotParams` with optional `entity`, optional `name`, opti
 
 - neither entity nor name: full capture; reject camera or padding;
 - entity only: send entity/camera/zero-default padding to extras;
-- name only: reuse Phase 4 exact case-sensitive standard-BRP lookup, require exactly one match, then send the resolved ID to extras;
+- name only: call `find_entities_by_name(&name, NameMatchMode::Exact, port)`, preserve its sorted duplicates and structured query/decode errors, require exactly one match, then send the resolved ID to extras;
 - both entity and name: invalid parameters;
 - zero matches: actionable error;
 - multiple matches: error with stable matching IDs and instruction to retry using `entity` or generic discovery.
 
-Implement the existing screenshot tool as a concrete local composite. Change the `ToolName::BrpExtrasScreenshot` attribute to keep only `brp_method = "brp_extras/screenshot"` without generated parameter/result fields; define the `BrpExtrasScreenshot` marker and its concrete `ToolFn` implementation in `brp_extras_screenshot.rs`. Keep `ScreenshotParams` as the MCP wire type, convert it to a private full/ID/exact-name enum, use `BrpClient` for `world.query` when required, generate a fresh UUID v4 capture ID for every screenshot invocation, then call `BrpMethod::BrpExtrasScreenshot`. Extras receives only optional entity ID and the hidden capture token, never a name. Apply the repository's corresponding local-marker pattern to `WorldFindEntitiesByName`, which has no BRP method mapping. Preserve direct BRP payload data in the recognized `result: Option<Value>` path rather than duplicating typed fields inconsistently. The tool waits for terminal extras completion and returns resolved ID/name metadata with the final PNG result.
+Implement the existing screenshot tool as a concrete local composite. Change the `ToolName::BrpExtrasScreenshot` attribute to keep only `brp_method = "brp_extras/screenshot"` without generated parameter/result fields; define the `BrpExtrasScreenshot` marker and its concrete `ToolFn` implementation in `brp_extras_screenshot.rs`, then re-export that marker through the tools module and BRP facade for `tool/name.rs`. Keep `ScreenshotParams` as the MCP wire type, convert it to a private full/ID/exact-name enum, call the shipped Phase 4 lookup when name resolution is required, generate a fresh UUID v4 capture ID for every screenshot invocation, then call `BrpMethod::BrpExtrasScreenshot`. Extras receives only optional entity ID and the hidden capture token, never a name. `WorldFindEntitiesByName` already follows the local-marker pattern and must not be reworked. Preserve direct BRP payload data in the recognized `result: Option<Value>` path rather than duplicating typed fields inconsistently. The tool waits for terminal extras completion and returns resolved ID/name metadata with the final PNG result.
 
 Update the existing help text with one-call examples for full, ID, and `name: "NatesList"`; explain exact uniqueness, generic discovery for non-exact/duplicates, zero padding, optional camera inference, no universal primary camera, optional UI support, AABB support, terminal completion, and composited crop semantics. Describe `ui` as the extras UI resolver/import/capability gate, not a guarantee that upstream UI crates disappear from `cargo tree`. Update MCP README/changelog. Do not create a screenshot-entity MCP module/tool/help file.
 
 **Files:**
 - `mcp/src/brp_tools/tools/brp_extras_screenshot.rs` — expanded params, typed scope, optional standard-BRP name resolution, extras call, and tests.
-- `mcp/src/brp_tools/tools/world_find_entities_by_name.rs` — shared exact resolver surface if Phase 4 structure requires adjustment.
+- `mcp/src/brp_tools/tools/mod.rs` — re-export the concrete screenshot marker while preserving the shipped finder exports.
+- `mcp/src/brp_tools/mod.rs` — facade re-export for screenshot routing.
 - `mcp/src/tool/name.rs` — preserve the existing screenshot tool identity while routing its composite handler.
 - `mcp/help_text/brp_extras_screenshot.txt` — consolidated examples/semantics.
 - `mcp/README.md` — consolidated screenshot documentation.
 - `mcp/CHANGELOG.md` — release entry.
 
-**Constraints from prior phases:** Phases 2–3 expose one terminal extras method with optional entity ID and AABB/UI bounds; Phase 4 exposes reusable generic name lookup. Phase 1's server deadline is 25 seconds, terminal BRP results retain frame-stamped tombstones until Bevy removes the watcher, later same-generation callers inherit the original deadline, and no caller polls the path. Names terminate in MCP; full and entity requests retain one existing MCP tool name, and every MCP invocation uses a fresh capture token.
+**Constraints from prior phases:** Phases 2–3 expose one terminal extras method with optional entity ID and AABB/UI bounds; Phase 4 exposes `find_entities_by_name(&name, NameMatchMode::Exact, port)` with sorted duplicate-preserving results and structured query/decode errors. Reuse that seam and add only zero/one/many screenshot semantics. Phase 1's server deadline is 25 seconds, terminal BRP results retain frame-stamped tombstones until Bevy removes the watcher, later same-generation callers inherit the original deadline, and no caller polls the path. Names terminate in MCP; full and entity requests retain one existing MCP tool name, and every MCP invocation uses a fresh capture token.
 
 **Acceptance gate:** Tests cover full, direct ID, unique exact name, no name match, duplicate IDs, invalid both selectors, invalid camera/padding on full capture, zero padding, final extras request never containing name, terminal result preservation, and registry proof that no screenshot-entity tool exists. Help/README show “screenshot NatesList” as one call. Workspace check and relevant nextest tests pass.
 
@@ -381,7 +409,7 @@ Update the existing help text with one-call examples for full, ID, and `name: "N
 
 Add stable named fixtures: fixed-size UI; rotated/clipped UI; a distinct partially initialized UI entity; transformed 2D AABB with `Camera2d`; transformed 3D AABB with `Camera3d`; a wholly unsupported entity; duplicate/unique/unnamed names including `NatesList`; explicit nonzero viewport; hidden entities; disjoint render layers; and distinctive interior/edge colors. Let real Bevy UI layout and propagation produce complete computed node, target-camera, and render-target state before capture; preserve the test app's default UI features rather than fabricating the complete runtime fixture. Render exact-coordinate cases to a fixed-size image/manual target and retain its asset handle plus every backing GPU/manual-view resource for the entire runtime test. Use that same live-validated camera/target for the named reference entity whose bounds cover the entire target and for every cropped comparison entity. Compare smaller entity crops against the reference PNG because full scope intentionally captures only the primary window. Retain a separate primary-window full-capture smoke fixture. Keep the second camera inactive except in the ambiguity case so it does not invalidate ordinary inferred-camera cases.
 
-Update `test-app/examples/no_extras_plugin.rs` to accept the runner-provided isolated BRP port rather than hard-coding port 25000. Configure it as a second runtime fixture for extras-independent discovery. It enables standard BRP and reflected `Name`, but never `bevy_brp_extras`.
+Update `test-app/examples/no_extras_plugin.rs` to read the runner-provided `BRP_EXTRAS_PORT` rather than hard-coding port 25000. Change the `extras_capture` integration-test config to an `apps` array with labeled extras and no-extras instances, each on a dynamically isolated runner-managed port. The no-extras app enables standard BRP and reflected `Name`, but never `bevy_brp_extras`.
 
 Add a read-only repository helper that parses a complete PNG, reports dimensions, detects uniform images, checks fixture-marker pixels, and compares every entity-crop pixel with the corresponding rectangle from the full-target reference entity PNG. Authorize only this helper in `integration-tester.md`; it must not call BRP. Assert returned rectangles against known fixed-target coordinates. Keep same-target concurrency, deadlines, disconnects, completion/timeout contention, and late-worker suppression in deterministic Phase 1/2 nextest/App tests.
 
@@ -391,7 +419,7 @@ Add a read-only repository helper that parses a complete PNG, reports dimensions
 - `.claude/scripts/integration_tests/extras_assert_png.py` — read-only dimensions/uniformity/marker/exact-crop comparison helper.
 - `.claude/scripts/integration_tests/test_extras_assert_png.py` — unit tests for valid, malformed, incomplete, uniform, marker-mismatch, and crop-mismatch inputs.
 - `.claude/agents/integration-tester.md` — authorize generic find and the PNG assertion helper while retaining screenshot access.
-- `.claude/config/integration_tests.json` — configure extras and no-extras applications with isolated ports for the runtime specification.
+- `.claude/config/integration_tests.json` — configure labeled extras and no-extras applications as a runner-managed `apps` array with isolated ports.
 
 **Constraints from prior phases:** Phases 1–3 provide terminal full/entity capture through the existing method and ownership-based capture modules; Phases 4–5 provide generic discovery and one-call named scope. The helper is read-only, never calls BRP, and consumes only paths returned after terminal completion. Image-target identity uses the full-target reference entity, never an unavailable arbitrary-target full screenshot.
 
@@ -407,9 +435,9 @@ Add a read-only repository helper that parses a complete PNG, reports dimensions
 
 Extend `.claude/integration_tests/extras_capture.md` for primary-window full terminal capture; one-call `name: "NatesList"`; direct ID; UI/2D/3D; generic non-exact discovery then ID; duplicate ambiguity; unsupported/uninitialized entity; explicit/ambiguous camera; zero/default/padded bounds; offset viewport; clipping; and write failure. Use unique destinations, remove old files, prove final paths are absent before calls and complete on return, validate terminal fields/resolved ID/rect, and run the Phase 6 helper for dimensions, nonuniformity, marker pixels, and exact crop equality against the fixed-target reference entity. UI success must assert `bounds_kind: "ui"`, the computed camera ID, and the final clipped rectangle so the test proves the UI resolver path. Never poll screenshot paths.
 
-Launch the Phase 6 no-extras fixture on its isolated port before the discovery check. Call `world_find_entities_by_name` against that port and verify it succeeds. The MCP registry still contains `brp_extras_screenshot`, so invoking it against this app must return the underlying BRP method-not-found error rather than being described as an unavailable MCP tool. Keep the ambiguity camera inactive until its dedicated case.
+Use the runner-prelaunched labeled extras and no-extras applications and their label-specific isolated ports. Call `world_find_entities_by_name` against the no-extras port and verify it succeeds. The MCP registry still contains `brp_extras_screenshot`, so invoking it against this app must return the underlying BRP method-not-found error rather than being described as an unavailable MCP tool. Keep the ambiguity camera inactive until its dedicated case.
 
-Retire/repurpose the polling helper. Introspection proves existing `brp_extras/screenshot` remains and neither screenshot-entity nor extras name methods exist. Keep existing runner registrations unless fixture invocation requires change. Install the MCP binary, restart the MCP client session, use isolated ports, and remove artifacts.
+Retire/repurpose the polling helper. BRP `rpc.discover` introspection proves existing `brp_extras/screenshot` remains and neither screenshot-entity nor extras name BRP methods exist. Phase 5's MCP registry test owns proof that no screenshot-entity MCP tool was added. Keep existing runner registrations unless fixture invocation requires change. Install the MCP binary, restart the MCP client session, use isolated ports, and remove artifacts.
 
 **Files:**
 - `.claude/integration_tests/extras_capture.md` — runtime cases and assertions.
@@ -419,4 +447,4 @@ Retire/repurpose the polling helper. Introspection proves existing `brp_extras/s
 
 **Constraints from prior phases:** Phase 6 provides deterministic extras/no-extras fixtures and the PNG helper; Phases 1–5 provide the final terminal APIs. Phase 1 already covers same-target concurrency, frame-stamped delivery tombstones, one-frame publication confirmation, generation-wide deadlines, destination sharing/conflicts, real watcher disconnects, stale-worker ownership, and exact Windows replacement selection; keep those as deterministic App/nextest tests rather than duplicating them in MCP integration. Runtime cases never poll screenshot paths.
 
-**Acceptance gate:** Run the full `clippy` skill, workspace/default/no-default/WASM checks, `cargo nextest run --workspace`, and `/test extras_capture,introspection` after MCP reinstall/restart. Tests prove full and `NatesList` captures, direct ID, UI/2D/3D exact crop identity and UI metadata, terminal failures, camera ambiguity, zero padding, generic discovery without extras, BRP method-not-found for the screenshot tool against the no-extras app, absence of new BRP/MCP variants, authorization, and cleanup.
+**Acceptance gate:** Run the full `clippy` skill, workspace/default/no-default/WASM checks, `cargo nextest run --workspace`, and `/test extras_capture,introspection` after MCP reinstall/restart. Tests prove full and `NatesList` captures, direct ID, UI/2D/3D exact crop identity and UI metadata, terminal failures, camera ambiguity, zero padding, generic discovery without extras, BRP method-not-found for the screenshot tool against the no-extras app, absence of new BRP method variants, Phase 5's MCP registry assertion, authorization, and cleanup.
