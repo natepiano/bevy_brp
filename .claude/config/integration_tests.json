@@ -64,8 +64,18 @@
     {
       "test_name": "extras_capture",
       "test_file": ".claude/integration_tests/extras_capture.md",
-      "app_name": "extras_plugin",
-      "app_type": "example"
+      "apps": [
+        {
+          "app_name": "extras_plugin",
+          "app_type": "example",
+          "label": "extras_app"
+        },
+        {
+          "app_name": "no_extras_plugin",
+          "app_type": "example",
+          "label": "no_extras_app"
+        }
+      ]
     },
     {
       "test_name": "list",

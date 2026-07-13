@@ -1,7 +1,7 @@
 ---
 name: integration-tester
 description: Execute BRP integration tests by calling MCP tools directly against running Bevy apps
-tools: Read, Bash, mcp__brp__world_spawn_entity, mcp__brp__world_mutate_components, mcp__brp__world_mutate_resources, mcp__brp__world_insert_resources, mcp__brp__world_query, mcp__brp__world_trigger_event, mcp__brp__brp_shutdown, mcp__brp__brp_launch, mcp__brp__brp_status, mcp__brp__brp_extras_set_window_title, mcp__brp__rpc_discover, mcp__brp__registry_schema, mcp__brp__brp_type_guide, mcp__brp__brp_all_type_guides, mcp__brp__world_insert_components, mcp__brp__world_get_components, mcp__brp__world_remove_components, mcp__brp__world_despawn_entity, mcp__brp__world_list_components, mcp__brp__world_get_resources, mcp__brp__world_list_resources, mcp__brp__world_remove_resources, mcp__brp__brp_extras_screenshot, mcp__brp__brp_extras_send_keys, mcp__brp__brp_extras_type_text, mcp__brp__world_reparent_entities, mcp__brp__brp_list_active_watches, mcp__brp__brp_stop_watch, mcp__brp__world_get_components_watch, mcp__brp__world_list_components_watch, mcp__brp__brp_list_bevy, mcp__brp__brp_extras_click_mouse, mcp__brp__brp_extras_move_mouse, mcp__brp__brp_extras_send_mouse_button, mcp__brp__brp_extras_double_click_mouse, mcp__brp__brp_extras_drag_mouse, mcp__brp__brp_extras_scroll_mouse, mcp__brp__brp_extras_pinch_gesture, mcp__brp__brp_extras_rotation_gesture, mcp__brp__brp_extras_double_tap_gesture, mcp__brp__brp_extras_get_diagnostics, mcp__brp__brp_execute, mcp__brp__brp_list_logs, mcp__brp__brp_read_log, mcp__brp__brp_delete_logs, mcp__brp__brp_get_trace_log_path, mcp__brp__brp_set_tracing_level
+tools: Read, Bash, mcp__brp__world_spawn_entity, mcp__brp__world_mutate_components, mcp__brp__world_mutate_resources, mcp__brp__world_insert_resources, mcp__brp__world_query, mcp__brp__world_find_entities_by_name, mcp__brp__world_trigger_event, mcp__brp__brp_shutdown, mcp__brp__brp_launch, mcp__brp__brp_status, mcp__brp__brp_extras_set_window_title, mcp__brp__rpc_discover, mcp__brp__registry_schema, mcp__brp__brp_type_guide, mcp__brp__brp_all_type_guides, mcp__brp__world_insert_components, mcp__brp__world_get_components, mcp__brp__world_remove_components, mcp__brp__world_despawn_entity, mcp__brp__world_list_components, mcp__brp__world_get_resources, mcp__brp__world_list_resources, mcp__brp__world_remove_resources, mcp__brp__brp_extras_screenshot, mcp__brp__brp_extras_send_keys, mcp__brp__brp_extras_type_text, mcp__brp__world_reparent_entities, mcp__brp__brp_list_active_watches, mcp__brp__brp_stop_watch, mcp__brp__world_get_components_watch, mcp__brp__world_list_components_watch, mcp__brp__brp_list_bevy, mcp__brp__brp_extras_click_mouse, mcp__brp__brp_extras_move_mouse, mcp__brp__brp_extras_send_mouse_button, mcp__brp__brp_extras_double_click_mouse, mcp__brp__brp_extras_drag_mouse, mcp__brp__brp_extras_scroll_mouse, mcp__brp__brp_extras_pinch_gesture, mcp__brp__brp_extras_rotation_gesture, mcp__brp__brp_extras_double_tap_gesture, mcp__brp__brp_extras_get_diagnostics, mcp__brp__brp_execute, mcp__brp__brp_list_logs, mcp__brp__brp_read_log, mcp__brp__brp_delete_logs, mcp__brp__brp_get_trace_log_path, mcp__brp__brp_set_tracing_level
 model: haiku
 
 ---
@@ -40,6 +40,18 @@ EOF
 - Bash is ONLY for: reading files with the poll scripts, cleanup operations
 - Bash is NEVER for: creating test data, calling BRP methods, writing scripts
 - When invoking a helper script, use the EXACT path written in the test file (e.g., `bash .claude/scripts/integration_tests/extras_test_poll_screenshot.sh`). Do NOT convert relative paths to absolute paths — the permission allowlist only matches the relative form.
+
+**PNG Helper Authorization:**
+- The helper is read-only and never calls BRP. BRP calls still use MCP tools directly.
+- Only these exact relative command forms are authorized:
+  - `python3 .claude/scripts/integration_tests/extras_assert_png.py absent <path>`
+  - `python3 .claude/scripts/integration_tests/extras_assert_png.py present <path>`
+  - `python3 .claude/scripts/integration_tests/extras_assert_png.py dimensions <path> <width> <height>`
+  - `python3 .claude/scripts/integration_tests/extras_assert_png.py nonuniform <path>`
+  - `python3 .claude/scripts/integration_tests/extras_assert_png.py marker <path> <image_x> <image_y> <marker_x> <marker_y> <red> <green> <blue>`
+  - `python3 .claude/scripts/integration_tests/extras_assert_png.py marker <path> <image_x> <image_y> <marker_x> <marker_y> <red> <green> <blue> <alpha>`
+  - `python3 .claude/scripts/integration_tests/extras_assert_png.py crop <crop_path> <reference_path> <crop_x> <crop_y> <reference_x> <reference_y> <width> <height>`
+- Do not invoke the helper by absolute path, import it, add flags, or use any other Python command.
 
 **Port Requirement:**
 - Every MCP tool call MUST include the port parameter from your prompt

@@ -5,6 +5,8 @@
 //!
 //! Run with: cargo run --example `no_extras_plugin`
 
+use std::env;
+
 use bevy::prelude::*;
 use bevy::window::MonitorSelection;
 use bevy::window::PrimaryWindow;
@@ -13,10 +15,12 @@ use bevy::window::WindowPosition;
 use bevy_remote::RemotePlugin;
 use bevy_remote::http::RemoteHttpPlugin;
 
+const BRP_EXTRAS_PORT_ENV: &str = "BRP_EXTRAS_PORT";
+const DUPLICATE_NAME: &str = "NoExtrasDuplicate";
 const ENTITY_ONE_NAME: &str = "TestEntity1";
 const ENTITY_TWO_NAME: &str = "TestEntity2";
-/// Hard-coded port for this example (to avoid conflicts)
-const FIXED_PORT: u16 = 25000;
+const FALLBACK_PORT: u16 = 25000;
+const NATES_LIST_NAME: &str = "NatesList";
 const STATUS_FONT_SIZE: f32 = 24.0;
 const STATUS_LEFT: f32 = 20.0;
 const STATUS_TOP: f32 = 20.0;
@@ -26,12 +30,20 @@ const WINDOW_HEIGHT: u32 = 600;
 const WINDOW_WIDTH: u32 = 800;
 
 fn main() {
-    info!("Starting BRP No Plugin Test on port {FIXED_PORT}");
+    let port = match configured_port() {
+        Ok(port) => port,
+        Err(error) => {
+            eprintln!("Cannot start BRP No Plugin Test: {error}");
+            return;
+        },
+    };
+
+    info!("Starting BRP No Plugin Test on port {port}");
 
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: format!("BRP No Plugin Test - Port {FIXED_PORT}"),
+                title: format!("BRP No Plugin Test - Port {port}"),
                 resolution: (WINDOW_WIDTH, WINDOW_HEIGHT).into(),
                 focused: false,
                 position: WindowPosition::Centered(MonitorSelection::Primary),
@@ -41,13 +53,29 @@ fn main() {
         }))
         .add_plugins((
             RemotePlugin::default(),
-            RemoteHttpPlugin::default().with_port(FIXED_PORT),
+            RemoteHttpPlugin::default().with_port(port),
         ))
+        .insert_resource(CurrentPort(port))
         .add_systems(
             Startup,
             (setup_test_entities, setup_ui, minimize_window_on_start),
         )
         .run();
+}
+
+#[derive(Resource)]
+struct CurrentPort(u16);
+
+fn configured_port() -> Result<u16, String> {
+    match env::var(BRP_EXTRAS_PORT_ENV) {
+        Ok(value) => value.parse::<u16>().map_err(|error| {
+            format!("{BRP_EXTRAS_PORT_ENV} must be a valid u16 port, got {value:?}: {error}")
+        }),
+        Err(env::VarError::NotPresent) => Ok(FALLBACK_PORT),
+        Err(env::VarError::NotUnicode(_)) => {
+            Err(format!("{BRP_EXTRAS_PORT_ENV} must contain Unicode digits"))
+        },
+    }
 }
 
 /// Minimize the window immediately on startup
@@ -73,18 +101,24 @@ fn setup_test_entities(mut commands: Commands) {
         Name::new(ENTITY_TWO_NAME),
     ));
 
-    info!("Test entities spawned. BRP server running on http://localhost:{FIXED_PORT}");
+    commands.spawn(Name::new(NATES_LIST_NAME));
+    commands.spawn(Name::new(DUPLICATE_NAME));
+    commands.spawn(Name::new(DUPLICATE_NAME));
+    commands.spawn(Transform::default());
+
+    info!("Test entities spawned");
 }
 
 /// Setup minimal UI
-fn setup_ui(mut commands: Commands) {
+fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
     // Camera for rendering
     commands.spawn(Camera2d);
 
     // Simple text showing app status
     commands.spawn((
         Text::new(format!(
-            "BRP No Plugin Test\nPort: {FIXED_PORT}\n\nBasic BRP only (no extras)"
+            "BRP No Plugin Test\nPort: {}\n\nBasic BRP only (no extras)",
+            port.0
         )),
         TextFont {
             font_size: FontSize::Px(STATUS_FONT_SIZE),

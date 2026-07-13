@@ -14,6 +14,9 @@
     reason = "false positive on enum struct variant fields"
 )]
 
+#[path = "extras_plugin/screenshot_fixtures.rs"]
+mod screenshot_fixtures;
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -960,6 +963,7 @@ fn main() {
         .add_plugins(brp_extras_plugin)
         .add_plugins(ParameterizedBrpPlugin)
         .add_plugins(MeshPickingPlugin)
+        .add_plugins(screenshot_fixtures::ScreenshotFixturesPlugin)
         .init_resource::<KeyboardInputHistory>()
         .init_resource::<TextInputContent>()
         .init_resource::<GlobalsUniform>()

@@ -429,7 +429,7 @@ Update the existing help text with one-call examples for full, ID, and `name: "N
 - Made write failure deterministic through an existing-directory destination and preserved the current FPS diagnostics coverage while removing polling.
 - No user decisions or phase-order changes remain.
 
-### Phase 6 — Runtime fixtures and PNG assertion tooling  · status: todo
+### Phase 6 — Runtime fixtures and PNG assertion tooling  · status: done (`1f0032e6`)
 
 #### Work Order
 
@@ -458,6 +458,34 @@ Add a read-only Python-standard-library helper for the emitted non-interlaced 8-
 
 **Acceptance gate:** Fixture setup is deterministic at fixed target size; 2D/UI and 3D comparisons use separate ordered references from unchanged camera epochs; complete UI state comes from real layout/propagation; partial UI and wholly unsupported fixtures remain distinct; expected rectangles/colors are documented; the root example remains setup wiring; and the no-extras port fallback still works. Standard-library helper tests prove RGB/RGBA dimensions, uniform detection, marker checks, exact crop equality, explicit path-absence checks, malformed/incomplete PNG failure, and nonzero exit on mismatch. Integration-tester authorization permits only exact helper command forms and required MCP tools. Workspace check and relevant nextest/helper tests pass.
 
+#### Retrospective
+
+**What worked:**
+- The fixture implementation stayed out of the already-large example root: `extras_plugin.rs` only registers `ScreenshotFixturesPlugin`, while the retained target, cameras, UI, AABBs, names, and error cases live in `screenshot_fixtures.rs`.
+- One retained 256x192 image target with a 224x168 viewport at (16, 12) provides stable, documented target-space geometry for both the 2D/UI and 3D epochs.
+- The runner now prelaunches isolated `extras_app` and `no_extras_app` instances; the latter reads `BRP_EXTRAS_PORT`, keeps 25000 as its standalone fallback, exposes reflected names through standard BRP, and never loads extras.
+- The standard-library PNG helper validates complete RGB/RGBA PNGs, all five row filters, dimensions, nonuniformity, target-space markers, exact reference crops, and expected path state without making BRP calls.
+
+**What deviated from the plan:**
+- The fixture plugin establishes the 2D/UI-only epoch during `PostStartup` rather than exposing a custom runtime control resource. Phase 7 can drive every later epoch through the existing reflected `Camera.is_active` field and stable camera names.
+- Review hardened the helper beyond the original cases with a 64 MiB decoded-scanline limit and first-row filters 1–4 for both RGB and RGBA, preventing malformed dimensions from escaping as `OverflowError`, `MemoryError`, or a traceback.
+
+**Surprises:**
+- A read-only reviewer cannot execute the Python suite because `TemporaryDirectory` needs a writable directory; the writable implementation session ran all 10 tests successfully, while the reviewer completed static validation and workspace/example checks.
+- Direct-ID captures can retain the entity's reflected name inside the raw extras result even though the MCP composite correctly omits `metadata.name`; Phase 7 must distinguish those layers.
+
+**Implications for remaining phases:**
+- Phase 7 must explicitly run primary-window, 2D/UI, 3D, and both-active camera epochs, then restore the fixture's initial 2D-only state.
+- Every generated PNG is terminal when the MCP call returns and can be passed directly to the helper. The existing polling script and its remaining authorization text are obsolete.
+- The fixed names, rectangles, marker coordinates, app labels, component type path, response locations, and no-extras error shape below are the delegation contract for the runtime test.
+
+### Phase 6 Review
+
+- A fresh blind code review approved the complete Phase 6 diff after the decoded-size and first-row-filter fixes, with no remaining blocker, minor, or nit findings.
+- The remaining-plan architectural review pinned Phase 7 to the shipped camera names and `Camera.is_active` mutation path, exact fixture geometry, separate raw-result and MCP-metadata assertions, deterministic no-extras/write-failure errors, and final camera/artifact cleanup.
+- Added the integration-tester agent file to Phase 7 so retiring polling also removes its stale Bash guidance and example.
+- No user decisions or phase-order changes remain.
+
 ### Phase 7 — MCP runtime integration execution  · status: todo
 
 #### Work Order
@@ -466,18 +494,45 @@ Add a read-only Python-standard-library helper for the emitted non-interlaced 8-
 
 **Spec:**
 
-Extend `.claude/integration_tests/extras_capture.md` for primary-window full terminal capture; one-call `name: "NatesList"`; direct ID; UI/2D/3D; generic non-exact discovery then ID; duplicate ambiguity; unsupported/uninitialized entity; explicit/ambiguous camera; zero/default/padded bounds; offset viewport; clipping; deterministic write failure; and the existing FPS diagnostics assertions. Use unique destinations, remove old files, and use the Phase 6 helper's absence mode before each call. A successful call needs no later polling: validate terminal fields under the preserved raw `result` object, resolved `entity`/`name` under MCP metadata, and the returned rectangle, then run the helper for dimensions, nonuniformity, marker pixels, and exact crop equality against the reference from the same camera epoch. Named capture must return both the canonical ID and exact name; direct-ID capture returns the canonical ID without synthesizing a name. Neither test supplies nor expects the internal `capture_id`. UI success must assert `bounds_kind: "ui"`, the computed camera ID, and the final clipped rectangle so the test proves the UI resolver path. Use the existing `<cwd>/mcp` directory itself as the destination for the write-failure case so publication fails deterministically without permission assumptions. Remove every polling instruction while retaining diagnostics coverage.
+Rewrite `.claude/integration_tests/extras_capture.md` around the runner-prelaunched `extras_app` and `no_extras_app` label-specific ports; do not retain the old single `{{PORT}}` wording and do not launch or stop either app. On `extras_app`, resolve these exact names before capture: `ScreenshotPrimaryWindowCamera`, `Screenshot2dUiCamera`, `Screenshot3dCamera`, `Screenshot2dUiReference`, `NatesList`, `ScreenshotRotatedClippedUi`, `Screenshot2dAabb`, `Screenshot3dReference`, `Screenshot3dAabb`, and every error fixture used below. Use `world_mutate_components` with component `bevy_camera::camera::Camera`, path `.is_active`, and boolean values to drive this exact sequence:
 
-Use the runner-prelaunched `extras_app` and `no_extras_app` applications and their label-specific isolated ports. Resolve the stable 2D/UI and 3D camera names, mutate `Camera::is_active`, and execute the 2D/UI reference-and-crop epoch followed by the 3D reference-and-crop epoch; activate both cameras only for the ambiguity case. Call `world_find_entities_by_name` against the no-extras port and verify it succeeds. The MCP registry still contains `brp_extras_screenshot`, so invoking it against this app must return JSON-RPC code `-32601` with method `brp_extras/screenshot`, not an unavailable-MCP-tool error.
+1. Primary-window smoke: primary `true`, 2D/UI `false`, 3D `false`.
+2. 2D/UI epoch: primary `false`, 2D/UI `true`, 3D `false`.
+3. 3D epoch: primary `false`, 2D/UI `false`, 3D `true`.
+4. Ambiguity case only: primary `false`, 2D/UI `true`, 3D `true`.
+5. Cleanup: restore the initial state, primary `false`, 2D/UI `true`, 3D `false`.
 
-Retire/repurpose the polling helper. BRP `rpc.discover` introspection must prove `brp_extras/screenshot` remains and the exact prohibited method names `brp_extras/screenshot_entity` and `brp_extras/find_entities_by_name` are absent. Phase 5's MCP registry test owns proof that no screenshot-entity MCP tool was added. Keep existing runner registrations unless fixture invocation requires change. Install the MCP binary, restart the MCP client session, use isolated ports, and remove artifacts.
+The full-window smoke PNG is 800x600. Each epoch reference PNG is 224x168 and has target-space origin (16, 12). Bake these zero-padding rectangles into response and helper assertions:
+
+| Fixture | `(x, y, width, height)` |
+|---|---|
+| `Screenshot2dUiReference` | `(16, 12, 224, 168)` |
+| `NatesList` | `(40, 32, 64, 48)` |
+| `ScreenshotRotatedClippedUi` | `(132, 40, 32, 56)` |
+| `Screenshot2dAabb` | `(106, 98, 12, 60)` |
+| `Screenshot2dAabb` with padding 4 | `(102, 94, 20, 68)` |
+| `Screenshot3dReference` | `(16, 12, 224, 168)` |
+| `Screenshot3dAabb` | `(162, 90, 12, 48)` |
+
+Use target-space marker checks for yellow `(255, 255, 0)` at (52, 44), (112, 128), and (168, 114), plus magenta `(255, 0, 255)` at (100, 56). Compare every crop pixel against the matching reference from the same unchanged epoch, passing reference origin (16, 12) to the helper. Cover one-call `name: "NatesList"`, the same entity by direct canonical ID, UI/2D/3D, generic `contains` discovery followed by ID, zero/default/padded bounds, offset viewport, clipping, explicit camera, and both-active ambiguity.
+
+Use a unique absolute destination for each capture, clean any old file first, and call the helper's `absent` mode immediately before each screenshot except the deterministic write-failure case. A successful MCP call is terminal: assert raw BRP fields under `result`—`success`, `status: "completed"`, `path`, `note`, `working_directory`, and scoped entity fields—then validate the returned file without polling. Scoped captures always have `metadata.entity`; only a name-selected capture has `metadata.name`. A direct-ID capture may retain the entity's name inside raw `result`, but must not synthesize `metadata.name`. Neither requests nor public responses contain `capture_id`. UI success specifically asserts raw `bounds_kind: "ui"`, the computed 2D/UI camera ID, and the final clipped rectangle.
+
+Map negative cases to the shipped fixtures: duplicate-name composition uses `ScreenshotDuplicateName`; incomplete UI uses `ScreenshotPartialUi`; unsupported bounds use `ScreenshotUnsupported`; visibility/layer checks use `ScreenshotHiddenUi`, `ScreenshotHiddenAabb`, and `ScreenshotDisjointLayer`; UI camera mismatch explicitly requests the 3D camera for `NatesList`; and camera ambiguity captures an AABB while both fixture cameras are active. For ambiguity, assert error data reason `ambiguous_camera` and sorted candidate camera IDs. The existing `<cwd>/mcp` directory is the screenshot destination for deterministic publication failure and is exempt from the absence assertion because it must already exist; assert JSON-RPC code `-32603`, publication-failure text, and that the directory was not replaced.
+
+Against `no_extras_app`, use standard-BRP `world_find_entities_by_name` to find the unique `NatesList` and sorted duplicate `NoExtrasDuplicate` IDs. Then invoke the still-registered MCP screenshot tool with `name: "NatesList"` on that port and assert `status: "error"`, `metadata.method: "brp_extras/screenshot"`, `metadata.code: -32601`, and the no-extras port—not an unavailable-MCP-tool error.
+
+Delete `.claude/scripts/integration_tests/extras_test_poll_screenshot.sh` after removing its final references. Update `.claude/agents/integration-tester.md` so Bash guidance no longer says helpers are poll scripts or uses the obsolete poll command as its example; retain only the exact authorized PNG-helper and cleanup command forms. Preserve the existing FPS diagnostics cases. Require cleanup assertions for every generated PNG and restoration of the 2D-only camera state even after the negative cases.
+
+In `.claude/integration_tests/introspection.md`, assert exact presence of `brp_extras/screenshot` and exact absence of `brp_extras/screenshot_entity` and `brp_extras/find_entities_by_name`. Phase 5's MCP registry test owns proof that no screenshot-entity MCP tool was added. Keep the Phase 6 runner registrations unless invocation proves a change necessary. Install the MCP binary, restart the MCP client session, use the isolated label ports, run the integration cases, and remove artifacts.
 
 **Files:**
 - `.claude/integration_tests/extras_capture.md` — runtime cases and assertions.
 - `.claude/integration_tests/introspection.md` — consolidated BRP discovery assertions.
-- `.claude/scripts/integration_tests/extras_test_poll_screenshot.sh` — retire/repurpose obsolete polling.
+- `.claude/scripts/integration_tests/extras_test_poll_screenshot.sh` — delete obsolete polling after removing its final references.
+- `.claude/agents/integration-tester.md` — remove obsolete poll-only Bash guidance while retaining exact PNG-helper and cleanup authorization.
 - `.claude/config/integration_tests.json` — verify registrations; edit only if necessary.
 
-**Constraints from prior phases:** Phase 6 provides deterministic `extras_app`/`no_extras_app` fixtures, stable named camera controls, separate 2D/UI and 3D reference epochs on one retained target, and the standard-library PNG helper with path-absence mode. Phases 1–3 provide the terminal full/entity extras method; Phase 4 provides extras-independent name discovery; Phase 5 provides the single MCP screenshot tool, exact-name composition, resolved entity/name metadata, and an internal-only capture UUID. Phase 1 already covers same-target concurrency, frame-stamped delivery tombstones, one-frame publication confirmation, generation-wide deadlines, destination sharing/conflicts, real watcher disconnects, stale-worker ownership, and exact Windows replacement selection; keep those as deterministic App/nextest tests rather than duplicating them in MCP integration. Runtime cases never poll screenshot paths or supply the hidden token.
+**Constraints from prior phases:** Phase 6 provides deterministic `extras_app`/`no_extras_app` fixtures, the exact initial 2D-only camera state and names above, separate 2D/UI and 3D reference epochs on one retained target, and the standard-library PNG helper with path-absence mode. Phases 1–3 provide the terminal full/entity extras method; Phase 4 provides extras-independent name discovery; Phase 5 provides the single MCP screenshot tool, exact-name composition, resolved entity/name metadata, and an internal-only capture UUID. Phase 1 already covers same-target concurrency, frame-stamped delivery tombstones, one-frame publication confirmation, generation-wide deadlines, destination sharing/conflicts, real watcher disconnects, stale-worker ownership, and exact Windows replacement selection; keep those as deterministic App/nextest tests rather than duplicating them in MCP integration. Runtime cases never poll screenshot paths or supply the hidden token. The write-failure destination is the sole pre-call absence exception. Restore camera state and delete all generated files before the test ends.
 
-**Acceptance gate:** Run the full `clippy` skill, workspace/default/no-default/WASM checks, `cargo nextest run --workspace`, and `/test extras_capture,introspection` after MCP reinstall/restart. Tests prove full and `NatesList` captures, direct ID, metadata/raw-result placement, separate 2D/UI and 3D exact crop epochs, UI metadata, terminal and deterministic publication failures, camera ambiguity, zero padding, FPS diagnostics, generic discovery without extras, exact `-32601` BRP method-not-found details for the screenshot tool against the no-extras app, exact absence of prohibited BRP method names, Phase 5's MCP registry assertion, authorization, and cleanup.
+**Acceptance gate:** Run the full `clippy` skill, workspace/default/no-default/WASM checks, `cargo nextest run --workspace`, and `/test extras_capture,introspection` after MCP reinstall/restart. Tests prove 800x600 full capture; one-call `NatesList` and direct-ID semantics; exact raw-result/MCP-metadata placement; the pinned 2D/UI and 3D rectangles, markers, and crop epochs; UI metadata; explicit camera and sorted ambiguity details; zero/default/padding behavior; terminal success and deterministic `-32603` publication failure; FPS diagnostics; generic discovery without extras; exact `-32601` BRP method-not-found details against the no-extras app; exact prohibited BRP method absence; Phase 5's MCP registry assertion; removal of polling; exact authorization; restored 2D-only camera state; and artifact cleanup.
