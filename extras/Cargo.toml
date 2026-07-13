@@ -44,8 +44,9 @@ image.workspace = true
 tempfile.workspace = true
 
 [features]
-default     = ["diagnostics"]
+default     = ["diagnostics", "ui"]
 diagnostics = []
+ui          = ["bevy/bevy_ui"]
 
 [dev-dependencies]
 async-channel.workspace = true

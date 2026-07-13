@@ -105,6 +105,8 @@ pub(crate) const RESPONSE_Y_FIELD: &str = "y";
 pub(crate) const MAX_SCREENSHOT_CAPTURE_ID_BYTES: usize = 128;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const SCREENSHOT_BOUNDS_KIND_AABB: &str = "aabb";
+#[cfg(all(feature = "ui", not(target_arch = "wasm32")))]
+pub(crate) const SCREENSHOT_BOUNDS_KIND_UI: &str = "ui";
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const SCREENSHOT_CAMERA_REASON_AMBIGUOUS: &str = "ambiguous_camera";
 #[cfg(not(target_arch = "wasm32"))]

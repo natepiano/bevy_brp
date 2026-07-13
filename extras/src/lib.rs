@@ -44,7 +44,7 @@
 //! ## App Lifecycle
 //!
 //! ### `brp_extras/screenshot`
-//! Captures either the primary window or an AABB-backed entity and publishes a complete PNG.
+//! Captures either the primary window or a bounds-backed entity and publishes a complete PNG.
 //! The watching request returns only after publication.
 //! - `path` (string, required): destination file path
 //! - `capture_id` (string, optional): bounded nonempty watcher identity
@@ -53,11 +53,16 @@
 //! - `padding` (u32, optional): physical pixels added around entity bounds; requires `entity` and
 //!   defaults to zero
 //!
-//! Entity capture projects the selected entity's [`Aabb`](bevy::camera::primitives::Aabb) through
-//! the selected camera. It captures the camera's complete render target and publishes a physical
-//! crop of the final composited image, so overlapping content and post-processing remain visible.
-//! The method never resolves names or descendants. If `camera` is omitted, exactly one active,
-//! initialized camera with a screenshot-capable target must exist.
+//! AABB capture projects the selected entity's [`Aabb`](bevy::camera::primitives::Aabb) through
+//! the selected camera. With the default `ui` feature, complete Bevy UI computed components take
+//! precedence over an incidental AABB and supply transformed, clipped physical bounds plus their
+//! computed target camera. Partial UI computed state is rejected. Disabling default features
+//! retains AABB capture without compiling this crate's UI bounds resolver, imports, or capability.
+//! This does not guarantee removal of UI crates from the dependency graph because upstream Bevy
+//! 0.19 `bevy_remote` brings that family transitively through `bevy_dev_tools`. Both modes crop the
+//! complete composited target, so overlapping content and post-processing remain visible. The
+//! method never resolves names or descendants. If `camera` is omitted for AABB capture, exactly one
+//! active, initialized camera with a screenshot-capable target must exist.
 //!
 //! Requires Bevy's `png` feature. Calls fail before enqueueing when PNG support is unavailable.
 //!
