@@ -30,6 +30,7 @@ pub use port::Port;
 //
 // Export all tool parameter and result structs via the tools facade
 pub use tools::BrpExecute;
+pub use tools::BrpExtrasScreenshot;
 pub use tools::ClickMouseParams;
 pub use tools::ClickMouseResult;
 pub use tools::DespawnEntityParams;
@@ -79,7 +80,6 @@ pub use tools::RotationGestureResult;
 pub use tools::RpcDiscoverParams;
 pub use tools::RpcDiscoverResult;
 pub use tools::ScreenshotParams;
-pub use tools::ScreenshotResult;
 pub use tools::ScrollMouseParams;
 pub use tools::ScrollMouseResult;
 pub use tools::SendKeysParams;

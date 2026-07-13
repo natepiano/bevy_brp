@@ -40,7 +40,7 @@ A Model Context Protocol (MCP) server that enables AI coding assistants to launc
 
 ### Enhanced BRP Capabilities
 requires [bevy_brp_extras](https://crates.io/crates/bevy_brp_extras)
-- `brp_extras/screenshot` - Capture screenshots of the primary window
+- `brp_extras/screenshot` - Capture the full primary window or an entity crop by ID or unique exact name
 - `brp_extras/shutdown` - Gracefully shutdown the application
 - `brp_extras/send_keys` - Send keyboard input to the application
 - `brp_extras/type_text` - Type text sequentially (one character per frame)
@@ -157,6 +157,57 @@ inspection, mutation, watch, or screenshot operations:
   "port": 15702
 }
 ```
+
+### Capture screenshots
+
+`brp_extras_screenshot` is one terminal tool for full images, entity-ID crops, and unique exact-name
+crops. Capture the full primary window with:
+
+```json
+{
+  "path": "/tmp/full.png",
+  "port": 15702
+}
+```
+
+Capture a known canonical entity ID with:
+
+```json
+{
+  "entity": 4294967298,
+  "path": "/tmp/entity.png",
+  "port": 15702
+}
+```
+
+To screenshot NatesList in one call:
+
+```json
+{
+  "name": "NatesList",
+  "path": "/tmp/nates-list.png",
+  "port": 15702
+}
+```
+
+Use `entity` instead of `name` when the canonical ID is known. With neither selector, the tool
+captures the full primary window. Supplying both selectors is invalid. `camera` and `padding` apply
+only to entity or name captures, and padding defaults to zero physical pixels. Exact names are
+case-sensitive and must resolve to one entity. Zero or duplicate matches return guidance; use
+`world_find_entities_by_name` for non-exact discovery or to choose among duplicates.
+
+The tool returns only after `bevy_brp_extras` has captured the final composited camera target,
+encoded a complete PNG, and atomically published the requested path. Entity screenshots crop that
+composited result, so other layers and partially covered pixels inside the bounds remain visible.
+Camera inference is available only when one eligible camera is unambiguous; Bevy has no universal
+primary camera.
+
+Generic AABB crops are supported. Complete Bevy UI components use UI bounds when the default-enabled
+`bevy_brp_extras` `ui` feature is enabled. That feature gates the extras crate's UI resolver,
+imports, and capability; it is not a promise that upstream UI crates vanish from `cargo tree`,
+because Bevy 0.19 `bevy_remote` already brings that dependency family transitively. Enabling `ui`
+also enables the Bevy text and sprite dependencies required by Bevy UI. Textual UI-tree or
+`snapshot` inspection remains a separate capability.
 
 ## Example Workflow
 

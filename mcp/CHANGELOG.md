@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Add the MCP-local `world_find_entities_by_name` tool, which discovers canonical entity IDs through standard BRP `world.query` with exact, prefix, suffix, or contains matching and does not require `bevy_brp_extras`.
+- Extend the existing `brp_extras_screenshot` tool to capture the full primary window or an entity crop by canonical ID or unique case-sensitive exact name. Name capture composes standard `world.query` discovery locally, sends only the resolved ID and a fresh capture token to extras, and preserves the terminal PNG result with resolved entity/name metadata.
 
 ## [0.21.0] - 2026-07-10
 

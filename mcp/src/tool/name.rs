@@ -37,6 +37,7 @@ use crate::brp_tools::AllTypeGuidesParams;
 use crate::brp_tools::BevyListWatch;
 use crate::brp_tools::BrpAllTypeGuides;
 use crate::brp_tools::BrpExecute;
+use crate::brp_tools::BrpExtrasScreenshot;
 use crate::brp_tools::BrpListActiveWatches;
 use crate::brp_tools::BrpStopWatch;
 use crate::brp_tools::BrpTypeGuide;
@@ -91,7 +92,6 @@ use crate::brp_tools::RotationGestureResult;
 use crate::brp_tools::RpcDiscoverParams;
 use crate::brp_tools::RpcDiscoverResult;
 use crate::brp_tools::ScreenshotParams;
-use crate::brp_tools::ScreenshotResult;
 use crate::brp_tools::ScrollMouseParams;
 use crate::brp_tools::ScrollMouseResult;
 use crate::brp_tools::SendKeysParams;
@@ -296,11 +296,7 @@ pub enum ToolName {
 
     // BRP Extras Tools
     /// `brp_extras_screenshot` - Capture screenshots
-    #[brp_tool(
-        brp_method = "brp_extras/screenshot",
-        params = "ScreenshotParams",
-        result = "ScreenshotResult"
-    )]
+    #[brp_tool(brp_method = "brp_extras/screenshot")]
     BrpExtrasScreenshot,
     /// `brp_extras_send_keys` - Send keyboard input
     #[brp_tool(
