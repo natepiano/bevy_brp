@@ -31,17 +31,15 @@ All methods are prefixed with `brp_extras/` (e.g., `brp_extras/screenshot`). See
 
 ### Screenshots
 
-`brp_extras/screenshot` is a terminal watching method: a successful response means the complete PNG has replaced the destination. The request requires `path`; `camera`, `entity`, and `padding` are optional.
+`brp_extras/screenshot` writes a PNG to `path` and returns only after the complete file is in place.
 
-Success means the PNG is fully encoded and atomically published; it does not assert that scene content is nonuniform. A minimized, hidden, or fully occluded primary-window surface may legitimately produce a black image on platforms that stop presenting it. Entity captures reflect the selected camera target; retained image or other offscreen targets avoid primary-window presentation dependence when the application is designed to use them.
+- With no `camera` or `entity`, it captures the primary window.
+- With only `camera`, it captures that camera's viewport.
+- With `entity`, it crops to that entity as seen by the selected camera. `padding` adds physical pixels around the crop and defaults to zero.
 
-With no `entity` or `camera`, the method captures the primary window. With only `camera`, it captures that active camera's physical viewport from the final composited render target. `padding` is invalid without `entity`.
+UI nodes use their computed UI bounds; other entities use `Aabb` and `GlobalTransform`. The entity must be visible to the selected camera. If no camera is given, exactly one eligible active camera must be available. The default `ui` feature enables UI bounds; AABB capture still works without it.
 
-With an `entity` ID, the method resolves either Bevy UI computed bounds or an `Aabb` and `GlobalTransform`, then crops the selected camera's final composited render target in physical pixels. Optional `padding` defaults to zero. Complete UI computed components take precedence over an incidental AABB and use `ComputedUiTargetCamera`; a different explicit `camera` is rejected. AABB capture uses an exact optional camera ID or requires exactly one eligible active camera. Extras accepts entity IDs only and does not resolve names.
-
-UI capture honors `InheritedVisibility`, transformed node bounds, inherited clipping, the physical camera viewport, and the live window, image, or manual-texture target extent. UI capture does not use AABB render layers. Partial UI computed state is an initialization error. The `ui` feature is enabled by default; disable default features to retain AABB capture without compiling this crate's UI bounds resolver, imports, or capability. This flag does not guarantee removal of UI crates from the resolved dependency graph because upstream Bevy 0.19 `bevy_remote` already brings that family transitively through `bevy_dev_tools`. Screenshot capture does not add textual snapshots.
-
-AABB capture honors visibility, render layers, the camera frustum, viewport, target bounds, and available selected-view visibility data. Entities marked `NoCpuCulling` still must pass visibility, layer, and frustum checks. Generic AABB capture cannot prove that a custom renderer contributes pixels to the selected target. The output can include overlapping UI, geometry, background, post-processing, and occluders. Use padding for effects extending outside the resolved bounds. Only the selected entity is resolved; descendants are not included automatically. Procedural, custom-rendered, and skinned entities must maintain an AABB that covers their rendered content.
+The crop comes from the final composited target, so it may include overlapping UI, geometry, effects, or occluders. It covers only the selected entity's bounds—children are not added automatically. Extras accepts entity IDs, not names; `bevy_brp_mcp` can resolve names before calling it.
 
 Your Bevy app must have the `png` feature enabled. Without it, the request fails before capture begins.
 
