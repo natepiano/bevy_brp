@@ -296,13 +296,36 @@ fn timeout_error() -> BrpError {
 
 #[cfg(test)]
 mod tests {
+    use std::error::Error;
+    use std::fs;
+    use std::io;
+
     use bevy::MinimalPlugins;
     use bevy_remote::RemotePlugin;
+    use screenshot::CaptureResponseMetadata;
+    use screenshot_job::CaptureMetadata;
+    use tempfile::TempDir;
 
     use super::*;
     use crate::screenshot::ScreenshotPlugin;
 
+    const ABSENT_DESTINATION_NAME: &str = "new.png";
+    const EXISTING_DESTINATION_NAME: &str = "replace.png";
     const IDLE_UPDATE_COUNT: usize = 3;
+    const INITIAL_DESTINATION_CONTENT: &[u8] = b"sentinel";
+    const SCREENSHOT_CONTENT: &[u8] = b"complete png";
+
+    fn completed_capture(destination: &Path) -> Result<OwnedTempCapture, io::Error> {
+        let temp_path = screenshot_job::create_temporary_file(destination, SCREENSHOT_CONTENT)
+            .map_err(|error| io::Error::other(error.message))?;
+        Ok(OwnedTempCapture {
+            metadata: CaptureMetadata {
+                dimensions:        UVec2::ONE,
+                response_metadata: CaptureResponseMetadata::Full,
+            },
+            temp_path,
+        })
+    }
 
     #[test]
     fn idle_capture_plugin_keeps_lifecycle_dormant() {
@@ -317,5 +340,29 @@ mod tests {
         assert_eq!(pending.current_frame, FrameStamp::default());
         assert!(!pending.is_active());
         assert!(pending.completion_channel.is_none());
+    }
+
+    #[test]
+    fn atomic_publication_replaces_existing_and_creates_absent_destinations()
+    -> Result<(), Box<dyn Error>> {
+        let temp_dir = TempDir::new()?;
+        let existing = temp_dir.path().join(EXISTING_DESTINATION_NAME);
+        fs::write(&existing, INITIAL_DESTINATION_CONTENT)?;
+
+        let replacement = completed_capture(&existing)?;
+        assert!(matches!(
+            publish_capture(&existing, replacement),
+            CaptureStatus::Completed(_)
+        ));
+        assert_eq!(fs::read(&existing)?, SCREENSHOT_CONTENT);
+
+        let absent = temp_dir.path().join(ABSENT_DESTINATION_NAME);
+        let created = completed_capture(&absent)?;
+        assert!(matches!(
+            publish_capture(&absent, created),
+            CaptureStatus::Completed(_)
+        ));
+        assert_eq!(fs::read(&absent)?, SCREENSHOT_CONTENT);
+        Ok(())
     }
 }

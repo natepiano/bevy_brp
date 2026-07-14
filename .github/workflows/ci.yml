@@ -172,7 +172,7 @@ jobs:
       - name: Run replacement publication test
         run: >-
           cargo nextest run -p bevy_brp_extras --no-tests fail -- --exact
-          screenshot::capture::pending_screenshot_captures::tests::atomic_publication_replaces_existing_and_creates_absent_destinations
+          screenshot::capture::pending_screenshot_capture::tests::atomic_publication_replaces_existing_and_creates_absent_destinations
 
   mend:
     name: Mend Check
