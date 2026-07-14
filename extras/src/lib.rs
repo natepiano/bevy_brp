@@ -44,7 +44,8 @@
 //! ## App Lifecycle
 //!
 //! ### `brp_extras/screenshot`
-//! Captures either the primary window or a bounds-backed entity and publishes a complete PNG.
+//! Captures the primary window, a camera viewport, or a bounds-backed entity and publishes a
+//! complete PNG.
 //! The watching request returns only after publication.
 //! Success means the PNG is fully encoded and atomically published; it does not assert that scene
 //! content is nonuniform. A minimized, hidden, or fully occluded primary-window surface may
@@ -52,9 +53,8 @@
 //! reflect the selected camera target; retained image or other offscreen targets avoid
 //! primary-window presentation dependence when the application is designed to use them.
 //! - `path` (string, required): destination file path
-//! - `capture_id` (string, optional): bounded nonempty watcher identity
-//! - `entity` (u64, optional): exact Bevy entity ID; omission captures the primary window
-//! - `camera` (u64, optional): active camera for entity capture; requires `entity`
+//! - `entity` (u64, optional): exact Bevy entity ID whose bounds select the crop
+//! - `camera` (u64, optional): active camera viewport, or the camera used for entity capture
 //! - `padding` (u32, optional): physical pixels added around entity bounds; requires `entity` and
 //!   defaults to zero
 //!
@@ -65,9 +65,11 @@
 //! retains AABB capture without compiling this crate's UI bounds resolver, imports, or capability.
 //! This does not guarantee removal of UI crates from the dependency graph because upstream Bevy
 //! 0.19 `bevy_remote` brings that family transitively through `bevy_dev_tools`. Both modes crop the
-//! complete composited target, so overlapping content and post-processing remain visible. The
-//! method never resolves names or descendants. If `camera` is omitted for AABB capture, exactly one
-//! active, initialized camera with a screenshot-capable target must exist.
+//! complete composited target, so overlapping content and post-processing remain visible. With
+//! neither `camera` nor `entity`, the method captures the primary window. With only `camera`, it
+//! captures that camera's physical viewport. The method never resolves names or descendants. If
+//! `camera` is omitted for AABB capture, exactly one active, initialized camera with a
+//! screenshot-capable target must exist.
 //!
 //! Requires Bevy's `png` feature. Calls fail before enqueueing when PNG support is unavailable.
 //!

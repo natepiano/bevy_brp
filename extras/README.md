@@ -31,11 +31,11 @@ All methods are prefixed with `brp_extras/` (e.g., `brp_extras/screenshot`). See
 
 ### Screenshots
 
-`brp_extras/screenshot` is a terminal watching method: a successful response means the complete PNG has replaced the destination. The request always requires `path` and optionally accepts a bounded nonempty `capture_id`.
+`brp_extras/screenshot` is a terminal watching method: a successful response means the complete PNG has replaced the destination. The request requires `path`; `camera`, `entity`, and `padding` are optional.
 
 Success means the PNG is fully encoded and atomically published; it does not assert that scene content is nonuniform. A minimized, hidden, or fully occluded primary-window surface may legitimately produce a black image on platforms that stop presenting it. Entity captures reflect the selected camera target; retained image or other offscreen targets avoid primary-window presentation dependence when the application is designed to use them.
 
-With no `entity`, the method captures the primary window. `camera` and `padding` are invalid in this mode.
+With no `entity` or `camera`, the method captures the primary window. With only `camera`, it captures that active camera's physical viewport from the final composited render target. `padding` is invalid without `entity`.
 
 With an `entity` ID, the method resolves either Bevy UI computed bounds or an `Aabb` and `GlobalTransform`, then crops the selected camera's final composited render target in physical pixels. Optional `padding` defaults to zero. Complete UI computed components take precedence over an incidental AABB and use `ComputedUiTargetCamera`; a different explicit `camera` is rejected. AABB capture uses an exact optional camera ID or requires exactly one eligible active camera. Extras accepts entity IDs only and does not resolve names.
 

@@ -2,6 +2,7 @@ Capture a full image or an entity crop from a running Bevy application in one ca
 
 Examples:
 - Full primary-window capture: {"path":"/tmp/full.png","port":15702}
+- Camera viewport capture: {"camera":4294967297,"path":"/tmp/camera.png","port":15702}
 - Entity ID capture: {"entity":4294967298,"path":"/tmp/entity.png","port":15702}
 - To screenshot NatesList in one call: {"name":"NatesList","path":"/tmp/nates-list.png","port":15702}
 
@@ -9,15 +10,17 @@ Parameters:
 - path: Required destination for the complete PNG.
 - entity: Optional canonical u64 Bevy entity ID.
 - name: Optional case-sensitive exact Bevy Name. The match must be unique.
-- camera: Optional camera entity ID for entity or name capture.
+- camera: Optional camera entity ID. Alone, it captures that camera's physical viewport. With an
+  entity or name, it selects the camera used to calculate the entity crop.
 - padding: Optional physical-pixel crop padding for entity or name capture. Defaults to zero.
 - port: BRP port, default 15702.
 
-Use either entity or name, never both. With neither selector, the tool captures the full primary
-window and rejects camera or padding. A name is resolved locally through standard world.query,
-then only the canonical entity ID is sent to bevy_brp_extras. Zero matches return discovery
-guidance. Multiple matches report the sorted matching IDs; retry with entity, or call
-world_find_entities_by_name for prefix, suffix, contains, or duplicate-name discovery.
+Use either entity or name, never both. With neither selector or camera, the tool captures the full
+primary window. With only camera, it captures that active camera's physical viewport from the
+final composited target. Padding requires an entity or name. A name is resolved locally through
+standard world.query, then only the canonical entity ID is sent to bevy_brp_extras. Zero matches
+return discovery guidance. Multiple matches report the sorted matching IDs; retry with entity, or
+call world_find_entities_by_name for prefix, suffix, contains, or duplicate-name discovery.
 
 Entity crops use the selected camera target and physical target coordinates. camera is optional;
 the resolver can infer it only when one eligible camera is unambiguous. Bevy has no universal

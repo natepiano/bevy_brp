@@ -8,14 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Add terminal AABB entity capture to the existing `brp_extras/screenshot` method with optional entity ID, camera ID, and physical-pixel padding fields.
+- Extend the existing terminal `brp_extras/screenshot` method with active-camera viewport capture and AABB entity capture using optional entity ID, camera ID, and physical-pixel padding fields.
 - Add default-enabled optional Bevy UI entity bounds with transformed, clipped, viewport-local crop resolution.
 - Add immutable entity, name, camera, bounds-kind, and crop-rectangle metadata to successful entity capture responses.
 
 ### Changed
-- Batch full and entity jobs by normalized render target while preserving one screenshot entity and RGB conversion per target.
+- Keep one screenshot request in flight while the watching BRP call waits for capture, encoding, and PNG publication; remove request tokens, request coalescing, destination reservations, path generations, and same-target job batching.
 - Prefer complete UI computed bounds over incidental AABBs, reject partial UI initialization, and retain AABB capture with the UI resolver disabled in no-default builds.
-- Reject camera and padding fields without an entity, entity names in extras requests, hidden or off-layer entities, ambiguous cameras, and unsupported camera targets.
+- Reject padding without an entity, entity names in extras requests, hidden or off-layer entities, ambiguous cameras, and unsupported camera targets.
 
 ## [0.21.0] - 2026-07-10
 

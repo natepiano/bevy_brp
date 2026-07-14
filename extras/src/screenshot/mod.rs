@@ -56,7 +56,7 @@ use self::capture::CaptureInput;
 #[cfg(not(target_arch = "wasm32"))]
 use self::capture::CapturePlugin;
 #[cfg(not(target_arch = "wasm32"))]
-use self::capture::PendingScreenshotCaptures;
+use self::capture::PendingScreenshotCapture;
 #[cfg(not(target_arch = "wasm32"))]
 use self::request::ScreenshotRequest;
 #[cfg(not(target_arch = "wasm32"))]
@@ -150,25 +150,23 @@ enum BoundsKind {
 
 #[cfg(not(target_arch = "wasm32"))]
 struct ValidatedCameraTarget {
-    camera:            Camera,
+    camera:        Camera,
     #[cfg(feature = "ui")]
-    entity:            Entity,
-    normalized_target: NormalizedRenderTarget,
-    render_target:     RenderTarget,
+    entity:        Entity,
+    render_target: RenderTarget,
     #[cfg(feature = "ui")]
-    target_size:       UVec2,
+    target_size:   UVec2,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 struct SelectedCamera {
-    camera:            Camera,
-    entity:            Entity,
-    frustum:           Frustum,
-    global_transform:  GlobalTransform,
-    normalized_target: NormalizedRenderTarget,
-    render_layers:     Option<RenderLayers>,
-    render_target:     RenderTarget,
-    visible_entities:  Option<VisibleEntities>,
+    camera:           Camera,
+    entity:           Entity,
+    frustum:          Frustum,
+    global_transform: GlobalTransform,
+    render_layers:    Option<RenderLayers>,
+    render_target:    RenderTarget,
+    visible_entities: Option<VisibleEntities>,
 }
 
 /// Handles the terminal `brp_extras/screenshot` watching request.
@@ -180,33 +178,16 @@ pub(crate) fn handler(
     ensure_png_support()?;
 
     let request = ScreenshotRequest::from_params(params)?;
-    if let Some(response) = capture::read_existing(
-        &mut world.resource_mut::<PendingScreenshotCaptures>(),
-        &request,
-    ) {
-        return response;
-    }
-
-    if let Some(response) = capture::join_existing(
-        &mut world.resource_mut::<PendingScreenshotCaptures>(),
+    if let Some(response) = capture::read(
+        &mut world.resource_mut::<PendingScreenshotCapture>(),
         &request,
     ) {
         return response;
     }
 
     let capture_input = capture_input(world, &request)?;
-
-    let (response, spawn_target) = capture::handle(
-        &mut world.resource_mut::<PendingScreenshotCaptures>(),
-        request,
-        capture_input,
-    )?;
-
-    if let Some(target) = spawn_target {
-        capture::spawn_target_batch(world, target);
-    }
-
-    Ok(response)
+    capture::start(world, request, capture_input)?;
+    Ok(None)
 }
 
 /// Returns an actionable error on targets without filesystem publication.
@@ -263,7 +244,7 @@ fn completed_response(path: &Path, metadata: &CaptureResponseMetadata) -> Value 
 #[cfg(not(target_arch = "wasm32"))]
 fn capture_input(world: &mut World, request: &ScreenshotRequest) -> BrpResult<CaptureInput> {
     match request.scope() {
-        ScreenshotScope::Full => full_capture_input(world),
+        ScreenshotScope::Full { camera } => full_capture_input(world, *camera),
         ScreenshotScope::Entity {
             entity,
             camera,
@@ -273,7 +254,17 @@ fn capture_input(world: &mut World, request: &ScreenshotRequest) -> BrpResult<Ca
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn full_capture_input(world: &World) -> BrpResult<CaptureInput> {
+fn full_capture_input(world: &World, requested_camera: Option<Entity>) -> BrpResult<CaptureInput> {
+    if let Some(camera) = requested_camera {
+        let validated = validated_camera_target(world, camera, primary_window(world))
+            .ok_or_else(|| invalid_camera_error(camera))?;
+        return Ok(CaptureInput {
+            crop:              validated.camera.physical_viewport_rect(),
+            render_target:     validated.render_target,
+            response_metadata: CaptureResponseMetadata::Full,
+        });
+    }
+
     let primary_window = primary_window(world).ok_or_else(no_primary_window_error)?;
     let render_target = Screenshot::primary_window().0;
     let normalized_target = render_target
@@ -285,7 +276,6 @@ fn full_capture_input(world: &World) -> BrpResult<CaptureInput> {
 
     Ok(CaptureInput {
         crop: None,
-        normalized_target,
         render_target,
         response_metadata: CaptureResponseMetadata::Full,
     })
@@ -309,7 +299,6 @@ fn entity_capture_input(
             world,
             entity,
             camera.entity,
-            camera.normalized_target,
             camera.render_target,
             resolved.rect,
             BoundsKind::Ui,
@@ -327,7 +316,6 @@ fn entity_capture_input(
         world,
         entity,
         selected_camera.entity,
-        selected_camera.normalized_target,
         selected_camera.render_target,
         rect,
         BoundsKind::Aabb,
@@ -339,7 +327,6 @@ fn entity_capture_from_parts(
     world: &World,
     entity: Entity,
     camera: Entity,
-    normalized_target: NormalizedRenderTarget,
     render_target: RenderTarget,
     rect: URect,
     bounds_kind: BoundsKind,
@@ -350,7 +337,6 @@ fn entity_capture_from_parts(
 
     CaptureInput {
         crop: Some(rect),
-        normalized_target,
         render_target,
         response_metadata: CaptureResponseMetadata::Entity(EntityResponseMetadata {
             bounds_kind,
@@ -397,7 +383,6 @@ fn eligible_camera(
         entity,
         frustum: *world.get::<Frustum>(entity)?,
         global_transform: *world.get::<GlobalTransform>(entity)?,
-        normalized_target: validated.normalized_target,
         render_layers: world.get::<RenderLayers>(entity).cloned(),
         render_target: validated.render_target,
         visible_entities: world.get::<VisibleEntities>(entity).cloned(),
@@ -429,7 +414,6 @@ fn validated_camera_target(
         camera: camera.clone(),
         #[cfg(feature = "ui")]
         entity,
-        normalized_target,
         render_target: render_target.clone(),
         #[cfg(feature = "ui")]
         target_size,
@@ -565,8 +549,8 @@ mod native_tests {
     use bevy::camera::ComputedCameraValues;
     use bevy::camera::ManualTextureViewHandle;
     use bevy::camera::RenderTargetInfo;
+    use bevy::camera::Viewport;
     use bevy::camera::primitives::Aabb;
-    use bevy::ecs::system::SystemId;
     use bevy::math::primitives::ViewFrustum;
     use bevy::render::render_resource::Extent3d;
     use bevy::render::render_resource::TextureDimension;
@@ -689,20 +673,6 @@ mod native_tests {
         );
     }
 
-    fn run_handler(
-        world: &mut World,
-        system_id: SystemId<In<Option<Value>>, BrpResult<Option<Value>>>,
-        params: Value,
-    ) -> BrpResult<Option<Value>> {
-        world
-            .run_system_with(system_id, Some(params))
-            .map_err(|error| BrpError {
-                code:    INTERNAL_ERROR,
-                message: error.to_string(),
-                data:    None,
-            })?
-    }
-
     fn send_remote_request(
         app: &App,
         params: Value,
@@ -740,30 +710,18 @@ mod native_tests {
         }
     }
 
-    fn screenshot_entity_for_target(
-        world: &mut World,
-        target: &RenderTarget,
-    ) -> Result<Entity, IoError> {
+    fn screenshot_entity(world: &mut World) -> Result<Entity, IoError> {
         world
-            .query::<(Entity, &Screenshot)>()
-            .iter(world)
-            .find_map(|(entity, screenshot)| match (&screenshot.0, target) {
-                (RenderTarget::Image(actual), RenderTarget::Image(expected))
-                    if actual.handle == expected.handle =>
-                {
-                    Some(entity)
-                },
-                (RenderTarget::TextureView(actual), RenderTarget::TextureView(expected))
-                    if actual == expected =>
-                {
-                    Some(entity)
-                },
-                _ => None,
-            })
-            .ok_or_else(|| io::Error::other("missing screenshot entity for render target"))
+            .query_filtered::<Entity, With<Screenshot>>()
+            .single(world)
+            .map_err(|error| io::Error::other(error.to_string()))
     }
 
-    fn assert_terminal_png(response: &Value, path: &Path) -> Result<(), Box<dyn Error>> {
+    fn assert_terminal_png(
+        response: &Value,
+        path: &Path,
+        expected_size: UVec2,
+    ) -> Result<(), Box<dyn Error>> {
         assert_eq!(
             response.get(RESPONSE_SUCCESS_FIELD),
             Some(&Value::Bool(true))
@@ -778,23 +736,59 @@ mod native_tests {
         );
         let png = image::open(path)?;
         assert_eq!(png.color(), image::ColorType::Rgb8);
-        let rect = response
-            .get(RESPONSE_RECT_FIELD)
-            .ok_or_else(|| io::Error::other("missing terminal capture rectangle"))?;
-        assert_eq!(
-            png.dimensions(),
-            (
-                rect.get(RESPONSE_WIDTH_FIELD)
-                    .and_then(Value::as_u64)
-                    .ok_or_else(|| io::Error::other("missing capture width"))?
-                    .try_into()?,
-                rect.get(RESPONSE_HEIGHT_FIELD)
-                    .and_then(Value::as_u64)
-                    .ok_or_else(|| io::Error::other("missing capture height"))?
-                    .try_into()?,
-            )
-        );
+        let expected_dimensions = response.get(RESPONSE_RECT_FIELD).map_or_else(
+            || Ok((expected_size.x, expected_size.y)),
+            |rect| {
+                Ok::<_, Box<dyn Error>>((
+                    rect.get(RESPONSE_WIDTH_FIELD)
+                        .and_then(Value::as_u64)
+                        .ok_or_else(|| io::Error::other("missing capture width"))?
+                        .try_into()?,
+                    rect.get(RESPONSE_HEIGHT_FIELD)
+                        .and_then(Value::as_u64)
+                        .ok_or_else(|| io::Error::other("missing capture height"))?
+                        .try_into()?,
+                ))
+            },
+        )?;
+        assert_eq!(png.dimensions(), expected_dimensions);
         Ok(())
+    }
+
+    fn complete_synchronous_request(
+        app: &mut App,
+        params: Value,
+        captured_size: UVec2,
+        expected_size: UVec2,
+        path: &Path,
+    ) -> Result<Value, Box<dyn Error>> {
+        let receiver = send_remote_request(app, params)?;
+        app.update();
+        assert!(matches!(receiver.try_recv(), Err(TryRecvError::Empty)));
+        assert!(!path.exists());
+
+        let screenshot_entity = screenshot_entity(app.world_mut())?;
+        app.world_mut()
+            .entity_mut(screenshot_entity)
+            .trigger(|entity| ScreenshotCaptured {
+                entity,
+                image: render_target_image(captured_size, RenderAssetUsages::MAIN_WORLD),
+            });
+
+        let response = receive_terminal(app, &receiver)?;
+        assert_terminal_png(&response, path, expected_size)?;
+        Ok(response)
+    }
+
+    fn remote_screenshot_app() -> App {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, RemotePlugin::default(), ScreenshotPlugin));
+        let system_id = app.world_mut().register_system(handler);
+        app.world_mut()
+            .resource_mut::<RemoteMethods>()
+            .insert(METHOD_SCREENSHOT, RemoteMethodSystemId::Watching(system_id));
+        app.update();
+        app
     }
 
     #[test]
@@ -1019,161 +1013,114 @@ mod native_tests {
     }
 
     #[test]
-    fn handler_spawns_screenshots_with_concrete_image_and_manual_targets()
+    fn default_request_completes_only_after_primary_window_png_publication()
     -> Result<(), Box<dyn Error>> {
         let temp_dir = TempDir::new()?;
-        let image_path = temp_dir.path().join("image.png");
-        let manual_path = temp_dir.path().join("manual.png");
         let target_size = UVec2::splat(100);
-        let mut app = App::new();
-        app.add_plugins((MinimalPlugins, RemotePlugin::default(), ScreenshotPlugin));
-        let system_id = app.world_mut().register_system(handler);
-        app.world_mut()
-            .resource_mut::<RemoteMethods>()
-            .insert(METHOD_SCREENSHOT, RemoteMethodSystemId::Watching(system_id));
-        let image_handle = add_render_target_image(app.world_mut(), target_size);
-        let manual_handle = ManualTextureViewHandle::default();
-        add_manual_texture_view(app.world_mut(), manual_handle, target_size);
-        let image_camera = spawn_camera(
-            app.world_mut(),
-            RenderTarget::Image(image_handle.clone().into()),
-            Some(target_size),
-        );
-        let manual_camera = spawn_camera(
-            app.world_mut(),
-            RenderTarget::TextureView(manual_handle),
-            Some(target_size),
-        );
-        let entity = spawn_aabb_entity(app.world_mut(), "Concrete target");
-        app.update();
-        let image_receiver = send_remote_request(
-            &app,
-            json!({
-                "camera": image_camera.to_bits(),
-                "capture_id": "image",
-                "entity": entity.to_bits(),
-                "path": image_path,
-            }),
-        )?;
-        let manual_receiver = send_remote_request(
-            &app,
-            json!({
-                "camera": manual_camera.to_bits(),
-                "capture_id": "manual",
-                "entity": entity.to_bits(),
-                "path": manual_path,
-            }),
-        )?;
-        app.update();
+        let path = temp_dir.path().join("default.png");
+        let mut app = remote_screenshot_app();
+        app.world_mut().spawn((Window::default(), PrimaryWindow));
 
-        let image_target = RenderTarget::Image(image_handle.into());
-        let manual_target = RenderTarget::TextureView(manual_handle);
-        let image_screenshot = screenshot_entity_for_target(app.world_mut(), &image_target)?;
-        let manual_screenshot = screenshot_entity_for_target(app.world_mut(), &manual_target)?;
-        assert_ne!(image_screenshot, manual_screenshot);
-        for screenshot_entity in [image_screenshot, manual_screenshot] {
-            app.world_mut()
-                .entity_mut(screenshot_entity)
-                .trigger(|entity| ScreenshotCaptured {
-                    entity,
-                    image: render_target_image(target_size, RenderAssetUsages::MAIN_WORLD),
-                });
-        }
-
-        let image_response = receive_terminal(&mut app, &image_receiver)?;
-        let manual_response = receive_terminal(&mut app, &manual_receiver)?;
-        assert_terminal_png(&image_response, &image_path)?;
-        assert_terminal_png(&manual_response, &manual_path)?;
-        assert_eq!(
-            app.world()
-                .resource::<TestManualTextureOwners>()
-                .resources
-                .len(),
-            1
-        );
+        complete_synchronous_request(
+            &mut app,
+            json!({ "path": path }),
+            target_size,
+            target_size,
+            &path,
+        )?;
         Ok(())
     }
 
     #[test]
-    fn watcher_identity_and_generation_join_precede_entity_resolution() -> Result<(), Box<dyn Error>>
-    {
+    fn camera_request_completes_only_after_camera_target_png_publication()
+    -> Result<(), Box<dyn Error>> {
         let temp_dir = TempDir::new()?;
-        let path = temp_dir.path().join("entity.png");
-        let mut app = App::new();
-        app.add_plugins(ScreenshotPlugin);
-        let primary_window = app
-            .world_mut()
-            .spawn((Window::default(), PrimaryWindow))
-            .id();
+        let path = temp_dir.path().join("camera.png");
+        let target_size = UVec2::splat(100);
+        let mut app = remote_screenshot_app();
+        let image_handle = add_render_target_image(app.world_mut(), target_size);
         let camera = spawn_camera(
             app.world_mut(),
-            RenderTarget::Window(WindowRef::Primary),
-            Some(UVec2::splat(100)),
+            RenderTarget::Image(image_handle.into()),
+            Some(target_size),
         );
-        let entity = spawn_aabb_entity(app.world_mut(), "Snapshot");
-        let system_id = app.world_mut().register_system(handler);
-        let params = json!({
-            "camera": camera.to_bits(),
-            "capture_id": "first",
-            "entity": entity.to_bits(),
-            "path": path,
+        let viewport_size = UVec2::new(60, 70);
+        app.world_mut()
+            .get_mut::<Camera>(camera)
+            .ok_or_else(|| io::Error::other("missing camera-only test camera"))?
+            .viewport = Some(Viewport {
+            physical_position: UVec2::new(10, 20),
+            physical_size: viewport_size,
+            ..default()
         });
 
-        assert!(brp(run_handler(app.world_mut(), system_id, params.clone()))?.is_none());
-        let mut same_token_different_scope = params.clone();
-        same_token_different_scope["padding"] = json!(1);
-        assert!(run_handler(app.world_mut(), system_id, same_token_different_scope).is_err());
-        let mut different_token_different_scope = params.clone();
-        different_token_different_scope["capture_id"] = json!("conflict");
-        different_token_different_scope["padding"] = json!(1);
-        assert!(run_handler(app.world_mut(), system_id, different_token_different_scope).is_err());
-        app.world_mut().despawn(entity);
-        app.world_mut().despawn(camera);
-        app.world_mut().despawn(primary_window);
-        assert!(brp(run_handler(app.world_mut(), system_id, params.clone()))?.is_none());
-
-        let mut joined = params;
-        joined["capture_id"] = json!("second");
-        assert!(brp(run_handler(app.world_mut(), system_id, joined))?.is_none());
+        complete_synchronous_request(
+            &mut app,
+            json!({
+                "camera": camera.to_bits(),
+                "path": path,
+            }),
+            target_size,
+            viewport_size,
+            &path,
+        )?;
         Ok(())
     }
 
     #[test]
-    fn full_and_entity_requests_share_one_normalized_target_capture() -> Result<(), Box<dyn Error>>
-    {
+    fn entity_request_completes_only_after_inferred_camera_crop_publication()
+    -> Result<(), Box<dyn Error>> {
         let temp_dir = TempDir::new()?;
-        let mut app = App::new();
-        app.add_plugins(ScreenshotPlugin);
-        app.world_mut().spawn((Window::default(), PrimaryWindow));
+        let path = temp_dir.path().join("entity.png");
+        let target_size = UVec2::splat(100);
+        let mut app = remote_screenshot_app();
+        let image_handle = add_render_target_image(app.world_mut(), target_size);
+        spawn_camera(
+            app.world_mut(),
+            RenderTarget::Image(image_handle.into()),
+            Some(target_size),
+        );
+        let entity = spawn_aabb_entity(app.world_mut(), "Inferred camera entity");
+
+        complete_synchronous_request(
+            &mut app,
+            json!({
+                "entity": entity.to_bits(),
+                "path": path,
+            }),
+            target_size,
+            target_size,
+            &path,
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn camera_entity_request_completes_only_after_explicit_camera_crop_publication()
+    -> Result<(), Box<dyn Error>> {
+        let temp_dir = TempDir::new()?;
+        let path = temp_dir.path().join("camera-entity.png");
+        let target_size = UVec2::splat(100);
+        let mut app = remote_screenshot_app();
+        let image_handle = add_render_target_image(app.world_mut(), target_size);
         let camera = spawn_camera(
             app.world_mut(),
-            RenderTarget::Window(WindowRef::Primary),
-            Some(UVec2::splat(100)),
+            RenderTarget::Image(image_handle.into()),
+            Some(target_size),
         );
-        let entity = spawn_aabb_entity(app.world_mut(), "Shared Target");
-        let system_id = app.world_mut().register_system(handler);
+        let entity = spawn_aabb_entity(app.world_mut(), "Explicit camera entity");
 
-        brp(run_handler(
-            app.world_mut(),
-            system_id,
-            json!({
-                "capture_id": "full",
-                "path": temp_dir.path().join("full.png"),
-            }),
-        ))?;
-        brp(run_handler(
-            app.world_mut(),
-            system_id,
+        complete_synchronous_request(
+            &mut app,
             json!({
                 "camera": camera.to_bits(),
-                "capture_id": "entity",
                 "entity": entity.to_bits(),
-                "path": temp_dir.path().join("entity.png"),
+                "path": path,
             }),
-        ))?;
-
-        let mut query = app.world_mut().query_filtered::<Entity, With<Screenshot>>();
-        assert_eq!(query.iter(app.world()).count(), 1);
+            target_size,
+            target_size,
+            &path,
+        )?;
         Ok(())
     }
 }

@@ -39,8 +39,8 @@ strum_macros.workspace = true
 
 # On native, enable HTTP transport (default features include async-io)
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-bevy_remote = { workspace = true, default-features = true }
-image.workspace = true
+bevy_remote        = { workspace = true, default-features = true }
+image.workspace    = true
 tempfile.workspace = true
 
 [features]
@@ -50,8 +50,8 @@ ui          = ["bevy/bevy_ui"]
 
 [dev-dependencies]
 async-channel.workspace = true
-reqwest.workspace = true
-wgpu.workspace = true
+reqwest.workspace       = true
+wgpu.workspace          = true
 
 [lints]
 workspace = true

@@ -7,7 +7,6 @@ use std::sync::Mutex;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
-use std::time::Instant;
 
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -18,8 +17,6 @@ use bevy_remote::error_codes::INTERNAL_ERROR;
 use tempfile::NamedTempFile;
 use tempfile::TempPath;
 
-use super::identity::CaptureIdentity;
-use super::identity::PathGeneration;
 use super::target_rgb_image::EncodedCapture;
 use super::target_rgb_image::TargetRgbImage;
 use crate::screenshot::CaptureResponseMetadata;
@@ -29,9 +26,6 @@ pub(super) type ImageConverter = fn(Image) -> BrpResult<TargetRgbImage>;
 pub(super) struct ScreenshotJob {
     pub(super) path:              PathBuf,
     pub(super) crop:              Option<URect>,
-    pub(super) identity:          CaptureIdentity,
-    pub(super) path_generation:   PathGeneration,
-    pub(super) deadline:          Instant,
     pub(super) response_metadata: CaptureResponseMetadata,
 }
 
@@ -41,33 +35,14 @@ pub(super) struct CaptureMetadata {
 }
 
 pub(super) struct OwnedTempCapture {
-    pub(super) identity:        CaptureIdentity,
-    pub(super) metadata:        CaptureMetadata,
-    pub(super) path_generation: PathGeneration,
-    pub(super) temp_path:       TempPath,
+    pub(super) metadata:  CaptureMetadata,
+    pub(super) temp_path: TempPath,
 }
 
 pub(super) struct WorkerCompletion {
-    pub(super) deadline:        Instant,
-    pub(super) identity:        CaptureIdentity,
-    pub(super) path:            PathBuf,
-    pub(super) path_generation: PathGeneration,
-    pub(super) result:          BrpResult<OwnedTempCapture>,
+    pub(super) result: BrpResult<OwnedTempCapture>,
 }
 
-impl WorkerCompletion {
-    fn failed(job: ScreenshotJob, error: BrpError) -> Self {
-        Self {
-            deadline:        job.deadline,
-            identity:        job.identity,
-            path:            job.path,
-            path_generation: job.path_generation,
-            result:          Err(error),
-        }
-    }
-}
-
-#[derive(Resource)]
 pub(super) struct CaptureCompletionChannel {
     pub(super) receiver:  Mutex<Receiver<WorkerCompletion>>,
     pub(super) sender:    Sender<WorkerCompletion>,
@@ -87,29 +62,26 @@ impl Default for CaptureCompletionChannel {
 
 pub(super) fn start_capture_worker(
     image: Image,
-    jobs: Vec<ScreenshotJob>,
+    screenshot_job: ScreenshotJob,
     sender: Sender<WorkerCompletion>,
     converter: ImageConverter,
 ) {
     AsyncComputeTaskPool::get()
         .spawn(async move {
-            for prepared_job in prepare_capture_jobs(image, jobs, converter) {
-                let completion_sender = sender.clone();
-                match prepared_job.encoded_capture {
-                    Ok(encoded_capture) => {
-                        IoTaskPool::get()
-                            .spawn(async move {
-                                let completion =
-                                    write_temporary_capture(prepared_job.job, encoded_capture);
-                                let _ = completion_sender.send(completion);
-                            })
-                            .detach();
-                    },
-                    Err(error) => {
-                        let _ = completion_sender
-                            .send(WorkerCompletion::failed(prepared_job.job, error));
-                    },
-                }
+            let prepared_job = prepare_capture_job(image, screenshot_job, converter);
+            match prepared_job.encoded_capture {
+                Ok(encoded_capture) => {
+                    IoTaskPool::get()
+                        .spawn(async move {
+                            let completion =
+                                write_temporary_capture(prepared_job.job, encoded_capture);
+                            let _ = sender.send(completion);
+                        })
+                        .detach();
+                },
+                Err(error) => {
+                    let _ = sender.send(WorkerCompletion { result: Err(error) });
+                },
             }
         })
         .detach();
@@ -120,26 +92,20 @@ struct PreparedJob {
     encoded_capture: BrpResult<EncodedCapture>,
 }
 
-fn prepare_capture_jobs(
+fn prepare_capture_job(
     image: Image,
-    jobs: Vec<ScreenshotJob>,
+    screenshot_job: ScreenshotJob,
     converter: ImageConverter,
-) -> Vec<PreparedJob> {
+) -> PreparedJob {
     match converter(image) {
-        Ok(target_image) => jobs
-            .into_iter()
-            .map(|job| PreparedJob {
-                encoded_capture: target_image.encode(job.crop),
-                job,
-            })
-            .collect(),
-        Err(error) => jobs
-            .into_iter()
-            .map(|job| PreparedJob {
-                job,
-                encoded_capture: Err(error.clone()),
-            })
-            .collect(),
+        Ok(target_image) => PreparedJob {
+            encoded_capture: target_image.encode(screenshot_job.crop),
+            job:             screenshot_job,
+        },
+        Err(error) => PreparedJob {
+            job:             screenshot_job,
+            encoded_capture: Err(error),
+        },
     }
 }
 
@@ -149,23 +115,15 @@ fn write_temporary_capture(
 ) -> WorkerCompletion {
     let result = create_temporary_file(&job.path, &encoded_capture.bytes).map(|temp_path| {
         OwnedTempCapture {
-            identity: job.identity.clone(),
             metadata: CaptureMetadata {
                 dimensions:        encoded_capture.dimensions,
                 response_metadata: job.response_metadata.clone(),
             },
-            path_generation: job.path_generation,
             temp_path,
         }
     });
 
-    WorkerCompletion {
-        deadline: job.deadline,
-        identity: job.identity,
-        path: job.path,
-        path_generation: job.path_generation,
-        result,
-    }
+    WorkerCompletion { result }
 }
 
 pub(super) fn create_temporary_file(destination: &Path, bytes: &[u8]) -> BrpResult<TempPath> {
@@ -219,27 +177,20 @@ mod tests {
     use std::fs;
     use std::io;
     use std::io::Error as IoError;
-    use std::sync::atomic::AtomicUsize;
-    use std::sync::atomic::Ordering;
 
     use bevy::asset::RenderAssetUsages;
     use bevy::render::render_resource::Extent3d;
     use bevy::render::render_resource::TextureDimension;
     use bevy::render::render_resource::TextureFormat;
-    use image::GenericImageView;
-    use image::ImageFormat;
     use tempfile::TempDir;
 
     use super::*;
     use crate::screenshot::CaptureResponseMetadata;
-    use crate::screenshot::capture;
 
     const FIRST_PIXEL: [u8; 4] = [10, 20, 30, 240];
     const SECOND_PIXEL: [u8; 4] = [40, 50, 60, 230];
     const THIRD_PIXEL: [u8; 4] = [70, 80, 90, 220];
     const FOURTH_PIXEL: [u8; 4] = [100, 110, 120, 210];
-    const TEST_PATH_GENERATION: PathGeneration = PathGeneration(1);
-    static CONVERSIONS: AtomicUsize = AtomicUsize::new(0);
 
     fn test_image() -> Image {
         Image::new(
@@ -255,23 +206,10 @@ mod tests {
         )
     }
 
-    fn counting_conversion(image: Image) -> BrpResult<TargetRgbImage> {
-        CONVERSIONS.fetch_add(1, Ordering::SeqCst);
-        TargetRgbImage::try_from(image)
-    }
-
     fn job(path: PathBuf, crop: Option<URect>) -> ScreenshotJob {
         ScreenshotJob {
-            identity: CaptureIdentity::Legacy(capture::request_fingerprint(
-                path.clone(),
-                None,
-                None,
-                None,
-            )),
             path,
             crop,
-            path_generation: TEST_PATH_GENERATION,
-            deadline: Instant::now(),
             response_metadata: CaptureResponseMetadata::Full,
         }
     }
@@ -283,40 +221,19 @@ mod tests {
     }
 
     #[test]
-    fn worker_preparation_converts_once_and_fans_out_full_and_crop_jobs()
-    -> Result<(), Box<dyn Error>> {
+    fn worker_preparation_encodes_the_requested_crop() -> Result<(), Box<dyn Error>> {
         let temp_dir = TempDir::new()?;
-        CONVERSIONS.store(0, Ordering::SeqCst);
-        let jobs = vec![
-            job(temp_dir.path().join("full.png"), None),
+        let prepared_job = prepare_capture_job(
+            test_image(),
             job(
                 temp_dir.path().join("crop.png"),
                 Some(URect::new(1, 0, 2, 2)),
             ),
-        ];
+            TargetRgbImage::try_from,
+        );
 
-        let prepared = prepare_capture_jobs(test_image(), jobs, counting_conversion);
-
-        assert_eq!(CONVERSIONS.load(Ordering::SeqCst), 1);
-        let mut prepared = prepared.into_iter();
-        let full = encoded(
-            prepared
-                .next()
-                .ok_or_else(|| io::Error::other("missing full capture"))?,
-        )?;
-        let crop = encoded(
-            prepared
-                .next()
-                .ok_or_else(|| io::Error::other("missing crop capture"))?,
-        )?;
-        assert!(prepared.next().is_none());
-
-        let full_image = image::load_from_memory_with_format(&full.bytes, ImageFormat::Png)?;
-        let crop_image = image::load_from_memory_with_format(&crop.bytes, ImageFormat::Png)?;
-        assert_eq!(full_image.dimensions(), (2, 2));
-        assert_eq!(crop_image.dimensions(), (1, 2));
-        assert_eq!(crop_image.to_rgb8().get_pixel(0, 0).0, SECOND_PIXEL[..3]);
-        assert_eq!(crop_image.to_rgb8().get_pixel(0, 1).0, FOURTH_PIXEL[..3]);
+        let encoded_capture = encoded(prepared_job)?;
+        assert_eq!(encoded_capture.dimensions, UVec2::new(1, 2));
         Ok(())
     }
 

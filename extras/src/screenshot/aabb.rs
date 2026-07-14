@@ -234,13 +234,10 @@ mod tests {
         target_size: UVec2,
         scale_factor: f32,
         viewport: Option<Viewport>,
-    ) -> Result<SelectedCamera, IoError> {
+    ) -> SelectedCamera {
         let render_target = RenderTarget::Window(WindowRef::Primary);
-        let normalized_target = render_target
-            .normalize(Some(Entity::PLACEHOLDER))
-            .ok_or_else(|| io::Error::other("test camera target did not normalize"))?;
         let clip_from_view = Mat4::IDENTITY;
-        Ok(SelectedCamera {
+        SelectedCamera {
             camera: Camera {
                 computed: ComputedCameraValues {
                     clip_from_view,
@@ -256,11 +253,10 @@ mod tests {
             entity: Entity::PLACEHOLDER,
             frustum: Frustum(ViewFrustum::from_clip_from_world(&clip_from_view)),
             global_transform: GlobalTransform::IDENTITY,
-            normalized_target,
             render_layers: None,
             render_target,
             visible_entities: None,
-        })
+        }
     }
 
     fn entity(world: &mut World, global_transform: GlobalTransform) -> Entity {
@@ -284,7 +280,7 @@ mod tests {
 
     #[test]
     fn transformed_aabbs_produce_physical_containing_rectangles() -> Result<(), Box<dyn Error>> {
-        let selected_camera = selected_camera(UVec2::splat(100), 1.0, None)?;
+        let selected_camera = selected_camera(UVec2::splat(100), 1.0, None);
         let mut world = World::new();
         let translated = entity(
             &mut world,
@@ -335,7 +331,7 @@ mod tests {
             physical_size: UVec2::new(60, 40),
             ..default()
         };
-        let selected_camera = selected_camera(UVec2::splat(100), 2.0, Some(viewport))?;
+        let selected_camera = selected_camera(UVec2::splat(100), 2.0, Some(viewport));
         let mut world = World::new();
         let entity = entity(
             &mut world,
@@ -355,7 +351,7 @@ mod tests {
             physical_size: UVec2::new(60, 40),
             ..default()
         };
-        let selected_camera = selected_camera(UVec2::splat(100), 1.0, Some(viewport))?;
+        let selected_camera = selected_camera(UVec2::splat(100), 1.0, Some(viewport));
         let mut world = World::new();
         let near = entity(
             &mut world,
@@ -378,8 +374,8 @@ mod tests {
     }
 
     #[test]
-    fn offscreen_hidden_and_disjoint_layer_entities_are_rejected() -> Result<(), Box<dyn Error>> {
-        let selected_camera = selected_camera(UVec2::splat(100), 1.0, None)?;
+    fn offscreen_hidden_and_disjoint_layer_entities_are_rejected() {
+        let selected_camera = selected_camera(UVec2::splat(100), 1.0, None);
         let mut world = World::new();
         let offscreen = entity(
             &mut world,
@@ -403,12 +399,11 @@ mod tests {
         assert!(resolve(&world, offscreen, &selected_camera, 0).is_err());
         assert!(resolve(&world, hidden, &selected_camera, 0).is_err());
         assert!(resolve(&world, disjoint, &selected_camera, 0).is_err());
-        Ok(())
     }
 
     #[test]
     fn selected_view_membership_applies_except_for_no_cpu_culling() -> Result<(), Box<dyn Error>> {
-        let mut selected_camera = selected_camera(UVec2::splat(100), 1.0, None)?;
+        let mut selected_camera = selected_camera(UVec2::splat(100), 1.0, None);
         let mut world = World::new();
         let mut visibility_class = VisibilityClass::default();
         visibility_class.push(TypeId::of::<TestVisibilityClass>());

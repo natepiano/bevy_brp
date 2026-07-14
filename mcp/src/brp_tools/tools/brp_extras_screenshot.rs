@@ -8,7 +8,6 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
-use uuid::Uuid;
 
 use super::world_find_entities_by_name;
 use super::world_find_entities_by_name::NameMatchMode;
@@ -32,7 +31,7 @@ pub struct ScreenshotParams {
     pub entity:  Option<u64>,
     /// Unique, case-sensitive exact Bevy `Name` to resolve before capture.
     pub name:    Option<String>,
-    /// Camera entity ID. Valid only for entity or name capture.
+    /// Camera entity ID. Captures its viewport, or selects it for an entity crop.
     pub camera:  Option<u64>,
     /// Physical pixels to add around an entity crop. Defaults to zero.
     pub padding: Option<u32>,
@@ -85,7 +84,9 @@ impl ToolFn for BrpExtrasScreenshot {
 
 #[derive(Debug, Eq, PartialEq)]
 enum ScreenshotScope {
-    Full,
+    Full {
+        camera: Option<u64>,
+    },
     Entity {
         entity:  u64,
         camera:  Option<u64>,
@@ -133,17 +134,12 @@ impl TryFrom<ScreenshotParams> for ScreenshotRequest {
                 camera,
                 padding: padding.unwrap_or_default(),
             },
-            (None, None) if camera.is_some() => {
-                return Err(selector_error(
-                    "`camera` requires an `entity` or `name` screenshot selector",
-                ));
-            },
             (None, None) if padding.is_some() => {
                 return Err(selector_error(
                     "`padding` requires an `entity` or `name` screenshot selector",
                 ));
             },
-            (None, None) => ScreenshotScope::Full,
+            (None, None) => ScreenshotScope::Full { camera },
         };
 
         Ok(Self { path, port, scope })
@@ -152,7 +148,9 @@ impl TryFrom<ScreenshotParams> for ScreenshotRequest {
 
 #[derive(Debug, Eq, PartialEq)]
 enum ResolvedScope {
-    Full,
+    Full {
+        camera: Option<u64>,
+    },
     Entity {
         entity:  u64,
         name:    Option<String>,
@@ -162,9 +160,9 @@ enum ResolvedScope {
 }
 
 impl ResolvedScope {
-    fn extras_params(&self, path: String, capture_id: String) -> Result<Value> {
+    fn extras_params(&self, path: String) -> Result<Value> {
         let (entity, camera, padding) = match self {
-            Self::Full => (None, None, None),
+            Self::Full { camera } => (None, *camera, None),
             Self::Entity {
                 entity,
                 camera,
@@ -174,7 +172,6 @@ impl ResolvedScope {
         };
         let params = ExtrasScreenshotParams {
             camera,
-            capture_id,
             entity,
             padding,
             path,
@@ -190,7 +187,7 @@ impl ResolvedScope {
 
     fn metadata(self) -> (Option<u64>, Option<String>) {
         match self {
-            Self::Full => (None, None),
+            Self::Full { .. } => (None, None),
             Self::Entity { entity, name, .. } => (Some(entity), name),
         }
     }
@@ -199,21 +196,19 @@ impl ResolvedScope {
 #[derive(Serialize)]
 struct ExtrasScreenshotParams {
     #[serde(skip_serializing_if = "Option::is_none")]
-    camera:     Option<u64>,
-    capture_id: String,
+    camera:  Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    entity:     Option<u64>,
+    entity:  Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    padding:    Option<u32>,
-    path:       String,
+    padding: Option<u32>,
+    path:    String,
 }
 
 async fn take_screenshot(params: ScreenshotParams) -> Result<ScreenshotResult> {
     let request = ScreenshotRequest::try_from(params)?;
-    let capture_id = new_capture_id();
     let ScreenshotRequest { path, port, scope } = request;
     let resolved_scope = resolve_scope(scope, port).await?;
-    let extras_params = resolved_scope.extras_params(path, capture_id)?;
+    let extras_params = resolved_scope.extras_params(path)?;
     let client = BrpClient::new(BrpMethod::BrpExtrasScreenshot, port, Some(extras_params));
     let response = client.execute_raw().await?;
 
@@ -222,7 +217,7 @@ async fn take_screenshot(params: ScreenshotParams) -> Result<ScreenshotResult> {
 
 async fn resolve_scope(scope: ScreenshotScope, port: Port) -> Result<ResolvedScope> {
     match scope {
-        ScreenshotScope::Full => Ok(ResolvedScope::Full),
+        ScreenshotScope::Full { camera } => Ok(ResolvedScope::Full { camera }),
         ScreenshotScope::Entity {
             entity,
             camera,
@@ -331,19 +326,15 @@ fn selector_error(message: impl Into<String>) -> Report<Error> {
     Error::tool_call_failed(message).into()
 }
 
-fn new_capture_id() -> String { Uuid::new_v4().to_string() }
-
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use uuid::Uuid;
 
     use super::*;
     use crate::tool::ToolName;
 
     const TEST_BRP_ERROR_CODE: i32 = -32_602;
     const TEST_CAMERA: u64 = 11;
-    const TEST_CAPTURE_ID: &str = "79da5a17-c09f-4f31-a1c4-e6a2a07170c7";
     const TEST_ENTITY_HIGH: u64 = 42;
     const TEST_ENTITY_LOW: u64 = 7;
     const TEST_ERROR_MESSAGE: &str = "capture failed";
@@ -354,7 +345,6 @@ mod tests {
     const TEST_PORT: Port = Port(15_702);
     const TEST_STATUS_COMPLETED: &str = "completed";
     const TEST_STATUS_FAILED: &str = "failed";
-    const TEST_UUID_VERSION: usize = 4;
     const TEST_WIDTH: u64 = 320;
 
     fn params() -> ScreenshotParams {
@@ -369,52 +359,95 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn full_and_direct_id_convert_to_typed_scopes_and_private_payloads()
+    async fn request_modes_convert_to_typed_scopes_and_extras_payloads()
     -> core::result::Result<(), Box<dyn std::error::Error>> {
         let full = ScreenshotRequest::try_from(params())?;
-        assert_eq!(full.scope, ScreenshotScope::Full);
-        let full_extras = ResolvedScope::Full
-            .extras_params(TEST_PATH.to_string(), TEST_CAPTURE_ID.to_string())?;
+        assert_eq!(full.scope, ScreenshotScope::Full { camera: None });
+        let full_extras =
+            ResolvedScope::Full { camera: None }.extras_params(TEST_PATH.to_string())?;
         assert_eq!(
             full_extras,
             json!({
-                "capture_id": TEST_CAPTURE_ID,
+                "path": TEST_PATH,
+            })
+        );
+
+        let camera = ScreenshotRequest::try_from(ScreenshotParams {
+            camera: Some(TEST_CAMERA),
+            ..params()
+        })?;
+        assert_eq!(
+            camera.scope,
+            ScreenshotScope::Full {
+                camera: Some(TEST_CAMERA),
+            }
+        );
+        let camera_extras = resolve_scope(camera.scope, TEST_PORT)
+            .await?
+            .extras_params(TEST_PATH.to_string())?;
+        assert_eq!(
+            camera_extras,
+            json!({
+                "camera": TEST_CAMERA,
                 "path": TEST_PATH,
             })
         );
 
         let entity = ScreenshotRequest::try_from(ScreenshotParams {
             entity: Some(TEST_ENTITY_LOW),
-            camera: Some(TEST_CAMERA),
             ..params()
         })?;
         assert_eq!(
             entity.scope,
             ScreenshotScope::Entity {
                 entity:  TEST_ENTITY_LOW,
-                camera:  Some(TEST_CAMERA),
+                camera:  None,
                 padding: u32::default(),
             }
         );
         let entity_extras = resolve_scope(entity.scope, TEST_PORT)
             .await?
-            .extras_params(TEST_PATH.to_string(), TEST_CAPTURE_ID.to_string())?;
+            .extras_params(TEST_PATH.to_string())?;
         assert_eq!(
             entity_extras,
             json!({
-                "camera": TEST_CAMERA,
-                "capture_id": TEST_CAPTURE_ID,
                 "entity": TEST_ENTITY_LOW,
                 "padding": u32::default(),
                 "path": TEST_PATH,
             })
         );
-        assert!(entity_extras.get("name").is_none());
+
+        let camera_entity = ScreenshotRequest::try_from(ScreenshotParams {
+            entity: Some(TEST_ENTITY_LOW),
+            camera: Some(TEST_CAMERA),
+            ..params()
+        })?;
+        assert_eq!(
+            camera_entity.scope,
+            ScreenshotScope::Entity {
+                entity:  TEST_ENTITY_LOW,
+                camera:  Some(TEST_CAMERA),
+                padding: u32::default(),
+            }
+        );
+        let camera_entity_extras = resolve_scope(camera_entity.scope, TEST_PORT)
+            .await?
+            .extras_params(TEST_PATH.to_string())?;
+        assert_eq!(
+            camera_entity_extras,
+            json!({
+                "camera": TEST_CAMERA,
+                "entity": TEST_ENTITY_LOW,
+                "padding": u32::default(),
+                "path": TEST_PATH,
+            })
+        );
+        assert!(camera_entity_extras.get("name").is_none());
         Ok(())
     }
 
     #[test]
-    fn public_params_wire_and_schema_exclude_private_capture_id()
+    fn public_params_wire_and_schema_include_screenshot_selectors()
     -> core::result::Result<(), Box<dyn std::error::Error>> {
         let public_wire = serde_json::to_value(ScreenshotParams {
             entity:  Some(TEST_ENTITY_LOW),
@@ -435,8 +468,6 @@ mod tests {
                 "port": *TEST_PORT,
             })
         );
-        assert!(public_wire.get("capture_id").is_none());
-
         let public_schema = serde_json::to_value(schemars::schema_for!(ScreenshotParams))?;
         assert!(public_schema.pointer("/properties/entity").is_some());
         assert!(public_schema.pointer("/properties/name").is_some());
@@ -444,7 +475,6 @@ mod tests {
         assert!(public_schema.pointer("/properties/padding").is_some());
         assert!(public_schema.pointer("/properties/path").is_some());
         assert!(public_schema.pointer("/properties/port").is_some());
-        assert!(public_schema.pointer("/properties/capture_id").is_none());
         Ok(())
     }
 
@@ -480,14 +510,12 @@ mod tests {
             }],
             TEST_PORT,
         )?;
-        let extras_params =
-            resolved_scope.extras_params(TEST_PATH.to_string(), TEST_CAPTURE_ID.to_string())?;
+        let extras_params = resolved_scope.extras_params(TEST_PATH.to_string())?;
 
         assert_eq!(
             extras_params,
             json!({
                 "camera": TEST_CAMERA,
-                "capture_id": TEST_CAPTURE_ID,
                 "entity": TEST_ENTITY_LOW,
                 "padding": u32::default(),
                 "path": TEST_PATH,
@@ -559,20 +587,12 @@ mod tests {
     }
 
     #[test]
-    fn camera_and_padding_are_invalid_for_full_capture() {
-        let camera = ScreenshotRequest::try_from(ScreenshotParams {
-            camera: Some(TEST_CAMERA),
-            ..params()
-        });
+    fn padding_is_invalid_without_an_entity_or_name() {
         let padding = ScreenshotRequest::try_from(ScreenshotParams {
             padding: Some(TEST_PADDING),
             ..params()
         });
 
-        assert!(matches!(
-            camera.as_ref().map_err(error_stack::Report::current_context),
-            Err(Error::ToolCall { message, .. }) if message.contains("`camera` requires")
-        ));
         assert!(matches!(
             padding.as_ref().map_err(error_stack::Report::current_context),
             Err(Error::ToolCall { message, .. }) if message.contains("`padding` requires")
@@ -622,22 +642,6 @@ mod tests {
             }) if details.get("code") == Some(&json!(TEST_BRP_ERROR_CODE))
                 && details.get("data") == Some(&json!({"status": TEST_STATUS_FAILED}))
         ));
-    }
-
-    #[test]
-    fn capture_ids_are_fresh_uuid_v4_values() {
-        let first = new_capture_id();
-        let second = new_capture_id();
-
-        assert_ne!(first, second);
-        assert_eq!(
-            Uuid::parse_str(&first).map(|uuid| uuid.get_version_num()),
-            Ok(TEST_UUID_VERSION)
-        );
-        assert_eq!(
-            Uuid::parse_str(&second).map(|uuid| uuid.get_version_num()),
-            Ok(TEST_UUID_VERSION)
-        );
     }
 
     #[test]

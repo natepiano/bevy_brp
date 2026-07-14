@@ -4,7 +4,6 @@
 //! 224x168 viewport whose target-space origin is (16, 12). Zero-padding capture
 //! rectangles are expected to be:
 //!
-//! - `Screenshot2dUiReference`: (16, 12, 224, 168)
 //! - `NatesList`: (40, 32, 64, 48)
 //! - `ScreenshotRotatedClippedUi`: (132, 40, 32, 56)
 //! - `Screenshot2dAabb`: (106, 98, 12, 60)
@@ -15,6 +14,8 @@
 //! and a magenta marker at (100, 56), while `Screenshot2dAabb` contains a
 //! yellow marker at (112, 128). During the 3D epoch, `Screenshot3dAabb`
 //! contains a yellow marker at (168, 114). Coordinates are target-space pixels.
+//! `ScreenshotFixturesPlugin` leaves existing camera state unchanged; its two
+//! offscreen cameras declare their own initial active states when spawned.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::camera::ClearColorConfig;
@@ -65,7 +66,6 @@ const THREE_D_MARKER_NAME: &str = "Screenshot3dMarker";
 const THREE_D_REFERENCE_NAME: &str = "Screenshot3dReference";
 const TWO_D_AABB_NAME: &str = "Screenshot2dAabb";
 const TWO_D_MARKER_NAME: &str = "Screenshot2dMarker";
-const TWO_D_UI_REFERENCE_NAME: &str = "Screenshot2dUiReference";
 const UNIQUE_NAME: &str = "ScreenshotUniqueName";
 const UNSUPPORTED_NAME: &str = "ScreenshotUnsupported";
 
@@ -88,7 +88,6 @@ const ROTATED_UI_CHILD_SIZE: Vec2 = Vec2::new(64.0, 32.0);
 const ROTATED_UI_PARENT_POSITION: Vec2 = Vec2::new(112.0, 28.0);
 const ROTATED_UI_PARENT_SIZE: Vec2 = Vec2::new(64.0, 56.0);
 const TARGET_FILL: [u8; 4] = [0, 0, 0, 255];
-const TARGET_PERCENT: f32 = 100.0;
 const TARGET_SIZE: UVec2 = UVec2::new(256, 192);
 const VIEWPORT_POSITION: UVec2 = UVec2::new(16, 12);
 const VIEWPORT_SIZE: UVec2 = UVec2::new(224, 168);
@@ -120,7 +119,7 @@ impl Plugin for ScreenshotFixturesPlugin {
         app.add_systems(Startup, setup_screenshot_fixtures)
             .add_systems(
                 PostStartup,
-                (establish_initial_camera_epoch, report_fixture_state).chain(),
+                (identify_primary_window_camera, report_fixture_state).chain(),
             );
     }
 }
@@ -210,17 +209,6 @@ fn spawn_three_d_camera(commands: &mut Commands, render_target: RenderTarget) ->
 }
 
 fn spawn_ui_fixtures(commands: &mut Commands, camera: Entity) {
-    commands.spawn((
-        Node {
-            position_type: PositionType::Absolute,
-            width: Val::Percent(TARGET_PERCENT),
-            height: Val::Percent(TARGET_PERCENT),
-            ..default()
-        },
-        UiTargetCamera(camera),
-        Name::new(TWO_D_UI_REFERENCE_NAME),
-    ));
-
     commands
         .spawn((
             absolute_node(FIXED_UI_POSITION, FIXED_UI_SIZE),
@@ -392,14 +380,13 @@ fn spawn_error_and_name_fixtures(commands: &mut Commands) {
     commands.spawn(Name::new(DUPLICATE_NAME));
 }
 
-fn establish_initial_camera_epoch(
-    mut cameras: Query<(Entity, &RenderTarget, Option<&Camera2d>, &mut Camera)>,
+fn identify_primary_window_camera(
+    cameras: Query<(Entity, &RenderTarget, Option<&Camera2d>)>,
     mut commands: Commands,
     mut state: ResMut<ScreenshotFixtureState>,
 ) {
     let mut primary_window_camera: Option<Entity> = None;
-    for (entity, target, camera_2d, mut camera) in &mut cameras {
-        camera.is_active = entity == state.two_d_camera;
+    for (entity, target, camera_2d) in &cameras {
         if camera_2d.is_some() && matches!(target, RenderTarget::Window(_)) {
             primary_window_camera = match primary_window_camera {
                 Some(current) if current.to_bits() < entity.to_bits() => Some(current),

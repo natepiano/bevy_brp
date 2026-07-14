@@ -160,12 +160,22 @@ inspection, mutation, watch, or screenshot operations:
 
 ### Capture screenshots
 
-`brp_extras_screenshot` is one terminal tool for full images, entity-ID crops, and unique exact-name
-crops. Capture the full primary window with:
+`brp_extras_screenshot` is one terminal tool for full primary-window images, camera viewports,
+entity-ID crops, and unique exact-name crops. Capture the full primary window with:
 
 ```json
 {
   "path": "/tmp/full.png",
+  "port": 15702
+}
+```
+
+Capture an active camera's physical viewport with:
+
+```json
+{
+  "camera": 4294967297,
+  "path": "/tmp/camera.png",
   "port": 15702
 }
 ```
@@ -190,11 +200,13 @@ To screenshot NatesList in one call:
 }
 ```
 
-Use `entity` instead of `name` when the canonical ID is known. With neither selector, the tool
-captures the full primary window. Supplying both selectors is invalid. `camera` and `padding` apply
-only to entity or name captures, and padding defaults to zero physical pixels. Exact names are
-case-sensitive and must resolve to one entity. Zero or duplicate matches return guidance; use
-`world_find_entities_by_name` for non-exact discovery or to choose among duplicates.
+Use `entity` instead of `name` when the canonical ID is known. With no selector or camera, the tool
+captures the full primary window. With only `camera`, it captures that camera's physical viewport.
+Supplying both selectors is invalid. With a selector, `camera` chooses the camera used for the
+entity crop. `padding` applies only to entity or name captures and defaults to zero physical
+pixels. Exact names are case-sensitive and must resolve to one entity. Zero or duplicate matches
+return guidance; use `world_find_entities_by_name` for non-exact discovery or to choose among
+duplicates.
 
 The tool returns only after `bevy_brp_extras` has captured the final composited camera target,
 encoded a complete PNG, and atomically published the requested path. Entity screenshots crop that

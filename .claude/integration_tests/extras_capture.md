@@ -2,8 +2,8 @@
 
 ## Objective
 
-Prove terminal full-window and entity screenshot capture, MCP-local name resolution,
-camera selection, exact RGB crop output, error behavior, diagnostics, and name
+Prove terminal full-window, camera-viewport, and entity screenshot capture, MCP-local
+name resolution, exact RGB crop output, error behavior, diagnostics, and name
 discovery when `bevy_brp_extras` is absent.
 
 ## Runner-Managed App Context
@@ -16,6 +16,10 @@ label:
 
 Use `[extras_app port]` or `[no_extras_app port]` on every MCP call as directed.
 Do not launch, stop, or restart either app.
+The screenshot fixtures are always registered; no environment variable or special
+launch mode is required. At startup, the original primary-window camera and the
+offscreen 2D/UI fixture camera are both active, while the offscreen 3D fixture camera
+is inactive.
 
 Use a distinct absolute destination under `<cwd>` for every screenshot call. Include
 the app label, assigned port, and case name in each filename, for example
@@ -28,9 +32,8 @@ bash .claude/scripts/integration_tests/cleanup_screenshots.sh <absolute_path>
 python3 .claude/scripts/integration_tests/extras_assert_png.py absent <absolute_path>
 ```
 
-Never send `capture_id`. Assert that `capture_id` is absent from every public request
-and every success or error response inspected below. A successful screenshot call is
-terminal; validate its returned file immediately and never poll the path.
+A successful screenshot call is terminal; validate its returned file immediately and
+never poll the path.
 
 ## Shared Screenshot Success Assertions
 
@@ -66,7 +69,6 @@ supplying the helper's crop origin and dimensions:
 
 | Fixture | `(x, y, width, height)` |
 |---|---|
-| `Screenshot2dUiReference` | `(16, 12, 224, 168)` |
 | `NatesList` | `(40, 32, 64, 48)` |
 | `ScreenshotRotatedClippedUi` | `(132, 40, 32, 56)` |
 | `Screenshot2dAabb` | `(106, 98, 12, 60)` |
@@ -84,8 +86,7 @@ verify results are sorted by entity ID:
 
 - Exactly one each: `ScreenshotPrimaryWindowCamera`,
   `ScreenshotPrimaryWindowTarget`, `Screenshot2dUiCamera`, `Screenshot3dCamera`,
-  `Screenshot2dUiReference`, `NatesList`,
-  `ScreenshotRotatedClippedUi`, `Screenshot2dAabb`, `Screenshot3dReference`,
+  `NatesList`, `ScreenshotRotatedClippedUi`, `Screenshot2dAabb`, `Screenshot3dReference`,
   `Screenshot3dAabb`, `ScreenshotPartialUi`, `ScreenshotUnsupported`,
   `ScreenshotHiddenUi`, `ScreenshotHiddenAabb`, and `ScreenshotDisjointLayer`.
 - Exactly two for `ScreenshotDuplicateName`; store both IDs and assert ascending
@@ -154,15 +155,13 @@ Set the cameras in this order and to these values:
 Keep this camera state unchanged through all positive 2D/UI captures and the 2D/UI
 negative cases.
 
-Capture `Screenshot2dUiReference` by direct canonical ID with no `padding` or
-explicit `camera`.
+Capture the active `Screenshot2dUiCamera` viewport by supplying only its canonical
+camera ID, with no `entity`, `name`, or `padding`.
 
 - Apply the shared screenshot success assertions.
-- Assert `result.bounds_kind` is `"ui"`, `result.camera` is the stored
-  `Screenshot2dUiCamera` ID, and `result.rect` is
-  `{ "x": 16, "y": 12, "width": 224, "height": 168 }`.
-- Assert `metadata.name` is absent; `result.name` may be
-  `"Screenshot2dUiReference"`.
+- Assert `metadata.entity` and `metadata.name` are absent.
+- Assert no entity-only fields (`capture_kind`, `entity`, `name`, `camera`,
+  `bounds_kind`, or `rect`) were added to `result`.
 - Assert the PNG is `224x168` and nonuniform.
 - Run marker checks with image origin `(16, 12)` for yellow `(255, 255, 0)` at
   target pixels `(52, 44)` and `(112, 128)`, and magenta `(255, 0, 255)` at
@@ -259,9 +258,7 @@ error, run `absent` again to prove no destination was published.
    different camera than the requested camera.
 8. Send both the stored `NatesList` `entity` and `name: "NatesList"`. Assert a
    local MCP error explaining that the selectors are mutually exclusive.
-9. Send `camera` without `entity` or `name`. Assert a local MCP error explaining
-   that camera requires an entity or name selector.
-10. Send `padding: 0` without `entity` or `name`. Assert a local MCP error
+9. Send `padding: 0` without `entity` or `name`. Assert a local MCP error
     explaining that padding requires an entity or name selector.
 
 For raw BRP errors in cases 2-7, assert `metadata.method` is
@@ -327,11 +324,11 @@ ID without an explicit camera.
   3D camera IDs in ascending entity-ID order.
 - Assert the output path remains absent.
 
-### 11. Restore the initial 2D-only camera state
+### 11. Restore the initial visible-window and 2D fixture camera state
 
 Set the cameras in this order and to these values:
 
-1. `ScreenshotPrimaryWindowCamera`: `false`
+1. `ScreenshotPrimaryWindowCamera`: `true`
 2. `Screenshot2dUiCamera`: `true`
 3. `Screenshot3dCamera`: `false`
 
@@ -393,7 +390,7 @@ This proves name discovery and exact-name resolution use standard
 
 Before reporting results, always attempt these actions even after an earlier failure:
 
-1. Restore the camera values to primary `false`, 2D/UI `true`, and 3D `false`,
+1. Restore the camera values to primary `true`, 2D/UI `true`, and 3D `false`,
    using the same `world_mutate_components` component and path.
 2. Run the exact cleanup command once for every PNG destination used by this test,
    including paths from negative cases.
@@ -405,8 +402,8 @@ Before reporting results, always attempt these actions even after an earlier fai
 
 - Full capture is a terminal RGB PNG whose dimensions exactly match the stable
   pre/post-capture live primary-window physical dimensions.
-- Every retained 2D/UI and 3D offscreen reference is nonuniform and carries the
-  marker and crop-identity assertions below.
+- The camera-only 2D/UI reference and retained 3D reference are nonuniform and carry
+  the marker and crop-identity assertions below.
 - Name-selected and direct-ID UI captures preserve raw BRP result fields and keep
   MCP resolution metadata separate.
 - 2D/UI and 3D crops match same-epoch reference pixels at every coordinate.
@@ -419,8 +416,8 @@ Before reporting results, always attempt these actions even after an earlier fai
 - FPS diagnostics remain valid.
 - Standard-BRP name discovery works without extras, while screenshot invocation on
   that app returns BRP method-not-found code `-32601`.
-- Every generated path is removed and the app ends in its initial 2D-only camera
-  state.
+- Every generated path is removed and the app ends with its original window UI and
+  offscreen 2D/UI fixture cameras active and the offscreen 3D camera inactive.
 
 ## Failure Criteria
 
