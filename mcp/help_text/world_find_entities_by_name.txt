@@ -23,6 +23,7 @@ Examples:
 - Suffix: {"name":"List","match_mode":"suffix"}
 - Contains: {"name":"tesL","match_mode":"contains"}
 
-Use non-exact matching for discovery, then pass the returned canonical entity ID to mutation,
-inspection, watch, or screenshot operations. Entity IDs are the unambiguous identifier when names
-are duplicated.
+brp_extras_screenshot accepts a unique exact name directly and uses this same lookup internally.
+Call this tool yourself for non-exact discovery, duplicate matches, or explicit selection, then pass
+the returned canonical entity ID to screenshot, mutation, inspection, or watch operations. Entity
+IDs are the unambiguous identifier when names are duplicated.

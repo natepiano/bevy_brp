@@ -1,49 +1,32 @@
-Capture a full image or an entity crop from a running Bevy application in one call.
+Capture the primary window, a camera viewport, or an entity crop in one call.
 
 Examples:
-- Full primary-window capture: {"path":"/tmp/full.png","port":15702}
-- Camera viewport capture: {"camera":4294967297,"path":"/tmp/camera.png","port":15702}
-- Entity ID capture: {"entity":4294967298,"path":"/tmp/entity.png","port":15702}
-- To screenshot NatesList in one call: {"name":"NatesList","path":"/tmp/nates-list.png","port":15702}
+- Full window: {"path":"/tmp/full.png","port":15702}
+- Camera viewport: {"camera":4294967297,"path":"/tmp/camera.png","port":15702}
+- Entity ID: {"entity":4294967298,"path":"/tmp/entity.png","port":15702}
+- Entity name: {"name":"NatesList","path":"/tmp/nates-list.png","port":15702}
 
 Parameters:
-- path: Required destination for the complete PNG.
+- path: Required PNG destination.
 - entity: Optional canonical u64 Bevy entity ID.
-- name: Optional case-sensitive exact Bevy Name. The match must be unique.
-- camera: Optional camera entity ID. Alone, it captures that camera's physical viewport. With an
-  entity or name, it selects the camera used to calculate the entity crop.
-- padding: Optional physical-pixel crop padding for entity or name capture. Defaults to zero.
-- port: BRP port, default 15702.
+- name: Optional one-call lookup of a unique, case-sensitive exact Bevy Name.
+- camera: Optional camera entity ID. Alone, captures its viewport; with entity or name, selects the
+  camera used for the crop.
+- padding: Optional physical-pixel padding around an entity crop; defaults to zero.
+- port: BRP port; defaults to 15702.
 
-Use either entity or name, never both. With neither selector or camera, the tool captures the full
-primary window. With only camera, it captures that active camera's physical viewport from the
-final composited target. Padding requires an entity or name. A name is resolved locally through
-standard world.query, then only the canonical entity ID is sent to bevy_brp_extras. Zero matches
-return discovery guidance. Multiple matches report the sorted matching IDs; retry with entity, or
-call world_find_entities_by_name for prefix, suffix, contains, or duplicate-name discovery.
+Use either entity or name, never both. Padding requires one of them. A name capture internally uses
+the same standard world.query lookup as world_find_entities_by_name, requires one exact match, and
+sends only the resolved entity ID to bevy_brp_extras. Use world_find_entities_by_name first when you
+want non-exact discovery, need to inspect duplicate matches, or want to choose the entity ID yourself.
 
-Entity crops use the selected camera target and physical target coordinates. camera is optional;
-the resolver can infer it only when one eligible camera is unambiguous. Bevy has no universal
-primary camera. Generic AABB bounds are supported. Complete Bevy UI components use UI bounds when
-the bevy_brp_extras ui feature is enabled; partial UI initialization is an error. The default-enabled
-ui feature gates this extras crate's UI resolver, imports, and capability. Disabling it does not
-guarantee that upstream UI crates disappear from cargo tree because Bevy 0.19 bevy_remote already
-brings that dependency family transitively. Enabling ui also enables the Bevy text and sprite
-dependencies required by Bevy UI; it does not add textual UI-tree or snapshot inspection.
+Entity crops require the entity to be visible to the selected camera. If camera is omitted, exactly
+one eligible camera must be unambiguous. Crops use AABB bounds, or Bevy UI bounds when the
+bevy_brp_extras ui feature is enabled. They contain the final composited pixels inside the bounds,
+not an isolated render of the entity.
 
-The call stays open while Bevy captures the final composited target, converts it, encodes the PNG,
-and atomically publishes the destination. Success and the final path are returned only after the
-complete PNG is available. The crop includes every composited layer inside its bounds, including
-partially covered pixels; it is not an isolated render of the selected entity. Capture, encoding,
-publication, timeout, and camera-selection failures return terminal errors. Filesystem polling is
-not required.
+The call returns only after the PNG is completely encoded and atomically published; filesystem
+polling is unnecessary. A minimized, hidden, or fully occluded primary window may legitimately
+produce a black image on platforms that stop presenting it.
 
-Success means the PNG is fully encoded and atomically published; it does not assert that scene
-content is nonuniform. A minimized, hidden, or fully occluded primary-window surface may
-legitimately produce a black image on platforms that stop presenting it. Entity captures reflect
-the selected camera target; retained image or other offscreen targets avoid primary-window
-presentation dependence when the application is designed to use them.
-
-Prerequisites:
-- bevy_brp_extras dependency
-- BrpExtrasPlugin registered in the target application
+Requires bevy_brp_extras and BrpExtrasPlugin in the target application.
