@@ -1,7 +1,7 @@
 Discover canonical entity IDs by matching reflected Bevy Name components through standard BRP.
 
 This MCP-local composite calls world.query directly. It requires RemotePlugin and a reflected
-bevy_ecs::name::Name component, but it does not require bevy_brp_extras.
+bevy_ecs::name::Name component.
 
 Parameters:
 - name: Case-sensitive text to match.
