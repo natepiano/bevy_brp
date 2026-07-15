@@ -1,0 +1,9 @@
+List curated BRP methods published by the running application's developer.
+
+Each catalog record supplies an agent-facing name and description, the exact backing method, and
+optional raw JSON Schemas for that method's JSON-RPC params and result. Catalog records are not
+native MCP tools. Pass a selected method and matching raw params to brp_execute; use rpc_discover
+instead when you need every registered BRP method at the transport level.
+
+For MCP invocation, use brp_execute for method validation, timeout handling, and BRP error details.
+Direct HTTP JSON-RPC remains available to developers debugging outside MCP.

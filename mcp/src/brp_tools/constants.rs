@@ -1,5 +1,11 @@
 use std::ops::RangeInclusive;
 
+// agent tool catalog constants
+pub(super) const AGENT_TOOL_CATALOG_METHOD: &str = "brp_extras/agent_tools";
+pub(super) const AGENT_TOOL_CATALOG_USAGE: &str =
+    "Pass an entry's method and matching params to brp_execute.";
+pub(super) const AGENT_TOOL_CATALOG_VERSION: u32 = 1;
+
 // network constants
 /// Environment variable name for BRP port
 pub const BRP_EXTRAS_PORT_ENV_VAR: &str = "BRP_EXTRAS_PORT";

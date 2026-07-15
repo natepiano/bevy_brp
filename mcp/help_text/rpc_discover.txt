@@ -2,7 +2,8 @@ Discover the BRP methods registered on a running Bevy app or debug BRP connectiv
 
 Bevy 0.19 returns an OpenRPC document containing every registered method name, including methods
 added by application code. Its method entries have empty parameter lists and do not include result
-schemas, descriptions, or examples. Inspect application source or documentation to learn how to
-call an application-defined method, then use brp_execute to invoke it.
+schemas, descriptions, or examples. Use brp_list_agent_tools for curated developer-published
+descriptions and raw schemas when available, then pass the selected exact method and raw params to
+brp_execute.
 
 The response also contains BRP server information when the HTTP transport provides it.

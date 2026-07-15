@@ -31,6 +31,7 @@ pub use port::Port;
 // Export all tool parameter and result structs via the tools facade
 pub use tools::BrpExecute;
 pub use tools::BrpExtrasScreenshot;
+pub use tools::BrpListAgentTools;
 pub use tools::ClickMouseParams;
 pub use tools::ClickMouseResult;
 pub use tools::DespawnEntityParams;
@@ -53,6 +54,7 @@ pub use tools::InsertComponentsParams;
 pub use tools::InsertComponentsResult;
 pub use tools::InsertResourcesParams;
 pub use tools::InsertResourcesResult;
+pub use tools::ListAgentToolsParams;
 pub use tools::ListComponentsParams;
 pub use tools::ListComponentsResult;
 pub use tools::ListResourcesParams;
