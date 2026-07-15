@@ -16,9 +16,12 @@ use bevy_remote::http::RemoteHttpPlugin;
 
 #[cfg(not(target_arch = "wasm32"))]
 use super::DEFAULT_REMOTE_PORT;
+use super::agent_tools;
+use super::agent_tools::RegisteredAgentTools;
 #[cfg(not(target_arch = "wasm32"))]
 use super::constants::BRP_EXTRAS_PORT_ENV_VAR;
 use super::constants::EXTRAS_COMMAND_PREFIX;
+use super::constants::METHOD_AGENT_TOOLS;
 use super::constants::METHOD_CLICK_MOUSE;
 use super::constants::METHOD_DOUBLE_CLICK_MOUSE;
 use super::constants::METHOD_DOUBLE_TAP_GESTURE;
@@ -341,6 +344,8 @@ impl Plugin for BrpExtrasPlugin<HttpPluginConfigured> {
 
 /// Common plugin setup shared across all HTTP configuration states.
 fn build_shared(app: &mut App) {
+    app.init_resource::<RegisteredAgentTools>();
+
     // Add `RemotePlugin` if not already present
     if !app.is_plugin_added::<RemotePlugin>() {
         app.add_plugins(RemotePlugin::default());
@@ -402,6 +407,10 @@ fn add_managed_http_transport(app: &mut App, configured_port: Option<u16>) {
 /// Register all extras BRP methods into the world's `RemoteMethods` resource.
 fn register_extras_methods(world: &mut World) {
     let methods = vec![
+        (
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_AGENT_TOOLS}"),
+            RemoteMethodSystemId::Instant(world.register_system(agent_tools::catalog_handler)),
+        ),
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_CLICK_MOUSE}"),
             RemoteMethodSystemId::Instant(world.register_system(mouse::click_mouse_handler)),

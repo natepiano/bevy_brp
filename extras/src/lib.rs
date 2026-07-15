@@ -40,6 +40,10 @@
 //! types supplied through the generic builder methods generate documentation during application
 //! construction only; they do not decode requests or encode results.
 //!
+//! [`struct@BrpExtrasPlugin`] publishes the current metadata through the instant
+//! `brp_extras/agent_tools` BRP method. The catalog is sorted by agent tool name and validates at
+//! request time that every backing method is currently registered as an instant BRP method.
+//!
 //! # Plugin Composability
 //!
 //! `BrpExtrasPlugin` is designed to compose with existing BRP setups. If

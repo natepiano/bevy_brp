@@ -15,11 +15,11 @@ use schemars::Schema;
 /// an MCP arguments wrapper or a `{ "result": ... }` wrapper.
 #[must_use]
 pub struct AgentTool {
-    name:          String,
-    method:        String,
-    description:   String,
-    params_schema: Option<Schema>,
-    result_schema: Option<Schema>,
+    pub(super) name:          String,
+    pub(super) method:        String,
+    pub(super) description:   String,
+    pub(super) params_schema: Option<Schema>,
+    pub(super) result_schema: Option<Schema>,
 }
 
 impl AgentTool {
@@ -112,7 +112,7 @@ impl AgentTool {
 }
 
 #[derive(Default, Resource)]
-struct RegisteredAgentTools(Vec<AgentTool>);
+pub(crate) struct RegisteredAgentTools(pub(super) Vec<AgentTool>);
 
 /// Extends [`App`] with downstream-facing agent metadata publication.
 ///

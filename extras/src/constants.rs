@@ -3,9 +3,15 @@
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 
+// agent tool catalog constants
+pub(crate) const AGENT_TOOLS_CATALOG_VERSION: u32 = 1;
+pub(crate) const BACKING_METHOD_MISSING_REASON: &str = "backing_method_missing";
+pub(crate) const BACKING_METHOD_WATCHING_REASON: &str = "backing_method_watching";
+
 // command constants
 /// Command prefix for `brp_extras` methods
 pub(crate) const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
+pub(crate) const METHOD_AGENT_TOOLS: &str = "agent_tools";
 pub(crate) const METHOD_CLICK_MOUSE: &str = "click_mouse";
 pub(crate) const METHOD_DOUBLE_CLICK_MOUSE: &str = "double_click_mouse";
 pub(crate) const METHOD_DOUBLE_TAP_GESTURE: &str = "double_tap_gesture";
