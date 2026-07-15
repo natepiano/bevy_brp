@@ -13,6 +13,11 @@ use schemars::Schema;
 /// to pass to `brp_execute`. `description` explains the method's purpose. Parameter and result
 /// schemas describe the raw JSON-RPC values accepted and returned by that backing method without
 /// an MCP arguments wrapper or a `{ "result": ... }` wrapper.
+///
+/// [`struct@crate::BrpExtrasPlugin`] installs the catalog endpoint. At request time it validates
+/// all published entries against the live [`RemoteMethods`](bevy_remote::RemoteMethods) resource
+/// and returns no partial catalog if any backing method is missing or watching. See the complete
+/// [registration example](https://github.com/natepiano/bevy_brp/blob/main/extras/examples/agent_tool_registration.rs).
 #[must_use]
 pub struct AgentTool {
     pub(super) name:          String,
@@ -111,6 +116,10 @@ impl AgentTool {
     }
 }
 
+/// Construction-time registration-order sequence of uniquely named published entries.
+///
+/// Entries remain passive metadata. The catalog endpoint reads this resource without mutating it
+/// and validates the complete set against `RemoteMethods` for each request.
 #[derive(Default, Resource)]
 pub(crate) struct RegisteredAgentTools(pub(super) Vec<AgentTool>);
 
@@ -120,11 +129,18 @@ pub(crate) struct RegisteredAgentTools(pub(super) Vec<AgentTool>);
 /// [`AgentTool`] publishes documentation for an existing BRP method; it does not register the BRP
 /// handler itself. Add the backing method separately through
 /// [`RemoteMethods`](bevy_remote::RemoteMethods).
+///
+/// See the complete
+/// [agent tool registration example](https://github.com/natepiano/bevy_brp/blob/main/extras/examples/agent_tool_registration.rs).
 pub trait AppAgentToolExt {
     /// Publishes agent-facing metadata immediately during application construction.
     ///
     /// Registration can occur before or after `BrpExtrasPlugin` is added. Registering metadata
-    /// after [`App::run`] begins is unsupported.
+    /// after [`App::run`] begins is unsupported. [`struct@crate::BrpExtrasPlugin`] must be added
+    /// for the
+    /// `brp_extras/agent_tools` endpoint to exist. Each endpoint request validates the entire
+    /// published set against the live [`RemoteMethods`](bevy_remote::RemoteMethods) resource; a
+    /// missing or watching backing method rejects the request without a partial catalog.
     ///
     /// # Panics
     ///

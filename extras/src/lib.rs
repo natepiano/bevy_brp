@@ -16,23 +16,31 @@
 //!     .run();
 //! ```
 //!
-//! # Publishing agent tool metadata
+//! # BRP methods and agent tools
 //!
-//! [`AgentTool`] documents a selected BRP method for agents. Publishing this metadata does not
-//! register the backing BRP handler and does not create a native MCP tool. Register the BRP method
-//! separately, then publish its agent-facing name, purpose, and optional raw JSON schemas:
+//! Registering a remote method inserts its system into
+//! [`RemoteMethods`](bevy_remote::RemoteMethods), which makes the method callable and visible in
+//! exhaustive `rpc.discover` transport discovery. Calling
+//! [`AppAgentToolExt::register_agent_tool`] is a separate action: it publishes an agent-facing
+//! description and optional raw JSON schemas for one existing instant method. It does not register
+//! the backing BRP handler or create a native MCP tool.
 //!
-//! ```no_run
-//! use bevy::prelude::*;
-//! use bevy_brp_extras::AgentTool;
-//! use bevy_brp_extras::AppAgentToolExt;
+//! Every published [`AgentTool`] names a BRP method, while most BRP methods need not be published
+//! as agent tools. See the complete
+//! [agent tool registration example](https://github.com/natepiano/bevy_brp/blob/main/extras/examples/agent_tool_registration.rs)
+//! for the required plugin ordering, method insertion, and mutable-resource borrow scope.
 //!
-//! let mut app = App::new();
-//! app.register_agent_tool(AgentTool::new(
-//!     "example.refresh",
-//!     "example/refresh",
-//!     "Refreshes the example data.",
-//! ));
+//! After running the example, agents list the curated entries and pass a selected entry's exact
+//! method and matching raw parameters to `brp_execute`:
+//!
+//! ```text
+//! cargo run -p bevy_brp_extras --example agent_tool_registration
+//! brp_list_agent_tools(port: 15702)
+//! brp_execute(
+//!     port: 15702,
+//!     method: "example/multiply",
+//!     params: { "value": 6, "factor": 7 }
+//! )
 //! ```
 //!
 //! An omitted parameter schema documents a parameterless method whose JSON-RPC request omits
@@ -40,9 +48,11 @@
 //! types supplied through the generic builder methods generate documentation during application
 //! construction only; they do not decode requests or encode results.
 //!
-//! [`struct@BrpExtrasPlugin`] publishes the current metadata through the instant
-//! `brp_extras/agent_tools` BRP method. The catalog is sorted by agent tool name and validates at
-//! request time that every backing method is currently registered as an instant BRP method.
+//! [`struct@BrpExtrasPlugin`] installs the instant `brp_extras/agent_tools` endpoint that publishes
+//! the current metadata. Each request validates every backing method against the live
+//! [`RemoteMethods`](bevy_remote::RemoteMethods) resource. If any entry's method is missing or is a
+//! watching method, the request returns no partial catalog. Its BRP error data identifies the
+//! rejected entry with stable `name`, `method`, and `reason` fields.
 //!
 //! # Plugin Composability
 //!

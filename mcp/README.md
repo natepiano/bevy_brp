@@ -11,7 +11,7 @@ A Model Context Protocol (MCP) server that enables AI coding assistants to launc
 
 | bevy        | bevy_brp_mcp    |
 |-------------|-----------------|
-| 0.19        | 0.20.0-0.22.0   |
+| 0.19        | 0.20.0-0.23.0   |
 | 0.18        | 0.18.0-0.19.0   |
 | 0.17        | 0.17.0-0.17.2   |
 | 0.16        | 0.1             |
@@ -116,17 +116,34 @@ fn main() {
 
 In either case you'll need to make sure to enable bevy's "bevy_remote" feature.
 
-### Application-defined BRP methods
+### Application-defined BRP methods and agent tools
 
-`rpc_discover` lists methods added to Bevy's `RemoteMethods` resource by application code as well
-as Bevy's built-in methods. Bevy 0.19 reports their names but not their parameter formats. Inspect
-the application's handler or documentation, then pass the method name and raw JSON parameters to
-`brp_execute`:
+`rpc_discover` exhaustively lists methods in Bevy's live `RemoteMethods` resource, including
+application-defined and built-in methods. Bevy 0.19 reports their names but not descriptions or
+parameter/result schemas.
+
+Applications using `BrpExtrasPlugin` can publish a curated subset of existing instant methods for
+agents. List those records first, then execute a selected backing method:
+
+```text
+cargo run -p bevy_brp_extras --example agent_tool_registration
+brp_list_agent_tools(port: 15702)
+brp_execute(
+    port: 15702,
+    method: "example/multiply",
+    params: { "value": 6, "factor": 7 }
+)
+```
+
+`brp_list_agent_tools` returns the public structured `result` with `usage` and `tools`. Each record
+in `result.tools` contains an agent-facing name and description, its exact backing BRP method, and
+optional raw JSON schemas for that method's JSON-RPC parameters and result. Follow `result.usage`
+and invoke the selected method with `brp_execute`:
 
 ```json
 {
   "port": 15702,
-  "method": "test/multiply",
+  "method": "example/multiply",
   "params": {
     "value": 6,
     "factor": 7
@@ -135,7 +152,12 @@ the application's handler or documentation, then pass the method name and raw JS
 ```
 
 `brp_execute` confirms that the selected app reports the method through `rpc.discover` before
-forwarding the request.
+forwarding the raw parameters. Catalog records are not native MCP tools. Every published record
+names a BRP method, while most registered BRP methods need not be in the curated agent list.
+
+Each catalog request validates all published records against the live `RemoteMethods` resource. If
+any backing method is missing or watching, no partial list is returned; the BRP error data identifies
+the rejected entry through stable `name`, `method`, and `reason` fields.
 
 ### Find entities by name
 

@@ -14,7 +14,7 @@ bevy_brp_extras does two things
 
 | bevy        | bevy_brp_extras |
 |-------------|-----------------|
-| 0.19        | 0.20.0-0.22.0   |
+| 0.19        | 0.20.0-0.23.0   |
 | 0.18        | 0.18.0-0.19.0   |
 | 0.17        | 0.17.0-0.17.2   |
 | 0.16        | 0.1 - 0.2       |
@@ -114,13 +114,58 @@ use bevy_remote::http::RemoteHttpPlugin;
 
 If `RemoteHttpPlugin` is already present, any port configuration (`with_port()` / `BRP_EXTRAS_PORT`) is ignored and a warning is logged.
 
-## Integration with bevy_brp_mcp
+## BRP methods and agent tools
 
-This crate is designed to work with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp/mcp), which provides a Model Context Protocol (MCP) server for controlling Bevy apps. When both are used together:
+This crate is designed to work with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp/mcp), which provides a Model Context Protocol (MCP) server for controlling Bevy apps.
 
-1. Add `BrpExtrasPlugin` to your Bevy app
-2. Use `bevy_brp_mcp` with your AI coding assistant
-3. All methods are automatically discovered and made available as MCP tools
+Registering a remote method in `RemoteMethods` makes it callable and visible through exhaustive
+`rpc.discover` transport discovery. Calling `register_agent_tool` is separate: it publishes a
+description and raw JSON parameter/result schemas that teach an agent how to call one existing
+instant BRP method. It does not create a native MCP tool.
+
+Every published agent entry names a BRP method, while most BRP methods need not be agent tools. The
+complete runnable [registration example](examples/agent_tool_registration.rs) adds
+`BrpExtrasPlugin` first, inserts `example/multiply` into `RemoteMethods`, ends that resource's
+mutable borrow, and then publishes:
+
+```rust
+app.register_agent_tool(
+    AgentTool::new(
+        "example_multiply",
+        "example/multiply",
+        "Multiply two signed integers",
+    )
+    .params_schema_for::<MultiplyParams>()
+    .result_schema_for::<MultiplyResult>(),
+);
+```
+
+Use the MCP workflow in this order:
+
+```text
+cargo run -p bevy_brp_extras --example agent_tool_registration
+brp_list_agent_tools(port: 15702)
+brp_execute(
+    port: 15702,
+    method: "example/multiply",
+    params: { "value": 6, "factor": 7 }
+)
+```
+
+`brp_list_agent_tools` returns the public structured `result` with `usage` and `tools`. Agents
+should follow `result.usage`, select a record from `result.tools`, pass its `method` to
+`brp_execute`, and supply raw `params` matching its `params_schema`.
+`rpc.discover` remains the exhaustive list of registered BRP methods; the published agent list is
+the curated subset with descriptions and optional raw schemas.
+
+The `brp_extras/agent_tools` endpoint validates every published entry against the live
+`RemoteMethods` resource for each request. If any backing method is missing or watching, the
+request returns no partial list and its BRP error data identifies the rejected entry through stable
+`name`, `method`, and `reason` fields.
+
+Add `BrpExtrasPlugin` to install the catalog endpoint, publish selected entries with
+`register_agent_tool`, list them with `brp_list_agent_tools`, and invoke their backing methods with
+`brp_execute`.
 
 ## License
 

@@ -15,6 +15,7 @@ use crate::constants::AGENT_TOOLS_CATALOG_VERSION;
 use crate::constants::BACKING_METHOD_MISSING_REASON;
 use crate::constants::BACKING_METHOD_WATCHING_REASON;
 
+/// Borrowed wire record that preserves the registered raw schemas unchanged.
 #[derive(Serialize)]
 struct CatalogAgentTool<'a> {
     name:          &'a str,
@@ -26,6 +27,7 @@ struct CatalogAgentTool<'a> {
     result_schema: Option<&'a Schema>,
 }
 
+/// Versioned wire document returned only after every record passes live validation.
 #[derive(Serialize)]
 struct AgentToolCatalog<'a> {
     version: u32,
@@ -44,7 +46,10 @@ impl<'a> From<&'a AgentTool> for CatalogAgentTool<'a> {
     }
 }
 
-/// Returns the current catalog after validating every backing method.
+/// Returns the complete current catalog after validating every backing method.
+///
+/// Validation precedes serialization, so an invalid record cannot produce a partial success. The
+/// first rejected record in stable name order supplies `name`, `method`, and `reason` error data.
 pub(crate) fn handler(
     In(_): In<Option<Value>>,
     registered_agent_tools: Res<RegisteredAgentTools>,

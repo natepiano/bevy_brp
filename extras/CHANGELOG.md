@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add the public `AgentTool` builder and `AppAgentToolExt::register_agent_tool` extension API for publishing typed descriptions and raw JSON parameter/result schemas for existing instant BRP methods.
+- Add the version-1 `brp_extras/agent_tools` endpoint with deterministic ordering and request-time all-or-error validation against live instant methods.
+- Add a runnable typed `example/multiply` registration example and public-API support test.
+
 ## [0.22.0] - 2026-07-14
 
 ### Added
