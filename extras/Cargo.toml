@@ -32,6 +32,7 @@ bevy_kana.workspace = true
 # which requires async-io and doesn't compile on wasm32)
 bevy_remote = { workspace = true, default-features = false }
 
+schemars.workspace     = true
 serde.workspace        = true
 serde_json.workspace   = true
 strum.workspace        = true

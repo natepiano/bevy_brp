@@ -16,6 +16,30 @@
 //!     .run();
 //! ```
 //!
+//! # Publishing agent tool metadata
+//!
+//! [`AgentTool`] documents a selected BRP method for agents. Publishing this metadata does not
+//! register the backing BRP handler and does not create a native MCP tool. Register the BRP method
+//! separately, then publish its agent-facing name, purpose, and optional raw JSON schemas:
+//!
+//! ```no_run
+//! use bevy::prelude::*;
+//! use bevy_brp_extras::AgentTool;
+//! use bevy_brp_extras::AppAgentToolExt;
+//!
+//! let mut app = App::new();
+//! app.register_agent_tool(AgentTool::new(
+//!     "example.refresh",
+//!     "example/refresh",
+//!     "Refreshes the example data.",
+//! ));
+//! ```
+//!
+//! An omitted parameter schema documents a parameterless method whose JSON-RPC request omits
+//! `params`. An omitted result schema leaves the raw BRP JSON-RPC `result` undocumented. Schema
+//! types supplied through the generic builder methods generate documentation during application
+//! construction only; they do not decode requests or encode results.
+//!
 //! # Plugin Composability
 //!
 //! `BrpExtrasPlugin` is designed to compose with existing BRP setups. If
@@ -159,6 +183,7 @@
 //! Sends a rotation gesture.
 //! - `delta` (f32, required): rotation in radians
 
+mod agent_tools;
 mod constants;
 #[cfg(feature = "diagnostics")]
 mod diagnostics;
@@ -170,6 +195,8 @@ mod shutdown;
 mod window_event;
 mod window_title;
 
+pub use agent_tools::AgentTool;
+pub use agent_tools::AppAgentToolExt;
 pub use constants::DEFAULT_REMOTE_PORT;
 pub use plugin::BrpExtrasPlugin;
 #[cfg(not(target_arch = "wasm32"))]

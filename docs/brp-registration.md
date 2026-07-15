@@ -7,7 +7,7 @@
 - **Project:** `bevy_brp` workspace: `bevy_brp_extras` 0.23.0-dev lets Bevy developers publish curated agent-facing metadata for existing BRP methods; `bevy_brp_mcp` 0.23.0-dev exposes the fixed `brp_list_agent_tools` discovery tool and retains `brp_execute` as the invocation path; unpublished `bevy_brp_test_apps` supplies the end-to-end fixture.
 - **Stack:** Rust 2024; Bevy and `bevy_remote` 0.19.0; `rmcp` 2.2.0; `schemars` 1.2.1; `serde` and `serde_json`; existing `reqwest` BRP client.
 - **Layout:** `extras/{src,examples,tests,README.md,CHANGELOG.md,Cargo.toml}` — passive registration API, catalog BRP endpoint, example, tests, and developer guidance; `mcp/{src,help_text,README.md,CHANGELOG.md}` — one fixed catalog-listing MCP tool and cross-linked discovery/invocation guidance; `test-app/{Cargo.toml,examples/extras_plugin.rs}` — `test/multiply` fixture; `.claude/{integration_tests,config,agents,commands}` — real agent integration coverage; `docs/brp-registration.md` — authoritative phased plan.
-- **Key files:** `docs/brp-registration.md` — approved architecture and delegate-ready plan; `Cargo.toml` — workspace dependency/version source; `extras/Cargo.toml` — add `schemars` as a normal dependency; `extras/src/lib.rs` — module declaration, public `AgentTool`/`AppAgentToolExt` exports, and crate rustdoc; `extras/src/constants.rs` — `brp_extras/agent_tools` method and catalog-version constants; `extras/src/plugin.rs` — order-independent resource initialization and instant catalog-method registration; `extras/src/agent_tools/mod.rs` — feature module boundary and crate-private wire exports; `extras/src/agent_tools/registration.rs` — owned builder, extension trait, passive resource, construction-time validation, rustdoc, and unit tests; `extras/src/agent_tools/catalog.rs` — deterministic versioned catalog encoding, live instant-method checks, handler, and unit tests; `extras/examples/agent_tool_registration.rs` — runnable typed-schema registration example; `extras/tests/agent_tool_registration.rs` — focused public-API/example support tests; `extras/README.md` — concise developer workflow; `extras/CHANGELOG.md` — public API/catalog entry; `mcp/src/brp_tools/tools/brp_list_agent_tools.rs` — fixed port-parameterized catalog reader and typed result; `mcp/src/brp_tools/tools/mod.rs` — tool exports; `mcp/src/brp_tools/mod.rs` — facade exports; `mcp/src/tool/name.rs` — static `ToolName` registration, parameters, handler, and discovery annotation; `mcp/src/tool/registry.rs` — read-only static registry assembly reference; `mcp/src/mcp_service.rs` — read-only immutable built-in listing/dispatch reference; `mcp/src/brp_tools/brp_client/client.rs` — existing BRP request path; `mcp/src/brp_tools/tools/brp_execute.rs` — existing exact-name discovery and invocation behavior that must remain unchanged; `mcp/src/brp_tools/tools/rpc_discover.rs` — existing transport-level method discovery boundary; `mcp/help_text/brp_list_agent_tools.txt` — catalog purpose and `brp_execute` handoff; `mcp/help_text/brp_execute.txt` — catalog cross-reference; `mcp/help_text/rpc_discover.txt` — distinction between all BRP methods and curated agent tools; `mcp/README.md` — list-then-execute workflow; `mcp/CHANGELOG.md` — fixed discovery-tool entry; `test-app/Cargo.toml` — schema derive dependency for the fixture; `test-app/examples/extras_plugin.rs` — publish metadata for existing `test/multiply`; `.claude/integration_tests/agent_tools.md` — catalog distinction, schema, successful execution, and BRP error coverage; `.claude/config/integration_tests.json` — register the `agent_tools` case; `.claude/agents/integration-tester.md` — authorize `brp_list_agent_tools` and retain `brp_execute`; `.claude/commands/integration_tests.md` — read-only integration-runner contract; `.cargo/config.toml` — workspace `mcp-debug` cfg; `.github/workflows/ci.yml` — canonical build/test/format commands.
+- **Key files:** `docs/brp-registration.md` — approved architecture and delegate-ready plan; `Cargo.toml` — workspace dependency/version source; `CLAUDE.md` — installed-MCP reload requirement after tool changes; `extras/Cargo.toml` — add `schemars` as a normal dependency; `extras/src/lib.rs` — module declaration, public `AgentTool`/`AppAgentToolExt` exports, and crate rustdoc; `extras/src/constants.rs` — `brp_extras/agent_tools` method and catalog-version constants; `extras/src/plugin.rs` — order-independent resource initialization and instant catalog-method registration; `extras/src/agent_tools/mod.rs` — feature module boundary and crate-private wire exports; `extras/src/agent_tools/registration.rs` — owned builder, extension trait, passive resource, construction-time validation, rustdoc, and unit tests; `extras/src/agent_tools/catalog.rs` — deterministic versioned catalog encoding, live instant-method checks, handler, and unit tests; `extras/examples/agent_tool_registration.rs` — runnable typed-schema registration example; `extras/tests/agent_tool_registration.rs` — focused public-API/example support tests; `extras/README.md` — concise developer workflow; `extras/CHANGELOG.md` — public API/catalog entry; `mcp/src/brp_tools/tools/brp_list_agent_tools.rs` — fixed port-parameterized catalog reader and typed result; `mcp/src/brp_tools/tools/world_find_entities_by_name.rs` — closest bespoke local-tool registration/result pattern; `mcp/src/brp_tools/tools/mod.rs` — tool exports; `mcp/src/brp_tools/mod.rs` — facade exports; `mcp/src/tool/name.rs` — static `ToolName` registration, parameters, handler, and discovery annotation; `mcp/src/tool/registry.rs` — read-only static registry assembly reference; `mcp/src/mcp_service.rs` — read-only immutable built-in listing/dispatch reference; `mcp/src/brp_tools/brp_client/client.rs` — existing BRP request path; `mcp/src/brp_tools/tools/brp_execute.rs` — existing exact-name discovery and invocation behavior that must remain unchanged; `mcp/src/brp_tools/tools/rpc_discover.rs` — existing transport-level method discovery boundary; `mcp/help_text/brp_list_agent_tools.txt` — catalog purpose and `brp_execute` handoff; `mcp/help_text/brp_execute.txt` — catalog cross-reference; `mcp/help_text/rpc_discover.txt` — distinction between all BRP methods and curated agent tools; `mcp/README.md` — list-then-execute workflow; `mcp/CHANGELOG.md` — fixed discovery-tool entry; `test-app/Cargo.toml` — schema derive dependency for the fixture; `test-app/examples/extras_plugin.rs` — publish metadata for existing `test/multiply`; `test-app/examples/no_extras_plugin.rs` — live missing-catalog integration fixture; `.claude/integration_tests/agent_tools.md` — catalog distinction, schema, successful execution, and BRP error coverage; `.claude/config/integration_tests.json` — register the `agent_tools` case; `.claude/agents/integration-tester.md` — authorize `brp_list_agent_tools` and retain `brp_execute`; `.claude/commands/integration_tests.md` — read-only integration-runner contract; `.cargo/config.toml` — workspace `mcp-debug` cfg; `.github/workflows/ci.yml` — canonical build/test/format commands.
 - **Build:** `cargo build --release --all-features --workspace --examples`
 - **Test:** `cargo nextest run --all-features --workspace --tests`; final repository integration phase: `/integration_tests agent_tools`.
 - **Lint:** Full `clippy` skill, dispatched with `auto-proceed`; direct formatting, if needed, is `cargo +nightly fmt --all`, never plain `cargo fmt`.
@@ -16,7 +16,7 @@
 
 ## Phases
 
-### Phase 1 — Add the typed agent-tool publication API  · status: todo
+### Phase 1 — Add the typed agent-tool publication API  · status: done (`42539f3e`)
 
 #### Work Order
 
@@ -77,6 +77,38 @@ Write complete rustdoc with the API. `AgentTool` must state that it publishes me
 
 **Acceptance gate:** Unit tests cover owned string inputs, raw and generated parameter/result schemas, omitted schemas, name length boundaries and invalid characters, empty method/description rejection, duplicate-name panic diagnostics, allowed duplicate backing methods, and resource initialization before/after plugin addition. Public docs state the metadata-only and raw-JSON semantics. The public feature surface contains exactly `AgentTool` and `AppAgentToolExt`. Build and Test from Delegation Context are green; the full `clippy` skill is green.
 
+#### Retrospective
+
+**What worked:**
+
+- `AgentTool`, `AppAgentToolExt`, and the passive registry landed with the planned owned/raw-schema semantics and downstream API boundary.
+- Unit coverage exercised every validation, schema, duplicate, and plugin-order case; the blind implementation review found no Phase 1 defect.
+
+**What deviated from the plan:**
+
+- `Cargo.lock` changed because `schemars` became a direct `bevy_brp_extras` dependency.
+
+**Surprises:**
+
+- Phase 2's sibling catalog cannot consume the registration module's private fields until that phase deliberately widens their restricted internal visibility.
+
+**Implications for remaining phases:**
+
+- Phase 2 now owns the minimum `pub(super)`/crate-private visibility change needed by `catalog.rs` and `plugin.rs`, while the downstream API remains exactly two exported types.
+
+#### Phase 1 Review
+
+- Phase 2 now specifies a `pub(crate)` resource type, `pub(super)` entries/metadata access, and no downstream visibility increase.
+- Phase 2 now fixes missing/watching catalog failures at `INTERNAL_ERROR` with stable `name`, `method`, and `reason` data.
+- Phases 3 and 5 now use the actual `rpc_discover` MCP tool name while retaining `rpc.discover` for the BRP method.
+- Phase 3 now follows the existing bespoke local-tool registration pattern and re-exports only its handler and parameter types.
+- Phase 3 unit tests now inject `ResponseStatus`; Phase 5 owns real missing-endpoint and repeated-fetch coverage with `no_extras_plugin`.
+- Phase 4 now augments the public rustdoc and help created earlier instead of recreating them.
+- Phase 4 now fixes plugin-before-custom-method ordering in the runnable example.
+- Phase 4 now runs a targeted rustdoc-test command because nextest does not execute doctests.
+- Phase 5 now adds the direct `schemars` dependency, exact derives/imports, and a typed `test/multiply` result.
+- Phase 5 now requires installing the updated MCP and reloading the host before its two-app agent integration test.
+
 ### Phase 2 — Publish the passive agent-tool catalog  · status: todo
 
 #### Work Order
@@ -117,20 +149,23 @@ Add method/version constants and serialize this wire document:
 
 Register `brp_extras/agent_tools` as an instant BRP method in `BrpExtrasPlugin`. Both `BrpExtrasPlugin::build` and `register_agent_tool` use `init_resource::<RegisteredAgentTools>()`; neither replaces registrations created by the other. The handler reads the passive resource only when called and returns tools sorted by agent name. An empty registry returns `{ "version": 1, "tools": [] }`.
 
-Before serializing a nonempty catalog, inspect the live `RemoteMethods` resource. Every advertised `method` must exist and be `RemoteMethodSystemId::Instant`. Reject missing and `Watching` methods with deterministic BRP errors that identify the agent name and backing method. This request-time check permits any construction order while preventing the catalog from advertising methods that `brp_execute` cannot invoke as an instant call.
+At this phase boundary, widen only the crate-internal visibility needed by the new catalog module. Declare the resource as `pub(crate) struct RegisteredAgentTools(pub(super) Vec<AgentTool>)` so `agent_tools/mod.rs` can re-export its type to `plugin.rs` without exposing its entries there. Give `catalog.rs` access to each `AgentTool` field through `pub(super)` fields or equivalent `pub(super)` accessors. Re-export `RegisteredAgentTools` from `agent_tools` with `pub(crate) use`. These changes must not add a downstream export or make any field accessible outside the crate.
+
+Before serializing a nonempty catalog, inspect the live `RemoteMethods` resource. Every advertised `method` must exist and be `RemoteMethodSystemId::Instant`. Reject missing and `Watching` methods as application-configuration failures using `bevy_remote::error_codes::INTERNAL_ERROR` (`-32603`). Both errors carry data with exact fields `name`, `method`, and `reason`; use stable reason values `backing_method_missing` and `backing_method_watching`, respectively. Their deterministic messages also name the agent entry and backing method. This request-time check permits any construction order while preventing the catalog from advertising methods that `brp_execute` cannot invoke as an instant call.
 
 Add no update systems, polling, watchers, channels, background synchronization, retries, caches, or automatic refresh. The catalog response is the current application state at the time of the request.
 
 **Files:**
 - `extras/src/constants.rs` — add the `brp_extras/agent_tools` method and version constants.
 - `extras/src/agent_tools/mod.rs` — expose crate-private catalog items to the plugin.
+- `extras/src/agent_tools/registration.rs` — widen only sibling/plugin visibility needed by the catalog while preserving the two-type downstream API.
 - `extras/src/agent_tools/catalog.rs` — wire types, deterministic serialization, live instant-method checks, BRP errors, and unit tests.
 - `extras/src/plugin.rs` — initialize the resource without replacement and register the instant catalog method.
 - `extras/src/lib.rs` — reference the catalog endpoint in crate rustdoc without exporting wire types.
 
-**Constraints from prior phases:** Phase 1 provides owned `AgentTool`, passive `RegisteredAgentTools`, exact validation rules, raw optional schemas, and order-independent resource initialization. Preserve those semantics; the catalog adds only request-time backing-method validation and serialization.
+**Constraints from prior phases:** Phase 1 provides owned `AgentTool`, passive `RegisteredAgentTools`, exact validation rules, raw optional schemas, and order-independent resource initialization. Those implementation details remain private inside `registration.rs` until this phase gives the sibling catalog and plugin the minimum restricted visibility they need. Preserve all Phase 1 semantics and downstream privacy; the catalog adds only request-time backing-method validation and serialization.
 
-**Acceptance gate:** Tests prove empty and populated catalogs, exact version/field names, omitted optional schemas, deterministic agent-name order, raw object/array/primitive/boolean schemas without rewriting, registration before and after plugin addition, live instant acceptance, missing-method rejection, watching-method rejection, and absence of any added scheduled system or per-frame work. The on-demand catalog handler is the only new registered system. Build and Test from Delegation Context are green; the full `clippy` skill is green.
+**Acceptance gate:** Tests prove empty and populated catalogs, exact version/field names, omitted optional schemas, deterministic agent-name order, raw object/array/primitive/boolean schemas without rewriting, registration before and after plugin addition, live instant acceptance, and exact missing/watching `INTERNAL_ERROR` messages plus `name`/`method`/`reason` data. Tests and code inspection also prove absence of any added scheduled system or per-frame work; the on-demand catalog handler is the only new registered system. `AgentTool` fields and `RegisteredAgentTools` entries remain inaccessible to downstream crates, and the only downstream feature exports remain `AgentTool` and `AppAgentToolExt`. Build and Test from Delegation Context are green; the full `clippy` skill is green.
 
 ### Phase 3 — Add fixed agent-tool discovery to MCP  · status: todo
 
@@ -140,7 +175,7 @@ Add no update systems, polling, watchers, channels, background synchronization, 
 
 **Spec:**
 
-Add the fixed `brp_list_agent_tools` tool through the existing `ToolName`/`ToolFn` registry. It accepts only the standard BRP port:
+Add the fixed `brp_list_agent_tools` tool through the existing `ToolName`/`ToolFn` registry, following the bespoke local-tool pattern in `world_find_entities_by_name.rs` rather than a `#[brp_tool]`-generated direct method wrapper. Add an unannotated `BrpListAgentTools` enum variant, give it a read-only `Discovery` annotation, and add explicit parameter-builder and handler match arms. It accepts only the standard BRP port:
 
 ```rust
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
@@ -150,9 +185,9 @@ pub struct ListAgentToolsParams {
 }
 ```
 
-The handler calls `brp_extras/agent_tools` at that port through the existing arbitrary application-method `BrpClient` path. Define MCP-local private wire types; `bevy_brp_mcp` must not depend on `bevy_brp_extras`. Reject unsupported catalog versions and malformed documents with an error that identifies the catalog stage and port. Preserve BRP connection, JSON-RPC code/data, and method-not-found details through existing error conventions. If the endpoint is absent, tell the agent that the running application must add `BrpExtrasPlugin`; an installed plugin with no published entries instead returns a valid empty catalog.
+The handler calls `brp_extras/agent_tools` at that port through the existing arbitrary application-method `BrpClient` path. Factor interpretation of the returned `ResponseStatus` into a pure helper so unit tests can inject successful, malformed, and BRP-error responses without a network mock. Define MCP-local private wire types; `bevy_brp_mcp` must not depend on `bevy_brp_extras`. Reject unsupported catalog versions and malformed documents with an error that identifies the catalog stage and port. Preserve BRP connection, JSON-RPC code/data, and method-not-found details through existing error conventions. If the endpoint is absent, tell the agent that the running application must add `BrpExtrasPlugin`; an installed plugin with no published entries instead returns a valid empty catalog.
 
-Use `BrpListAgentTools` for the handler, `ListAgentToolsParams` for its public parameter type, `ListAgentToolsResult` for its public result type, and `ListedAgentTool` for each serialized result entry. Export those four MCP types through the existing tool facades because static registration and result-schema generation consume them. Keep the versioned BRP response decoder private. `ListedAgentTool` carries public `name`, `method`, `description`, and optional `serde_json::Value` parameter/result schema fields. `ListAgentToolsResult` carries `tools`, the fixed `usage` string below, and the existing message-template/metadata fields needed by `ResultStruct`; it must expose the catalog records as the structured result rather than nesting the raw BRP response.
+Use `BrpListAgentTools` for the handler, `ListAgentToolsParams` for its public parameter type, `ListAgentToolsResult` for its result type, and `ListedAgentTool` for each serialized result entry. Re-export only `BrpListAgentTools` and `ListAgentToolsParams` through `tools/mod.rs` and the `brp_tools` facade because static registration names only those types. Declare `ListAgentToolsResult` and `ListedAgentTool` as `pub` inside the private `brp_list_agent_tools` module only as required by the public `ToolFn` associated type and result fields; do not re-export them. `ToolDef` continues to advertise the generic `ToolCallJsonResponse` output schema, so do not add per-tool output-schema machinery. Keep the versioned BRP response decoder private. `ListedAgentTool` carries public `name`, `method`, `description`, and optional `serde_json::Value` parameter/result schema fields. `ListAgentToolsResult` carries `tools`, the fixed `usage` string below, and the existing message-template/metadata fields needed by `ResultStruct`; mark both `tools` and `usage` with `#[to_result]` so the catalog records and instruction appear in the structured result rather than nesting the raw BRP response.
 
 Return one typed structured result plus serialized text using the existing result conventions:
 
@@ -176,13 +211,14 @@ Each invocation fetches the live catalog. Add no `RemoteCatalog`, cache, service
 Write mutually cross-linked agent help:
 
 - `brp_list_agent_tools`: lists only methods deliberately documented for agents, returns raw parameter/result schemas and a backing method, and hands execution to `brp_execute`; entries are catalog records, not native MCP tools.
-- `bevy_rpc_discover`: lists every registered BRP method at the transport level; application methods may supply only names, so use `brp_list_agent_tools` for curated descriptions and schemas.
+- `rpc_discover`: lists every registered BRP method at the transport level; application methods may supply only names, so use `brp_list_agent_tools` for curated descriptions and schemas.
 - `brp_execute`: invokes a method by exact name with raw `params`; use `brp_list_agent_tools` first when the application publishes agent guidance.
 
 The help and result must distinguish the MCP workflow from developer debugging: direct HTTP JSON-RPC to `http://127.0.0.1:<port>/jsonrpc` remains valid outside MCP, but agents should use `brp_execute` for MCP-native invocation, timeout/error handling, and method validation.
 
 **Files:**
 - `mcp/src/brp_tools/tools/brp_list_agent_tools.rs` — parameters, private wire decoding, typed result, BRP request, errors, and unit tests.
+- `mcp/src/brp_tools/tools/world_find_entities_by_name.rs` — read-only model for a bespoke local tool's result and `ToolFn` implementation.
 - `mcp/src/brp_tools/tools/mod.rs` — export the handler types.
 - `mcp/src/brp_tools/mod.rs` — facade exports required by static registration.
 - `mcp/src/tool/name.rs` — add the ordinary static `BrpListAgentTools` variant, parameters, annotations, and handler.
@@ -197,7 +233,7 @@ The help and result must distinguish the MCP workflow from developer debugging: 
 
 **Constraints from prior phases:** Phase 2 supplies the exact version-1 document and guarantees each returned method is a live instant `RemoteMethod`. The MCP still decodes defensively and supports no other version. Phase 1 schemas describe raw `brp_execute.params` and BRP results; never reinterpret them as native MCP per-entry schemas.
 
-**Acceptance gate:** Tests cover the static registry containing `brp_list_agent_tools`; default and explicit ports; empty and populated decoding; exact preservation of names, methods, descriptions, and optional raw schemas; unsupported version/malformed response; missing extras endpoint; preserved BRP errors; exact usage guidance; and repeated calls fetching current data without service state. Help-text tests prove all three cross-references and do not imply native dynamic tools. Existing `bevy_rpc_discover`, `brp_execute`, static listing, and built-in dispatch tests remain green. Build and Test from Delegation Context are green; the full `clippy` skill is green.
+**Acceptance gate:** Unit tests cover the static registry containing `brp_list_agent_tools`; its read-only `Discovery` annotation; default and explicit ports; empty and populated decoding; exact preservation of names, methods, descriptions, and optional raw schemas; unsupported version/malformed response; `ResponseStatus` mapping for a missing extras endpoint and other preserved BRP code/data; exact `#[to_result]` usage guidance; and the absence of MCP service/catalog state. Do not add a network-mock dependency in this phase. Help-text tests prove all three cross-references and do not imply native dynamic tools. Existing `rpc_discover`, `brp_execute`, static listing, and built-in dispatch tests remain green. Phase 5 owns live missing-endpoint and repeated-fetch coverage against real applications. Build and Test from Delegation Context are green; the full `clippy` skill is green.
 
 ### Phase 4 — Ship developer and agent documentation  · status: todo
 
@@ -207,7 +243,7 @@ The help and result must distinguish the MCP workflow from developer debugging: 
 
 **Spec:**
 
-Create `extras/examples/agent_tool_registration.rs` as a complete runnable example. It defines `MultiplyParams: Deserialize + JsonSchema` and `MultiplyResult: Serialize + JsonSchema`, registers an instant `example/multiply` BRP handler, adds `BrpExtrasPlugin`, and publishes:
+Create `extras/examples/agent_tool_registration.rs` as a complete runnable example. It defines `MultiplyParams: Deserialize + JsonSchema` and `MultiplyResult: Serialize + JsonSchema`. Build the app with `DefaultPlugins`, add `BrpExtrasPlugin` first so `RemoteMethods` exists, then register the instant `example/multiply` system and insert it into `RemoteMethods`, publish its metadata, and run the app. A custom method-registration plugin added after `BrpExtrasPlugin`, matching the test app's ordering pattern, is also acceptable. Publish:
 
 ```rust
 app.register_agent_tool(
@@ -235,9 +271,9 @@ brp_execute(
 
 Explain the two separate developer actions under a `BRP methods and agent tools` heading: registering a remote method makes it callable and visible through `rpc.discover`; calling `register_agent_tool` publishes the description and raw schemas that teach an agent how to call that existing method. It does not create a native MCP tool. State the subset relation: every published agent entry names a BRP method, while most BRP methods need not be agent tools.
 
-Complete and cross-link rustdoc for `AgentTool`, every builder method, `AppAgentToolExt`, and `register_agent_tool`. Cover owned values, name validation, required description, raw schema semantics, compile-time-only `JsonSchema` types, parameterless methods, optional result documentation, construction-time panics, request-time live instant validation, plugin requirement, and unsupported runtime registration. Private resource/wire types document their invariants without becoming public.
+Phase 1 already supplied complete public API rustdoc. Augment and cross-link it only where the shipped catalog endpoint now adds request-time live instant validation, plugin requirements, or runnable-example links, then perform a final consistency audit of `AgentTool`, every builder method, `AppAgentToolExt`, and `register_agent_tool`. Preserve the existing coverage of owned values, name validation, required description, raw schema semantics, compile-time-only `JsonSchema` types, parameterless methods, optional result documentation, construction-time panics, and unsupported runtime registration. Private resource/wire types document their invariants without becoming public.
 
-Add a focused public-API/example support test that constructs an app through only exported APIs, runs the registered catalog method, decodes its JSON value, and asserts the registered name/method/description plus generated raw parameter/result schemas without inspecting source text or exposing private resource/wire types. Update `extras/README.md` and `mcp/README.md` with the same concise list-then-execute workflow. The MCP README may include the curl-equivalent JSON-RPC request only as a developer debugging alternative; it must recommend `brp_execute` to agents.
+Add a focused public-API/example support test that constructs an app through only exported APIs, runs the registered catalog method, decodes its JSON value, and asserts the registered name/method/description plus generated raw parameter/result schemas without inspecting source text or exposing private resource/wire types. Update `extras/README.md` and `mcp/README.md` with the same concise list-then-execute workflow. The MCP README may include the curl-equivalent JSON-RPC request only as a developer debugging alternative; it must recommend `brp_execute` to agents. Phase 3 already created the three required MCP help files; update them here only for endpoint facts learned from the completed extras implementation and run a final cross-file consistency audit.
 
 Add public feature entries to `extras/CHANGELOG.md` and `mcp/CHANGELOG.md`. Do not describe synchronization, replacement, clearing, notifications, dynamic native tools, MCP-side schema validation, or a second executor.
 
@@ -252,9 +288,9 @@ Add public feature entries to `extras/CHANGELOG.md` and `mcp/CHANGELOG.md`. Do n
 - `mcp/help_text/brp_list_agent_tools.txt`, `mcp/help_text/brp_execute.txt`, and `mcp/help_text/rpc_discover.txt` — final concise agent contracts.
 - `mcp/CHANGELOG.md` — fixed discovery tool and documented handoff entry.
 
-**Constraints from prior phases:** Use the exact Phase 1 public API and raw schema meanings, Phase 2 endpoint/name/version, and Phase 3 fixed MCP tool/result/help vocabulary. Documentation must not restore any removed dynamic-registration concept.
+**Constraints from prior phases:** Use the exact Phase 1 public API and raw schema meanings, Phase 2 endpoint/name/version, and Phase 3 fixed MCP tool/result/help vocabulary. Phase 1 public rustdoc and Phase 3 help files are existing inputs to audit and augment, not documentation to recreate. `RemoteMethods` is available only after `RemotePlugin`/`BrpExtrasPlugin` is added, so the example must preserve the explicit plugin-before-method-registration order. Documentation must not restore any removed dynamic-registration concept.
 
-**Acceptance gate:** The example builds and its support test passes; public rustdoc examples compile; all snippets use exact shipped names and fields; READMEs and help text distinguish exhaustive `rpc.discover` from curated `brp_list_agent_tools`; both teach `brp_execute` as the MCP invocation path; curl is labeled developer-only; both changelogs identify their public additions; no documentation claims that per-entry native tools appear. Build and Test from Delegation Context are green; the full `clippy` skill, including documentation checks, is green.
+**Acceptance gate:** The example builds and its support test passes; `cargo test --doc -p bevy_brp_extras --all-features` compiles the public rustdoc examples in addition to the workspace nextest gate; all snippets use exact shipped names and fields; READMEs and help text distinguish exhaustive `rpc.discover` from curated `brp_list_agent_tools`; both teach `brp_execute` as the MCP invocation path; curl is labeled developer-only; both changelogs identify their public additions; no documentation claims that per-entry native tools appear. Build and Test from Delegation Context are green; the full `clippy` skill, including documentation checks, is green.
 
 ### Phase 5 — Add repository integration coverage  · status: todo
 
@@ -264,7 +300,7 @@ Add public feature entries to `extras/CHANGELOG.md` and `mcp/CHANGELOG.md`. Do n
 
 **Spec:**
 
-Extend `ParameterizedBrpPlugin` in `test-app/examples/extras_plugin.rs`. Keep the existing instant `test/multiply` method and checked-multiplication error behavior. Derive/use JSON schemas for its `{ value: i64, factor: i64 }` parameters and `{ value, factor, product }` result, then publish:
+Add `schemars.workspace = true` unconditionally to `test-app/Cargo.toml`. In `test-app/examples/extras_plugin.rs`, import `schemars::JsonSchema`, `serde::Serialize`, and `bevy_brp_extras::{AgentTool, AppAgentToolExt}` alongside the existing deserialization imports. Extend `ParameterizedBrpPlugin` while keeping the existing instant `test/multiply` method and checked-multiplication error behavior. Derive `Deserialize + JsonSchema` for `MultiplyParams`, define `MultiplyResult` with `value`, `factor`, and `product` fields and derive `Serialize + JsonSchema`, serialize that result from the handler, then publish after inserting the backing method:
 
 ```rust
 app.register_agent_tool(
@@ -278,26 +314,31 @@ app.register_agent_tool(
 );
 ```
 
-Create `.claude/integration_tests/agent_tools.md` and register it for `extras_plugin`. Update the integration-tester agent permissions for the fixed `mcp__brp__brp_list_agent_tools` tool and retain its existing authorization for `mcp__brp__brp_execute` and transport discovery. The integration case must:
+Create `.claude/integration_tests/agent_tools.md` and register it as a two-application case with labels `extras_app` (`extras_plugin`) and `no_extras_app` (`no_extras_plugin`). The runner assigns dynamic ports; every step must use the supplied port for its application rather than assuming 15702. Update the integration-tester agent permissions for the fixed `mcp__brp__brp_list_agent_tools` tool and retain its existing authorization for `mcp__brp__brp_execute` and `mcp__brp__rpc_discover`. The integration case must:
 
-1. Call `bevy_rpc_discover` on port 15702 and verify that `test/multiply` is one member of the complete BRP method inventory.
-2. Call `brp_list_agent_tools` and verify `test_multiply`, its backing `method`, description, raw parameter schema, raw result schema, and usage guidance.
+1. Call `rpc_discover` on `[extras_app port]` and verify that `test/multiply` is one member of the complete BRP method inventory.
+2. Call `brp_list_agent_tools` on `[extras_app port]` and verify `test_multiply`, its backing `method`, description, raw parameter schema, raw result schema, and usage guidance.
 3. Verify that the curated catalog is not presented as the exhaustive `rpc.discover` document and that its entry is not a newly callable native MCP tool.
-4. Call `brp_execute` with `method: "test/multiply"` and `{ "value": 6, "factor": 7 }`; verify the expected product and result fields.
-5. Send schema-valid integer overflow through `brp_execute`; verify the application BRP error code/data are preserved.
-6. Call `brp_list_agent_tools` again and verify the same live catalog without any sync, clear, reconnect, or mutable MCP state.
+4. Call `brp_list_agent_tools` on `[no_extras_app port]`; verify the mapped method-not-found response tells the agent to add `BrpExtrasPlugin` and does not confuse an absent endpoint with an installed empty catalog.
+5. Call `brp_execute` on `[extras_app port]` with `method: "test/multiply"` and `{ "value": 6, "factor": 7 }`; verify the expected product and result fields.
+6. Send schema-valid integer overflow through `brp_execute`; verify the application BRP error code/data are preserved.
+7. Call `brp_list_agent_tools` again on `[extras_app port]` and verify the same live catalog without any sync, clear, reconnect, or mutable MCP state.
 
 The test requires no initial/final catalog cleanup because the MCP owns no catalog state. Do not add notification timing, host refresh, dynamic tool names, or direct curl to the agent integration case.
 
+The live integration gate has one external prerequisite required by `CLAUDE.md`: after the MCP implementation is complete and locally validated, run `cargo install --path mcp`, then stop and have the user reload the host session so it starts the newly installed MCP binary and obtains the new static tool schema. Do not claim `/integration_tests agent_tools` passed from a session still connected to the old MCP process. The two catalog calls inside the reloaded test session still occur without a reconnect between them. If the host cannot be reloaded inside the current delegation run, complete the repository changes and Rust checks, report this prerequisite, and leave the phase uncheckpointed until the integration case can run.
+
 **Files:**
-- `test-app/Cargo.toml` — add/use workspace `schemars` for fixture derives if required.
-- `test-app/examples/extras_plugin.rs` — publish agent metadata for the existing `test/multiply` handler and preserve its overflow diagnostics.
-- `.claude/integration_tests/agent_tools.md` — transport discovery, curated catalog, successful execution, repeated stateless listing, and handler-error sequence.
-- `.claude/config/integration_tests.json` — register the case for `extras_plugin`.
+- `CLAUDE.md` — read-only source for the install/reload verification prerequisite.
+- `test-app/Cargo.toml` — add unconditional workspace `schemars` for fixture derives.
+- `test-app/examples/extras_plugin.rs` — add the typed result, publish agent metadata for the existing `test/multiply` handler, and preserve its overflow diagnostics.
+- `test-app/examples/no_extras_plugin.rs` — unchanged live fixture proving the catalog endpoint is absent without extras.
+- `.claude/integration_tests/agent_tools.md` — two-app transport discovery, curated/missing catalog behavior, successful execution, repeated stateless listing, and handler-error sequence.
+- `.claude/config/integration_tests.json` — register the two-app case for `extras_plugin` and `no_extras_plugin`.
 - `.claude/agents/integration-tester.md` — authorize the fixed discovery tool and retain execution/discovery permissions.
 - `.claude/commands/integration_tests.md` — read-only runner contract; edit only if the new case exposes a general omission.
 - `docs/brp-registration.md` — phase review records final observed behavior in the Retrospective.
 
-**Constraints from prior phases:** Phase 1 supplies the exact fixture API; Phase 2 supplies deterministic live catalog serialization; Phase 3 supplies the fixed MCP discovery result and unchanged `brp_execute`; Phase 4 supplies final names and documented workflow. The integration test proves those contracts without depending on dynamic host tool refresh.
+**Constraints from prior phases:** Phase 1 supplies the exact fixture API; Phase 2 supplies deterministic live catalog serialization; Phase 3 supplies the fixed MCP discovery result and unchanged `brp_execute`, while deliberately deferring true live fetch tests here; Phase 4 supplies final names and documented workflow. The integration test proves those contracts without dynamic tool refresh, but the host must start a new installed MCP process once before the test so the fixed `brp_list_agent_tools` schema exists.
 
-**Acceptance gate:** `cargo nextest run --all-features --workspace --tests` is green; `cargo build --release --all-features --workspace --examples` is green; `/integration_tests agent_tools` passes; the agent distinguishes `rpc.discover` from the curated catalog, reads exact schemas, invokes `test/multiply` through `brp_execute`, observes the expected product, preserves overflow BRP code/data, and repeats catalog discovery without state management; the full `clippy` skill is green.
+**Acceptance gate:** `cargo nextest run --all-features --workspace --tests` is green; `cargo build --release --all-features --workspace --examples` is green; the updated MCP is installed with `cargo install --path mcp` and the host is reloaded onto that binary; `/integration_tests agent_tools` then passes against both assigned ports. The agent distinguishes `rpc.discover` from the curated catalog, reads exact schemas, receives the documented missing-plugin response from `no_extras_plugin`, invokes `test/multiply` through `brp_execute`, observes the expected product, preserves overflow BRP code/data, and repeats live catalog discovery without state management; the full `clippy` skill is green.
