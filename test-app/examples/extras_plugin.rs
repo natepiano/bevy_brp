@@ -129,6 +129,8 @@ use bevy::window::WindowPlugin;
 use bevy::window::WindowPosition;
 use bevy::world_serialization::WorldAsset;
 use bevy::world_serialization::WorldAssetRoot;
+use bevy_brp_extras::AgentTool;
+use bevy_brp_extras::AppAgentToolExt;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_brp_extras::PortDisplay;
 use bevy_remote::BrpError;
@@ -136,7 +138,9 @@ use bevy_remote::BrpResult;
 use bevy_remote::RemoteMethodSystemId;
 use bevy_remote::RemoteMethods;
 use bevy_remote::error_codes;
+use schemars::JsonSchema;
 use serde::Deserialize;
+use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
 
@@ -900,18 +904,38 @@ struct ParameterizedBrpPlugin;
 impl Plugin for ParameterizedBrpPlugin {
     fn build(&self, app: &mut App) {
         let system_id = app.world_mut().register_system(multiply_handler);
-        let Some(mut remote_methods) = app.world_mut().get_resource_mut::<RemoteMethods>() else {
-            warn!("{MULTIPLY_METHOD} was not registered because Bevy Remote is unavailable");
-            return;
-        };
-        remote_methods.insert(MULTIPLY_METHOD, RemoteMethodSystemId::Instant(system_id));
+        {
+            let Some(mut remote_methods) = app.world_mut().get_resource_mut::<RemoteMethods>()
+            else {
+                warn!("{MULTIPLY_METHOD} was not registered because Bevy Remote is unavailable");
+                return;
+            };
+            remote_methods.insert(MULTIPLY_METHOD, RemoteMethodSystemId::Instant(system_id));
+        }
+
+        app.register_agent_tool(
+            AgentTool::new(
+                "test_multiply",
+                "test/multiply",
+                "Multiply two signed integers with overflow checking",
+            )
+            .params_schema_for::<MultiplyParams>()
+            .result_schema_for::<MultiplyResult>(),
+        );
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, JsonSchema)]
 struct MultiplyParams {
     value:  i64,
     factor: i64,
+}
+
+#[derive(Serialize, JsonSchema)]
+struct MultiplyResult {
+    value:   i64,
+    factor:  i64,
+    product: i64,
 }
 
 fn multiply_handler(In(params): In<Option<Value>>) -> BrpResult {
@@ -922,11 +946,14 @@ fn multiply_handler(In(params): In<Option<Value>>) -> BrpResult {
         .checked_mul(params.factor)
         .ok_or_else(|| invalid_multiply_params("value multiplied by factor exceeds i64"))?;
 
-    Ok(json!({
-        "value": params.value,
-        "factor": params.factor,
-        "product": product,
-    }))
+    let result = MultiplyResult {
+        value: params.value,
+        factor: params.factor,
+        product,
+    };
+    serde_json::to_value(result).map_err(|error| {
+        BrpError::internal(format!("failed to serialize multiply result: {error}"))
+    })
 }
 
 fn invalid_multiply_params(error: impl ToString) -> BrpError {

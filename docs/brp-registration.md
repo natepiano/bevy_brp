@@ -368,7 +368,7 @@ Add public feature entries to `extras/CHANGELOG.md` and `mcp/CHANGELOG.md`. Do n
 - The existing dynamic-port, two-app runner, permission, fixture-ordering, install, and host-reload assumptions are correct.
 - Phase 5 is ready, and no user decision is required.
 
-### Phase 5 — Add repository integration coverage  · status: todo
+### Phase 5 — Add repository integration coverage  · status: done (`2e8f27fa`)
 
 #### Work Order
 
@@ -409,6 +409,7 @@ The live integration gate has one external prerequisite required by `CLAUDE.md`:
 **Files:**
 - `CLAUDE.md` — read-only source for the install/reload verification prerequisite.
 - `test-app/Cargo.toml` — add unconditional workspace `schemars` for fixture derives.
+- `Cargo.lock` — record the test application's new direct `schemars` dependency.
 - `test-app/examples/extras_plugin.rs` — add the typed result, publish agent metadata for the existing `test/multiply` handler, and preserve its overflow diagnostics.
 - `test-app/examples/no_extras_plugin.rs` — unchanged live fixture proving the catalog endpoint is absent without extras.
 - `.claude/integration_tests/agent_tools.md` — two-app transport discovery, curated/missing catalog behavior, successful execution, repeated stateless listing, and handler-error sequence.
@@ -417,6 +418,32 @@ The live integration gate has one external prerequisite required by `CLAUDE.md`:
 - `.claude/commands/integration_tests.md` — read-only runner contract; do not edit unless a genuinely general runner omission is proven before implementation.
 - `docs/brp-registration.md` — phase review records final observed behavior in the Retrospective.
 
-**Constraints from prior phases:** Phase 1 supplies the exact fixture API; Phase 2 supplies deterministic live catalog serialization; Phase 3 supplies the fixed MCP discovery result, unchanged `brp_execute`, and static proof that catalog entries do not become native MCP tools, while deliberately deferring true live fetch tests here; Phase 4 supplies final names and documented workflow. The fixture's mutable `RemoteMethods` guard must end before `register_agent_tool`. The integration test proves the live list-to-execute contracts without dynamic tool refresh, but the host must start a new installed MCP process once before the test so the fixed `brp_list_agent_tools` schema exists. Phase 5 implementation files are strictly limited to `test-app/Cargo.toml`, `test-app/examples/extras_plugin.rs`, `.claude/integration_tests/agent_tools.md`, `.claude/config/integration_tests.json`, `.claude/agents/integration-tester.md`, and this plan's retrospective. Do not modify `mcp/src`, `mcp_macros`, the shared response builder, result-placement machinery, macros, MCP registry behavior, or dispatch behavior; Phase 5 consumes those completed interfaces exactly as shipped.
+**Constraints from prior phases:** Phase 1 supplies the exact fixture API; Phase 2 supplies deterministic live catalog serialization; Phase 3 supplies the fixed MCP discovery result, unchanged `brp_execute`, and static proof that catalog entries do not become native MCP tools, while deliberately deferring true live fetch tests here; Phase 4 supplies final names and documented workflow. The fixture's mutable `RemoteMethods` guard must end before `register_agent_tool`. The integration test proves the live list-to-execute contracts without dynamic tool refresh, but the host must start a new installed MCP process once before the test so the fixed `brp_list_agent_tools` schema exists. Phase 5 implementation files are strictly limited to `test-app/Cargo.toml`, `Cargo.lock`, `test-app/examples/extras_plugin.rs`, `.claude/integration_tests/agent_tools.md`, `.claude/config/integration_tests.json`, `.claude/agents/integration-tester.md`, and this plan's retrospective. Do not modify `mcp/src`, `mcp_macros`, the shared response builder, result-placement machinery, macros, MCP registry behavior, or dispatch behavior; Phase 5 consumes those completed interfaces exactly as shipped.
 
 **Acceptance gate:** `cargo nextest run --all-features --workspace --tests` is green; `cargo build --release --all-features --workspace --examples` is green; the updated MCP is installed with `cargo install --path mcp` and the host is reloaded onto that binary; `/integration_tests agent_tools` then passes against both assigned ports. The agent distinguishes `rpc.discover` from the curated catalog, reads exact `result.usage`, `result.tools`, and semantic schemas, receives the exact mapped missing-plugin metadata from `no_extras_plugin`, invokes `test/multiply` through `brp_execute`, observes the exact success result, preserves exact overflow error metadata using JSON-safe operands, and repeats the identical live catalog without state management. Phase 3's registry test remains the authoritative proof that no catalog entry is registered as a native MCP tool. The Phase 5 diff matches its strict allowlist, with no changes under `mcp/src` or `mcp_macros`; shared response/result machinery, macros, registry behavior, and dispatch behavior remain unchanged; the full `clippy` skill is green.
+
+#### Retrospective
+
+**What worked:**
+
+- The existing `test/multiply` fixture now publishes one typed curated record without changing its handler error contract or the completed MCP runtime/interface surface.
+- The two-app integration case exercised exhaustive discovery, curated discovery, successful execution, exact overflow propagation, the missing-extras negative control, and repeated stateless catalog reads through the installed MCP.
+- The live run used runner-assigned ports 20100 and 20101 and passed all seven steps; cleanup shut down both fixtures successfully.
+
+**Fixes from review:**
+
+- Added the required `Cargo.lock` update to the strict Phase 5 allowlist after the new direct test-app dependency was recorded.
+- A fresh blind review found no implementation or integration-runner defects and confirmed no diff under `mcp/src`, `mcp_macros`, or the shared response builder.
+- The host reload exposed an obsolete `dynamic_tool_probe` MCP registration left from the discarded proof. Removing that external Codex and Claude configuration did not affect the real `brp` server, which loaded `brp_list_agent_tools` successfully.
+
+**Final verification:**
+
+- Workspace tests, release example builds, the full clippy workflow, nightly formatting, configuration checks, and `git diff --check` passed before the host reload.
+- The reloaded-host integration run passed 7/7 assertions with no mismatch: 40-method transport discovery, one exact curated record with semantic schemas, missing-plugin code `-32601`, product `42`, overflow code `-32602`, and identical repeated catalog results.
+- No implementation phases remain.
+
+#### Review
+
+- The final phase audit found no acceptance, scope, sequencing, or integration defects.
+- The complete Phase 5 diff matches its strict allowlist; `mcp/src`, `mcp_macros`, the shared response builder, registry, and dispatch remain unchanged from the Phase 4 checkpoint.
+- No remaining phase or unresolved user decision blocks the checkpoint.

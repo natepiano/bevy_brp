@@ -20,6 +20,22 @@
       "app_type": "example"
     },
     {
+      "test_name": "agent_tools",
+      "test_file": ".claude/integration_tests/agent_tools.md",
+      "apps": [
+        {
+          "app_name": "extras_plugin",
+          "app_type": "example",
+          "label": "extras_app"
+        },
+        {
+          "app_name": "no_extras_plugin",
+          "app_type": "example",
+          "label": "no_extras_app"
+        }
+      ]
+    },
+    {
       "test_name": "watch_list",
       "test_file": ".claude/integration_tests/watch_list.md",
       "app_name": "extras_plugin",

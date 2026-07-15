@@ -650,6 +650,7 @@ dependencies = [
  "bevy",
  "bevy_brp_extras",
  "bevy_remote",
+ "schemars",
  "serde",
  "serde_json",
 ]

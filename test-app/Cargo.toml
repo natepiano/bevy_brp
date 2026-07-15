@@ -38,6 +38,7 @@ path = "examples/test_app.rs"
 [dependencies]
 bevy_brp_extras      = { workspace = true }
 bevy_remote          = { workspace = true, default-features = true }
+schemars.workspace   = true
 serde.workspace      = true
 serde_json.workspace = true
 
