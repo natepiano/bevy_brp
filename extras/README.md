@@ -26,6 +26,7 @@ bevy_brp_extras does two things
 - **Keyboard**: `send_keys`, `type_text`
 - **Mouse**: `click_mouse`, `double_click_mouse`, `send_mouse_button`, `move_mouse`, `drag_mouse`, `scroll_mouse`
 - **Trackpad Gestures** (macOS): `double_tap_gesture`, `pinch_gesture`, `rotation_gesture`
+- **Agent Tools**: `agent_tools`
 
 All methods are prefixed with `brp_extras/` (e.g., `brp_extras/screenshot`). See [docs.rs](https://docs.rs/bevy_brp_extras/) for parameter details.
 

@@ -196,6 +196,14 @@
 //! ### `brp_extras/rotation_gesture`
 //! Sends a rotation gesture.
 //! - `delta` (f32, required): rotation in radians
+//!
+//! ## Agent Tools
+//!
+//! ### `brp_extras/agent_tools`
+//! Returns the catalog of agent tools published through
+//! [`AppAgentToolExt::register_agent_tool`]. No parameters.
+//! See [BRP methods and agent tools](#brp-methods-and-agent-tools) for the per-request validation
+//! rules and the BRP error data returned for a rejected entry.
 
 mod agent_tools;
 mod constants;
