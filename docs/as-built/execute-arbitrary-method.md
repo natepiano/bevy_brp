@@ -82,7 +82,7 @@ Supporting files define and verify the user-facing contract:
 
 - Bevy 0.19 discovery reports method names, but its entries have empty parameter lists and no result
   schema, description, or examples. Parameter knowledge must come from application source,
-  documentation, catalog methods, user input, or handler errors.
+  documentation, the curated `brp_list_agent_tools` catalog, user input, or handler errors.
 - A successful call makes two HTTP requests: discovery and execution. Each creates a new
   `reqwest::Client` and has its own 30-second timeout. A discovery miss sends only the first request.
 - Registrations can change between preflight and execution. Preserve an execution-stage
