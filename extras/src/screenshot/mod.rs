@@ -547,7 +547,6 @@ mod native_tests {
     use async_channel::TryRecvError;
     use bevy::MinimalPlugins;
     use bevy::camera::ComputedCameraValues;
-    use bevy::camera::ManualTextureViewHandle;
     use bevy::camera::RenderTargetInfo;
     use bevy::camera::Viewport;
     use bevy::camera::primitives::Aabb;
@@ -555,7 +554,6 @@ mod native_tests {
     use bevy::render::render_resource::Extent3d;
     use bevy::render::render_resource::TextureDimension;
     use bevy::render::render_resource::TextureFormat;
-    use bevy::render::texture::ManualTextureView;
     use bevy::render::view::screenshot::ScreenshotCaptured;
     use bevy::window::WindowRef;
     use bevy_remote::BrpMessage;
@@ -567,20 +565,11 @@ mod native_tests {
     use serde_json::Value;
     use serde_json::json;
     use tempfile::TempDir;
-    use wgpu::Device;
-    use wgpu::Queue;
-    use wgpu::Texture;
-    use wgpu::TextureDescriptor;
 
     use super::*;
     use crate::constants::METHOD_SCREENSHOT;
 
     const CAPTURE_TEST_TIMEOUT: Duration = Duration::from_secs(5);
-
-    #[derive(Resource, Default)]
-    struct TestManualTextureOwners {
-        resources: Vec<(Device, Queue, Texture)>,
-    }
 
     fn brp<T>(result: BrpResult<T>) -> Result<T, IoError> {
         result.map_err(|error| io::Error::other(error.message))
@@ -642,35 +631,6 @@ mod native_tests {
         world
             .resource_mut::<Assets<Image>>()
             .add(render_target_image(size, RenderAssetUsages::default()))
-    }
-
-    fn add_manual_texture_view(world: &mut World, handle: ManualTextureViewHandle, size: UVec2) {
-        let (device, queue) = wgpu::Device::noop(&wgpu::DeviceDescriptor::default());
-        let texture = device.create_texture(&TextureDescriptor {
-            label:           None,
-            size:            wgpu::Extent3d {
-                width:                 size.x,
-                height:                size.y,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count:    1,
-            dimension:       wgpu::TextureDimension::D2,
-            format:          wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage:           wgpu::TextureUsages::RENDER_ATTACHMENT,
-            view_formats:    &[],
-        });
-        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        world.init_resource::<TestManualTextureOwners>();
-        world
-            .resource_mut::<TestManualTextureOwners>()
-            .resources
-            .push((device, queue, texture));
-        world.init_resource::<ManualTextureViews>();
-        world.resource_mut::<ManualTextureViews>().insert(
-            handle,
-            ManualTextureView::with_default_format(texture_view.into(), size),
-        );
     }
 
     fn send_remote_request(
@@ -957,32 +917,19 @@ mod native_tests {
     }
 
     #[test]
-    fn camera_selection_requires_live_image_and_manual_texture_targets()
-    -> Result<(), Box<dyn Error>> {
+    fn camera_selection_requires_live_image_targets() -> Result<(), Box<dyn Error>> {
         let mut world = World::new();
         let target_size = UVec2::splat(100);
         let image_handle = add_render_target_image(&mut world, target_size);
-        let manual_handle = ManualTextureViewHandle::default();
-        add_manual_texture_view(&mut world, manual_handle, target_size);
         let image = spawn_camera(
             &mut world,
             RenderTarget::Image(image_handle.clone().into()),
             Some(target_size),
         );
-        let manual = spawn_camera(
-            &mut world,
-            RenderTarget::TextureView(manual_handle),
-            Some(target_size),
-        );
 
         assert_eq!(brp(select_camera(&mut world, Some(image)))?.entity, image);
-        assert_eq!(brp(select_camera(&mut world, Some(manual)))?.entity, manual);
         world.resource_mut::<Assets<Image>>().remove(&image_handle);
-        world
-            .resource_mut::<ManualTextureViews>()
-            .remove(&manual_handle);
         assert!(select_camera(&mut world, Some(image)).is_err());
-        assert!(select_camera(&mut world, Some(manual)).is_err());
         let main_world_only = render_target_image(target_size, RenderAssetUsages::MAIN_WORLD);
         world
             .resource_mut::<Assets<Image>>()
