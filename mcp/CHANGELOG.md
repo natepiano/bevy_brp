@@ -5,11 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.22.1] - 2026-07-15
 
 ### Added
 - Add the fixed read-only `brp_list_agent_tools` discovery tool for fetching developer-published descriptions and raw JSON parameter/result schemas from `brp_extras/agent_tools`.
-- Document the `brp_list_agent_tools` to `brp_execute` handoff for curated application methods while retaining `rpc_discover` as exhaustive transport discovery.
 
 ## [0.22.0] - 2026-07-14
 
