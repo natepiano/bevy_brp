@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.22.2] - 2026-07-29
 
 ### Changed
 - Drop the `bevy_kana` dependency. The numeric cast traits it supplied are replaced by glam's `UVec2::as_vec2`/`Vec2::as_uvec2` in screenshot bounds resolution and by a scoped `#[allow(clippy::cast_precision_loss)]` on the drag interpolation factor.

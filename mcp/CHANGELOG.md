@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.22.2] - 2026-07-29
 
 ### Changed
 - Drop the `bevy_kana` dependency, which was used for a single `u64` to `f64` cast in log size formatting. This also stops `bevy_kana` from adding the `reflect_auto_register` and `bevy_log` Bevy features to this crate's otherwise minimal Bevy build.
