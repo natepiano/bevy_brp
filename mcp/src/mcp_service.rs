@@ -5,7 +5,7 @@ use rmcp::ErrorData as McpError;
 use rmcp::RoleServer;
 use rmcp::ServerHandler;
 use rmcp::model::CallToolRequestParams;
-use rmcp::model::CallToolResult;
+use rmcp::model::CallToolResponse;
 use rmcp::model::ListToolsResult;
 use rmcp::model::PaginatedRequestParams;
 use rmcp::model::ServerCapabilities;
@@ -58,11 +58,7 @@ impl McpService {
 
     /// List all MCP tools using pre-converted and sorted tools
     fn list_mcp_tools(&self) -> ListToolsResult {
-        ListToolsResult {
-            meta:        None,
-            next_cursor: None,
-            tools:       self.tools.clone(),
-        }
+        ListToolsResult::with_all_items(self.tools.clone())
     }
 }
 
@@ -85,11 +81,12 @@ impl ServerHandler for McpService {
         &self,
         request: CallToolRequestParams,
         _: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResponse, McpError> {
         let tool_def = self.get_tool_def(&request.name).ok_or_else(|| {
             McpError::invalid_params(format!("unknown tool: {}", request.name), None)
         })?;
 
-        tool_def.call_tool(request).await
+        // Every BRP tool completes in one round trip, so the MRTR response is always `Complete`.
+        tool_def.call_tool(request).await.map(Into::into)
     }
 }

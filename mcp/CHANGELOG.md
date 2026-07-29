@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Drop the `bevy_kana` dependency, which was used for a single `u64` to `f64` cast in log size formatting. This also stops `bevy_kana` from adding the `reflect_auto_register` and `bevy_log` Bevy features to this crate's otherwise minimal Bevy build.
+- Upgrade `rmcp` from 2.2.0 to 3.0.1 for MCP 2026-07-28 support. The negotiated protocol version is unchanged (2025-11-25) and tool behavior is identical; the new stateless lifecycle, `server/discover`, and multi-round-trip results are opt-in. Requires Rust 1.88 or later.
+
 ## [0.22.1] - 2026-07-15
 
 ### Added

@@ -9,7 +9,6 @@ use bevy::math::Vec2;
 use bevy::prelude::*;
 use bevy::window::CursorMoved;
 use bevy::window::WindowEvent;
-use bevy_kana::ToF32;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
 use bevy_remote::error_codes::INVALID_PARAMS;
@@ -193,7 +192,12 @@ pub(super) fn process_drag_operations(
             },
             DragState::Dragging => {
                 // Calculate interpolation factor
-                let t = drag.current_frame.to_f32() / drag.total_frames.to_f32();
+                #[allow(
+                    clippy::cast_precision_loss,
+                    reason = "drag frame counts are small; f32 loses integer precision only above \
+                              2^24"
+                )]
+                let t = drag.current_frame as f32 / drag.total_frames as f32;
                 let new_position = drag.start.lerp(drag.end, t);
 
                 // Update position

@@ -8,7 +8,6 @@ use bevy::ui::ComputedNode;
 use bevy::ui::ComputedUiRenderTargetInfo;
 use bevy::ui::ComputedUiTargetCamera;
 use bevy::ui::UiGlobalTransform;
-use bevy_kana::ToU32;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
 use bevy_remote::error_codes::INVALID_PARAMS;
@@ -198,8 +197,8 @@ fn containing_rect(rect: Rect) -> BrpResult<URect> {
         });
     }
     Ok(URect::from_corners(
-        UVec2::new(rect.min.x.floor().to_u32(), rect.min.y.floor().to_u32()),
-        UVec2::new(rect.max.x.ceil().to_u32(), rect.max.y.ceil().to_u32()),
+        rect.min.floor().as_uvec2(),
+        rect.max.ceil().as_uvec2(),
     ))
 }
 

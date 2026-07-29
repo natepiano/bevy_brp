@@ -4,7 +4,6 @@ use std::fs::Metadata;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-use bevy_kana::ToF64;
 use error_stack::ResultExt;
 use regex::Regex;
 
@@ -90,7 +89,11 @@ pub(super) fn parse_log_filename(filename: &str) -> Option<(String, String)> {
 
 /// Formats bytes into human-readable string with appropriate unit
 pub(super) fn format_bytes(bytes: u64) -> String {
-    let mut size = bytes.to_f64();
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "log file sizes never approach 2^53, where f64 loses integer precision"
+    )]
+    let mut size = bytes as f64;
     let mut unit_index = 0;
 
     while size >= BYTES_PER_UNIT && unit_index < UNITS.len() - 1 {

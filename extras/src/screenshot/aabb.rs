@@ -10,8 +10,6 @@ use bevy::camera::visibility::ViewVisibility;
 use bevy::camera::visibility::Visibility;
 use bevy::camera::visibility::VisibilityClass;
 use bevy::prelude::*;
-use bevy_kana::ToF32;
-use bevy_kana::ToU32;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
 use bevy_remote::error_codes::INVALID_PARAMS;
@@ -179,10 +177,7 @@ fn aabb_corners(aabb: &Aabb) -> [Vec3; 8] {
 }
 
 fn clamped_physical_point(point: Vec2, target_size: UVec2) -> UVec2 {
-    UVec2::new(
-        point.x.clamp(0.0, target_size.x.to_f32()).to_u32(),
-        point.y.clamp(0.0, target_size.y.to_f32()).to_u32(),
-    )
+    point.clamp(Vec2::ZERO, target_size.as_vec2()).as_uvec2()
 }
 
 fn nonempty_intersection(rect: URect, hard_bounds: URect, camera: Entity) -> BrpResult<URect> {
