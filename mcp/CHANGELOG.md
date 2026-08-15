@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix `tools/list` omitting the `ttlMs` and `cacheScope` fields required by MCP protocol 2026-07-28, which caused schema-validating clients to reject the response and load no tools.
+
 ## [0.22.2] - 2026-07-29
 
 ### Changed
 - Drop the `bevy_kana` dependency, which was used for a single `u64` to `f64` cast in log size formatting. This also stops `bevy_kana` from adding the `reflect_auto_register` and `bevy_log` Bevy features to this crate's otherwise minimal Bevy build.
-- Upgrade `rmcp` from 2.2.0 to 3.0.1 for MCP 2026-07-28 support. The negotiated protocol version is unchanged (2025-11-25) and tool behavior is identical; the new stateless lifecycle, `server/discover`, and multi-round-trip results are opt-in. Requires Rust 1.88 or later.
+- Upgrade `rmcp` from 2.2.0 to 3.0.1 for MCP 2026-07-28 support. The negotiated protocol version follows whatever the client requests, so clients that ask for 2026-07-28 now receive it instead of 2025-11-25; the new stateless lifecycle, `server/discover`, and multi-round-trip results are opt-in. Requires Rust 1.88 or later. (Corrected after release: the original entry claimed the negotiated version was unchanged. It was not, and the resulting `tools/list` regression is fixed in [Unreleased].)
 
 ## [0.22.1] - 2026-07-15
 

@@ -4,6 +4,7 @@ use itertools::Itertools;
 use rmcp::ErrorData as McpError;
 use rmcp::RoleServer;
 use rmcp::ServerHandler;
+use rmcp::model::CacheScope;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResponse;
 use rmcp::model::ListToolsResult;
@@ -15,6 +16,7 @@ use rmcp::service::RequestContext;
 
 use super::tool;
 use super::tool::ToolDef;
+use crate::constants::TOOL_LIST_CACHE_TTL_MS;
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
@@ -57,8 +59,15 @@ impl McpService {
     fn get_tool_def(&self, name: &str) -> Option<&ToolDef> { self.tool_defs.get(name) }
 
     /// List all MCP tools using pre-converted and sorted tools
+    ///
+    /// `ListToolsResult::with_all_items` sets `result_type` to `ResultType::COMPLETE` but leaves
+    /// `ttl_ms` and `cache_scope` as `None`, so rmcp drops both from the wire response. Protocol
+    /// version `2026-07-28` makes them required on every `CacheableResult`, and clients that
+    /// validate against that schema reject the response and load no tools at all. Set them here.
     fn list_mcp_tools(&self) -> ListToolsResult {
         ListToolsResult::with_all_items(self.tools.clone())
+            .with_ttl_ms(TOOL_LIST_CACHE_TTL_MS)
+            .with_cache_scope(CacheScope::Private)
     }
 }
 
