@@ -40,7 +40,7 @@ impl From<BrpSupportedOperation> for String {
 
 /// Schema information extracted from the registry
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SchemaInfo {
+pub(crate) struct SchemaInfo {
     /// Category of the type (Struct, Enum, etc.) from registry
     #[serde(skip_serializing_if = "Option::is_none")]
     pub type_kind:      Option<TypeKind>,
@@ -73,7 +73,7 @@ pub struct SchemaInfo {
 
 /// response structure
 #[derive(Debug, Clone, Serialize)]
-pub struct TypeGuideResponse {
+pub(crate) struct TypeGuideResponse {
     /// Number of types successfully discovered
     pub discovered_count: usize,
     /// List of type names that were requested
@@ -86,7 +86,7 @@ pub struct TypeGuideResponse {
 
 /// Summary statistics for the discovery operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TypeGuideSummary {
+pub(crate) struct TypeGuideSummary {
     /// Number of types that failed discovery
     pub failed_discoveries:     usize,
     /// Number of types successfully discovered

@@ -65,10 +65,10 @@ impl<T> LaunchConfig<T> {
 
 /// Represents a single launched instance
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LaunchedInstance {
-    pub pid:      u32,
-    pub log_file: String,
-    pub port:     u16,
+struct LaunchedInstance {
+    pid:      u32,
+    log_file: String,
+    port:     u16,
 }
 
 /// Unified result type for launching Bevy apps and examples
@@ -117,7 +117,7 @@ pub struct LaunchResult {
 }
 
 /// Parameters extracted from launch requests
-pub struct LaunchParams {
+pub(crate) struct LaunchParams {
     pub target:         String,
     pub profile:        String,
     pub path:           Option<String>,

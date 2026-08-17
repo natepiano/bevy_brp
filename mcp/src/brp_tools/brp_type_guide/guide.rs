@@ -36,7 +36,7 @@ use crate::support::SchemaField;
 /// `MutationPathExternal`, `SchemaInfo`, and `TypeGuide::agent_guidance` for
 /// MCP clients.
 #[derive(Debug, Clone, Serialize)]
-pub struct TypeGuide {
+pub(crate) struct TypeGuide {
     /// Fully-qualified type name
     pub type_name:            BrpTypeName,
     /// Whether the type is registered in the Bevy registry
@@ -59,7 +59,7 @@ pub struct TypeGuide {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RegistryPresence {
+pub(crate) enum RegistryPresence {
     Registered,
     Unregistered,
 }
@@ -84,7 +84,7 @@ impl Serialize for RegistryPresence {
 
 impl TypeGuide {
     /// Builder method to create ``TypeGuide`` from schema data
-    pub fn build(
+    pub(super) fn build(
         brp_type_name: BrpTypeName,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Result<Self> {
@@ -129,7 +129,7 @@ impl TypeGuide {
     }
 
     /// Builder method to create `TypeGuide` for type not found in registry
-    pub fn not_found_in_registry(type_name: BrpTypeName, error_message: String) -> Self {
+    fn not_found_in_registry(type_name: BrpTypeName, error_message: String) -> Self {
         Self {
             type_name,
             in_registry: RegistryPresence::Unregistered,
@@ -145,7 +145,7 @@ impl TypeGuide {
     ///
     /// This is used when a type is found in the registry but `from_registry_schema()`
     /// fails during mutation path building or other processing steps.
-    pub fn processing_failed(type_name: BrpTypeName, error_message: String) -> Self {
+    pub(super) fn processing_failed(type_name: BrpTypeName, error_message: String) -> Self {
         Self {
             type_name,
             in_registry: RegistryPresence::Registered,

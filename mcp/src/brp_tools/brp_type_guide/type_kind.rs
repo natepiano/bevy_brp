@@ -16,7 +16,7 @@ use crate::support::SchemaField;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, AsRefStr, EnumString)]
 #[serde(rename_all = "PascalCase")]
 #[strum(serialize_all = "PascalCase")]
-pub enum TypeKind {
+pub(crate) enum TypeKind {
     /// Array type
     Array,
     /// Enum type
@@ -61,7 +61,7 @@ impl TypeKind {
     ///
     /// Used in descriptions to provide type-specific language instead of generic "descendants".
     /// For example, a Struct has "fields", an Array has "elements", a Map has "entries", etc.
-    pub const fn child_terminology(&self) -> &'static str {
+    pub(super) const fn child_terminology(&self) -> &'static str {
         match self {
             Self::Struct => "fields",
             Self::Enum => "variants",

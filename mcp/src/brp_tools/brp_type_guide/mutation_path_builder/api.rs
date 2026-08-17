@@ -47,7 +47,7 @@ use crate::support::JsonObjectAccess;
 /// Note: Only derives `Debug` and `Clone` (NOT `Deserialize`) because we implement
 /// `Deserialize` manually below with a stub that returns an error.
 #[derive(Debug, Clone)]
-pub enum SpawnInsertExample {
+pub(crate) enum SpawnInsertExample {
     Spawn {
         agent_guidance: String,
         example:        Example,
@@ -105,7 +105,7 @@ impl<'de> Deserialize<'de> for SpawnInsertExample {
 /// This is the public facade that hides internal implementation details (`PathKind`,
 /// `RecursionContext`, `MutationPathInternal`) from external callers. It takes simple
 /// inputs and returns the final external format ready for use.
-pub fn build_mutation_paths(
+pub(in crate::brp_tools::brp_type_guide) fn build_mutation_paths(
     type_name: &BrpTypeName,
     registry: Arc<HashMap<BrpTypeName, Value>>,
 ) -> Result<Vec<MutationPathExternal>> {
@@ -140,7 +140,7 @@ pub fn build_mutation_paths(
 ///
 /// Returns `None` if the type is neither a `Component` nor a `Resource`.
 /// Otherwise, returns a `SpawnInsertExample` with appropriate guidance and example.
-pub fn extract_spawn_insert_example(
+pub(in crate::brp_tools::brp_type_guide) fn extract_spawn_insert_example(
     mutation_paths: &[MutationPathExternal],
     reflect_traits: &[String],
 ) -> Option<SpawnInsertExample> {

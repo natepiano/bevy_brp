@@ -9,7 +9,7 @@ use serde::Serialize;
 
 /// Newtype for a mutation path used in BRP operations (e.g., ".translation.x")
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct MutationPath(String);
+pub(crate) struct MutationPath(String);
 
 impl Deref for MutationPath {
     type Target = String;

@@ -17,7 +17,7 @@ use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 /// This is serialized into the output json, and as such, it intentionally does not
 /// match up with the types used to construct it.
 #[derive(Debug, Clone, Serialize)]
-pub struct PathInfo {
+pub(crate) struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
     pub(super) path_kind:    PathKind,
     /// Fully-qualified type name of the field
@@ -45,7 +45,7 @@ pub struct PathInfo {
 
 /// Information about a mutation path that we serialize to our response.
 #[derive(Debug, Clone, Serialize)]
-pub struct MutationPathExternal {
+pub(crate) struct MutationPathExternal {
     /// The mutation path (e.g., ".translation.x" or "" for root)
     pub path:        MutationPath,
     /// Human-readable description of what this path mutates
@@ -82,7 +82,7 @@ impl MutationPathExternal {
 /// - `{"unavailable_reason": "<reason>"}` for Unavailable variant
 #[derive(Debug, Clone, Serialize)]
 #[serde(untagged)]
-pub enum RootExample {
+pub(crate) enum RootExample {
     /// Variant can be constructed via BRP spawn/insert operations
     Available { example: Value },
     /// Variant cannot be constructed via BRP, with explanation

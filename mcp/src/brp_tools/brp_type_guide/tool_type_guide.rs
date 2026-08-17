@@ -159,7 +159,7 @@ impl TypeGuideEngine {
 ///
 /// The parent `brp_type_guide` module uses this wrapper so sibling modules do not
 /// depend on the engine type itself.
-pub async fn generate_type_guide_response(
+pub(in crate::brp_tools) async fn generate_type_guide_response(
     port: Port,
     requested_types: &[String],
 ) -> Result<TypeGuideResponse> {

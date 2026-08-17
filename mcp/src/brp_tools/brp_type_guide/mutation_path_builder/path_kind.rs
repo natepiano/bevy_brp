@@ -257,7 +257,7 @@ impl PathKind {
     }
 
     /// Get just the variant name for serialization
-    pub const fn variant_name(&self) -> &'static str {
+    const fn variant_name(&self) -> &'static str {
         match self {
             Self::RootValue { .. } => "RootValue",
             Self::StructField { .. } => "StructField",

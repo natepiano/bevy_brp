@@ -26,7 +26,7 @@ use crate::error::Result;
 use crate::support::JsonObjectAccess;
 use crate::support::SchemaField;
 
-pub struct MapMutationBuilder;
+pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) struct MapMutationBuilder;
 
 impl TypeKindBuilder for MapMutationBuilder {
     type Item = PathKind;

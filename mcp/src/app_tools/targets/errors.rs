@@ -65,7 +65,7 @@ pub(super) struct NoTargetsFoundError {
 
 /// An available target for enriched not-found errors
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AvailableTarget {
+pub(in crate::app_tools) struct AvailableTarget {
     pub name: String,
     pub kind: String,
     pub path: String,
@@ -73,7 +73,7 @@ pub struct AvailableTarget {
 
 /// Error when no app or example with the given name was found across all target types
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct UnifiedTargetNotFoundError {
+pub(in crate::app_tools) struct UnifiedTargetNotFoundError {
     #[to_error_info]
     target_name: String,
 

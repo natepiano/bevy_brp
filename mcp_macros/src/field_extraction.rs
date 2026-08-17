@@ -134,7 +134,7 @@ fn parse_placement_attr(
 }
 
 /// Parse computed attribute arguments
-pub(crate) fn parse_computed_attr(attribute: &Attribute, result_operation: &mut Option<String>) {
+fn parse_computed_attr(attribute: &Attribute, result_operation: &mut Option<String>) {
     drop(attribute.parse_nested_meta(|meta| {
         if meta.path.is_ident("operation") {
             let value = meta.value()?;
@@ -148,7 +148,7 @@ pub(crate) fn parse_computed_attr(attribute: &Attribute, result_operation: &mut 
 }
 
 /// Parse `to_message` attribute arguments
-pub(crate) fn parse_to_message_attr(attribute: &Attribute) -> Option<String> {
+fn parse_to_message_attr(attribute: &Attribute) -> Option<String> {
     let mut message_template = None;
     drop(attribute.parse_nested_meta(|meta| {
         if meta.path.is_ident("message_template") {

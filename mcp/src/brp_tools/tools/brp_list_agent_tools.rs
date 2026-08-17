@@ -28,7 +28,7 @@ pub struct ListAgentToolsParams {
 
 /// One developer-published catalog record.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct ListedAgentTool {
+pub(crate) struct ListedAgentTool {
     /// Agent-facing tool name.
     pub name:          String,
     /// Exact backing BRP method for `brp_execute`.
@@ -45,7 +45,7 @@ pub struct ListedAgentTool {
 
 /// Serialized catalog payload returned as the structured result.
 #[derive(Serialize)]
-pub struct ListAgentToolsPayload {
+pub(crate) struct ListAgentToolsPayload {
     /// How to invoke a selected backing method through MCP.
     pub usage: String,
     /// Developer-published records in catalog order.

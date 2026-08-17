@@ -12,7 +12,7 @@ use super::variant_name::VariantName;
 /// Status of whether a mutation path can be mutated
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Mutability {
+pub(crate) enum Mutability {
     /// Path can be fully mutated
     Mutable,
     /// Path cannot be mutated (missing traits, unsupported type, etc.)

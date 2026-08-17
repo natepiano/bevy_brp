@@ -11,11 +11,11 @@ use crate::constants::MSG_INVALID_PREFIX;
 use crate::constants::MSG_MISSING_PREFIX;
 
 /// Result type for the `bevy_brp_mcp` library
-pub(crate) type Result<T> = core::result::Result<T, Report<Error>>;
+pub type Result<T> = core::result::Result<T, Report<Error>>;
 
 // Internal error types for detailed error categorization
 #[derive(Error)]
-pub(crate) enum Error {
+pub enum Error {
     #[error("BRP communication failed: {0}")]
     BrpCommunication(String),
 

@@ -80,7 +80,7 @@ impl PathExample {
     ///
     /// This is the ONLY helper method provided. All other usage should use explicit
     /// pattern matching to maintain type safety and force exhaustive handling of both cases.
-    pub const fn for_parent(&self) -> &Example {
+    pub(super) const fn for_parent(&self) -> &Example {
         match self {
             Self::Simple(ex) => ex,
             Self::EnumRoot { for_parent, .. } => for_parent,

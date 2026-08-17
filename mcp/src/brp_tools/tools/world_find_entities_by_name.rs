@@ -51,7 +51,7 @@ pub struct FindEntitiesByNameParams {
 
 /// One entity returned by name discovery.
 #[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize)]
-pub struct NamedEntity {
+pub(crate) struct NamedEntity {
     /// Canonical Bevy entity ID for later BRP operations.
     pub entity: u64,
     /// The complete reflected Bevy `Name`.

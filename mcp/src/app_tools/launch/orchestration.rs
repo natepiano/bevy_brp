@@ -108,7 +108,7 @@ fn handle_target_discovery_error(error: Report<Error>) -> Report<Error> {
     Error::tool_call_failed_with_details(error_message, details).into()
 }
 
-pub fn launch_bevy_target(
+pub(in crate::app_tools) fn launch_bevy_target(
     typed_params: LaunchBevyBinaryParams,
     default_profile: &'static str,
 ) -> Result<LaunchResult> {
