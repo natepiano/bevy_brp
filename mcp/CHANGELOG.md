@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.22.3] - 2026-08-17
 
 ### Fixed
 - Fix `tools/list` omitting the `ttlMs` and `cacheScope` fields required by MCP protocol 2026-07-28, which caused schema-validating clients to reject the response and load no tools.
