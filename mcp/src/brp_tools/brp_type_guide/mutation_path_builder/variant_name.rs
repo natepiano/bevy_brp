@@ -22,5 +22,7 @@ impl Display for VariantName {
 impl VariantName {
     /// Get just the short variant name without the enum prefix (e.g., "Srgba" from
     /// "`Color::Srgba`")
-    pub(super) fn short_name(&self) -> &str { self.0.rsplit_once("::").map_or(&self.0, |(_, name)| name) }
+    pub(super) fn short_name(&self) -> &str {
+        self.0.rsplit_once("::").map_or(&self.0, |(_, name)| name)
+    }
 }
