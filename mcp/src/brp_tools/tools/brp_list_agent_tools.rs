@@ -75,25 +75,28 @@ impl ToolFn for BrpListAgentTools {
     type Params = ListAgentToolsParams;
 
     async fn handle_impl(&self, params: ListAgentToolsParams) -> Result<ListAgentToolsResult> {
-        let client =
-            BrpClient::for_application(AGENT_TOOL_CATALOG_METHOD.to_string(), params.port, None);
-        let response = client.execute_raw().await.map_err(|error| {
-            Error::tool_call_failed_with_details(
-                format!(
-                    "Unable to fetch the agent tool catalog from port {}",
-                    params.port
-                ),
-                serde_json::json!({
-                    "stage": "catalog_fetch",
-                    "method": AGENT_TOOL_CATALOG_METHOD,
-                    "port": params.port,
-                    "error": error.current_context().to_string(),
-                }),
-            )
-        })?;
-
-        interpret_catalog_response(response, params.port)
+        let catalog = fetch_catalog(params.port).await?;
+        let tool_count = catalog.tools.len();
+        Ok(ListAgentToolsResult::new(catalog, tool_count))
     }
+}
+
+/// Fetches the application-owned catalog used to authorize dynamic BRP execution.
+pub(crate) async fn fetch_catalog(port: Port) -> Result<ListAgentToolsPayload> {
+    let client = BrpClient::for_application(AGENT_TOOL_CATALOG_METHOD.to_string(), port, None);
+    let response = client.execute_raw().await.map_err(|error| {
+        Error::tool_call_failed_with_details(
+            format!("Unable to fetch the agent tool catalog from port {}", port),
+            serde_json::json!({
+                "stage": "catalog_fetch",
+                "method": AGENT_TOOL_CATALOG_METHOD,
+                "port": port,
+                "error": error.current_context().to_string(),
+            }),
+        )
+    })?;
+
+    interpret_catalog_response(response, port).map(|result| result.catalog)
 }
 
 #[derive(Deserialize)]

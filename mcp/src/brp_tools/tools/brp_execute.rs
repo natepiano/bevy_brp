@@ -9,6 +9,8 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
+use super::brp_list_agent_tools;
+use super::brp_list_agent_tools::ListedAgentTool;
 use super::rpc_discover;
 use crate::brp_tools;
 use crate::brp_tools::BrpClient;
@@ -30,7 +32,7 @@ pub struct ExecuteParams {
     pub port:   Port,
 }
 
-/// Result type for the dynamic BRP execute tool
+/// Result type for the catalog-authorized dynamic BRP execute tool
 #[derive(Serialize, ResultStruct)]
 #[brp_result]
 pub struct ExecuteResult {
@@ -52,7 +54,28 @@ impl ToolFn for BrpExecute {
     type Params = ExecuteParams;
 
     async fn handle_impl(&self, params: ExecuteParams) -> Result<ExecuteResult> {
+        let catalog = brp_list_agent_tools::fetch_catalog(params.port).await?;
         let method_names = rpc_discover::discover_method_names(params.port).await?;
+        if !method_is_published(&catalog.tools, &params.method) {
+            let available_methods = catalog
+                .tools
+                .iter()
+                .map(|tool| tool.method.clone())
+                .collect::<Vec<_>>();
+            return Err(Error::tool_call_failed_with_details(
+                format!(
+                    "BRP method `{}` is not published for agent execution on port {}",
+                    params.method, params.port
+                ),
+                serde_json::json!({
+                    "stage": "catalog_authorization",
+                    "method": params.method,
+                    "port": params.port,
+                    "available_methods": available_methods,
+                }),
+            )
+            .into());
+        }
         if !method_is_registered(&method_names, &params.method) {
             let mut available_methods = method_names;
             available_methods.sort_unstable();
@@ -98,11 +121,17 @@ fn method_is_registered(method_names: &[String], requested_method: &str) -> bool
     method_names.iter().any(|method| method == requested_method)
 }
 
+fn method_is_published(catalog: &[ListedAgentTool], requested_method: &str) -> bool {
+    catalog.iter().any(|tool| tool.method == requested_method)
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
     use super::ExecuteParams;
+    use super::ListedAgentTool;
+    use super::method_is_published;
     use super::method_is_registered;
 
     #[test]
@@ -124,5 +153,20 @@ mod tests {
 
         assert!(method_is_registered(&methods, "test/multiply"));
         assert!(!method_is_registered(&methods, "test/multiply_more"));
+    }
+
+    #[test]
+    fn execution_requires_an_exact_published_agent_method() {
+        let catalog = vec![ListedAgentTool {
+            name:          String::from("test_alpha"),
+            method:        String::from("test/alpha"),
+            description:   String::from("Published test method"),
+            params_schema: None,
+            result_schema: None,
+        }];
+
+        assert!(method_is_published(&catalog, "test/alpha"));
+        assert!(!method_is_published(&catalog, "world.insert_components"));
+        assert!(!method_is_published(&catalog, "test/alpha_more"));
     }
 }

@@ -151,9 +151,10 @@ and invoke the selected method with `brp_execute`:
 }
 ```
 
-`brp_execute` confirms that the selected app reports the method through `rpc.discover` before
-forwarding the raw parameters. Catalog records are not native MCP tools. Every published record
-names a BRP method, while most registered BRP methods need not be in the curated agent list.
+`brp_execute` forwards only a method named by the selected app's curated agent catalog, then
+confirms that the same live app still reports that method through `rpc.discover`. Catalog records
+are not native MCP tools. Registered methods that are absent from the curated catalog, including
+generic mutation methods, cannot be reached through `brp_execute`.
 
 Each catalog request validates all published records against the live `RemoteMethods` resource. If
 any backing method is missing or watching, no partial list is returned; the BRP error data identifies
