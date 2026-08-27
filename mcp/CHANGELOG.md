@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix the `app_name` filter on `brp_list_logs` and `brp_delete_logs` never matching a launched app. The log filename parser expected a trailing field that the launch writer does not emit, so every app log fell through to a generic parser that folded the port into the parsed name (`test_app` became `test_app_port20202`). `brp_list_logs` returned no logs for a valid app name, and `brp_delete_logs` silently deleted nothing.
+
 ## [0.22.3] - 2026-08-17
 
 ### Fixed

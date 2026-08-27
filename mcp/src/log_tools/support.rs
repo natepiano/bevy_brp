@@ -16,7 +16,7 @@ use crate::error::Result;
 
 // Static regex for parsing app log filenames
 static APP_LOG_REGEX: LazyLock<Option<Regex>> =
-    LazyLock::new(|| Regex::new(r"^bevy_brp_mcp_(.+?)_port\d+_(\d+)_\d+\.log$").ok());
+    LazyLock::new(|| Regex::new(r"^bevy_brp_mcp_(.+?)_port\d+_(\d+)\.log$").ok());
 
 /// Represents a log file entry with metadata
 #[derive(Debug, Clone)]
@@ -36,7 +36,7 @@ pub(super) fn is_valid_log_filename(filename: &str) -> bool {
 /// Parses app log filename with port pattern into app name and timestamp
 /// Returns `Some((app_name, timestamp_str))` if matches app log pattern, `None` otherwise
 ///
-/// Format: `bevy_brp_mcp`_{`app_name`}_port{number}_{timestamp}_{suffix}.log
+/// Format: `bevy_brp_mcp`_{`app_name`}_port{number}_{timestamp}.log
 /// Extracts `app_name` as the part between "`bevy_brp_mcp`_" and "_port{number}"
 pub(super) fn parse_app_log_filename(filename: &str) -> Option<(String, String)> {
     if !is_valid_log_filename(filename) {
@@ -223,4 +223,59 @@ where
     }
 
     Ok(log_entries)
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::expect_used,
+    reason = "tests should panic on unexpected values"
+)]
+mod tests {
+    use super::parse_app_log_filename;
+    use super::parse_log_filename;
+
+    /// Mirrors the filename built in `app_tools::launch::logging`. Both sides must agree,
+    /// or the `app_name` filters in `list_logs` and `delete_logs` silently match nothing.
+    fn app_log_filename(name: &str, port: u16, timestamp: u128) -> String {
+        format!("bevy_brp_mcp_{name}_port{port}_{timestamp}.log")
+    }
+
+    #[test]
+    fn parses_app_name_written_by_launch() {
+        let filename = app_log_filename("test_app", 20202, 1_787_840_000_123);
+
+        let (app_name, timestamp) =
+            parse_app_log_filename(&filename).expect("launch log filename must parse");
+
+        assert_eq!(app_name, "test_app");
+        assert_eq!(timestamp, "1787840000123");
+    }
+
+    #[test]
+    fn keeps_port_out_of_app_name_for_underscored_names() {
+        let filename = app_log_filename("extras_plugin", 20100, 1_787_840_000_123);
+
+        let (app_name, _) =
+            parse_app_log_filename(&filename).expect("launch log filename must parse");
+
+        assert_eq!(app_name, "extras_plugin");
+    }
+
+    #[test]
+    fn rejects_watch_logs_from_app_log_pattern() {
+        // Watch logs carry no `_port{number}` segment and must not be treated as app logs.
+        let filename = "bevy_brp_mcp_watch_2_list_4294966727_1787840693.log";
+
+        assert!(parse_app_log_filename(filename).is_none());
+        assert!(parse_log_filename(filename).is_some());
+    }
+
+    #[test]
+    fn generic_parser_prefers_app_pattern() {
+        let filename = app_log_filename("test_app", 20202, 1_787_840_000_123);
+
+        let (app_name, _) = parse_log_filename(&filename).expect("filename must parse");
+
+        assert_eq!(app_name, "test_app");
+    }
 }
