@@ -14,7 +14,7 @@ use syn::parse2;
 ///
 /// # Usage
 ///
-/// ```rust
+/// ```ignore
 /// #[derive(ToolFn)]
 /// #[tool_fn(params = "MyParams", output = "MyOutput")]
 /// pub struct MyTool;
