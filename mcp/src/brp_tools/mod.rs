@@ -9,10 +9,12 @@ mod watch_tools;
 // Public exports
 //
 // We export `JSON_RPC_ERROR_METHOD_NOT_FOUND` so that the `brp_shutdown` tool can determine if
-// `brp_mcp_extras` is available
+// `brp_mcp_extras` is available, and `HTTP_REQUEST_TIMEOUT` so it can name that budget when it
+// reports an unresponsive app
 pub use brp_client::BrpClient;
 pub use brp_client::BrpToolConfig;
 pub use brp_client::FormatCorrectionStatus;
+pub use brp_client::HTTP_REQUEST_TIMEOUT;
 pub use brp_client::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 pub use brp_client::ResponseStatus;
 pub use brp_client::ResultStructBrpExt;

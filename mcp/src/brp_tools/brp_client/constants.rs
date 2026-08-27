@@ -16,7 +16,7 @@ pub(super) const HTTP_CONTENT_TYPE_JSON: &str = "application/json";
 /// HTTP header name carrying the request content type
 pub(super) const HTTP_HEADER_CONTENT_TYPE: &str = "Content-Type";
 /// Timeout for standard (non-streaming) HTTP requests
-pub(super) const HTTP_REQUEST_TIMEOUT: Duration = std::time::Duration::from_secs(30);
+pub const HTTP_REQUEST_TIMEOUT: Duration = std::time::Duration::from_secs(30);
 
 // error constants
 /// Basically we're trying to to access a field of a struct or a resource with the wrong path - here

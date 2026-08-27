@@ -13,6 +13,7 @@ use tracing::debug;
 use super::constants::PID_FIELD;
 use super::process;
 use crate::brp_tools::BrpClient;
+use crate::brp_tools::HTTP_REQUEST_TIMEOUT;
 use crate::brp_tools::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use crate::brp_tools::Port;
 use crate::brp_tools::ResponseStatus;
@@ -58,12 +59,49 @@ pub struct ShutdownResult {
     message_template: Option<String>,
 }
 
+/// Why graceful shutdown was abandoned in favor of a system signal.
+///
+/// These two conditions call for different remedies, so they must not share a warning: one is
+/// fixed by adding a plugin, the other by getting the app to run its schedule again.
+#[derive(Clone, Copy)]
+enum KillReason {
+    /// BRP answered, but `bevy_brp_extras` is not installed, so there is no
+    /// `brp_extras/shutdown` method to call
+    ExtrasUnavailable,
+    /// BRP never answered. `bevy_remote` drains its request mailbox once per frame, so an app
+    /// whose frame loop is stalled - a minimized or occluded window is enough on macOS - accepts
+    /// the connection and never replies. Extras may well be installed and healthy.
+    Unresponsive,
+}
+
+impl KillReason {
+    /// Warning surfaced alongside a `process_kill` result, naming the condition actually observed
+    fn warning(self) -> String {
+        match self {
+            Self::ExtrasUnavailable => {
+                "bevy_brp_extras did not answer on this port - add it for clean shutdown"
+                    .to_string()
+            },
+            Self::Unresponsive => format!(
+                "App did not respond to BRP within {}s and was terminated. bevy_brp_extras may be \
+                 installed but unable to reply: bevy_remote drains its request mailbox once per \
+                 frame, so a stalled frame loop (for example a minimized or occluded window) \
+                 leaves requests unanswered.",
+                HTTP_REQUEST_TIMEOUT.as_secs()
+            ),
+        }
+    }
+}
+
 /// Result of a shutdown operation
 enum ShutdownOutcome {
     /// Graceful shutdown via `bevy_brp_extras` succeeded
     Clean { process_id: u32 },
-    /// Process was killed using system signal - typically when extras plugin is not available
-    ProcessKilled { process_id: u32 },
+    /// Process was killed using system signal, because graceful shutdown was unavailable
+    ProcessKilled {
+        process_id: u32,
+        reason:     KillReason,
+    },
     /// Process was not running
     NotRunning,
     /// An error occurred during shutdown
@@ -136,10 +174,21 @@ fn handle_kill_process_fallback(
     port: Port,
     brp_error: Option<String>,
 ) -> ShutdownOutcome {
+    // A BRP error means the app never answered; its absence means BRP answered but had no
+    // `brp_extras/shutdown` method to offer.
+    let reason = if brp_error.is_some() {
+        KillReason::Unresponsive
+    } else {
+        KillReason::ExtrasUnavailable
+    };
+
     match kill_process(app_name, port) {
         Ok(Some(pid)) => {
             debug!("Successfully killed process {app_name} with PID {pid}");
-            ShutdownOutcome::ProcessKilled { process_id: pid }
+            ShutdownOutcome::ProcessKilled {
+                process_id: pid,
+                reason,
+            }
         },
         Ok(None) => {
             if brp_error.is_some() {
@@ -183,12 +232,12 @@ async fn handle_impl(params: ShutdownParams) -> Result<ShutdownResult> {
             "Successfully initiated graceful shutdown for '{}' (PID: {process_id}) via bevy_brp_extras",
             params.app_name
         ))),
-        ShutdownOutcome::ProcessKilled { process_id } => Ok(ShutdownResult::new(
+        ShutdownOutcome::ProcessKilled { process_id, reason } => Ok(ShutdownResult::new(
             params.app_name.clone(),
             process_id,
             "process_kill".to_string(),
             params.port.0,
-            Some("Consider adding bevy_brp_extras for clean shutdown".to_string()),
+            Some(reason.warning()),
         )
         .with_message_template(format!(
             "Terminated process '{}' (PID: {process_id}) using kill",

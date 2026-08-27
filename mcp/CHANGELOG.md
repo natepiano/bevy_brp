@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix `brp_shutdown` telling you to install `bevy_brp_extras` on apps that already have it. A `process_kill` result carried one hardcoded warning for two unrelated conditions: extras genuinely absent, and extras present but unreachable because the app never answered BRP. The warning now names the condition observed, and the unresponsive case explains that `bevy_remote` drains its request mailbox once per frame, so a stalled frame loop (a minimized or occluded window is enough on macOS) leaves requests unanswered until the 30s timeout.
+
 ## [0.22.4] - 2026-08-27
 
 ### Fixed
