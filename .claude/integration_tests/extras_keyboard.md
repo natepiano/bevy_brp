@@ -22,7 +22,11 @@ Validate brp_extras keyboard input methods: send_keys with various durations, mo
 - Verify reception: read `extras_plugin::KeyboardInputHistory`
   - `last_keys` should contain `["KeyH", "KeyI"]`
   - `completion_state` should be `"Completed"`
-  - `last_duration_ms` should be present and roughly in the range 600-900
+  - `last_duration_ms` should be present and roughly in the range 600-1500
+  - The app measures this by detecting press and release on separate frames, so the value runs
+    longer than the requested 700ms by up to a couple of frames. Under the parallel suite the app
+    can drop to ~10 FPS, which adds ~200-300ms. The wide upper bound absorbs that frame latency;
+    the 600ms lower bound is what proves the custom duration was honored rather than the default.
 
 ### 4. Modifier Combination with Verification
 - Test modifier combination: `{"keys": ["ControlLeft", "KeyA"], "duration_ms": 500}`
