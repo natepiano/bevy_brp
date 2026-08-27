@@ -419,8 +419,42 @@ impl ResponseBuilder {
             Value::String(s) => s.clone(),
             Value::Number(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
-            Value::Array(arr) => format!("{} items", arr.len()),
+            Value::Array(values) => values
+                .iter()
+                .map(Self::value_to_string)
+                .collect::<Vec<_>>()
+                .join(", "),
             _ => value.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::ResponseBuilder;
+
+    /// `TargetNotFoundInPackage` interpolates `available_package_names` into its
+    /// message, so an array has to name its elements rather than count them.
+    #[test]
+    fn array_renders_as_comma_separated_list() {
+        assert_eq!(
+            ResponseBuilder::value_to_string(&json!(["test-app-a", "test-app-b"])),
+            "test-app-a, test-app-b"
+        );
+    }
+
+    #[test]
+    fn array_elements_render_unquoted() {
+        assert_eq!(
+            ResponseBuilder::value_to_string(&json!(["a", 1, true])),
+            "a, 1, true"
+        );
+    }
+
+    #[test]
+    fn empty_array_renders_as_empty_string() {
+        assert_eq!(ResponseBuilder::value_to_string(&json!([])), "");
     }
 }
