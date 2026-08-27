@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.22.4] - 2026-08-27
 
 ### Fixed
 - Fix the `app_name` filter on `brp_list_logs` and `brp_delete_logs` never matching a launched app. The log filename parser expected a trailing field that the launch writer does not emit, so every app log fell through to a generic parser that folded the port into the parsed name (`test_app` became `test_app_port20202`). `brp_list_logs` returned no logs for a valid app name, and `brp_delete_logs` silently deleted nothing.
