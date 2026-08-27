@@ -12,6 +12,9 @@ use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
 use serde_json::Value;
 
+use super::constants::PARAM_CAMERA;
+use super::constants::PARAM_ENTITY;
+use super::constants::PARAM_PADDING;
 use crate::constants::SCREENSHOT_ZERO_PADDING;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -68,18 +71,18 @@ impl TryFrom<&RawScreenshotRequest> for ScreenshotScope {
     fn try_from(raw: &RawScreenshotRequest) -> Result<Self, Self::Error> {
         match raw.entity {
             Some(entity) => Ok(Self::Entity {
-                entity:  decode_entity_id(entity, "entity")?,
+                entity:  decode_entity_id(entity, PARAM_ENTITY)?,
                 camera:  raw
                     .camera
-                    .map(|camera| decode_entity_id(camera, "camera"))
+                    .map(|camera| decode_entity_id(camera, PARAM_CAMERA))
                     .transpose()?,
                 padding: raw.padding.unwrap_or(SCREENSHOT_ZERO_PADDING),
             }),
-            None if raw.padding.is_some() => Err(entity_scope_field_error("padding")),
+            None if raw.padding.is_some() => Err(entity_scope_field_error(PARAM_PADDING)),
             None => Ok(Self::Full {
                 camera: raw
                     .camera
-                    .map(|camera| decode_entity_id(camera, "camera"))
+                    .map(|camera| decode_entity_id(camera, PARAM_CAMERA))
                     .transpose()?,
             }),
         }

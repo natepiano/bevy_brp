@@ -63,10 +63,6 @@ pub struct StatusResult {
 #[tool_fn(params = "StatusParams", output = "StatusResult")]
 pub struct Status;
 
-async fn handle_impl(params: StatusParams) -> Result<StatusResult> {
-    check_brp_for_app(&params.app_name, params.port).await
-}
-
 /// Error when process is not found
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 struct ProcessNotFoundError {
@@ -94,6 +90,10 @@ enum BrpPortStatus {
     Responding,
 }
 
+impl BrpPortStatus {
+    const fn is_responding(self) -> bool { matches!(self, Self::Responding) }
+}
+
 impl From<bool> for BrpPortStatus {
     fn from(value: bool) -> Self {
         if value {
@@ -106,10 +106,6 @@ impl From<bool> for BrpPortStatus {
 
 impl From<BrpPortStatus> for bool {
     fn from(value: BrpPortStatus) -> Self { matches!(value, BrpPortStatus::Responding) }
-}
-
-impl BrpPortStatus {
-    const fn is_responding(self) -> bool { matches!(self, Self::Responding) }
 }
 
 /// Error when process is running but BRP not responding
@@ -128,6 +124,10 @@ struct BrpNotRespondingError {
         message_template = "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
     )]
     message_template: String,
+}
+
+async fn handle_impl(params: StatusParams) -> Result<StatusResult> {
+    check_brp_for_app(&params.app_name, params.port).await
 }
 
 /// Check if process matches the target app name with substring match

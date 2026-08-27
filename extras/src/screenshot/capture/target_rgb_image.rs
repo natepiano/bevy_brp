@@ -12,19 +12,6 @@ use image::RgbImage;
 
 pub(super) struct TargetRgbImage(RgbImage);
 
-impl TryFrom<Image> for TargetRgbImage {
-    type Error = BrpError;
-
-    fn try_from(image: Image) -> Result<Self, Self::Error> {
-        image
-            .try_into_dynamic()
-            .map(|dynamic_image| Self(dynamic_image.to_rgb8()))
-            .map_err(|error| {
-                capture_error(format!("Failed to convert captured image to RGB: {error}"))
-            })
-    }
-}
-
 impl TargetRgbImage {
     pub(super) fn encode(&self, crop: Option<URect>) -> BrpResult<EncodedCapture> {
         let actual_extent =
@@ -69,6 +56,19 @@ impl TargetRgbImage {
             bytes:      cursor.into_inner(),
             dimensions: capture_extent.size(),
         })
+    }
+}
+
+impl TryFrom<Image> for TargetRgbImage {
+    type Error = BrpError;
+
+    fn try_from(image: Image) -> Result<Self, Self::Error> {
+        image
+            .try_into_dynamic()
+            .map(|dynamic_image| Self(dynamic_image.to_rgb8()))
+            .map_err(|error| {
+                capture_error(format!("Failed to convert captured image to RGB: {error}"))
+            })
     }
 }
 

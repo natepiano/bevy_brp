@@ -60,6 +60,11 @@ impl Default for CaptureCompletionChannel {
     }
 }
 
+struct PreparedJob {
+    job:             ScreenshotJob,
+    encoded_capture: BrpResult<EncodedCapture>,
+}
+
 pub(super) fn start_capture_worker(
     image: Image,
     screenshot_job: ScreenshotJob,
@@ -85,11 +90,6 @@ pub(super) fn start_capture_worker(
             }
         })
         .detach();
-}
-
-struct PreparedJob {
-    job:             ScreenshotJob,
-    encoded_capture: BrpResult<EncodedCapture>,
 }
 
 fn prepare_capture_job(

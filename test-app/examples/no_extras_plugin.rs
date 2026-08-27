@@ -29,6 +29,9 @@ const TEST_ENTITY_TWO_TRANSLATION: Vec3 = Vec3::new(10.0, 20.0, 30.0);
 const WINDOW_HEIGHT: u32 = 600;
 const WINDOW_WIDTH: u32 = 800;
 
+#[derive(Resource)]
+struct CurrentPort(u16);
+
 fn main() {
     let port = match configured_port() {
         Ok(port) => port,
@@ -62,9 +65,6 @@ fn main() {
         )
         .run();
 }
-
-#[derive(Resource)]
-struct CurrentPort(u16);
 
 fn configured_port() -> Result<u16, String> {
     match env::var(BRP_EXTRAS_PORT_ENV) {

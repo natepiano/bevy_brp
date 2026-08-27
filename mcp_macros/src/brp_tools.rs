@@ -18,6 +18,25 @@ struct ToolAttrs {
     brp_method: String, // Make required (not Option)
 }
 
+/// Collected token streams for the `BrpMethod` enum and its conversions.
+struct BrpMethodParts {
+    variants:           Vec<proc_macro2::TokenStream>,
+    to_brp_method_arms: Vec<proc_macro2::TokenStream>,
+    from_brp_method:    Vec<proc_macro2::TokenStream>,
+    string_arms:        Vec<proc_macro2::TokenStream>,
+    from_str_arms:      Vec<proc_macro2::TokenStream>,
+}
+
+#[derive(Clone, Copy)]
+enum BrpToolAttribute {
+    Missing,
+    Present,
+}
+
+impl BrpToolAttribute {
+    const fn is_present(self) -> bool { matches!(self, Self::Present) }
+}
+
 /// Implementation of the `BrpTools` derive macro
 pub(crate) fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -41,15 +60,6 @@ pub(crate) fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
     );
 
     TokenStream::from(expanded)
-}
-
-/// Collected token streams for the `BrpMethod` enum and its conversions.
-struct BrpMethodParts {
-    variants:           Vec<proc_macro2::TokenStream>,
-    to_brp_method_arms: Vec<proc_macro2::TokenStream>,
-    from_brp_method:    Vec<proc_macro2::TokenStream>,
-    string_arms:        Vec<proc_macro2::TokenStream>,
-    from_str_arms:      Vec<proc_macro2::TokenStream>,
 }
 
 /// Generate marker structs and `ToolFn` implementations for each variant.
@@ -348,14 +358,4 @@ fn extract_tool_attr(attributes: &[Attribute]) -> ToolAttrs {
     );
 
     tool_attrs
-}
-
-#[derive(Clone, Copy)]
-enum BrpToolAttribute {
-    Missing,
-    Present,
-}
-
-impl BrpToolAttribute {
-    const fn is_present(self) -> bool { matches!(self, Self::Present) }
 }

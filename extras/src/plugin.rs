@@ -50,70 +50,6 @@ use super::shutdown;
 use super::window_title;
 
 // ---------------------------------------------------------------------------
-// Port display configuration
-// ---------------------------------------------------------------------------
-
-/// Controls whether the BRP port is appended to the window title.
-///
-/// Used with [`BrpExtrasPlugin::port_in_title`] to display the port in the
-/// primary window's title bar.
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Clone, Copy, Debug)]
-pub enum PortDisplay {
-    /// Always append `(port: XXXXX)` to the window title.
-    Always,
-    /// Only append when not using the default port (15702).
-    NonDefault,
-}
-
-// ---------------------------------------------------------------------------
-// HTTP configuration state types
-// ---------------------------------------------------------------------------
-
-/// No HTTP configuration specified — uses `BRP_EXTRAS_PORT` env var or default port.
-pub struct Unconfigured;
-
-/// HTTP transport configured with an explicit port.
-#[cfg(not(target_arch = "wasm32"))]
-pub struct PortConfigured(u16);
-
-/// HTTP transport configured with a user-provided `RemoteHttpPlugin`.
-#[cfg(not(target_arch = "wasm32"))]
-pub struct HttpPluginConfigured(Mutex<Option<RemoteHttpPlugin>>);
-
-// ---------------------------------------------------------------------------
-// Port resolution trait
-// ---------------------------------------------------------------------------
-
-/// Trait for HTTP configuration states that can resolve an effective port.
-///
-/// Implemented for [`Unconfigured`] and [`PortConfigured`] — both states where
-/// `BrpExtrasPlugin` manages the HTTP transport and the port is knowable.
-///
-/// Not implemented for [`HttpPluginConfigured`] because the user provides their
-/// own `RemoteHttpPlugin` and already knows the port they configured.
-#[cfg(not(target_arch = "wasm32"))]
-pub trait HasEffectivePort {
-    /// The fallback port when `BRP_EXTRAS_PORT` env var is not set.
-    fn fallback_port(&self) -> u16;
-
-    /// Whether the port was explicitly configured via `with_port()`.
-    fn is_explicit(&self) -> bool;
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl HasEffectivePort for Unconfigured {
-    fn fallback_port(&self) -> u16 { DEFAULT_REMOTE_PORT }
-    fn is_explicit(&self) -> bool { false }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl HasEffectivePort for PortConfigured {
-    fn fallback_port(&self) -> u16 { self.0 }
-    fn is_explicit(&self) -> bool { true }
-}
-
-// ---------------------------------------------------------------------------
 // Plugin struct and const shorthand
 // ---------------------------------------------------------------------------
 
@@ -166,10 +102,6 @@ pub struct BrpExtrasPlugin<HttpConfig = Unconfigured> {
     http_config:  HttpConfig,
     #[cfg(not(target_arch = "wasm32"))]
     port_display: Option<PortDisplay>,
-}
-
-impl Default for BrpExtrasPlugin<Unconfigured> {
-    fn default() -> Self { Self::new() }
 }
 
 impl BrpExtrasPlugin<Unconfigured> {
@@ -285,8 +217,12 @@ impl<H: HasEffectivePort> BrpExtrasPlugin<H> {
 }
 
 // ---------------------------------------------------------------------------
-// Plugin implementations
+// Trait implementations
 // ---------------------------------------------------------------------------
+
+impl Default for BrpExtrasPlugin<Unconfigured> {
+    fn default() -> Self { Self::new() }
+}
 
 impl Plugin for BrpExtrasPlugin<Unconfigured> {
     fn build(&self, app: &mut App) {
@@ -336,6 +272,70 @@ impl Plugin for BrpExtrasPlugin<HttpPluginConfigured> {
 
         build_shared(app);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Port display configuration
+// ---------------------------------------------------------------------------
+
+/// Controls whether the BRP port is appended to the window title.
+///
+/// Used with [`BrpExtrasPlugin::port_in_title`] to display the port in the
+/// primary window's title bar.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Copy, Debug)]
+pub enum PortDisplay {
+    /// Always append `(port: XXXXX)` to the window title.
+    Always,
+    /// Only append when not using the default port (15702).
+    NonDefault,
+}
+
+// ---------------------------------------------------------------------------
+// HTTP configuration state types
+// ---------------------------------------------------------------------------
+
+/// No HTTP configuration specified — uses `BRP_EXTRAS_PORT` env var or default port.
+pub struct Unconfigured;
+
+/// HTTP transport configured with an explicit port.
+#[cfg(not(target_arch = "wasm32"))]
+pub struct PortConfigured(u16);
+
+/// HTTP transport configured with a user-provided `RemoteHttpPlugin`.
+#[cfg(not(target_arch = "wasm32"))]
+pub struct HttpPluginConfigured(Mutex<Option<RemoteHttpPlugin>>);
+
+// ---------------------------------------------------------------------------
+// Port resolution trait
+// ---------------------------------------------------------------------------
+
+/// Trait for HTTP configuration states that can resolve an effective port.
+///
+/// Implemented for [`Unconfigured`] and [`PortConfigured`] — both states where
+/// `BrpExtrasPlugin` manages the HTTP transport and the port is knowable.
+///
+/// Not implemented for [`HttpPluginConfigured`] because the user provides their
+/// own `RemoteHttpPlugin` and already knows the port they configured.
+#[cfg(not(target_arch = "wasm32"))]
+pub trait HasEffectivePort {
+    /// The fallback port when `BRP_EXTRAS_PORT` env var is not set.
+    fn fallback_port(&self) -> u16;
+
+    /// Whether the port was explicitly configured via `with_port()`.
+    fn is_explicit(&self) -> bool;
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl HasEffectivePort for Unconfigured {
+    fn fallback_port(&self) -> u16 { DEFAULT_REMOTE_PORT }
+    fn is_explicit(&self) -> bool { false }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl HasEffectivePort for PortConfigured {
+    fn fallback_port(&self) -> u16 { self.0 }
+    fn is_explicit(&self) -> bool { true }
 }
 
 // ---------------------------------------------------------------------------

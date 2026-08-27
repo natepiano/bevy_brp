@@ -459,6 +459,32 @@ const UI_NODE_SIZE: f32 = 200.0;
 const WINDOW_HEIGHT: u32 = 600;
 const WINDOW_WIDTH: u32 = 800;
 
+struct ParameterizedBrpPlugin;
+
+impl Plugin for ParameterizedBrpPlugin {
+    fn build(&self, app: &mut App) {
+        let system_id = app.world_mut().register_system(multiply_handler);
+        {
+            let Some(mut remote_methods) = app.world_mut().get_resource_mut::<RemoteMethods>()
+            else {
+                warn!("{MULTIPLY_METHOD} was not registered because Bevy Remote is unavailable");
+                return;
+            };
+            remote_methods.insert(MULTIPLY_METHOD, RemoteMethodSystemId::Instant(system_id));
+        }
+
+        app.register_agent_tool(
+            AgentTool::new(
+                "test_multiply",
+                "test/multiply",
+                "Multiply two signed integers with overflow checking",
+            )
+            .params_schema_for::<MultiplyParams>()
+            .result_schema_for::<MultiplyResult>(),
+        );
+    }
+}
+
 /// Resource to track keyboard input history
 #[derive(Resource, Default, Reflect)]
 #[reflect(Resource)]
@@ -528,21 +554,6 @@ impl TryFrom<&str> for ModifierKey {
             Err(())
         }
     }
-}
-
-fn collect_modifier_labels(keys: &[String]) -> Vec<String> {
-    let mut modifiers = Vec::new();
-
-    for key in keys {
-        if let Ok(modifier) = ModifierKey::try_from(key.as_str()) {
-            let label = modifier.label();
-            if !modifiers.iter().any(|existing| existing == label) {
-                modifiers.push(label.to_string());
-            }
-        }
-    }
-
-    modifiers
 }
 
 /// Marker component for the keyboard input display text
@@ -899,32 +910,6 @@ impl Default for TestCollectionComponent {
     }
 }
 
-struct ParameterizedBrpPlugin;
-
-impl Plugin for ParameterizedBrpPlugin {
-    fn build(&self, app: &mut App) {
-        let system_id = app.world_mut().register_system(multiply_handler);
-        {
-            let Some(mut remote_methods) = app.world_mut().get_resource_mut::<RemoteMethods>()
-            else {
-                warn!("{MULTIPLY_METHOD} was not registered because Bevy Remote is unavailable");
-                return;
-            };
-            remote_methods.insert(MULTIPLY_METHOD, RemoteMethodSystemId::Instant(system_id));
-        }
-
-        app.register_agent_tool(
-            AgentTool::new(
-                "test_multiply",
-                "test/multiply",
-                "Multiply two signed integers with overflow checking",
-            )
-            .params_schema_for::<MultiplyParams>()
-            .result_schema_for::<MultiplyResult>(),
-        );
-    }
-}
-
 #[derive(Deserialize, JsonSchema)]
 struct MultiplyParams {
     value:  i64,
@@ -936,6 +921,25 @@ struct MultiplyResult {
     value:   i64,
     factor:  i64,
     product: i64,
+}
+
+/// Resource to store the current port
+#[derive(Resource)]
+struct CurrentPort(u16);
+
+fn collect_modifier_labels(keys: &[String]) -> Vec<String> {
+    let mut modifiers = Vec::new();
+
+    for key in keys {
+        if let Ok(modifier) = ModifierKey::try_from(key.as_str()) {
+            let label = modifier.label();
+            if !modifiers.iter().any(|existing| existing == label) {
+                modifiers.push(label.to_string());
+            }
+        }
+    }
+
+    modifiers
 }
 
 fn multiply_handler(In(params): In<Option<Value>>) -> BrpResult {
@@ -1038,10 +1042,6 @@ fn main() {
         )
         .run();
 }
-
-/// Resource to store the current port
-#[derive(Resource)]
-struct CurrentPort(u16);
 
 /// Minimize the window immediately on startup
 /// On Linux/Wayland, minimizing causes a swap chain timeout panic because the

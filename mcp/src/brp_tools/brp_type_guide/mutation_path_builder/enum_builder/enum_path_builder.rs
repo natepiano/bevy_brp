@@ -63,6 +63,13 @@ use crate::error::Result;
 use crate::support::JsonObjectAccess;
 use crate::support::SchemaField;
 
+/// Result type for `process_children` containing example groups, child paths, and partial roots
+type ProcessChildrenResult = (
+    Vec<ExampleGroup>,
+    Vec<MutationPathInternal>,
+    HashMap<Vec<VariantName>, RootExample>,
+);
+
 fn sorted_variant_groups(
     variant_groups: &HashMap<VariantSignature, Vec<VariantName>>,
 ) -> Vec<(&VariantSignature, &[VariantName])> {
@@ -73,13 +80,6 @@ fn sorted_variant_groups(
     sorted_groups.sort_by_key(|(signature, _)| *signature);
     sorted_groups
 }
-
-/// Result type for `process_children` containing example groups, child paths, and partial roots
-type ProcessChildrenResult = (
-    Vec<ExampleGroup>,
-    Vec<MutationPathInternal>,
-    HashMap<Vec<VariantName>, RootExample>,
-);
 
 /// Process enum type directly, bypassing `PathBuilder` trait
 ///

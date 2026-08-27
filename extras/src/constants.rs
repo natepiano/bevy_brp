@@ -47,12 +47,6 @@ pub const DEFAULT_REMOTE_PORT: u16 = 15702;
 pub(crate) const IMAGE_EXTENSION_PNG: &str = "png";
 
 // parameter fields
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) const PARAM_CAMERA: &str = "camera";
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) const PARAM_ENTITY: &str = "entity";
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) const PARAM_PATH: &str = "path";
 pub(crate) const PARAM_TITLE: &str = "title";
 
 // response fields

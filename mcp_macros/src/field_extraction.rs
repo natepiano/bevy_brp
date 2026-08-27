@@ -97,6 +97,24 @@ impl FieldAttributeKind {
     }
 }
 
+#[derive(Clone, Copy)]
+enum ComputationSource {
+    Computed,
+    Regular,
+}
+
+impl ComputationSource {
+    const fn is_computed(self) -> bool { matches!(self, Self::Computed) }
+}
+
+pub(crate) struct FieldExtractionResult {
+    pub field_placements:       Vec<TokenStream>,
+    pub response_data_fields:   Vec<TokenStream>,
+    pub computed_fields:        Vec<ComputedField>,
+    pub regular_fields:         Vec<(Ident, Type)>,
+    pub message_template_field: Option<(Ident, Option<String>)>,
+}
+
 /// Parse placement attribute arguments
 fn parse_placement_attr(
     attribute: &Attribute,
@@ -312,22 +330,4 @@ pub(crate) fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
         regular_fields,
         message_template_field,
     }
-}
-
-#[derive(Clone, Copy)]
-enum ComputationSource {
-    Computed,
-    Regular,
-}
-
-impl ComputationSource {
-    const fn is_computed(self) -> bool { matches!(self, Self::Computed) }
-}
-
-pub(crate) struct FieldExtractionResult {
-    pub field_placements:       Vec<TokenStream>,
-    pub response_data_fields:   Vec<TokenStream>,
-    pub computed_fields:        Vec<ComputedField>,
-    pub regular_fields:         Vec<(Ident, Type)>,
-    pub message_template_field: Option<(Ident, Option<String>)>,
 }

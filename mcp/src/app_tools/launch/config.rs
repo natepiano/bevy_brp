@@ -180,76 +180,6 @@ pub(super) trait LaunchConfigTrait: Clone {
     }
 }
 
-pub(super) fn build_launch_result<T: LaunchConfigTrait>(
-    all_pids: Vec<u32>,
-    all_log_files: Vec<PathBuf>,
-    all_ports: Vec<u16>,
-    config: &T,
-    target: &BevyTarget,
-    launch_start: Instant,
-) -> LaunchResult {
-    let launch_duration = launch_start.elapsed();
-
-    let instances: Vec<LaunchedInstance> = all_pids
-        .into_iter()
-        .zip(all_log_files.iter())
-        .zip(all_ports.iter())
-        .map(|((process_id, log_file), port)| LaunchedInstance {
-            pid:      process_id,
-            log_file: log_file.display().to_string(),
-            port:     *port,
-        })
-        .collect();
-
-    let workspace = target
-        .workspace_root
-        .file_name()
-        .and_then(|name| name.to_str())
-        .map(String::from);
-
-    let port_range = if all_ports.len() == 1 {
-        all_ports[0].to_string()
-    } else {
-        format!("{}-{}", all_ports[0], all_ports[all_ports.len() - 1])
-    };
-
-    let instance_count = all_ports.len();
-    let message = format!(
-        "Successfully launched {instance_count} instance(s) of {} on ports {port_range}",
-        config.target()
-    );
-
-    LaunchResult {
-        target: Some(config.target().to_string()),
-        instances,
-        working_directory: std::env::current_dir()
-            .ok()
-            .map(|dir| dir.display().to_string()),
-        profile: Some(config.profile().to_string()),
-        duration_ms: Some(launch_duration.as_millis()),
-        timestamp: Some(chrono::Utc::now().to_rfc3339()),
-        workspace,
-        package: if T::TARGET_TYPE == TargetType::Example {
-            Some(target.package_name.clone())
-        } else {
-            None
-        },
-        binary_path: if T::TARGET_TYPE == TargetType::App {
-            Some(
-                target
-                    .get_binary_path(config.profile())
-                    .display()
-                    .to_string(),
-            )
-        } else {
-            None
-        },
-        launched_as: Some(T::TARGET_TYPE.to_string()),
-        duplicate_paths: None,
-        message_template: Some(message),
-    }
-}
-
 impl From<&LaunchParams> for LaunchConfig<App> {
     fn from(params: &LaunchParams) -> Self {
         Self::new(
@@ -332,5 +262,75 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
 
     fn extra_log_info(&self, target: &BevyTarget) -> Option<String> {
         Some(format!("Package: {}", target.package_name))
+    }
+}
+
+pub(super) fn build_launch_result<T: LaunchConfigTrait>(
+    all_pids: Vec<u32>,
+    all_log_files: Vec<PathBuf>,
+    all_ports: Vec<u16>,
+    config: &T,
+    target: &BevyTarget,
+    launch_start: Instant,
+) -> LaunchResult {
+    let launch_duration = launch_start.elapsed();
+
+    let instances: Vec<LaunchedInstance> = all_pids
+        .into_iter()
+        .zip(all_log_files.iter())
+        .zip(all_ports.iter())
+        .map(|((process_id, log_file), port)| LaunchedInstance {
+            pid:      process_id,
+            log_file: log_file.display().to_string(),
+            port:     *port,
+        })
+        .collect();
+
+    let workspace = target
+        .workspace_root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(String::from);
+
+    let port_range = if all_ports.len() == 1 {
+        all_ports[0].to_string()
+    } else {
+        format!("{}-{}", all_ports[0], all_ports[all_ports.len() - 1])
+    };
+
+    let instance_count = all_ports.len();
+    let message = format!(
+        "Successfully launched {instance_count} instance(s) of {} on ports {port_range}",
+        config.target()
+    );
+
+    LaunchResult {
+        target: Some(config.target().to_string()),
+        instances,
+        working_directory: std::env::current_dir()
+            .ok()
+            .map(|dir| dir.display().to_string()),
+        profile: Some(config.profile().to_string()),
+        duration_ms: Some(launch_duration.as_millis()),
+        timestamp: Some(chrono::Utc::now().to_rfc3339()),
+        workspace,
+        package: if T::TARGET_TYPE == TargetType::Example {
+            Some(target.package_name.clone())
+        } else {
+            None
+        },
+        binary_path: if T::TARGET_TYPE == TargetType::App {
+            Some(
+                target
+                    .get_binary_path(config.profile())
+                    .display()
+                    .to_string(),
+            )
+        } else {
+            None
+        },
+        launched_as: Some(T::TARGET_TYPE.to_string()),
+        duplicate_paths: None,
+        message_template: Some(message),
     }
 }

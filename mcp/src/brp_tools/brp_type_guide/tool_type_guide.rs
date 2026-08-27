@@ -63,15 +63,6 @@ pub struct TypeGuideResult {
 #[tool_fn(params = "TypeGuideParams", output = "TypeGuideResult")]
 pub struct BrpTypeGuide;
 
-/// Thin orchestration function: build engine and delegate the work to it.
-async fn handle_impl(params: TypeGuideParams) -> Result<TypeGuideResult> {
-    let type_guide_response = generate_type_guide_response(params.port, &params.types).await?;
-    let type_count = type_guide_response.discovered_count;
-
-    Ok(TypeGuideResult::new(type_guide_response, type_count)
-        .with_message_template(format!("Discovered {type_count} type(s)")))
-}
-
 /// orchestrates type schema generation using a single call to get the complete registry
 struct TypeGuideEngine {
     registry: Arc<HashMap<BrpTypeName, Value>>,
@@ -153,6 +144,15 @@ impl TypeGuideEngine {
             type_guide,
         }
     }
+}
+
+/// Thin orchestration function: build engine and delegate the work to it.
+async fn handle_impl(params: TypeGuideParams) -> Result<TypeGuideResult> {
+    let type_guide_response = generate_type_guide_response(params.port, &params.types).await?;
+    let type_count = type_guide_response.discovered_count;
+
+    Ok(TypeGuideResult::new(type_guide_response, type_count)
+        .with_message_template(format!("Discovered {type_count} type(s)")))
 }
 
 /// Visibility facade over the file-local `TypeGuideEngine`.

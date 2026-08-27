@@ -103,6 +103,10 @@ impl TryFrom<&str> for ModifierKey {
 #[derive(Component)]
 struct KeyboardDisplayText;
 
+/// Resource to store the current port
+#[derive(Resource)]
+struct CurrentPort(u16);
+
 fn main() {
     let brp_extras_plugin = BrpExtrasPlugin::new().port_in_title(PortDisplay::Always);
     let (port, _) = brp_extras_plugin.get_effective_port();
@@ -142,10 +146,6 @@ fn minimize_window_on_start(mut windows: Query<&mut Window, With<PrimaryWindow>>
         window.set_minimized(true);
     }
 }
-
-/// Resource to store the current port
-#[derive(Resource)]
-struct CurrentPort(u16);
 
 /// Setup test entities for format discovery
 fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {

@@ -44,30 +44,6 @@ pub struct ToolResult<T, P = ()> {
     pub params: Option<P>,
 }
 
-/// Extract typed parameters using the tool framework and run a custom async body.
-///
-/// This keeps request decoding inside the `tool` subsystem while still supporting
-/// custom `call()` implementations in sibling modules.
-pub(super) fn call_with_typed_params<O, P, F, Fut>(
-    context: HandlerContext,
-    f: F,
-) -> HandlerResult<'static, ToolResult<O, P>>
-where
-    O: ResultStruct + Send + Sync + 'static,
-    P: ParamStruct + Clone + for<'de> serde::Deserialize<'de> + Send + 'static,
-    F: FnOnce(HandlerContext, P) -> Fut + Send + 'static,
-    Fut: Future<Output = Result<O>> + Send + 'static,
-{
-    Box::pin(async move {
-        let params: P = super::extract_parameter_values(&context)?;
-        let result = f(context, params.clone()).await;
-        Ok(ToolResult {
-            result,
-            params: Some(params),
-        })
-    })
-}
-
 /// Unified trait for all tool handlers (local and BRP)
 ///
 /// # Implementation Requirements
@@ -174,4 +150,28 @@ pub trait ResultStruct: Send + Sync {
 
     /// Get the message template for this response
     fn get_message_template(&self) -> Result<&str>;
+}
+
+/// Extract typed parameters using the tool framework and run a custom async body.
+///
+/// This keeps request decoding inside the `tool` subsystem while still supporting
+/// custom `call()` implementations in sibling modules.
+pub(super) fn call_with_typed_params<O, P, F, Fut>(
+    context: HandlerContext,
+    f: F,
+) -> HandlerResult<'static, ToolResult<O, P>>
+where
+    O: ResultStruct + Send + Sync + 'static,
+    P: ParamStruct + Clone + for<'de> serde::Deserialize<'de> + Send + 'static,
+    F: FnOnce(HandlerContext, P) -> Fut + Send + 'static,
+    Fut: Future<Output = Result<O>> + Send + 'static,
+{
+    Box::pin(async move {
+        let params: P = super::extract_parameter_values(&context)?;
+        let result = f(context, params.clone()).await;
+        Ok(ToolResult {
+            result,
+            params: Some(params),
+        })
+    })
 }

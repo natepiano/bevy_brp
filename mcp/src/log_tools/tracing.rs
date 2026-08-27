@@ -52,47 +52,6 @@ pub enum TracingLevel {
     Trace,
 }
 
-impl FromStr for TracingLevel {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "error" => Ok(Self::Error),
-            "warn" => Ok(Self::Warn),
-            "info" => Ok(Self::Info),
-            "debug" => Ok(Self::Debug),
-            "trace" => Ok(Self::Trace),
-            _ => Err(format!(
-                "Invalid tracing level '{s}'. Valid levels are: error, warn, info, debug, trace"
-            )),
-        }
-    }
-}
-
-impl From<u8> for TracingLevel {
-    fn from(level_code: u8) -> Self {
-        match level_code {
-            0 => Self::Error,
-            2 => Self::Info,
-            3 => Self::Debug,
-            4 => Self::Trace,
-            _ => Self::Warn,
-        }
-    }
-}
-
-impl From<Level> for TracingLevel {
-    fn from(level: Level) -> Self {
-        match level {
-            Level::ERROR => Self::Error,
-            Level::WARN => Self::Warn,
-            Level::INFO => Self::Info,
-            Level::DEBUG => Self::Debug,
-            Level::TRACE => Self::Trace,
-        }
-    }
-}
-
 impl TracingLevel {
     const fn code(self) -> u8 {
         match self {
@@ -160,4 +119,45 @@ impl TracingLevel {
     /// Get the path to the trace log file
     /// Useful for testing and troubleshooting
     pub fn get_trace_log_path() -> PathBuf { std::env::temp_dir().join(TRACE_LOG_FILENAME) }
+}
+
+impl FromStr for TracingLevel {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "error" => Ok(Self::Error),
+            "warn" => Ok(Self::Warn),
+            "info" => Ok(Self::Info),
+            "debug" => Ok(Self::Debug),
+            "trace" => Ok(Self::Trace),
+            _ => Err(format!(
+                "Invalid tracing level '{s}'. Valid levels are: error, warn, info, debug, trace"
+            )),
+        }
+    }
+}
+
+impl From<u8> for TracingLevel {
+    fn from(level_code: u8) -> Self {
+        match level_code {
+            0 => Self::Error,
+            2 => Self::Info,
+            3 => Self::Debug,
+            4 => Self::Trace,
+            _ => Self::Warn,
+        }
+    }
+}
+
+impl From<Level> for TracingLevel {
+    fn from(level: Level) -> Self {
+        match level {
+            Level::ERROR => Self::Error,
+            Level::WARN => Self::Warn,
+            Level::INFO => Self::Info,
+            Level::DEBUG => Self::Debug,
+            Level::TRACE => Self::Trace,
+        }
+    }
 }

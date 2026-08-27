@@ -18,12 +18,6 @@ use self::pending_screenshot_capture::screenshot_capture_active;
 use super::CaptureResponseMetadata;
 use super::request::ScreenshotRequest;
 
-pub(super) struct CaptureInput {
-    pub(super) crop:              Option<URect>,
-    pub(super) render_target:     RenderTarget,
-    pub(super) response_metadata: CaptureResponseMetadata,
-}
-
 pub(super) struct CapturePlugin;
 
 impl Plugin for CapturePlugin {
@@ -43,6 +37,12 @@ impl Plugin for CapturePlugin {
                     .before(RemoteSystems::Cleanup),
             );
     }
+}
+
+pub(super) struct CaptureInput {
+    pub(super) crop:              Option<URect>,
+    pub(super) render_target:     RenderTarget,
+    pub(super) response_metadata: CaptureResponseMetadata,
 }
 
 pub(super) fn read(

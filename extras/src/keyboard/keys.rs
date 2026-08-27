@@ -41,8 +41,6 @@ pub(super) struct SendKeysRequest {
     duration_ms: u32,
 }
 
-const fn default_duration() -> u32 { DEFAULT_KEY_DURATION_MS }
-
 /// Response structure for `send_keys`
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct SendKeysResponse {
@@ -53,6 +51,8 @@ pub(super) struct SendKeysResponse {
     /// Duration in milliseconds the keys were held
     pub(super) duration_ms: u32,
 }
+
+const fn default_duration() -> u32 { DEFAULT_KEY_DURATION_MS }
 
 /// Validate key codes and return the parsed key code wrappers
 fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCodeWrapper)>, BrpError> {

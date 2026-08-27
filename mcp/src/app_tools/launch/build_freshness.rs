@@ -23,6 +23,22 @@ pub(super) enum FreshnessCheckResult {
     Unknown(String),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MissingInputPolicy {
+    Ignore,
+    TreatAsStale,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum BackslashState {
+    ReadingToken,
+    Escaped,
+}
+
+impl BackslashState {
+    const fn is_escaped(self) -> bool { matches!(self, Self::Escaped) }
+}
+
 pub(super) fn check_target_freshness(target: &BevyTarget, profile: &str) -> FreshnessCheckResult {
     if !target.is_app() {
         return FreshnessCheckResult::Unknown(
@@ -166,22 +182,6 @@ fn compare_optional_input_to_binary(
         "",
         "build input is newer than binary",
     )
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum MissingInputPolicy {
-    Ignore,
-    TreatAsStale,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum BackslashState {
-    ReadingToken,
-    Escaped,
-}
-
-impl BackslashState {
-    const fn is_escaped(self) -> bool { matches!(self, Self::Escaped) }
 }
 
 fn compare_path_to_binary(

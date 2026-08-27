@@ -70,46 +70,6 @@ pub enum Error {
     WatchOperation(String),
 }
 
-impl std::fmt::Debug for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::BrpCommunication(s) => f.debug_tuple("BrpCommunication").field(s).finish(),
-            Self::FileOperation(s) => f.debug_tuple("FileOperation").field(s).finish(),
-            Self::FileOrPathNotFound(s) => f.debug_tuple("FileOrPathNotFound").field(s).finish(),
-            Self::General(s) => f.debug_tuple("General").field(s).finish(),
-            Self::InvalidArgument(s) => f.debug_tuple("InvalidArgument").field(s).finish(),
-            Self::InvalidState(s) => f.debug_tuple("InvalidState").field(s).finish(),
-            Self::JsonRpc(s) => f.debug_tuple("JsonRpc").field(s).finish(),
-            Self::LogOperation(s) => f.debug_tuple("LogOperation").field(s).finish(),
-            Self::MissingMessageTemplate(s) => f.debug_tuple("Configuration").field(s).finish(),
-            Self::ParameterExtraction(s) => f.debug_tuple("ParameterExtraction").field(s).finish(),
-            Self::ProcessManagement(s) => f.debug_tuple("ProcessManagement").field(s).finish(),
-            Self::SchemaProcessing {
-                message,
-                type_name,
-                operation,
-                details,
-            } => f
-                .debug_struct("SchemaProcessing")
-                .field("message", message)
-                .field("type_name", type_name)
-                .field("operation", operation)
-                .field("details", details)
-                .finish(),
-            Self::Structured { .. } => f
-                .debug_struct("Structured")
-                .field("result", &"<dyn ResultStruct>")
-                .finish(),
-            Self::ToolCall { message, details } => f
-                .debug_struct("ToolCall")
-                .field("message", message)
-                .field("details", details)
-                .finish(),
-            Self::WatchOperation(s) => f.debug_tuple("WatchOperation").field(s).finish(),
-        }
-    }
-}
-
 impl Error {
     /// Create a "Failed to X" error
     pub(crate) fn failed_to(action: &str, details: impl std::fmt::Display) -> Self {
@@ -164,6 +124,46 @@ impl Error {
             type_name: Some(type_name.into()),
             operation: Some(operation.into()),
             details:   Some(details.into()),
+        }
+    }
+}
+
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BrpCommunication(s) => f.debug_tuple("BrpCommunication").field(s).finish(),
+            Self::FileOperation(s) => f.debug_tuple("FileOperation").field(s).finish(),
+            Self::FileOrPathNotFound(s) => f.debug_tuple("FileOrPathNotFound").field(s).finish(),
+            Self::General(s) => f.debug_tuple("General").field(s).finish(),
+            Self::InvalidArgument(s) => f.debug_tuple("InvalidArgument").field(s).finish(),
+            Self::InvalidState(s) => f.debug_tuple("InvalidState").field(s).finish(),
+            Self::JsonRpc(s) => f.debug_tuple("JsonRpc").field(s).finish(),
+            Self::LogOperation(s) => f.debug_tuple("LogOperation").field(s).finish(),
+            Self::MissingMessageTemplate(s) => f.debug_tuple("Configuration").field(s).finish(),
+            Self::ParameterExtraction(s) => f.debug_tuple("ParameterExtraction").field(s).finish(),
+            Self::ProcessManagement(s) => f.debug_tuple("ProcessManagement").field(s).finish(),
+            Self::SchemaProcessing {
+                message,
+                type_name,
+                operation,
+                details,
+            } => f
+                .debug_struct("SchemaProcessing")
+                .field("message", message)
+                .field("type_name", type_name)
+                .field("operation", operation)
+                .field("details", details)
+                .finish(),
+            Self::Structured { .. } => f
+                .debug_struct("Structured")
+                .field("result", &"<dyn ResultStruct>")
+                .finish(),
+            Self::ToolCall { message, details } => f
+                .debug_struct("ToolCall")
+                .field("message", message)
+                .field("details", details)
+                .finish(),
+            Self::WatchOperation(s) => f.debug_tuple("WatchOperation").field(s).finish(),
         }
     }
 }

@@ -122,5 +122,3 @@ impl TypeKindBuilder for TupleMutationBuilder {
         }
     }
 }
-
-impl TupleMutationBuilder {}

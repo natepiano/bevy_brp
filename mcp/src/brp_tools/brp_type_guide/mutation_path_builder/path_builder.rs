@@ -68,261 +68,6 @@ pub(super) struct MutationPathBuilder<B: TypeKindBuilder> {
     inner: B,
 }
 
-impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilder<B> {
-    type Item = B::Item;
-    type Iter<'a>
-        = B::Iter<'a>
-    where
-        Self: 'a,
-        B: 'a;
-
-    fn collect_children(&self, context: &RecursionContext) -> Result<Self::Iter<'_>> {
-        // Delegate to the inner builder
-        self.inner.collect_children(context)
-    }
-
-    fn build_paths(
-        &self,
-        context: &RecursionContext,
-    ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
-        // Early returns for simple cases
-        if let Some(result) = Self::check_registry(context) {
-            return result;
-        }
-
-        // Check knowledge - might return early or provide example
-        let knowledge_example = match context.check_knowledge()? {
-            KnowledgeAction::CompleteWithExample(example) => {
-                // Build single root path and return immediately
-                // Note: build_mutation_path_internal() returns MutationPathInternal,
-                // so we wrap in vec![] to match build_paths() return type
-                return Ok(vec![Self::build_mutation_path_internal(
-                    context,
-                    PathExample::Simple(Example::Json(example)),
-                    Mutability::Mutable,
-                    None,
-                    None,
-                )]);
-            },
-            KnowledgeAction::UseExampleAndRecurse(example) => Some(Example::Json(example)),
-            KnowledgeAction::Missing => None,
-        };
-
-        // Process all children and collect paths
-        let ChildProcessingResult {
-            all_paths,
-            paths_to_expose,
-            child_examples,
-        } = self.process_all_children(context)?;
-
-        // Assemble THIS level from children (post-order)
-        // Clone child_examples since we need it later for filtering
-        let assembled_value = self
-            .inner
-            .assemble_from_children(context, child_examples.clone())?;
-
-        // Wrap result in Example
-        let assembled_example = Example::Json(assembled_value);
-
-        // Assemble partial_root_examples from children (same bottom-up approach)
-        // Filter to only direct children by matching against child_examples keys
-        let direct_children: Vec<&MutationPathInternal> = all_paths
-            .iter()
-            .filter(|p| child_examples.contains_key(&p.path_kind.to_mutation_path_descriptor()))
-            .collect();
-        let partial_root_examples =
-            Self::build_partial_root_examples(&self.inner, context, direct_children.as_slice())?;
-
-        // Use knowledge example if available (for Teach types), otherwise use assembled example
-        let final_example = knowledge_example.unwrap_or(assembled_example);
-
-        // Compute parent's mutation status from children's statuses
-        let (parent_status, mutability_reason) = determine_parent_mutability(context, &all_paths);
-
-        // Build examples appropriately based on mutation status
-        let example_to_use: Example = match parent_status {
-            Mutability::NotMutable => Example::NotApplicable,
-            Mutability::PartiallyMutable => {
-                // Build partial example with only mutable children
-                let mutable_child_examples: HashMap<_, _> = child_examples
-                    .iter()
-                    .filter(|(descriptor, _)| {
-                        // Find the child path and check if it's mutable
-                        all_paths.iter().any(|p| {
-                            p.path_kind.to_mutation_path_descriptor() == **descriptor
-                                && matches!(p.mutability, Mutability::Mutable)
-                        })
-                    })
-                    .map(|(k, ex)| (k.clone(), ex.clone()))
-                    .collect();
-
-                // Assemble from only mutable children
-                let assembled = self
-                    .inner
-                    .assemble_from_children(context, mutable_child_examples)
-                    .unwrap_or_else(|_| json!(null));
-
-                Example::Json(assembled)
-            },
-            Mutability::Mutable => final_example,
-        };
-
-        // Return error only for NotMutable, success for Mutable and PartiallyMutable
-        match parent_status {
-            Mutability::NotMutable => {
-                let reason = mutability_reason.ok_or_else(|| {
-                    BuilderError::System(Report::new(Error::InvalidState(
-                        "NotMutable status must have a reason".to_string(),
-                    )))
-                })?;
-                Err(BuilderError::NotMutable(reason))
-            },
-            Mutability::Mutable | Mutability::PartiallyMutable => Ok(Self::build_final_result(
-                context,
-                paths_to_expose,
-                example_to_use,
-                parent_status,
-                mutability_reason,
-                partial_root_examples,
-            )),
-        }
-    }
-}
-
-/// Single dispatch point for creating builders - used for both entry and recursion
-/// This is the ONLY place where we match on `TypeKind` to create builders
-///
-/// # Context Handling
-///
-/// The `RecursionContext` is immutable throughout recursion.
-/// Each type handles its own behavior without needing to coordinate context states.
-///
-/// # Depth Limit Checking
-///
-/// Depth limit checking is automatic in `RecursionContext::create_recursion_context()`.
-/// The check happens at the point where depth is incremented, ensuring developers cannot
-/// accidentally skip the check.
-pub(super) fn recurse_mutation_paths(
-    type_kind: TypeKind,
-    context: &RecursionContext,
-) -> Result<Vec<MutationPathInternal>> {
-    let mutation_result = match type_kind {
-        // Enum is distinct from the rest but now returns MutationResult too
-        TypeKind::Enum => enum_builder::process_enum(context),
-        TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(context),
-        TypeKind::Tuple | TypeKind::TupleStruct => {
-            MutationPathBuilder::new(TupleMutationBuilder).build_paths(context)
-        },
-        TypeKind::Array => MutationPathBuilder::new(ArrayMutationBuilder).build_paths(context),
-        TypeKind::List => MutationPathBuilder::new(ListMutationBuilder).build_paths(context),
-        TypeKind::Map => MutationPathBuilder::new(MapMutationBuilder).build_paths(context),
-        TypeKind::Set => MutationPathBuilder::new(SetMutationBuilder).build_paths(context),
-        TypeKind::Value => MutationPathBuilder::new(ValueMutationBuilder).build_paths(context),
-    };
-
-    // Convert BuilderError to public Result interface at module boundary
-    // This is the choke point where NotMutableReason becomes a success with NotMutable path
-    match mutation_result {
-        Ok(paths) => Ok(paths),
-        Err(BuilderError::NotMutable(reason)) => Ok(vec![MutationPathBuilder::<
-            ValueMutationBuilder,
-        >::build_not_mutable_path(
-            context, reason
-        )]),
-        Err(BuilderError::System(e)) => Err(e),
-    }
-}
-
-/// Determine parent's mutation status based on children's statuses and return detailed reasons
-///
-/// This is a shared helper function used by both non-enum types (via `MutationPathBuilder`)
-/// and enum types (via `enum_path_builder::create_result_paths`).
-///
-/// ## Special Case: Maps and Sets
-///
-/// Maps and Sets require ALL children to be mutable for BRP operations:
-/// - `HashMap<K, V>` needs both K and V mutable (can't insert with non-serializable key)
-/// - `HashSet<T>` needs T mutable (can't insert non-serializable element)
-///
-/// Unlike Structs where some fields can be mutable and others not, collections are
-/// all-or-nothing: either you can perform operations or you can't.
-pub(super) fn determine_parent_mutability(
-    context: &RecursionContext,
-    child_paths: &[MutationPathInternal],
-) -> (Mutability, Option<NotMutableReason>) {
-    // Get TypeKind for special case handling
-    let schema = context
-        .registry
-        .get(context.type_name())
-        .unwrap_or(&Value::Null);
-    let type_kind: TypeKind = schema.into();
-
-    // SPECIAL CASE: Map and Set require ALL children to be mutable
-    // Maps need both key AND value mutable for operations like insert(key, value)
-    // Sets need element mutable for operations like insert(element)
-    // Note: Tuples use normal aggregation - PartiallyMutable tuples expose mutable child paths
-    if matches!(type_kind, TypeKind::Map | TypeKind::Set) {
-        let has_not_mutable = child_paths
-            .iter()
-            .any(|p| matches!(p.mutability, Mutability::NotMutable));
-
-        if has_not_mutable {
-            // Map/Set is NotMutable if ANY child is NotMutable
-            let mutability_issues: Vec<MutabilityIssue> = child_paths
-                .iter()
-                .map(MutationPathInternal::to_mutability_issue)
-                .collect();
-
-            let collection_type = if matches!(type_kind, TypeKind::Map) {
-                "Maps"
-            } else {
-                "Sets"
-            };
-
-            let not_mutable_reason = NotMutableReason::from_partial_mutability(
-                context.type_name().clone(),
-                mutability_issues,
-                format!(
-                    "{collection_type} require all {} to be mutable for BRP operations",
-                    type_kind.child_terminology()
-                ),
-            );
-
-            return (Mutability::NotMutable, Some(not_mutable_reason));
-        }
-    }
-
-    // Extract statuses and aggregate (normal logic for non-Map/Set types)
-    let statuses: Vec<Mutability> = child_paths.iter().map(|p| p.mutability).collect();
-
-    let mutability = support::aggregate_mutability(&statuses);
-
-    // Build detailed reason if not fully mutable
-    let reason = match mutability {
-        Mutability::PartiallyMutable => {
-            let mutability_issues: Vec<MutabilityIssue> = child_paths
-                .iter()
-                .map(MutationPathInternal::to_mutability_issue)
-                .collect();
-
-            let message = format!(
-                "Some {} are mutable while others are not",
-                type_kind.child_terminology()
-            );
-
-            Some(NotMutableReason::from_partial_mutability(
-                context.type_name().clone(),
-                mutability_issues,
-                message,
-            ))
-        },
-        Mutability::NotMutable => Some(context.create_no_mutable_children_error()),
-        Mutability::Mutable => None,
-    };
-
-    (mutability, reason)
-}
-
 impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
     pub(super) const fn new(inner: B) -> Self { Self { inner } }
 
@@ -600,4 +345,259 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
             None
         }
     }
+}
+
+impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilder<B> {
+    type Item = B::Item;
+    type Iter<'a>
+        = B::Iter<'a>
+    where
+        Self: 'a,
+        B: 'a;
+
+    fn collect_children(&self, context: &RecursionContext) -> Result<Self::Iter<'_>> {
+        // Delegate to the inner builder
+        self.inner.collect_children(context)
+    }
+
+    fn build_paths(
+        &self,
+        context: &RecursionContext,
+    ) -> std::result::Result<Vec<MutationPathInternal>, BuilderError> {
+        // Early returns for simple cases
+        if let Some(result) = Self::check_registry(context) {
+            return result;
+        }
+
+        // Check knowledge - might return early or provide example
+        let knowledge_example = match context.check_knowledge()? {
+            KnowledgeAction::CompleteWithExample(example) => {
+                // Build single root path and return immediately
+                // Note: build_mutation_path_internal() returns MutationPathInternal,
+                // so we wrap in vec![] to match build_paths() return type
+                return Ok(vec![Self::build_mutation_path_internal(
+                    context,
+                    PathExample::Simple(Example::Json(example)),
+                    Mutability::Mutable,
+                    None,
+                    None,
+                )]);
+            },
+            KnowledgeAction::UseExampleAndRecurse(example) => Some(Example::Json(example)),
+            KnowledgeAction::Missing => None,
+        };
+
+        // Process all children and collect paths
+        let ChildProcessingResult {
+            all_paths,
+            paths_to_expose,
+            child_examples,
+        } = self.process_all_children(context)?;
+
+        // Assemble THIS level from children (post-order)
+        // Clone child_examples since we need it later for filtering
+        let assembled_value = self
+            .inner
+            .assemble_from_children(context, child_examples.clone())?;
+
+        // Wrap result in Example
+        let assembled_example = Example::Json(assembled_value);
+
+        // Assemble partial_root_examples from children (same bottom-up approach)
+        // Filter to only direct children by matching against child_examples keys
+        let direct_children: Vec<&MutationPathInternal> = all_paths
+            .iter()
+            .filter(|p| child_examples.contains_key(&p.path_kind.to_mutation_path_descriptor()))
+            .collect();
+        let partial_root_examples =
+            Self::build_partial_root_examples(&self.inner, context, direct_children.as_slice())?;
+
+        // Use knowledge example if available (for Teach types), otherwise use assembled example
+        let final_example = knowledge_example.unwrap_or(assembled_example);
+
+        // Compute parent's mutation status from children's statuses
+        let (parent_status, mutability_reason) = determine_parent_mutability(context, &all_paths);
+
+        // Build examples appropriately based on mutation status
+        let example_to_use: Example = match parent_status {
+            Mutability::NotMutable => Example::NotApplicable,
+            Mutability::PartiallyMutable => {
+                // Build partial example with only mutable children
+                let mutable_child_examples: HashMap<_, _> = child_examples
+                    .iter()
+                    .filter(|(descriptor, _)| {
+                        // Find the child path and check if it's mutable
+                        all_paths.iter().any(|p| {
+                            p.path_kind.to_mutation_path_descriptor() == **descriptor
+                                && matches!(p.mutability, Mutability::Mutable)
+                        })
+                    })
+                    .map(|(k, ex)| (k.clone(), ex.clone()))
+                    .collect();
+
+                // Assemble from only mutable children
+                let assembled = self
+                    .inner
+                    .assemble_from_children(context, mutable_child_examples)
+                    .unwrap_or_else(|_| json!(null));
+
+                Example::Json(assembled)
+            },
+            Mutability::Mutable => final_example,
+        };
+
+        // Return error only for NotMutable, success for Mutable and PartiallyMutable
+        match parent_status {
+            Mutability::NotMutable => {
+                let reason = mutability_reason.ok_or_else(|| {
+                    BuilderError::System(Report::new(Error::InvalidState(
+                        "NotMutable status must have a reason".to_string(),
+                    )))
+                })?;
+                Err(BuilderError::NotMutable(reason))
+            },
+            Mutability::Mutable | Mutability::PartiallyMutable => Ok(Self::build_final_result(
+                context,
+                paths_to_expose,
+                example_to_use,
+                parent_status,
+                mutability_reason,
+                partial_root_examples,
+            )),
+        }
+    }
+}
+
+/// Single dispatch point for creating builders - used for both entry and recursion
+/// This is the ONLY place where we match on `TypeKind` to create builders
+///
+/// # Context Handling
+///
+/// The `RecursionContext` is immutable throughout recursion.
+/// Each type handles its own behavior without needing to coordinate context states.
+///
+/// # Depth Limit Checking
+///
+/// Depth limit checking is automatic in `RecursionContext::create_recursion_context()`.
+/// The check happens at the point where depth is incremented, ensuring developers cannot
+/// accidentally skip the check.
+pub(super) fn recurse_mutation_paths(
+    type_kind: TypeKind,
+    context: &RecursionContext,
+) -> Result<Vec<MutationPathInternal>> {
+    let mutation_result = match type_kind {
+        // Enum is distinct from the rest but now returns MutationResult too
+        TypeKind::Enum => enum_builder::process_enum(context),
+        TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(context),
+        TypeKind::Tuple | TypeKind::TupleStruct => {
+            MutationPathBuilder::new(TupleMutationBuilder).build_paths(context)
+        },
+        TypeKind::Array => MutationPathBuilder::new(ArrayMutationBuilder).build_paths(context),
+        TypeKind::List => MutationPathBuilder::new(ListMutationBuilder).build_paths(context),
+        TypeKind::Map => MutationPathBuilder::new(MapMutationBuilder).build_paths(context),
+        TypeKind::Set => MutationPathBuilder::new(SetMutationBuilder).build_paths(context),
+        TypeKind::Value => MutationPathBuilder::new(ValueMutationBuilder).build_paths(context),
+    };
+
+    // Convert BuilderError to public Result interface at module boundary
+    // This is the choke point where NotMutableReason becomes a success with NotMutable path
+    match mutation_result {
+        Ok(paths) => Ok(paths),
+        Err(BuilderError::NotMutable(reason)) => Ok(vec![MutationPathBuilder::<
+            ValueMutationBuilder,
+        >::build_not_mutable_path(
+            context, reason
+        )]),
+        Err(BuilderError::System(e)) => Err(e),
+    }
+}
+
+/// Determine parent's mutation status based on children's statuses and return detailed reasons
+///
+/// This is a shared helper function used by both non-enum types (via `MutationPathBuilder`)
+/// and enum types (via `enum_path_builder::create_result_paths`).
+///
+/// ## Special Case: Maps and Sets
+///
+/// Maps and Sets require ALL children to be mutable for BRP operations:
+/// - `HashMap<K, V>` needs both K and V mutable (can't insert with non-serializable key)
+/// - `HashSet<T>` needs T mutable (can't insert non-serializable element)
+///
+/// Unlike Structs where some fields can be mutable and others not, collections are
+/// all-or-nothing: either you can perform operations or you can't.
+pub(super) fn determine_parent_mutability(
+    context: &RecursionContext,
+    child_paths: &[MutationPathInternal],
+) -> (Mutability, Option<NotMutableReason>) {
+    // Get TypeKind for special case handling
+    let schema = context
+        .registry
+        .get(context.type_name())
+        .unwrap_or(&Value::Null);
+    let type_kind: TypeKind = schema.into();
+
+    // SPECIAL CASE: Map and Set require ALL children to be mutable
+    // Maps need both key AND value mutable for operations like insert(key, value)
+    // Sets need element mutable for operations like insert(element)
+    // Note: Tuples use normal aggregation - PartiallyMutable tuples expose mutable child paths
+    if matches!(type_kind, TypeKind::Map | TypeKind::Set) {
+        let has_not_mutable = child_paths
+            .iter()
+            .any(|p| matches!(p.mutability, Mutability::NotMutable));
+
+        if has_not_mutable {
+            // Map/Set is NotMutable if ANY child is NotMutable
+            let mutability_issues: Vec<MutabilityIssue> = child_paths
+                .iter()
+                .map(MutationPathInternal::to_mutability_issue)
+                .collect();
+
+            let collection_type = if matches!(type_kind, TypeKind::Map) {
+                "Maps"
+            } else {
+                "Sets"
+            };
+
+            let not_mutable_reason = NotMutableReason::from_partial_mutability(
+                context.type_name().clone(),
+                mutability_issues,
+                format!(
+                    "{collection_type} require all {} to be mutable for BRP operations",
+                    type_kind.child_terminology()
+                ),
+            );
+
+            return (Mutability::NotMutable, Some(not_mutable_reason));
+        }
+    }
+
+    // Extract statuses and aggregate (normal logic for non-Map/Set types)
+    let statuses: Vec<Mutability> = child_paths.iter().map(|p| p.mutability).collect();
+
+    let mutability = support::aggregate_mutability(&statuses);
+
+    // Build detailed reason if not fully mutable
+    let reason = match mutability {
+        Mutability::PartiallyMutable => {
+            let mutability_issues: Vec<MutabilityIssue> = child_paths
+                .iter()
+                .map(MutationPathInternal::to_mutability_issue)
+                .collect();
+
+            let message = format!(
+                "Some {} are mutable while others are not",
+                type_kind.child_terminology()
+            );
+
+            Some(NotMutableReason::from_partial_mutability(
+                context.type_name().clone(),
+                mutability_issues,
+                message,
+            ))
+        },
+        Mutability::NotMutable => Some(context.create_no_mutable_children_error()),
+        Mutability::Mutable => None,
+    };
+
+    (mutability, reason)
 }

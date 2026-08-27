@@ -122,6 +122,10 @@ pub enum ParameterName {
     WithoutTypes,
 }
 
+impl From<ParameterName> for String {
+    fn from(param: ParameterName) -> Self { param.as_ref().to_string() }
+}
+
 /// Parameter field types for schema generation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ParameterType {
@@ -661,9 +665,6 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
     parameter_builder
 }
 
-impl From<ParameterName> for String {
-    fn from(param: ParameterName) -> Self { param.as_ref().to_string() }
-}
 #[cfg(test)]
 mod tests {
     use std::error::Error;

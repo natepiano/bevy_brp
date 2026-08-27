@@ -5,6 +5,8 @@ mod aabb;
 #[cfg(not(target_arch = "wasm32"))]
 mod capture;
 #[cfg(not(target_arch = "wasm32"))]
+mod constants;
+#[cfg(not(target_arch = "wasm32"))]
 mod request;
 #[cfg(all(feature = "ui", not(target_arch = "wasm32")))]
 mod ui;
@@ -58,6 +60,12 @@ use self::capture::CapturePlugin;
 #[cfg(not(target_arch = "wasm32"))]
 use self::capture::PendingScreenshotCapture;
 #[cfg(not(target_arch = "wasm32"))]
+use self::constants::PARAM_CAMERA;
+#[cfg(not(target_arch = "wasm32"))]
+use self::constants::PARAM_ENTITY;
+#[cfg(not(target_arch = "wasm32"))]
+use self::constants::PARAM_PATH;
+#[cfg(not(target_arch = "wasm32"))]
 use self::request::ScreenshotRequest;
 #[cfg(not(target_arch = "wasm32"))]
 use self::request::ScreenshotScope;
@@ -65,12 +73,6 @@ use self::request::ScreenshotScope;
 use crate::constants::CAMERA_CANDIDATES_FIELD;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::constants::IMAGE_EXTENSION_PNG;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::constants::PARAM_CAMERA;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::constants::PARAM_ENTITY;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::constants::PARAM_PATH;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::constants::RESPONSE_BOUNDS_KIND_FIELD;
 #[cfg(not(target_arch = "wasm32"))]

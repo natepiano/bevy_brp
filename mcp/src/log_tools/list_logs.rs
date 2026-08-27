@@ -45,6 +45,44 @@ pub struct ListLogResult {
 #[tool_fn(params = "ListLogsParams", output = "ListLogResult")]
 pub struct ListLogs;
 
+#[derive(Clone, Copy)]
+enum LogDetail {
+    Minimal,
+    Verbose,
+}
+
+impl LogDetail {
+    const fn is_verbose(self) -> bool { matches!(self, Self::Verbose) }
+}
+
+impl From<bool> for LogDetail {
+    fn from(value: bool) -> Self { if value { Self::Verbose } else { Self::Minimal } }
+}
+
+/// Individual log file entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LogFileInfo {
+    /// The filename
+    filename:   String,
+    /// The app name extracted from the filename
+    app_name:   String,
+    /// Full path to the file (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path:       Option<String>,
+    /// Human-readable file size (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    size:       Option<String>,
+    /// File size in bytes (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    size_bytes: Option<u64>,
+    /// Creation time as ISO string (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    created:    Option<String>,
+    /// Modification time as ISO string (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    modified:   Option<String>,
+}
+
 #[allow(
     clippy::unused_async,
     reason = "ToolFn trait requires async handler signature"
@@ -122,42 +160,4 @@ fn list_log_files(
         .collect();
 
     Ok(log_infos)
-}
-
-#[derive(Clone, Copy)]
-enum LogDetail {
-    Minimal,
-    Verbose,
-}
-
-impl LogDetail {
-    const fn is_verbose(self) -> bool { matches!(self, Self::Verbose) }
-}
-
-impl From<bool> for LogDetail {
-    fn from(value: bool) -> Self { if value { Self::Verbose } else { Self::Minimal } }
-}
-
-/// Individual log file entry
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct LogFileInfo {
-    /// The filename
-    filename:   String,
-    /// The app name extracted from the filename
-    app_name:   String,
-    /// Full path to the file (included in verbose mode)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    path:       Option<String>,
-    /// Human-readable file size (included in verbose mode)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    size:       Option<String>,
-    /// File size in bytes (included in verbose mode)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    size_bytes: Option<u64>,
-    /// Creation time as ISO string (included in verbose mode)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    created:    Option<String>,
-    /// Modification time as ISO string (included in verbose mode)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    modified:   Option<String>,
 }

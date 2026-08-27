@@ -19,6 +19,11 @@ const TEST_APP_TITLE: &str = "Test Extras Plugin App";
 const WINDOW_HEIGHT: u32 = 300;
 const WINDOW_WIDTH: u32 = 400;
 
+#[derive(Component)]
+struct Rotator {
+    speed: f32,
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -35,11 +40,6 @@ fn main() {
         .add_systems(Startup, (setup, minimize_window_on_start, log_startup))
         .add_systems(Update, rotate_sprite)
         .run();
-}
-
-#[derive(Component)]
-struct Rotator {
-    speed: f32,
 }
 
 /// Minimize the window immediately on startup

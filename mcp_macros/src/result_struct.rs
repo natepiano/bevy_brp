@@ -54,6 +54,14 @@ struct BrpResultAttrs {
     error_detail_mode: ErrorDetailMode,
 }
 
+enum GeneratedFieldKind<'a> {
+    FormatCorrections,
+    FormatCorrected,
+    MessageTemplate(Option<&'a str>),
+    ResultValue,
+    Warning,
+}
+
 /// Parse #[`brp_result`(...)] attribute
 fn parse_brp_result_attr(attributes: &[Attribute]) -> Option<BrpResultAttrs> {
     for attribute in attributes {
@@ -552,14 +560,6 @@ fn generate_regular_field_initializer(
         ),
         None => None,
     }
-}
-
-enum GeneratedFieldKind<'a> {
-    FormatCorrections,
-    FormatCorrected,
-    MessageTemplate(Option<&'a str>),
-    ResultValue,
-    Warning,
 }
 
 fn classify_generated_field<'a>(

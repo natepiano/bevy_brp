@@ -29,6 +29,20 @@ use crate::support::SchemaField;
 
 pub(in crate::brp_tools::brp_type_guide::mutation_path_builder) struct ArrayMutationBuilder;
 
+impl ArrayMutationBuilder {
+    /// Extract array size from type name (e.g., "[f32; 4]" -> 4)
+    fn extract_array_size(type_name: &BrpTypeName) -> Option<usize> {
+        let type_str = type_name.as_str();
+        // Pattern: [ElementType; Size]
+        type_str.rfind("; ").and_then(|size_start| {
+            type_str.rfind(']').and_then(|size_end| {
+                let size_str = &type_str[size_start + 2..size_end];
+                size_str.parse().ok()
+            })
+        })
+    }
+}
+
 impl TypeKindBuilder for ArrayMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
@@ -93,18 +107,4 @@ impl TypeKindBuilder for ArrayMutationBuilder {
 
     // NO child_path_action() override - Arrays DO expose indexed child paths
     // This allows mutations like: myArray[0].field = value
-}
-
-impl ArrayMutationBuilder {
-    /// Extract array size from type name (e.g., "[f32; 4]" -> 4)
-    fn extract_array_size(type_name: &BrpTypeName) -> Option<usize> {
-        let type_str = type_name.as_str();
-        // Pattern: [ElementType; Size]
-        type_str.rfind("; ").and_then(|size_start| {
-            type_str.rfind(']').and_then(|size_end| {
-                let size_str = &type_str[size_start + 2..size_end];
-                size_str.parse().ok()
-            })
-        })
-    }
 }

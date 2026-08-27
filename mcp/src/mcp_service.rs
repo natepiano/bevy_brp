@@ -78,12 +78,12 @@ impl ServerHandler for McpService {
         info
     }
 
-    async fn list_tools(
+    fn list_tools(
         &self,
         _: Option<PaginatedRequestParams>,
         _: RequestContext<RoleServer>,
-    ) -> Result<ListToolsResult, McpError> {
-        Ok(self.list_mcp_tools())
+    ) -> impl Future<Output = Result<ListToolsResult, McpError>> {
+        std::future::ready(Ok(self.list_mcp_tools()))
     }
 
     async fn call_tool(

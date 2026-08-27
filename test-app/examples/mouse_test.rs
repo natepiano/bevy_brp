@@ -65,42 +65,9 @@ const UI_FILL_PERCENT: f32 = 100.0;
 const UI_PADDING: f32 = 10.0;
 const WINDOW_GAP: i32 = 20;
 
-fn main() {
-    App::new()
-        .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: PRIMARY_WINDOW_TITLE.to_string(),
-                    resolution: WindowResolution::new(PRIMARY_WINDOW_WIDTH, PRIMARY_WINDOW_HEIGHT),
-                    position: WindowPosition::At(PRIMARY_WINDOW_POSITION),
-                    mode: WindowMode::Windowed,
-                    ..default()
-                }),
-                ..default()
-            }),
-            MeshPickingPlugin,
-            BrpExtrasPlugin::new().port_in_title(PortDisplay::Always),
-        ))
-        .init_resource::<MouseStateTracker>()
-        .add_systems(Startup, (setup_windows, setup_scene).chain())
-        .add_systems(PostStartup, position_secondary_window)
-        .add_systems(Update, minimize_window)
-        .add_systems(
-            Update,
-            (
-                track_cursor_position,
-                track_mouse_buttons,
-                track_click_events,
-                update_button_durations,
-                track_mouse_wheel,
-                track_mouse_motion,
-                track_gestures,
-                draw_gizmo_outlines,
-                update_audit_display,
-            ),
-        )
-        .run();
-}
+type PrimaryWindowQuery<'w, 's> = Query<'w, 's, &'static Window, With<PrimaryWindow>>;
+
+type SecondaryWindowQuery<'w, 's> = Query<'w, 's, &'static mut Window, With<SecondaryWindow>>;
 
 /// Resource tracking all mouse input state for testing purposes
 #[derive(Resource, Default, Reflect)]
@@ -385,6 +352,43 @@ struct GizmoOutline {
     color: Color,
 }
 
+fn main() {
+    App::new()
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: PRIMARY_WINDOW_TITLE.to_string(),
+                    resolution: WindowResolution::new(PRIMARY_WINDOW_WIDTH, PRIMARY_WINDOW_HEIGHT),
+                    position: WindowPosition::At(PRIMARY_WINDOW_POSITION),
+                    mode: WindowMode::Windowed,
+                    ..default()
+                }),
+                ..default()
+            }),
+            MeshPickingPlugin,
+            BrpExtrasPlugin::new().port_in_title(PortDisplay::Always),
+        ))
+        .init_resource::<MouseStateTracker>()
+        .add_systems(Startup, (setup_windows, setup_scene).chain())
+        .add_systems(PostStartup, position_secondary_window)
+        .add_systems(Update, minimize_window)
+        .add_systems(
+            Update,
+            (
+                track_cursor_position,
+                track_mouse_buttons,
+                track_click_events,
+                update_button_durations,
+                track_mouse_wheel,
+                track_mouse_motion,
+                track_gestures,
+                draw_gizmo_outlines,
+                update_audit_display,
+            ),
+        )
+        .run();
+}
+
 fn setup_windows(mut commands: Commands) {
     // Spawn secondary window - will be repositioned in PostStartup
     commands.spawn((
@@ -398,9 +402,6 @@ fn setup_windows(mut commands: Commands) {
         SecondaryWindow,
     ));
 }
-
-type PrimaryWindowQuery<'w, 's> = Query<'w, 's, &'static Window, With<PrimaryWindow>>;
-type SecondaryWindowQuery<'w, 's> = Query<'w, 's, &'static mut Window, With<SecondaryWindow>>;
 
 fn position_secondary_window(mut windows: ParamSet<(PrimaryWindowQuery, SecondaryWindowQuery)>) {
     // First, get primary window info

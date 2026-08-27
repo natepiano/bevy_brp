@@ -74,6 +74,29 @@ enum ShutdownOutcome {
 #[tool_fn(params = "ShutdownParams", output = "ShutdownResult")]
 pub struct Shutdown;
 
+/// Error when process is not running
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
+struct ProcessNotRunningError {
+    #[to_error_info]
+    app_name: String,
+
+    #[to_message(message_template = "Process '{app_name}' is not currently running")]
+    message_template: String,
+}
+
+/// Error when shutdown fails
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
+struct ShutdownFailedError {
+    #[to_error_info]
+    app_name: String,
+
+    #[to_error_info]
+    error_details: String,
+
+    #[to_message(message_template = "Failed to shutdown '{app_name}': {error_details}")]
+    message_template: String,
+}
+
 /// Attempt to shutdown a Bevy app, first trying graceful shutdown then falling back to kill
 async fn shutdown_app(app_name: &str, port: Port) -> ShutdownOutcome {
     debug!("Starting shutdown process for app '{app_name}' on port {port}");
@@ -274,27 +297,4 @@ fn kill_process(app_name: &str, port: Port) -> Result<Option<u32>> {
     // No process found on the specified port
     debug!("No process found listening on port {port} with name '{app_name}'");
     Ok(None)
-}
-
-/// Error when process is not running
-#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-struct ProcessNotRunningError {
-    #[to_error_info]
-    app_name: String,
-
-    #[to_message(message_template = "Process '{app_name}' is not currently running")]
-    message_template: String,
-}
-
-/// Error when shutdown fails
-#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-struct ShutdownFailedError {
-    #[to_error_info]
-    app_name: String,
-
-    #[to_error_info]
-    error_details: String,
-
-    #[to_message(message_template = "Failed to shutdown '{app_name}': {error_details}")]
-    message_template: String,
 }

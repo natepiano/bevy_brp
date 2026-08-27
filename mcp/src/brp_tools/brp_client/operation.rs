@@ -33,6 +33,36 @@ pub(super) enum Operation {
     },
 }
 
+impl Operation {
+    /// Extract type names from parameters based on the operation type
+    pub(super) fn extract_type_names(self, params: &Value) -> Vec<String> {
+        match self {
+            Self::SpawnInsert { parameter_name } => match parameter_name {
+                ParameterName::Components => {
+                    // Extract from params.components object keys
+                    extract_from_components_object(params)
+                },
+                ParameterName::Value => {
+                    // Extract from params.resource field
+                    extract_from_resource_field(params)
+                },
+                _ => Vec::new(),
+            },
+            Self::Mutate { parameter_name } => match parameter_name {
+                ParameterName::Component => {
+                    // Extract from params.component string field
+                    extract_single_component_type(params)
+                },
+                ParameterName::Resource => {
+                    // Extract from params.resource string field
+                    extract_single_resource_type(params)
+                },
+                _ => Vec::new(),
+            },
+        }
+    }
+}
+
 impl Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Use consistent string representation for both variants
@@ -70,36 +100,6 @@ impl TryFrom<BrpMethod> for Operation {
             _ => Err(Error::InvalidArgument(format!(
                 "Method {brp_method:?} is not supported for format discovery"
             ))),
-        }
-    }
-}
-
-impl Operation {
-    /// Extract type names from parameters based on the operation type
-    pub(super) fn extract_type_names(self, params: &Value) -> Vec<String> {
-        match self {
-            Self::SpawnInsert { parameter_name } => match parameter_name {
-                ParameterName::Components => {
-                    // Extract from params.components object keys
-                    extract_from_components_object(params)
-                },
-                ParameterName::Value => {
-                    // Extract from params.resource field
-                    extract_from_resource_field(params)
-                },
-                _ => Vec::new(),
-            },
-            Self::Mutate { parameter_name } => match parameter_name {
-                ParameterName::Component => {
-                    // Extract from params.component string field
-                    extract_single_component_type(params)
-                },
-                ParameterName::Resource => {
-                    // Extract from params.resource string field
-                    extract_single_resource_type(params)
-                },
-                _ => Vec::new(),
-            },
         }
     }
 }
