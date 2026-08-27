@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.22.5] - 2026-08-27
 
 ### Fixed
 - Fix error and result messages rendering a list of values as a bare count. Any array interpolated into a message template printed as `2 items` instead of naming its elements, so launching an ambiguous target with an unknown package reported ``example `extras_plugin_duplicate` not found in package `nonexistent-package`. Available in: 2 items`` and left the caller to go read `error_info` for the package names. Arrays now render as a comma-separated list of their values.
