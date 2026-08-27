@@ -14,20 +14,20 @@ repository = "https://github.com/natepiano/bevy_brp"
 
 [workspace.dependencies]
 # Bevy with no default features - each crate specifies what it needs
-bevy            = { version = "0.19.0", default-features = false }
+bevy            = { version = "0.19.1", default-features = false }
 bevy_brp_extras = { path = "extras" }
-bevy_mesh       = { version = "0.19.0" }
-bevy_remote     = { version = "0.19.0", default-features = false }
-bevy_winit      = { version = "0.19.0" }
+bevy_mesh       = { version = "0.19.1" }
+bevy_remote     = { version = "0.19.1", default-features = false }
+bevy_winit      = { version = "0.19.1" }
 
 # Core dependencies (shared between extras and mcp)
 anyhow = "1.0"
 async-channel = "2.5.0"
-async-trait = "0.1.91"
+async-trait = "0.1.92"
 bevy_brp_mcp_macros = { version = "0.23.0-dev", path = "mcp_macros" }
 cargo_metadata = "0.23"
 chrono = "0.4"
-either = "1.17.0"
+either = "1.18.0"
 error-stack = { version = "0.8.0", features = ["spantrace"] }
 futures = "0.3"
 heck = "0.5.0"
@@ -42,13 +42,13 @@ proc-macro2 = "1.0.107"
 quote = "1.0.47"
 regex = "1.13.1"
 reqwest = { version = "0.13.4", features = ["blocking", "json", "stream"] }
-rmcp = { version = "3.0.1", features = ["server", "transport-io"] }
+rmcp = { version = "3.1.4", features = ["server", "transport-io"] }
 schemars = "1.2.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["preserve_order"] }
 strum = "0.28.0"
 strum_macros = "0.28.0"
-syn = { version = "3.0.3", features = ["extra-traits", "full"] }
+syn = { version = "3.0.4", features = ["extra-traits", "full"] }
 sysinfo = "0.39.6"
 tempfile = "3.27.0"
 thiserror = "2.0"
