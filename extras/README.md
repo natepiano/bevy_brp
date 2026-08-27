@@ -14,7 +14,7 @@ bevy_brp_extras does two things
 
 | bevy        | bevy_brp_extras |
 |-------------|-----------------|
-| 0.19        | 0.22.3          |
+| 0.19        | 0.22.4          |
 | 0.18        | 0.19.0          |
 | 0.17        | 0.17.2          |
 | 0.16        | 0.2             |
@@ -60,7 +60,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy_brp_extras = "0.22.3"
+bevy_brp_extras = "0.22.4"
 ```
 
 Add the plugin to your Bevy app
