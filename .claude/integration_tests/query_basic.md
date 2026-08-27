@@ -61,7 +61,7 @@ Test the "all" option with a filter that produces a small inline response:
   }
   ```
 - Verify by reading the JSON response directly (Camera entities are few, fits in context)
-- Check: Returns 1-2 Camera entities with all their components
+- Check: Returns 5 Camera entities with all their components
 - Check: Each entity includes many components (Transform, Camera, Visibility, etc.)
 - Check: Component data is present (not empty `{}`)
 - **Do NOT use jq or bash commands** - the response is returned directly in the tool output
@@ -74,7 +74,7 @@ Test all query data fields together:
   {
     "data": {
       "components": ["bevy_transform::components::transform::Transform"],
-      "option": ["bevy_ecs::name::Name", "bevy_render::view::visibility::Visibility"],
+      "option": ["bevy_ecs::name::Name", "bevy_camera::visibility::Visibility"],
       "has": ["bevy_camera::camera::Camera"]
     }
   }

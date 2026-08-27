@@ -15,13 +15,13 @@ Validate brp_extras keyboard input methods: send_keys with various durations, mo
 - Test default duration: `mcp__brp__brp_extras_send_keys` with `["KeyA", "Space"]`
 - Verify reception: `mcp__brp__world_get_resources` with resource `extras_plugin::KeyboardInputHistory`
   - `last_keys` should contain `["KeyA", "Space"]`
-  - `completed` should be `true`
+  - `completion_state` should be `"Completed"`
 
 ### 3. Custom Duration with Verification
 - Test custom duration: `{"keys": ["KeyH", "KeyI"], "duration_ms": 700}`
 - Verify reception: read `extras_plugin::KeyboardInputHistory`
   - `last_keys` should contain `["KeyH", "KeyI"]`
-  - `completed` should be `true`
+  - `completion_state` should be `"Completed"`
   - `last_duration_ms` should be present and roughly in the range 600-900
 
 ### 4. Modifier Combination with Verification
@@ -29,17 +29,17 @@ Validate brp_extras keyboard input methods: send_keys with various durations, mo
 - Verify reception: read `extras_plugin::KeyboardInputHistory`
   - `last_keys` should contain both `"ControlLeft"` and `"KeyA"`
   - `complete_modifiers` should contain `"Ctrl"`
-  - `completed` should be `true`
+  - `completion_state` should be `"Completed"`
 
 ### 5. Boundary Conditions with Verification
 - Test short duration: `{"keys": ["KeyB"], "duration_ms": 50}`
 - Verify reception: read `extras_plugin::KeyboardInputHistory`
   - `last_keys` should contain `["KeyB"]`
-  - `completed` should be `true`
+  - `completion_state` should be `"Completed"`
 - Test zero duration: `{"keys": ["KeyC"], "duration_ms": 0}`
 - Verify reception: read `extras_plugin::KeyboardInputHistory`
   - `last_keys` should contain `["KeyC"]`
-  - `completed` should be `true`
+  - `completion_state` should be `"Completed"`
 
 ### 6. Error Conditions (no resource verification needed)
 - Test excessive duration: `{"keys": ["KeyE"], "duration_ms": 70000}` (should fail)

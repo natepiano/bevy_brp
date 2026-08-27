@@ -29,7 +29,7 @@ Execute `mcp__brp__brp_type_guide` for Transform:
 Verify the response contains:
 - `discovered_count`: 1
 - `summary` with `successful_discoveries`: 1, `failed_discoveries`: 0
-- Type guide entry for Transform with non-empty `type_info`, `mutation_paths`, `spawn`, and `schema_info`
+- Type guide entry for Transform with non-empty `type_name`, `mutation_paths`, `spawn`, and `schema_info`
 
 ### 3. Type Schema in Error Responses
 
@@ -129,12 +129,12 @@ mcp__brp__world_mutate_components with parameters:
   - type_guide: Full type_guide for the component including:
     - mutation_paths array with entries for the enum field showing all variants
     - Each variant entry includes examples showing the correct structure
-    - path_info with enum-specific metadata (applicable_variants, enum_instructions)
+    - enum-specific metadata: applicable_variants on the examples entries, and enum_instructions when the path supplies it
 
 ## Success Criteria
 
 ✅ Test passes when:
-- Smoke test retrieves Transform type guide with non-empty type_info, mutation_paths, spawn, and schema_info
+- Smoke test retrieves Transform type guide with non-empty type_name, mutation_paths, spawn, and schema_info
 - Format errors include embedded type_guide for failed types
 - Error guidance is clear and actionable for self-correction
 
