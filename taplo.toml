@@ -1,3 +1,4 @@
+exclude = [".direnv/**", "target/**"]
 include = ["**/*.toml"]
 
 [formatting]
