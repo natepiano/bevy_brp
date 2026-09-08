@@ -1,3 +1,10 @@
+# VENDORED ON PURPOSE. An identical copy of this file lives in cargo-liner,
+# nateroids, bevy_brp and hana. Each project stays self-contained: no flake
+# input points at another repo, so a clone builds with nothing but nixpkgs.
+# The cost is that a change here is four commits -- pay it, and keep the four
+# copies byte-identical rather than letting them drift (decided 2026-09-08,
+# after the mkShellNoCC fix below cost exactly that).
+#
 # A Bevy crate's development shell. Everything native the crate needs on
 # Linux and nothing else: no Rust toolchain (rustup's, outside nix, as on the
 # machines), no cargo tools.
