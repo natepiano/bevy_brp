@@ -3,7 +3,7 @@
 # machines), no cargo tools.
 #
 # On macOS the shell supplies pkg-config alone; the system frameworks Bevy
-# links there come from the SDK, not from nix.
+# links there come from the SDK, not from nix. See mkShell in the let below.
 #
 # WHAT EACH LIBRARY IS FOR, so that the list can be edited with confidence:
 #   alsa-lib      audio (cpal)
@@ -27,6 +27,16 @@
 }:
 let
   inherit (pkgs) lib stdenv;
+  # Darwin gets a shell with no C compiler in it. pkgs.mkShell is
+  # stdenv.mkDerivation underneath, so it brings nixpkgs' cc, and on darwin that
+  # cc depends on apple-sdk-14.4 and exports SDKROOT and DEVELOPER_DIR. A build
+  # script that shells out to Swift Package Manager then compiles its
+  # Package.swift with the Command Line Tools swiftc -- nix has no swiftc --
+  # against that older SDK, and swift refuses the pairing outright ("this SDK is
+  # not supported by the compiler"). Nothing here wants a C compiler on macOS.
+  # Linux keeps mkShell: rustc links through the cc wrapper there, and that is
+  # how CI's -fuse-ld=mold resolves.
+  mkShell = if stdenv.isDarwin then pkgs.mkShellNoCC else pkgs.mkShell;
   linuxLibraries =
     with pkgs;
     [
@@ -43,7 +53,7 @@ let
     ]
     ++ extraLinuxLibraries;
 in
-pkgs.mkShell (
+mkShell (
   {
     nativeBuildInputs = [
       pkgs.pkg-config
