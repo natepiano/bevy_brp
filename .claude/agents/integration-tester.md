@@ -53,8 +53,14 @@ EOF
   - `python3 .claude/scripts/integration_tests/extras_assert_png.py marker <path> <image_x> <image_y> <marker_x> <marker_y> <red> <green> <blue>`
   - `python3 .claude/scripts/integration_tests/extras_assert_png.py marker <path> <image_x> <image_y> <marker_x> <marker_y> <red> <green> <blue> <alpha>`
   - `python3 .claude/scripts/integration_tests/extras_assert_png.py crop <crop_path> <reference_path> <crop_x> <crop_y> <reference_x> <reference_y> <width> <height>`
-- The only authorized cleanup command form is:
-  - `bash .claude/scripts/integration_tests/cleanup_screenshots.sh <absolute_path>`
+  - `python3 .claude/scripts/integration_tests/extras_assert_png.py prepare <path> [<path> ...]`
+  - `python3 .claude/scripts/integration_tests/extras_assert_png.py batch` with the JSON
+    spec supplied on stdin via a `<<'JSON'` heredoc
+- Prefer the `batch` form: bundle every assertion belonging to one capture, and every
+  `prepare`, into a single call instead of issuing one command per assertion. A nonzero
+  exit status from a batch call is a test failure; report the helper's stderr verbatim.
+- The `prepare` and `batch` `"prepare"` forms are the only authorized cleanup commands.
+  They refuse to act on a directory, so `<cwd>/mcp` can never be removed by them.
 - The only authorized directory assertion command form is:
   - `test -d <cwd>/mcp`
 - A zero exit status from the directory assertion proves that `<cwd>/mcp` exists

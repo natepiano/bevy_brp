@@ -21,19 +21,42 @@ launch mode is required. At startup, the original primary-window camera and the
 offscreen 2D/UI fixture camera are both active, while the offscreen 3D fixture camera
 is inactive.
 
-Use a distinct absolute destination under `<cwd>` for every screenshot call. Include
-the app label, assigned port, and case name in each filename, for example
-`<cwd>/extras_capture_extras_app_[extras_app port]_full.png`. Before every screenshot
-call except the publication-failure case, remove any previous file with the exact
-cleanup command and immediately assert absence with:
+## Destination Naming
+
+Every screenshot call uses a distinct absolute destination under `<cwd>` named
+`<cwd>/extras_capture_<label>_<port>_<case>.png`, where `<case>` is the case name
+given in each step. Because every destination is unique to one case, a destination
+proven absent in step 0 and later found present can only have been published by that
+case's screenshot call.
+
+## Batched Assertion Protocol
+
+`extras_assert_png.py batch` reads one JSON spec on stdin, runs every entry in
+order, prints one line per entry, and stops at the first failure with a nonzero exit
+status. Batch every assertion that belongs to a single capture into one call:
 
 ```text
-bash .claude/scripts/integration_tests/cleanup_screenshots.sh <absolute_path>
-python3 .claude/scripts/integration_tests/extras_assert_png.py absent <absolute_path>
+python3 .claude/scripts/integration_tests/extras_assert_png.py batch <<'JSON'
+{
+  "assert": [
+    {"mode": "present",    "path": "<abs>"},
+    {"mode": "dimensions", "path": "<abs>", "width": 224, "height": 168},
+    {"mode": "nonuniform", "path": "<abs>"},
+    {"mode": "marker",     "path": "<abs>", "image_x": 16, "image_y": 12,
+                           "marker_x": 52, "marker_y": 44, "rgb": [255, 255, 0]},
+    {"mode": "crop", "crop": "<abs>", "reference": "<ref abs>",
+                     "crop_x": 40, "crop_y": 32,
+                     "reference_x": 16, "reference_y": 12,
+                     "width": 64, "height": 48}
+  ]
+}
+JSON
 ```
 
-A successful screenshot call is terminal; validate its returned file immediately and
-never poll the path.
+A `"prepare"` array removes each listed destination and asserts it is absent.
+Treat a nonzero exit status from any batch call as a test failure and report the
+helper's stderr verbatim. A successful screenshot call is terminal; validate its
+returned file immediately and never poll the path.
 
 ## Shared Screenshot Success Assertions
 
@@ -45,12 +68,9 @@ For every successful `mcp__brp__brp_extras_screenshot` call:
   is the requested absolute destination, `result.note` is
   `"Screenshot capture completed and the PNG was published."`, and
   `result.working_directory` is `<cwd>/test-app`.
-- Run the PNG helper's `present` and `dimensions` modes after the MCP response.
-  For the primary-window smoke capture, first perform the mandatory post-capture
-  `Window` read and stable-size comparison in step 2; that read must precede the
-  helper calls. Assert `dimensions` reports `RGB`, proving the complete file uses
-  the expected three-channel output. Use `nonuniform` for every retained offscreen
-  reference image, but not for the full-window smoke capture.
+- Assert `dimensions` reports `RGB`, proving the complete file uses the expected
+  three-channel output. Use `nonuniform` for every retained offscreen reference
+  image, but not for the full-window smoke capture.
 - For an entity capture, assert `result.capture_kind` is `"entity"`,
   `result.entity` is the canonical selected entity ID, and `metadata.entity` is the
   same ID.
@@ -60,12 +80,12 @@ For every successful `mcp__brp__brp_extras_screenshot` call:
   `Name`.
 
 For every entity crop, assert `result.rect` exactly matches the case's
-`(x, y, width, height)` below. Run the helper's `crop` mode against the reference
+`(x, y, width, height)` below. Run the batch `crop` entry against the reference
 captured during the same unchanged camera epoch, always supplying reference origin
 `16 12`.
 
 Use these exact zero-padding rectangles both when inspecting `result.rect` and when
-supplying the helper's crop origin and dimensions:
+supplying the batch crop origin and dimensions:
 
 | Fixture | `(x, y, width, height)` |
 |---|---|
@@ -76,104 +96,117 @@ supplying the helper's crop origin and dimensions:
 | `Screenshot3dReference` | `(16, 12, 224, 168)` |
 | `Screenshot3dAabb` | `(162, 90, 12, 48)` |
 
+## Camera Epochs
+
+Each camera epoch below uses three `mcp__brp__world_mutate_components` calls on
+`[extras_app port]`, one per stored camera ID, with component
+`bevy_camera::camera::Camera`, path `.is_active`, and a JSON boolean `value`, applied
+in the listed order. Assert each mutation succeeds before continuing.
+
 ## Test Steps
 
-### 1. Resolve all extras-app fixture IDs before capture
+### 0. Prepare every destination once
 
-On `[extras_app port]`, call `mcp__brp__world_find_entities_by_name` with
-`match_mode: "exact"` for each name below. Store the returned canonical IDs and
-verify results are sorted by entity ID:
+Build the full list of the 22 destinations used by this test: the eleven capture
+cases in steps 2-9 (`full`, `2dui_reference`, `nateslist_name`, `nateslist_id`,
+`rotated_clipped_ui`, `2daabb_default`, `2daabb_pad0`, `2daabb_pad4`,
+`3d_reference`, `3daabb_default`, `3daabb_explicit`), the ten extras-app negative
+cases in steps 7 and 9 (`neg_duplicate_name`, `neg_partial_ui`, `neg_unsupported`,
+`neg_hidden_ui`, `neg_hidden_aabb`, `neg_disjoint_layer`, `neg_ui_wrong_camera`,
+`neg_entity_and_name`, `neg_padding_without_selector`, `neg_ambiguous_camera`), and
+the no-extras case in step 12 (`no_extras_nateslist`, named with the
+`no_extras_app` label and `[no_extras_app port]`).
 
-- Exactly one each: `ScreenshotPrimaryWindowCamera`,
-  `ScreenshotPrimaryWindowTarget`, `Screenshot2dUiCamera`, `Screenshot3dCamera`,
-  `NatesList`, `ScreenshotRotatedClippedUi`, `Screenshot2dAabb`, `Screenshot3dReference`,
-  `Screenshot3dAabb`, `ScreenshotPartialUi`, `ScreenshotUnsupported`,
-  `ScreenshotHiddenUi`, `ScreenshotHiddenAabb`, and `ScreenshotDisjointLayer`.
-- Exactly two for `ScreenshotDuplicateName`; store both IDs and assert ascending
-  entity-ID order.
+Issue one batch call whose `"prepare"` array holds all 22 absolute paths. Assert the
+call exits zero and prints a `prepared:` line for every path. This is the only
+cleanup required before any capture; `<cwd>/mcp` is never a destination and must
+never appear in this list.
 
-Also query exact lowercase `nateslist` and assert zero matches, proving exact-name
-matching is case-sensitive.
+### 1. Resolve all extras-app fixture IDs
 
-Every camera epoch change below uses three
-`mcp__brp__world_mutate_components` calls on `[extras_app port]`, one per stored
-camera ID, with component `bevy_camera::camera::Camera`, path `.is_active`, and a
-JSON boolean `value`. Assert each mutation succeeds before continuing.
+Call `mcp__brp__world_query` once on `[extras_app port]` with
+`data: {components: ["bevy_ecs::name::Name"]}` and no filter. From that single
+response build a name-to-entity map and store the canonical IDs for:
+`ScreenshotPrimaryWindowCamera`, `ScreenshotPrimaryWindowTarget`,
+`Screenshot2dUiCamera`, `Screenshot3dCamera`, `NatesList`,
+`ScreenshotRotatedClippedUi`, `Screenshot2dAabb`, `Screenshot3dReference`,
+`Screenshot3dAabb`, `ScreenshotPartialUi`, `ScreenshotUnsupported`,
+`ScreenshotHiddenUi`, `ScreenshotHiddenAabb`, and `ScreenshotDisjointLayer`.
+Assert each of those names matches exactly one entity in the response.
+
+Then make exactly three `mcp__brp__world_find_entities_by_name` calls on
+`[extras_app port]` to pin the tool's own exact-match contract:
+
+1. `name: "NatesList"`, `match_mode: "exact"` — assert exactly one result and that
+   its ID equals the ID resolved from the query above.
+2. `name: "ScreenshotDuplicateName"`, `match_mode: "exact"` — assert exactly two
+   results in ascending entity-ID order; store both IDs.
+3. `name: "nateslist"`, `match_mode: "exact"` — assert zero matches, proving
+   exact-name matching is case-sensitive.
 
 ### 2. Primary-window smoke epoch
 
-Set the cameras in this order and to these values:
+Apply the camera epoch:
 
 1. `ScreenshotPrimaryWindowCamera`: `true`
 2. `Screenshot2dUiCamera`: `false`
 3. `Screenshot3dCamera`: `false`
 
-After all three camera mutations succeed, prepare the unique full-window destination
-with the normal cleanup followed immediately by the `absent` assertion. Then,
-immediately before capture, call `mcp__brp__world_get_components` on
+Immediately before capture, call `mcp__brp__world_get_components` on
 `[extras_app port]` for the stored `ScreenshotPrimaryWindowTarget` ID and component
 `bevy_window::window::Window`. Store `resolution.physical_width` as
-`pre_capture_width` and `resolution.physical_height` as `pre_capture_height`; require
-both values to be positive integers.
+`pre_capture_width` and `resolution.physical_height` as `pre_capture_height`;
+require both values to be positive integers.
 
-Capture without `entity`, `name`, `camera`, or `padding` to that destination on
+Capture case `full` without `entity`, `name`, `camera`, or `padding` on
 `[extras_app port]`. Immediately after the terminal screenshot call returns, before
-running a PNG helper or making any other BRP call, read the same component from the
-same stored target ID with `mcp__brp__world_get_components`. Store the corresponding
-values as `post_capture_width` and `post_capture_height`, again requiring positive
-integers. Require `pre_capture_width == post_capture_width` and
+running any helper or making any other BRP call, read the same component from the
+same stored target ID again. Store the corresponding values as `post_capture_width`
+and `post_capture_height`, again requiring positive integers. Require
+`pre_capture_width == post_capture_width` and
 `pre_capture_height == post_capture_height`; a mismatch is an explicit resize-race
 failure.
-
-- Apply the shared screenshot success assertions, using the exact helper sequence
-  below for their PNG-helper portion.
-- Assert `metadata.entity` and `metadata.name` are absent.
-- Assert no entity-only fields (`capture_kind`, `entity`, `name`, `camera`,
-  `bounds_kind`, or `rect`) were added to `result`.
-- After the stable-size comparison, run these authorized helper forms in this exact
-  order, substituting the stored positive integer values for the final two arguments:
-
-  ```text
-  python3 .claude/scripts/integration_tests/extras_assert_png.py present <full_window_path>
-  python3 .claude/scripts/integration_tests/extras_assert_png.py dimensions <full_window_path> <pre_capture_width> <pre_capture_height>
-  ```
-
-  Require the dimensions result to report `RGB`. The dimensions assertion proves the
-  complete PNG exactly matches the stable live primary-window physical dimensions.
-  Do not assert nonuniform content: platforms that stop presenting a minimized,
-  hidden, or fully occluded primary-window surface may legitimately produce a black
-  image.
-
-### 3. 2D/UI epoch and reference
-
-Set the cameras in this order and to these values:
-
-1. `ScreenshotPrimaryWindowCamera`: `false`
-2. `Screenshot2dUiCamera`: `true`
-3. `Screenshot3dCamera`: `false`
-
-Keep this camera state unchanged through all positive 2D/UI captures and the 2D/UI
-negative cases.
-
-Capture the active `Screenshot2dUiCamera` viewport by supplying only its canonical
-camera ID, with no `entity`, `name`, or `padding`.
 
 - Apply the shared screenshot success assertions.
 - Assert `metadata.entity` and `metadata.name` are absent.
 - Assert no entity-only fields (`capture_kind`, `entity`, `name`, `camera`,
   `bounds_kind`, or `rect`) were added to `result`.
-- Assert the PNG is `224x168` and nonuniform.
-- Run marker checks with image origin `(16, 12)` for yellow `(255, 255, 0)` at
-  target pixels `(52, 44)` and `(112, 128)`, and magenta `(255, 0, 255)` at
-  `(100, 56)`.
+- After the stable-size comparison, run one batch call asserting `present` and
+  `dimensions` at the stored `pre_capture_width` by `pre_capture_height`. Require
+  the dimensions line to report `RGB`, proving the complete PNG exactly matches the
+  stable live primary-window physical dimensions. Do not assert nonuniform content:
+  platforms that stop presenting a minimized, hidden, or fully occluded
+  primary-window surface may legitimately produce a black image.
+
+### 3. 2D/UI epoch and reference
+
+Apply the camera epoch:
+
+1. `ScreenshotPrimaryWindowCamera`: `false`
+2. `Screenshot2dUiCamera`: `true`
+3. `Screenshot3dCamera`: `false`
+
+Keep this camera state unchanged through all positive 2D/UI captures in steps 3-6
+and the 2D/UI negative cases in step 7.
+
+Capture case `2dui_reference` for the active `Screenshot2dUiCamera` viewport by
+supplying only its canonical camera ID, with no `entity`, `name`, or `padding`.
+
+- Apply the shared screenshot success assertions.
+- Assert `metadata.entity` and `metadata.name` are absent.
+- Assert no entity-only fields (`capture_kind`, `entity`, `name`, `camera`,
+  `bounds_kind`, or `rect`) were added to `result`.
+- In one batch call assert `present`, `dimensions` `224x168`, `nonuniform`, and
+  three markers with image origin `(16, 12)`: yellow `(255, 255, 0)` at target
+  pixels `(52, 44)` and `(112, 128)`, and magenta `(255, 0, 255)` at `(100, 56)`.
 
 Retain this PNG as the reference for every later 2D/UI crop.
 
-### 4. One-call exact-name UI capture
+### 4. Name and direct-ID UI captures
 
-Capture with `name: "NatesList"`, omitting `entity`, `camera`, and `padding`.
-This must be one screenshot tool call: do not replace it with a caller-side name
-lookup plus an ID request.
+Capture case `nateslist_name` with `name: "NatesList"`, omitting `entity`,
+`camera`, and `padding`. This must be one screenshot tool call: do not replace it
+with a caller-side name lookup plus an ID request.
 
 - Apply the shared screenshot success assertions.
 - Assert `metadata.entity` is the stored `NatesList` ID and `metadata.name` is
@@ -182,115 +215,129 @@ lookup plus an ID request.
 - Assert `result.camera` is the stored `Screenshot2dUiCamera` ID.
 - Assert the final clipped `result.rect` is
   `{ "x": 40, "y": 32, "width": 64, "height": 48 }`.
-- Assert the PNG is `64x48`.
-- Run marker checks with image origin `(40, 32)` for yellow `(255, 255, 0)` at
-  `(52, 44)` and magenta `(255, 0, 255)` at `(100, 56)`.
-- Compare all crop pixels to the 2D/UI reference rectangle `(40, 32, 64, 48)`
-  using reference origin `(16, 12)`.
 
-### 5. Direct-ID UI capture
-
-Capture the same `NatesList` entity using its canonical ID and explicit
-`padding: 0`, without `name` or `camera`.
+Then capture case `nateslist_id` for the same entity using its canonical ID and
+explicit `padding: 0`, without `name` or `camera`.
 
 - Apply the shared screenshot success assertions.
-- Assert the same UI camera, bounds kind, `64x48` dimensions, rectangle, marker
-  pixels, and reference-crop identity as the name-selected capture.
+- Assert the same UI camera, bounds kind, and rectangle as the name-selected
+  capture.
 - Assert `metadata.entity` is present and `metadata.name` is absent.
 - Permit `result.name: "NatesList"`; it is raw extras data, not synthesized MCP
   name metadata.
 
-### 6. Offset viewport and clipped UI capture
+Verify both PNGs in one batch call: for each path assert `present`, `dimensions`
+`64x48`, markers with image origin `(40, 32)` for yellow `(255, 255, 0)` at
+`(52, 44)` and magenta `(255, 0, 255)` at `(100, 56)`, and `crop` against the
+2D/UI reference rectangle `(40, 32, 64, 48)` with reference origin `(16, 12)`.
 
-Capture `ScreenshotRotatedClippedUi` by direct canonical ID with default padding.
+### 5. Offset viewport and clipped UI capture
+
+Capture case `rotated_clipped_ui` for `ScreenshotRotatedClippedUi` by direct
+canonical ID with default padding.
 
 - Apply the shared screenshot success assertions.
 - Assert `result.bounds_kind` is `"ui"`, `result.camera` is the stored 2D/UI
   camera ID, and `result.rect` is
   `{ "x": 132, "y": 40, "width": 32, "height": 56 }`.
-- Assert the PNG is `32x56`.
-- Compare every pixel to the 2D/UI reference rectangle `(132, 40, 32, 56)` with
-  reference origin `(16, 12)`. This proves viewport offset, transformed containing
-  pixels, and UI clipping all use physical target coordinates.
+- In one batch call assert `present`, `dimensions` `32x56`, and `crop` against the
+  2D/UI reference rectangle `(132, 40, 32, 56)` with reference origin `(16, 12)`.
+  This proves viewport offset, transformed containing pixels, and UI clipping all
+  use physical target coordinates.
 
-### 7. Generic contains discovery, default padding, explicit zero, and padding four
+### 6. Generic contains discovery, default padding, explicit zero, and padding four
 
 Call `mcp__brp__world_find_entities_by_name` on `[extras_app port]` with
 `name: "2dAabb"` and `match_mode: "contains"`. Assert it returns exactly the stored
 `Screenshot2dAabb` canonical ID, then use that ID for all three captures:
 
-1. Omit `padding` and `camera`. Assert AABB bounds, the stored 2D/UI camera ID,
-   rectangle `(106, 98, 12, 60)`, dimensions `12x60`, yellow at target pixel
-   `(112, 128)` using image origin `(106, 98)`, and exact equality with that
-   reference rectangle.
-2. Send `padding: 0` and omit `camera`. Assert the identical rectangle,
-   dimensions, marker, and reference pixels.
-3. Send `padding: 4` and explicit `camera` equal to the stored
-   `Screenshot2dUiCamera` ID. Assert rectangle `(102, 94, 20, 68)`, dimensions
-   `20x68`, yellow at target pixel `(112, 128)` using image origin `(102, 94)`,
-   and exact equality with that reference rectangle.
+1. Case `2daabb_default`: omit `padding` and `camera`. Assert rectangle
+   `(106, 98, 12, 60)`.
+2. Case `2daabb_pad0`: send `padding: 0` and omit `camera`. Assert the identical
+   rectangle.
+3. Case `2daabb_pad4`: send `padding: 4` and explicit `camera` equal to the stored
+   `Screenshot2dUiCamera` ID. Assert rectangle `(102, 94, 20, 68)`.
 
 For all three, apply the shared screenshot success assertions, assert
-`result.bounds_kind` is `"aabb"`, and assert `metadata.name` is absent.
+`result.bounds_kind` is `"aabb"`, assert `result.camera` is the stored 2D/UI camera
+ID, and assert `metadata.name` is absent.
 
-### 8. 2D/UI negative cases
+Verify all three PNGs in one batch call:
 
-Give every call below a different absolute PNG path. Clean that path and run the
-helper's `absent` mode immediately before the screenshot call. After the expected
-error, run `absent` again to prove no destination was published.
+- `2daabb_default` and `2daabb_pad0`: `present`, `dimensions` `12x60`, yellow
+  `(255, 255, 0)` at target pixel `(112, 128)` with image origin `(106, 98)`, and
+  `crop` against reference rectangle `(106, 98, 12, 60)`.
+- `2daabb_pad4`: `present`, `dimensions` `20x68`, yellow at target pixel
+  `(112, 128)` with image origin `(102, 94)`, and `crop` against reference
+  rectangle `(102, 94, 20, 68)`.
 
-1. Capture with `name: "ScreenshotDuplicateName"`. Assert top-level status
-   `"error"`, the message identifies both stored matching IDs in ascending order,
-   and it directs callers to retry with `entity` or use generic name discovery.
-2. Capture the stored `ScreenshotPartialUi` ID. Assert JSON-RPC code `-32602` and
-   error text containing `partially initialized UI bounds`.
-3. Capture the stored `ScreenshotUnsupported` ID. Assert code `-32602` and text
-   stating that the entity does not have an `Aabb` component.
-4. Capture the stored `ScreenshotHiddenUi` ID. Assert code `-32602` and text
-   stating that the screenshot entity is hidden.
-5. Capture the stored `ScreenshotHiddenAabb` ID with explicit 2D/UI camera ID.
-   Assert code `-32602` and text stating that the screenshot entity is hidden.
-6. Capture the stored `ScreenshotDisjointLayer` ID with explicit 2D/UI camera ID.
-   Assert code `-32602` and text stating that the entity and camera do not share a
-   `RenderLayers` entry.
-7. Capture `NatesList` by direct ID while explicitly requesting the stored 3D
-   camera ID. Assert code `-32602` and text stating that the UI entity targets a
-   different camera than the requested camera.
-8. Send both the stored `NatesList` `entity` and `name: "NatesList"`. Assert a
-   local MCP error explaining that the selectors are mutually exclusive.
-9. Send `padding: 0` without `entity` or `name`. Assert a local MCP error
-    explaining that padding requires an entity or name selector.
+All crops use the 2D/UI reference with reference origin `(16, 12)`.
+
+### 7. 2D/UI negative cases
+
+Run these nine calls back to back, each with its own already-prepared destination.
+Each is expected to fail, so none may publish a file.
+
+1. Case `neg_duplicate_name`: capture with `name: "ScreenshotDuplicateName"`.
+   Assert top-level status `"error"`, the message identifies both stored matching
+   IDs in ascending order, and it directs callers to retry with `entity` or use
+   generic name discovery.
+2. Case `neg_partial_ui`: capture the stored `ScreenshotPartialUi` ID. Assert
+   JSON-RPC code `-32602` and error text containing `partially initialized UI
+   bounds`.
+3. Case `neg_unsupported`: capture the stored `ScreenshotUnsupported` ID. Assert
+   code `-32602` and text stating that the entity does not have an `Aabb`
+   component.
+4. Case `neg_hidden_ui`: capture the stored `ScreenshotHiddenUi` ID. Assert code
+   `-32602` and text stating that the screenshot entity is hidden.
+5. Case `neg_hidden_aabb`: capture the stored `ScreenshotHiddenAabb` ID with
+   explicit 2D/UI camera ID. Assert code `-32602` and text stating that the
+   screenshot entity is hidden.
+6. Case `neg_disjoint_layer`: capture the stored `ScreenshotDisjointLayer` ID with
+   explicit 2D/UI camera ID. Assert code `-32602` and text stating that the entity
+   and camera do not share a `RenderLayers` entry.
+7. Case `neg_ui_wrong_camera`: capture `NatesList` by direct ID while explicitly
+   requesting the stored 3D camera ID. Assert code `-32602` and text stating that
+   the UI entity targets a different camera than the requested camera.
+8. Case `neg_entity_and_name`: send both the stored `NatesList` `entity` and
+   `name: "NatesList"`. Assert a local MCP error explaining that the selectors are
+   mutually exclusive.
+9. Case `neg_padding_without_selector`: send `padding: 0` without `entity` or
+   `name`. Assert a local MCP error explaining that padding requires an entity or
+   name selector.
 
 For raw BRP errors in cases 2-7, assert `metadata.method` is
 `"brp_extras/screenshot"`, `metadata.port` is `[extras_app port]`, and
 `metadata.code` is `-32602`.
 
-### 9. 3D epoch and reference
+After all nine calls return, issue one batch call asserting `absent` for all nine
+destinations, proving no failed capture published a file.
 
-Set the cameras in this order and to these values:
+### 8. 3D epoch and reference
+
+Apply the camera epoch:
 
 1. `ScreenshotPrimaryWindowCamera`: `false`
 2. `Screenshot2dUiCamera`: `false`
 3. `Screenshot3dCamera`: `true`
 
-Capture `Screenshot3dReference` by direct canonical ID without padding or an
-explicit camera.
+Capture case `3d_reference` for `Screenshot3dReference` by direct canonical ID
+without padding or an explicit camera.
 
 - Apply the shared screenshot success assertions.
 - Assert `result.bounds_kind` is `"aabb"`, `result.camera` is the stored
   `Screenshot3dCamera` ID, and `result.rect` is
   `{ "x": 16, "y": 12, "width": 224, "height": 168 }`.
-- Assert the PNG is `224x168` and nonuniform.
-- Assert yellow `(255, 255, 0)` at target pixel `(168, 114)` using image origin
-  `(16, 12)`.
+- In one batch call assert `present`, `dimensions` `224x168`, `nonuniform`, and
+  yellow `(255, 255, 0)` at target pixel `(168, 114)` with image origin `(16, 12)`.
 
 Retain this PNG as the reference for every later 3D crop.
 
-Capture `Screenshot3dAabb` twice by direct ID:
+Then capture `Screenshot3dAabb` twice by direct ID:
 
-1. Omit `camera` and `padding`.
-2. Send explicit `camera` equal to the stored `Screenshot3dCamera` ID and
-   `padding: 0`.
+1. Case `3daabb_default`: omit `camera` and `padding`.
+2. Case `3daabb_explicit`: send explicit `camera` equal to the stored
+   `Screenshot3dCamera` ID and `padding: 0`.
 
 For both calls:
 
@@ -298,23 +345,23 @@ For both calls:
 - Assert `result.bounds_kind` is `"aabb"`, `result.camera` is the stored 3D
   camera ID, and `result.rect` is
   `{ "x": 162, "y": 90, "width": 12, "height": 48 }`.
-- Assert the PNG is `12x48`.
-- Assert yellow `(255, 255, 0)` at target pixel `(168, 114)` using image origin
-  `(162, 90)`.
-- Compare every pixel to the 3D reference rectangle `(162, 90, 12, 48)` with
-  reference origin `(16, 12)`.
 - Assert `metadata.name` is absent.
 
-### 10. Both-active camera ambiguity
+Verify both PNGs in one batch call: for each assert `present`, `dimensions`
+`12x48`, yellow `(255, 255, 0)` at target pixel `(168, 114)` with image origin
+`(162, 90)`, and `crop` against the 3D reference rectangle `(162, 90, 12, 48)` with
+reference origin `(16, 12)`.
 
-Set the cameras in this order and to these values for this case only:
+### 9. Both-active camera ambiguity
+
+Apply the camera epoch for this case only:
 
 1. `ScreenshotPrimaryWindowCamera`: `false`
 2. `Screenshot2dUiCamera`: `true`
 3. `Screenshot3dCamera`: `true`
 
-Clean a unique path, assert it is absent, and capture `Screenshot2dAabb` by direct
-ID without an explicit camera.
+Capture case `neg_ambiguous_camera` for `Screenshot2dAabb` by direct ID without an
+explicit camera.
 
 - Assert top-level status is `"error"`, `metadata.method` is
   `"brp_extras/screenshot"`, `metadata.port` is `[extras_app port]`, and
@@ -322,24 +369,13 @@ ID without an explicit camera.
 - Assert `metadata.data.reason` is `"ambiguous_camera"`.
 - Assert `metadata.data.camera_candidates` contains exactly the stored 2D/UI and
   3D camera IDs in ascending entity-ID order.
-- Assert the output path remains absent.
+- Assert the output path remains absent with a batch `absent` entry.
 
-### 11. Restore the initial visible-window and 2D fixture camera state
-
-Set the cameras in this order and to these values:
-
-1. `ScreenshotPrimaryWindowCamera`: `true`
-2. `Screenshot2dUiCamera`: `true`
-3. `Screenshot3dCamera`: `false`
-
-Assert every mutation succeeds. This is the required initial state and must be
-restored even if a negative case failed.
-
-### 12. Deterministic publication failure
+### 10. Deterministic publication failure
 
 Use the existing `<cwd>/mcp` directory as `path` for a full screenshot on
-`[extras_app port]`. This is the only screenshot call exempt from cleanup and the
-pre-call `absent` assertion because the directory must already exist.
+`[extras_app port]`. This is the only screenshot call exempt from preparation and
+the `absent` assertion because the directory must already exist.
 
 - Before the call, execute the exact Bash command `test -d <cwd>/mcp`. Assert its
   exit status is zero, proving that `<cwd>/mcp` exists as a directory.
@@ -352,7 +388,7 @@ pre-call `absent` assertion because the directory must already exist.
   its exit status is zero, proving that `<cwd>/mcp` remains a directory and was
   not replaced by a file.
 
-### 13. FPS diagnostics
+### 11. FPS diagnostics
 
 On `[extras_app port]`, execute `mcp__brp__brp_execute` with method
 `brp_extras/get_diagnostics` and no params.
@@ -364,7 +400,7 @@ On `[extras_app port]`, execute `mcp__brp__brp_execute` with method
 - Assert `result.frame_count` is numeric, `result.fps.max_history_len` is `120`,
   and `result.fps.current` is positive.
 
-### 14. Standard-BRP name discovery without extras
+### 12. Standard-BRP name discovery without extras
 
 On `[no_extras_app port]`:
 
@@ -373,9 +409,9 @@ On `[no_extras_app port]`:
 2. Call it with `name: "NoExtrasDuplicate"` and `match_mode: "exact"`. Assert two
    entities are returned in ascending canonical entity-ID order.
 
-Clean a unique no-extras screenshot destination and immediately assert it is absent.
 Then call the still-registered `mcp__brp__brp_extras_screenshot` tool with
-`name: "NatesList"`, that path, and `[no_extras_app port]`.
+`name: "NatesList"`, the already-prepared `no_extras_nateslist` path, and
+`[no_extras_app port]`.
 
 - Assert this is an invoked-tool error, not an unavailable-MCP-tool error.
 - Assert top-level `status` is `"error"`.
@@ -386,24 +422,26 @@ Then call the still-registered `mcp__brp__brp_extras_screenshot` tool with
 This proves name discovery and exact-name resolution use standard
 `world.query`; only the final screenshot BRP method depends on extras.
 
-### 15. Mandatory cleanup and final camera assertion
+### 13. Mandatory cleanup and final camera assertion
 
-Before reporting results, always attempt these actions even after an earlier failure:
+Before reporting results, always attempt these actions even after an earlier
+failure, and continue through every action even if one of them fails:
 
 1. Restore the camera values to primary `true`, 2D/UI `true`, and 3D `false`,
-   using the same `world_mutate_components` component and path.
-2. Run the exact cleanup command once for every PNG destination used by this test,
-   including paths from negative cases.
-3. Run the PNG helper's `absent` mode for every destination and assert all are
-   absent.
-4. Do not remove or alter the `<cwd>/mcp` directory.
+   using the same `world_mutate_components` component and path. This is the
+   required initial state.
+2. Issue one batch call whose `"prepare"` array holds all 22 destinations from
+   step 0. This removes every generated PNG and asserts each is absent in the same
+   call.
+3. Do not remove or alter the `<cwd>/mcp` directory, and never include it in a
+   prepare list.
 
 ## Expected Results
 
 - Full capture is a terminal RGB PNG whose dimensions exactly match the stable
   pre/post-capture live primary-window physical dimensions.
 - The camera-only 2D/UI reference and retained 3D reference are nonuniform and carry
-  the marker and crop-identity assertions below.
+  the marker and crop-identity assertions above.
 - Name-selected and direct-ID UI captures preserve raw BRP result fields and keep
   MCP resolution metadata separate.
 - 2D/UI and 3D crops match same-epoch reference pixels at every coordinate.
@@ -411,6 +449,7 @@ Before reporting results, always attempt these actions even after an earlier fai
   rectangle.
 - UI precedence, viewport offset, clipping, explicit cameras, and sorted camera
   ambiguity data are verified.
+- Every failed capture leaves its destination absent.
 - Publication failure is terminal code `-32603` and preserves the existing
   directory.
 - FPS diagnostics remain valid.
@@ -421,6 +460,6 @@ Before reporting results, always attempt these actions even after an earlier fai
 
 ## Failure Criteria
 
-Stop the functional sequence on malformed responses or pixel mismatches, then still
-perform the mandatory camera restoration and path cleanup before reporting the
-failure.
+Stop the functional sequence on malformed responses, nonzero batch exit statuses, or
+pixel mismatches, then still perform the mandatory camera restoration and path
+cleanup in step 13 before reporting the failure.

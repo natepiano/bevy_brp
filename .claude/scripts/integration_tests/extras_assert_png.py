@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import struct
 import sys
@@ -342,6 +343,138 @@ def assert_crop(
     )
 
 
+def prepare_destination(path: Path) -> None:
+    """Remove a previous screenshot destination and assert it is absent."""
+    if path.is_dir():
+        raise PngError(f"refusing to prepare {path} because it is a directory")
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+    if os.path.lexists(path):
+        raise PngError(f"expected {path} to be absent after cleanup")
+    print(f"prepared: {path}")
+
+
+def _mapping(value: object, context: str) -> dict[str, object]:
+    """Narrow decoded JSON to a string-keyed mapping."""
+    if not isinstance(value, dict):
+        raise PngError(f"{context} must be a JSON object")
+    source: dict[object, object] = value
+    entry: dict[str, object] = {}
+    for key, item in source.items():
+        if not isinstance(key, str):
+            raise PngError(f"{context} must use string keys")
+        entry[key] = item
+    return entry
+
+
+def _sequence(value: object, context: str) -> list[object]:
+    """Narrow decoded JSON to a list."""
+    if not isinstance(value, list):
+        raise PngError(f"{context} must be a JSON array")
+    items: list[object] = value
+    return items
+
+
+def _string_field(entry: dict[str, object], key: str, context: str) -> str:
+    value = entry.get(key)
+    if not isinstance(value, str):
+        raise PngError(f"{context} requires string field '{key}'")
+    return value
+
+
+def _int_field(entry: dict[str, object], key: str, context: str) -> int:
+    value = entry.get(key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise PngError(f"{context} requires integer field '{key}'")
+    return value
+
+
+def _path_field(entry: dict[str, object], key: str, context: str) -> Path:
+    return Path(_string_field(entry, key, context))
+
+
+def _rgb_field(entry: dict[str, object], key: str, context: str) -> tuple[int, ...]:
+    channels: list[int] = []
+    for index, item in enumerate(_sequence(entry.get(key), f"{context} field '{key}'")):
+        if isinstance(item, bool) or not isinstance(item, int):
+            raise PngError(f"{context} field '{key}'[{index}] must be an integer")
+        if not 0 <= item <= MAX_CHANNEL_VALUE:
+            raise PngError(f"{context} field '{key}'[{index}] must be 0..{MAX_CHANNEL_VALUE}")
+        channels.append(item)
+    if len(channels) not in (3, 4):
+        raise PngError(f"{context} field '{key}' must hold three or four channels")
+    return tuple(channels)
+
+
+def _run_batch_entry(entry: dict[str, object], context: str) -> None:
+    """Run one assertion described by a batch entry."""
+    mode = _string_field(entry, "mode", context)
+    if mode == "present":
+        assert_present(_path_field(entry, "path", context))
+    elif mode == "absent":
+        assert_absent(_path_field(entry, "path", context))
+    elif mode == "prepare":
+        prepare_destination(_path_field(entry, "path", context))
+    elif mode == "nonuniform":
+        assert_nonuniform(_path_field(entry, "path", context))
+    elif mode == "dimensions":
+        assert_dimensions(
+            _path_field(entry, "path", context),
+            _int_field(entry, "width", context),
+            _int_field(entry, "height", context),
+        )
+    elif mode == "marker":
+        assert_marker(
+            _path_field(entry, "path", context),
+            _int_field(entry, "image_x", context),
+            _int_field(entry, "image_y", context),
+            _int_field(entry, "marker_x", context),
+            _int_field(entry, "marker_y", context),
+            _rgb_field(entry, "rgb", context),
+        )
+    elif mode == "crop":
+        assert_crop(
+            _path_field(entry, "crop", context),
+            _path_field(entry, "reference", context),
+            _int_field(entry, "crop_x", context),
+            _int_field(entry, "crop_y", context),
+            _int_field(entry, "reference_x", context),
+            _int_field(entry, "reference_y", context),
+            _int_field(entry, "width", context),
+            _int_field(entry, "height", context),
+        )
+    else:
+        raise PngError(f"{context} has unsupported mode '{mode}'")
+
+
+def run_batch(spec_text: str) -> None:
+    """Run every prepare and assertion in one JSON spec, stopping at the first failure."""
+    try:
+        decoded: object = json.loads(spec_text)
+    except json.JSONDecodeError as error:
+        raise PngError(f"batch spec is not valid JSON: {error}") from error
+
+    spec = _mapping(decoded, "batch spec")
+    unknown = sorted(set(spec) - {"prepare", "assert"})
+    if unknown:
+        raise PngError(f"batch spec has unsupported keys: {', '.join(unknown)}")
+
+    prepare_value = spec.get("prepare")
+    if prepare_value is not None:
+        for index, item in enumerate(_sequence(prepare_value, "prepare")):
+            if not isinstance(item, str):
+                raise PngError(f"prepare[{index}] must be a string path")
+            prepare_destination(Path(item))
+
+    assert_value = spec.get("assert")
+    if assert_value is not None:
+        for index, item in enumerate(_sequence(assert_value, "assert")):
+            context = f"assert[{index}]"
+            _run_batch_entry(_mapping(item, context), context)
+
+
 def _byte_value(value: str) -> int:
     parsed = int(value)
     if not 0 <= parsed <= MAX_CHANNEL_VALUE:
@@ -384,6 +517,16 @@ def _run_marker(args: argparse.Namespace) -> None:
         args.marker_y,
         expected,
     )
+
+
+def _run_prepare(args: argparse.Namespace) -> None:
+    for path in args.paths:
+        prepare_destination(path)
+
+
+def _run_batch(args: argparse.Namespace) -> None:
+    spec: Path | None = args.spec
+    run_batch(sys.stdin.read() if spec is None else spec.read_text())
 
 
 def _run_crop(args: argparse.Namespace) -> None:
@@ -454,6 +597,18 @@ def build_parser() -> argparse.ArgumentParser:
     crop.add_argument("width", type=_positive_integer)
     crop.add_argument("height", type=_positive_integer)
     crop.set_defaults(action=_run_crop)
+
+    prepare = subparsers.add_parser(
+        "prepare", help="remove destinations and assert each is absent"
+    )
+    prepare.add_argument("paths", type=Path, nargs="+")
+    prepare.set_defaults(action=_run_prepare)
+
+    batch = subparsers.add_parser(
+        "batch", help="run many prepares and assertions from one JSON spec"
+    )
+    batch.add_argument("spec", type=Path, nargs="?", default=None)
+    batch.set_defaults(action=_run_batch)
     return parser
 
 

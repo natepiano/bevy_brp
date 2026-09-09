@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import struct
 import subprocess
 import sys
@@ -99,6 +100,9 @@ def write_extreme_dimensions_png(path: Path) -> None:
 
 
 class ExtrasAssertPngTests(unittest.TestCase):
+    temporary_directory: tempfile.TemporaryDirectory[str]
+    directory: Path
+
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.directory = Path(self.temporary_directory.name)
@@ -241,6 +245,116 @@ class ExtrasAssertPngTests(unittest.TestCase):
         self.assertEqual(match.returncode, 0, match.stderr)
         self.assertNotEqual(mismatch.returncode, 0)
         self.assertIn("crop mismatch", mismatch.stderr)
+
+    def run_batch(self, spec: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(HELPER), "batch"],
+            check=False,
+            capture_output=True,
+            text=True,
+            input=json.dumps(spec),
+        )
+
+    def test_prepare_removes_file_and_rejects_directory(self) -> None:
+        stale = self.directory / "stale.png"
+        write_png(stale, 1, 1, 3, bytes([1, 2, 3]))
+        missing = self.directory / "missing.png"
+
+        removed = self.run_helper("prepare", stale, missing)
+
+        self.assertEqual(removed.returncode, 0, removed.stderr)
+        self.assertFalse(stale.exists())
+        self.assertIn("prepared:", removed.stdout)
+        rejected = self.run_helper("prepare", self.directory)
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertIn("is a directory", rejected.stderr)
+        self.assertTrue(self.directory.is_dir())
+
+    def test_batch_runs_every_assertion_in_one_call(self) -> None:
+        reference = self.directory / "batch_reference.png"
+        crop = self.directory / "batch_crop.png"
+        stale = self.directory / "batch_stale.png"
+        reference_pixels = b"".join(bytes([value, 0, 0]) for value in range(1, 13))
+        write_png(reference, 4, 3, 3, reference_pixels)
+        write_png(crop, 2, 2, 3, bytes([6, 0, 0, 7, 0, 0, 10, 0, 0, 11, 0, 0]))
+        write_png(stale, 1, 1, 3, bytes([9, 9, 9]))
+
+        result = self.run_batch(
+            {
+                "prepare": [str(stale)],
+                "assert": [
+                    {"mode": "present", "path": str(reference)},
+                    {"mode": "dimensions", "path": str(reference), "width": 4, "height": 3},
+                    {"mode": "nonuniform", "path": str(reference)},
+                    {
+                        "mode": "marker",
+                        "path": str(reference),
+                        "image_x": 0,
+                        "image_y": 0,
+                        "marker_x": 1,
+                        "marker_y": 0,
+                        "rgb": [2, 0, 0],
+                    },
+                    {
+                        "mode": "crop",
+                        "crop": str(crop),
+                        "reference": str(reference),
+                        "crop_x": 11,
+                        "crop_y": 21,
+                        "reference_x": 10,
+                        "reference_y": 20,
+                        "width": 2,
+                        "height": 2,
+                    },
+                    {"mode": "absent", "path": str(stale)},
+                ],
+            }
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(stale.exists())
+        for expected in ("prepared:", "present:", "dimensions:", "nonuniform:", "marker:", "crop:", "absent:"):
+            self.assertIn(expected, result.stdout)
+
+    def test_batch_stops_at_first_failed_assertion(self) -> None:
+        reference = self.directory / "stop.png"
+        write_png(reference, 2, 1, 3, bytes([1, 2, 3, 4, 5, 6]))
+
+        result = self.run_batch(
+            {
+                "assert": [
+                    {"mode": "dimensions", "path": str(reference), "width": 9, "height": 9},
+                    {"mode": "present", "path": str(self.directory / "never.png")},
+                ]
+            }
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("expected 9x9", result.stderr)
+        self.assertNotIn("present:", result.stdout)
+        self.assertNotIn("Traceback", result.stdout + result.stderr)
+
+    def test_batch_rejects_malformed_specs(self) -> None:
+        malformed = subprocess.run(
+            [sys.executable, str(HELPER), "batch"],
+            check=False,
+            capture_output=True,
+            text=True,
+            input="{not json",
+        )
+        unsupported_key = self.run_batch({"assert": [], "bogus": 1})
+        unsupported_mode = self.run_batch({"assert": [{"mode": "explode"}]})
+        missing_field = self.run_batch(
+            {"assert": [{"mode": "dimensions", "path": "x.png", "width": 1}]}
+        )
+
+        for result in (malformed, unsupported_key, unsupported_mode, missing_field):
+            self.assertNotEqual(result.returncode, 0)
+            self.assertNotIn("Traceback", result.stdout + result.stderr)
+        self.assertIn("not valid JSON", malformed.stderr)
+        self.assertIn("bogus", unsupported_key.stderr)
+        self.assertIn("explode", unsupported_mode.stderr)
+        self.assertIn("'height'", missing_field.stderr)
 
 
 if __name__ == "__main__":
