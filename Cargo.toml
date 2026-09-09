@@ -41,14 +41,14 @@ paste = "1.0"
 proc-macro2 = "1.0.107"
 quote = "1.0.47"
 regex = "1.13.1"
-reqwest = { version = "0.13.4", features = ["blocking", "json", "stream"] }
-rmcp = { version = "3.1.4", features = ["server", "transport-io"] }
+reqwest = { version = "0.13.5", features = ["blocking", "json", "stream"] }
+rmcp = { version = "3.2.0", features = ["server", "transport-io"] }
 schemars = "1.2.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["preserve_order"] }
 strum = "0.28.0"
 strum_macros = "0.28.0"
-syn = { version = "3.0.4", features = ["extra-traits", "full"] }
+syn = { version = "3.0.5", features = ["extra-traits", "full"] }
 sysinfo = "0.39.6"
 tempfile = "3.27.0"
 thiserror = "2.0"
