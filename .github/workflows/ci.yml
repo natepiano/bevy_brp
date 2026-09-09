@@ -15,6 +15,7 @@ env:
   CARGO_TERM_PROGRESS_WIDTH: 80
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   TAPLO_VERSION: 0.10.0
+  CARGO_DENY_VERSION: 0.19.6
 
 # Cancel duplicate runs
 concurrency:
@@ -52,6 +53,29 @@ jobs:
 
       - name: Check TOML formatting
         run: taplo fmt --check
+
+  # Supply-chain gate: RustSec advisories, license policy, and crate sources.
+  # Reads Cargo.lock and cargo metadata only -- nothing is compiled, so this
+  # needs neither nix nor mold. Config and its reasoning live in deny.toml.
+  deny:
+    name: Cargo Deny
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny@${{ env.CARGO_DENY_VERSION }}
+
+      - name: Check advisories, licenses and sources
+        run: cargo deny check
 
   # Clippy
   clippy:

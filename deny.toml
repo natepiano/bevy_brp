@@ -1,0 +1,58 @@
+# cargo-deny configuration for the bevy_brp workspace.
+# Authored against cargo-deny 0.19.6 -- regenerate `cargo deny init` when
+# upgrading, the schema moves. License list came from `cargo deny list`.
+
+[graph]
+# All targets. We publish bevy_brp_mcp and bevy_brp_extras to crates.io and
+# they run on Windows, so advisories there have to reach us too.
+targets = []
+
+[advisories]
+# Both are `unmaintained` notices, not vulnerabilities, and both report
+# "No safe upgrade is available!". Ignored by ID, not by class, so a new
+# unmaintained crate still fails.
+ignore = [
+  { id = "RUSTSEC-2024-0436", reason = "paste 1.0.15, archived upstream. Only via netstat2 -> netlink-packet-* in bevy_brp_mcp." },
+  { id = "RUSTSEC-2026-0192", reason = "ttf-parser 0.25.1. Only via bevy -> winit -> sctk-adwaita -> ab_glyph." },
+]
+
+[licenses]
+# LGPL-2.1-or-later is deliberately absent: r-efi is the only crate offering it
+# and is multi-licensed, so it passes under MIT/Apache-2.0. A copyleft-only
+# crate should fail this check, not be added here.
+allow = [
+  "0BSD",
+  "Apache-2.0 WITH LLVM-exception",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "CC0-1.0",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "MIT",
+  "MIT-0",
+  "Unicode-3.0",
+  "Unlicense",
+  "Zlib",
+]
+
+[licenses.private]
+# The test apps are `publish = false` and carry no license field.
+ignore = true
+
+[bans]
+# multiple-versions is off by choice, not by default. This graph has 40
+# duplicated crates and every one of them originates inside bevy/wgpu/winit,
+# which we do not control and cannot dedupe. The only response available when
+# the check fires is to add the crate to a skip list -- so the check cannot
+# fail in a way we would act on, and the skip list it needs is longer than the
+# rest of this file. Turn it back on if this workspace ever grows direct
+# dependencies whose versions we actually pick.
+multiple-versions = "allow"
+
+[sources]
+# Everything resolves from crates.io today. A dependency that starts pulling
+# from a git remote should have to be noticed and approved.
+allow-registry   = ["https://github.com/rust-lang/crates.io-index"]
+unknown-git      = "deny"
+unknown-registry = "deny"
