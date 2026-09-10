@@ -5,15 +5,12 @@ use std::time::Duration;
 pub(super) const BRP_DEFAULT_HOST: &str = "127.0.0.1";
 /// `bevy_brp_extras` prefix
 pub(super) const BRP_EXTRAS_PREFIX: &str = "brp_extras/";
-/// HTTP protocol for BRP connections
 pub(super) const BRP_HTTP_PROTOCOL: &str = "http";
 /// JSON-RPC path for BRP requests
 pub(super) const BRP_JSONRPC_PATH: &str = "/jsonrpc";
 /// Maximum characters of the request body to include in error reports
 pub(super) const ERROR_BODY_PREVIEW_CHARS: usize = 500;
-/// MIME type sent in the `Content-Type` header for BRP JSON-RPC requests
 pub(super) const HTTP_CONTENT_TYPE_JSON: &str = "application/json";
-/// HTTP header name carrying the request content type
 pub(super) const HTTP_HEADER_CONTENT_TYPE: &str = "Content-Type";
 /// Timeout for standard (non-streaming) HTTP requests
 pub const HTTP_REQUEST_TIMEOUT: Duration = std::time::Duration::from_secs(30);

@@ -96,7 +96,8 @@ pub(super) fn process_enum(
         *context.depth
     );
 
-    // Use shared function to get variant information
+    // `group_variants_by_signature` maps signatures to their variant names in
+    // `variants_grouped_by_signature`.
     let variants_grouped_by_signature = group_variants_by_signature(context)?;
 
     // Process enum variants, grouped by signature
@@ -422,7 +423,8 @@ fn build_variant_example(
             }
         },
         VariantSignature::Struct(_) => {
-            // Use shared function to assemble struct from children (only includes mutable fields)
+            // `support::assemble_struct_from_children` converts the supplied `children`
+            // to a `Map<String, Value>`; wrap it under `variant_name.short_name()`.
             let field_values = support::assemble_struct_from_children(children);
             Example::Json(json!({ variant_name.short_name(): field_values }))
         },
@@ -620,9 +622,9 @@ fn build_partial_root_examples(
                     context,
                 );
 
-                // Use shared helper to wrap with availability status
-                // Hierarchical selection: parent reason takes precedence (child is unreachable),
-                // otherwise check if nested chain has its own unavailability reason
+                // `support::wrap_example_with_availability` gives the parent's
+                // `variant_unavailable_reason` precedence because the child is unreachable.
+                // Otherwise it checks the children's reasons for `nested_chain`.
                 let root_example = support::wrap_example_with_availability(
                     example,
                     &child_refs,
@@ -648,7 +650,8 @@ fn build_partial_root_examples(
                 )
             };
 
-            // Use shared helper to wrap with availability status
+            // `support::wrap_example_with_availability` builds the `RootExample`
+            // for `this_variant_chain`, retaining parent or child unavailability.
             let root_example = support::wrap_example_with_availability(
                 example,
                 &child_refs,
@@ -869,7 +872,8 @@ fn propagate_partial_root_examples_to_children(
             child.partial_root_examples = Some(partial_root_examples.clone());
         }
 
-        // Use shared helper function to populate root examples
+        // `support::populate_root_examples_from_partials` updates each child's
+        // `EnumPathInfo::root_example` from `partial_root_examples`.
         support::populate_root_examples_from_partials(child_paths, partial_root_examples);
     }
 }

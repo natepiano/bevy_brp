@@ -108,8 +108,8 @@ impl<T: ToolFn> ErasedToolFn for T {
         context: HandlerContext,
     ) -> Pin<Box<dyn Future<Output = CallToolResult> + Send + 'a>> {
         Box::pin(async move {
-            // we're making a judgement call that we passed a reference to call()
-
+            // Pass `context.clone()` to `ToolFn::call`, retaining `context` for
+            // response and framework-error formatting.
             let result = self.call(context.clone()).await;
             result.map_or_else(
                 |error| context.format_framework_error(error),

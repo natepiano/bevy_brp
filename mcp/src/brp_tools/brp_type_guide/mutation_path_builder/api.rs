@@ -156,7 +156,9 @@ pub(in crate::brp_tools::brp_type_guide) fn extract_spawn_insert_example(
     let root_path = mutation_paths.iter().find(|p| (*p.path).is_empty())?;
     let example = root_path.preferred_example();
 
-    // Build appropriate variant based on type
+    // Select `SpawnInsertExample::Spawn` when `is_component`; the earlier check
+    // guarantees the remaining case is `SpawnInsertExample::Resource`.
+    // `Example::NotApplicable` selects guidance explaining the missing example.
     if is_component {
         let agent_guidance = if matches!(example, Example::NotApplicable) {
             NO_COMPONENT_EXAMPLE_TEMPLATE.replace("{}", OPERATION_SPAWN)

@@ -179,7 +179,7 @@ pub(super) fn populate_root_examples_from_partials(
         if let Some(enum_data) = &mut path.enum_path_info
             && !enum_data.variant_chain.is_empty()
         {
-            // Populate new field
+            // Populate `EnumPathInfo::root_example` from `new_partials` by `variant_chain`.
             if let Some(root_example) = new_partials.get(&enum_data.variant_chain) {
                 enum_data.root_example = Some(root_example.clone());
             }

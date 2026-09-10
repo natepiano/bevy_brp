@@ -96,11 +96,12 @@ impl TypeKindBuilder for ArrayMutationBuilder {
             })?
             .to_value();
 
-        // Create array with appropriate size
+        // `extract_array_size(context.type_name())` determines the repetition count,
+        // falling back to `DEFAULT_ARRAY_EXAMPLE_LENGTH` when the size is unavailable.
         let array_size = Self::extract_array_size(context.type_name());
         let size = array_size.unwrap_or(DEFAULT_ARRAY_EXAMPLE_LENGTH);
 
-        // Create array filled with the element example
+        // Repeat `element_example` for every slot in the array example.
         let array = vec![element_example; size];
         Ok(json!(array))
     }

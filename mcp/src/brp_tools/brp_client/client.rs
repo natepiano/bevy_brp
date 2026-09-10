@@ -141,7 +141,7 @@ impl BrpClient {
     /// Low-level BRP execution without format discovery or result transformation
     ///
     /// This method provides direct access to BRP communication without any automatic
-    /// format discovery or result type conversion. It returns raw `BrpClientResult`
+    /// format discovery or result type conversion. It returns raw `ResponseStatus`
     /// which can be either `Success(Option<Value>)` or `Error(BrpClientError)`.
     ///
     /// Primary use cases:
@@ -152,12 +152,14 @@ impl BrpClient {
         self.execute_direct_internal().await
     }
 
-    /// Raw BRP execution without any error enhancement (used internally to prevent recursion)
+    /// Execute a BRP request and return the raw `ResponseStatus`.
     ///
-    /// This method is identical to `execute_direct_internal()` but bypasses all error enhancement
-    /// to prevent recursion when `TypeSchemaEngine` needs to fetch registry data.
-    pub async fn execute_direct_internal_no_enhancement(&self) -> Result<ResponseStatus> {
-        // Create HTTP client with our data
+    /// Type-guide tools use this entry point so an error response does not trigger the
+    /// `TypeGuide` fetch in `execute`, which would recurse back into the registry. The
+    /// response still passes through `to_response_status`, which appends guidance for
+    /// missing `bevy_brp_extras` methods.
+    pub async fn execute_without_type_guide(&self) -> Result<ResponseStatus> {
+        // Pass `brp_method`, `port`, and cloned `params` to `BrpHttpClient::new`.
         let brp_http_client =
             BrpHttpClient::new(self.brp_method.as_str(), self.port, self.params.clone());
 
@@ -167,8 +169,8 @@ impl BrpClient {
         // Parse JSON-RPC response
         let brp_response = self.parse_json_response(response).await?;
 
-        // Convert to BrpClientResult with special handling for bevy_brp_extras
-        // NO ERROR ENHANCEMENT - return directly
+        // `to_response_status` returns `ResponseStatus`, adding plugin guidance for
+        // missing `bevy_brp_extras` methods without fetching type information.
         Ok(self.to_response_status(brp_response))
     }
 
@@ -180,7 +182,7 @@ impl BrpClient {
     /// - Returns the raw response for the caller to process
     /// - Provides the same rich error context as other `BrpClient` methods
     pub async fn execute_streaming(&self) -> Result<Response> {
-        // Create HTTP client with our data
+        // Pass `brp_method`, `port`, and cloned `params` to `BrpHttpClient::new`.
         let brp_http_client =
             BrpHttpClient::new(self.brp_method.as_str(), self.port, self.params.clone());
 
@@ -195,7 +197,7 @@ impl BrpClient {
     /// version we still allow to be called by bespoke tools like `brp_shutdown` and `brp_status`
     /// and the like.
     async fn execute_direct_internal(&self) -> Result<ResponseStatus> {
-        // Create HTTP client with our data
+        // Pass `brp_method`, `port`, and cloned `params` to `BrpHttpClient::new`.
         let brp_http_client =
             BrpHttpClient::new(self.brp_method.as_str(), self.port, self.params.clone());
 
@@ -205,7 +207,8 @@ impl BrpClient {
         // Parse JSON-RPC response
         let brp_response = self.parse_json_response(response).await?;
 
-        // Convert to BrpClientResult with special handling for bevy_brp_extras
+        // `to_response_status` returns `ResponseStatus`, adding plugin guidance for
+        // missing `bevy_brp_extras` methods.
         Ok(self.to_response_status(brp_response))
     }
 

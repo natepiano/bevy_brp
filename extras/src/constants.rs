@@ -30,7 +30,6 @@ pub(crate) const METHOD_SHUTDOWN: &str = "shutdown";
 pub(crate) const METHOD_TYPE_TEXT: &str = "type_text";
 
 // environment variables
-/// Environment variable that overrides the BRP extras HTTP port
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const BRP_EXTRAS_PORT_ENV_VAR: &str = "BRP_EXTRAS_PORT";
 
@@ -42,7 +41,6 @@ pub(crate) const MISSING_REQUEST_PARAMETERS_MESSAGE: &str = "Missing request par
 ///
 /// This matches Bevy's `RemoteHttpPlugin` default port to ensure compatibility.
 pub const DEFAULT_REMOTE_PORT: u16 = 15702;
-/// File extension used by screenshot output.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const IMAGE_EXTENSION_PNG: &str = "png";
 

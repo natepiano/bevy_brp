@@ -8,14 +8,15 @@
 //!
 //! ## Control Flow Pattern
 //!
-//! Internal builders return `MutationResult` which uses [`NotMutableReason`] as the error type:
+//! Internal builders return `Result<_, BuilderError>`:
 //! ```rust,ignore
-//! pub(super) type MutationResult = Result<Vec<MutationPathInternal>, NotMutableReason>;
+//! let paths: Result<Vec<MutationPathInternal>, BuilderError> = builder.build_paths(context);
 //! ```
 //!
-//! When a type cannot be mutated (missing `Reflect`, recursion limits, etc.), builders return
-//! `Err(NotMutableReason::*)` rather than continuing processing. This gets caught at the choke
-//! point in `recurse_mutation_paths()` and converted to user output via `build_not_mutable_path()`.
+//! When a type cannot be mutated (missing registry entries, recursion limits, etc.), builders
+//! return `Err(BuilderError::NotMutable(reason))`. `recurse_mutation_paths` converts that reason
+//! into a successful path result through `MutationPathBuilder::build_not_mutable_path`.
+//! `BuilderError::System` remains an error and propagates to the caller.
 //!
 //! This design allows:
 //! - Clean early returns from deeply nested recursion

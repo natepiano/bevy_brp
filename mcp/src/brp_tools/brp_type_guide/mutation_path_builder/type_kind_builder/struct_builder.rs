@@ -38,10 +38,9 @@ impl TypeKindBuilder for StructMutationBuilder {
         // require_registry_schema() returns Result with standard error
         let schema = context.require_registry_schema()?;
 
-        // Extract properties from schema - use proper schema methods
-        // Note: Missing properties field is valid for empty structs (e.g., Camera2d)
+        // `schema.get_properties()` reads the field map; its absence produces an empty
+        // child iterator for marker structs such as `Camera2d`.
         let Some(properties) = schema.get_properties() else {
-            // No properties field means empty struct (marker struct)
             return Ok(vec![].into_iter());
         };
 
@@ -92,7 +91,8 @@ impl TypeKindBuilder for StructMutationBuilder {
             return Ok(json!({}));
         }
 
-        // Use shared function to build struct object from child examples
+        // `support::assemble_struct_from_children` returns a `Map<String, Value>`
+        // of child examples, which this caller wraps in `Value::Object`.
         let struct_obj = support::assemble_struct_from_children(&children);
 
         Ok(Value::Object(struct_obj))

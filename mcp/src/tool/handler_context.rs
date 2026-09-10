@@ -171,7 +171,9 @@ impl HandlerContext {
     ) -> Result<ToolCallJsonResponse> {
         let large_response_config = LargeResponseConfig::default();
 
-        // Check size and handle
+        // Compare `estimated_tokens` with `LargeResponseConfig::max_tokens`.
+        // Above the limit, save `response.result` when present and replace that field
+        // with file metadata while retaining the rest of the response.
         let response_json = serde_json::to_string(&response)
             .change_context(Error::General("Failed to serialize response".to_string()))?;
         let estimated_tokens = response_json.len() / CHARS_PER_TOKEN;

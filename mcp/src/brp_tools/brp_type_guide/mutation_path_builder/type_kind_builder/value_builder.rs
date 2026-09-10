@@ -37,7 +37,8 @@ impl TypeKindBuilder for ValueMutationBuilder {
         context: &RecursionContext,
         _: HashMap<MutationPathDescriptor, Example>,
     ) -> std::result::Result<Value, BuilderError> {
-        // For leaf types without mutation knowledge, return appropriate reason
+        // A leaf type without an example returns `BuilderError::NotMutable` with
+        // `NotMutableReason::NoExampleAvailable` naming `context.type_name()`.
         Err(BuilderError::NotMutable(
             NotMutableReason::NoExampleAvailable(context.type_name().clone()),
         ))

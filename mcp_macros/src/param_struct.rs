@@ -21,10 +21,11 @@ pub(crate) fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
         panic!("ParamStruct can only be derived for structs");
     };
 
-    // Convert fields to a vec of references for the shared function
+    // Collect field references for `field_extraction::extract_field_data`.
     let fields: Vec<_> = data_struct.fields.iter().collect();
 
-    // Extract field information using shared function
+    // `extraction_result` contains the placements and message-template field
+    // returned by `field_extraction::extract_field_data`.
     let extraction_result = field_extraction::extract_field_data(&fields);
 
     // Validate that there's no #[to_message] attribute

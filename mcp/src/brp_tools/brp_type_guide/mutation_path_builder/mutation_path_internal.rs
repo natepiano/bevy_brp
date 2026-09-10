@@ -130,10 +130,11 @@ impl MutationPathInternal {
         // Check for Default trait once at the top for root paths
         let root_default = self.has_default_for_root(field_schema);
 
-        // Generate description with proper handling of PartiallyMutable status
+        // `resolve_description` uses `self.mutability` and `root_default` to select guidance.
         let description = self.resolve_description(&type_kind, root_default, field_schema);
 
-        // Resolve the appropriate path example based on mutability status
+        // `resolve_path_example` selects a `PathExample` from `self.mutability`,
+        // `root_default`, and `self.example`.
         let path_example = self.resolve_path_example(root_default);
 
         // Extract enum-specific metadata only for mutable/partially mutable paths

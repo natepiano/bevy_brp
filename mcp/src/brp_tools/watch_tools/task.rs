@@ -474,7 +474,9 @@ async fn consume_stream_chunks(
     Ok(total_chunks)
 }
 
-/// Handle connection errors and log appropriately
+/// Record a connection failure with `BufferedWatchLogger::write_update` as
+/// `CONNECTION_ERROR_EVENT`. Include `conn_params.kind`, `conn_params.entity_id`, the error,
+/// elapsed seconds since `start_time`, and the current timestamp.
 async fn handle_connection_error(
     error: Report<Error>,
     conn_params: &WatchConnectionParams,

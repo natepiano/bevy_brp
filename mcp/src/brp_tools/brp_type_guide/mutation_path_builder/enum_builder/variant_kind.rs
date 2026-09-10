@@ -117,12 +117,13 @@ fn extract_struct_variant_signature(
 fn extract_variant_qualified_name(v: &Value, enum_type: &BrpTypeName) -> Result<VariantName> {
     // First try to get the type path for the full qualified name
     if let Some(type_path) = v.get_field(SchemaField::TypePath).and_then(Value::as_str) {
-        // Use the new parser to handle nested generics properly
+        // `type_parser::extract_simplified_variant_name` removes module paths
+        // while preserving nested generic arguments in the variant name.
         let simplified_name = type_parser::extract_simplified_variant_name(type_path);
         return Ok(VariantName::from(simplified_name));
     }
 
-    // Fallback to just the variant name if we can't parse it
+    // Use `SchemaField::ShortPath` when `SchemaField::TypePath` is missing or not a string.
     v.get_field(SchemaField::ShortPath)
         .and_then(Value::as_str)
         .map(|s| VariantName::from(s.to_string()))

@@ -82,25 +82,25 @@ pub(super) const TYPE_GLAM_VEC4: &str = "glam::Vec4";
 // json fields
 pub(super) const DURATION_FIELD_NANOS: &str = "nanos";
 pub(super) const DURATION_FIELD_SECS: &str = "secs";
-pub(super) const MUTABLE_FIELD: &str = "mutable";
 pub(super) const MUTABILITY_MESSAGE_FIELD: &str = "message";
+pub(super) const MUTABLE_FIELD: &str = "mutable";
 pub(super) const NOT_MUTABLE_FIELD: &str = "not_mutable";
 pub(super) const PARTIALLY_MUTABLE_FIELD: &str = "partially_mutable";
 pub(super) const WINDOW_TARGET_FIELD: &str = "Window";
 pub(super) const WINDOW_TARGET_PRIMARY: &str = "Primary";
 
 // non-zero integer type constants
-pub(super) const TYPE_CORE_NON_ZERO_I8: &str = "core::num::NonZeroI8";
+pub(super) const TYPE_CORE_NON_ZERO_I128: &str = "core::num::NonZeroI128";
 pub(super) const TYPE_CORE_NON_ZERO_I16: &str = "core::num::NonZeroI16";
 pub(super) const TYPE_CORE_NON_ZERO_I32: &str = "core::num::NonZeroI32";
 pub(super) const TYPE_CORE_NON_ZERO_I64: &str = "core::num::NonZeroI64";
-pub(super) const TYPE_CORE_NON_ZERO_I128: &str = "core::num::NonZeroI128";
+pub(super) const TYPE_CORE_NON_ZERO_I8: &str = "core::num::NonZeroI8";
 pub(super) const TYPE_CORE_NON_ZERO_ISIZE: &str = "core::num::NonZeroIsize";
-pub(super) const TYPE_CORE_NON_ZERO_U8: &str = "core::num::NonZeroU8";
+pub(super) const TYPE_CORE_NON_ZERO_U128: &str = "core::num::NonZeroU128";
 pub(super) const TYPE_CORE_NON_ZERO_U16: &str = "core::num::NonZeroU16";
 pub(super) const TYPE_CORE_NON_ZERO_U32: &str = "core::num::NonZeroU32";
 pub(super) const TYPE_CORE_NON_ZERO_U64: &str = "core::num::NonZeroU64";
-pub(super) const TYPE_CORE_NON_ZERO_U128: &str = "core::num::NonZeroU128";
+pub(super) const TYPE_CORE_NON_ZERO_U8: &str = "core::num::NonZeroU8";
 pub(super) const TYPE_CORE_NON_ZERO_USIZE: &str = "core::num::NonZeroUsize";
 
 // operation guidance constants
@@ -118,9 +118,7 @@ pub(super) const SPAWN_COMPONENT_GUIDANCE: &str =
     "The 'example' below can be used to spawn this component on an entity.";
 
 // operation name constants
-/// Operation word for Resource default guidance
 pub(super) const OPERATION_INSERT: &str = "insert";
-/// Operation word for Component default guidance
 pub(super) const OPERATION_SPAWN: &str = "spawn";
 
 // primitive type constants
@@ -131,11 +129,8 @@ pub(super) const TYPE_F64: &str = "f64";
 pub(super) const TYPE_UNIT: &str = "()";
 
 // reflection trait constants
-/// Reflection trait name for Bevy components
 pub(super) const REFLECT_TRAIT_COMPONENT: &str = "Component";
-/// Reflection trait name for Default implementation
 pub(super) const REFLECT_TRAIT_DEFAULT: &str = "Default";
-/// Reflection trait name for Bevy resources
 pub(super) const REFLECT_TRAIT_RESOURCE: &str = "Resource";
 
 // signed integer type constants
@@ -150,8 +145,8 @@ pub(super) const TYPE_ISIZE: &str = "isize";
 pub(super) const TYPE_ALLOC_STRING: &str = "alloc::string::String";
 pub(super) const TYPE_STD_STRING: &str = "std::string::String";
 pub(super) const TYPE_STR: &str = "str";
-pub(super) const TYPE_STR_REF: &str = "&str";
 pub(super) const TYPE_STRING: &str = "String";
+pub(super) const TYPE_STR_REF: &str = "&str";
 
 // time type constants
 pub(super) const TYPE_CORE_DURATION: &str = "core::time::Duration";

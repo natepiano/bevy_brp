@@ -16,7 +16,8 @@ use super::constants::TRACE_LOG_FILENAME;
 use super::constants::TRACING_FILTERED_TARGET_PREFIXES;
 use super::lazy_file_writer::LazyFileWriter;
 
-static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(TracingLevel::Warn.code()); // Default to WARN level for "do no harm"
+// `DynamicFilter` initially accepts errors and warnings through `TracingLevel::Warn`.
+static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(TracingLevel::Warn.code());
 
 /// Dynamic tracing filter that can be updated at runtime
 #[derive(Clone)]
@@ -94,8 +95,10 @@ impl TracingLevel {
 
         subscriber.init();
 
-        // Don't log anything here - it would create the file and violate "do no harm"
-        // The file should only be created when the user explicitly sets a tracing level
+        // A startup event accepted by `DynamicFilter` obtains a `LazyWriter` from
+        // `LazyFileWriter`; `LazyWriter::write` then opens the trace file.
+        // An accepted event can create the file at the default `TracingLevel::Warn`
+        // without an explicit tracing-level change, so initialization emits no event.
     }
 
     /// Get the current tracing level

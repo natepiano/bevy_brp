@@ -19,7 +19,10 @@ use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
 
-/// Launch a detached process with proper setup
+/// Launch a process with the `command` arguments and configured environment values.
+///
+/// Redirect stdout and stderr to `log_file`, set `process_group(0)` on Unix, and
+/// reap the child with `child.wait()` on a background thread.
 pub(super) fn launch_detached_process(
     command: &Command,
     working_dir: &Path,

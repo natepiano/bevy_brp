@@ -14,8 +14,8 @@ pub(super) const MCP_CRATE_NAME: &str = "bevy_brp_mcp";
 
 // response fields
 pub(super) const BRP_LEVEL_FIELD: &str = "brp_level";
-pub(super) const BUILD_BUILT_FIELD: &str = "built";
 pub(super) const BUILDS_FIELD: &str = "builds";
+pub(super) const BUILD_BUILT_FIELD: &str = "built";
 pub(super) const KIND_FIELD: &str = "kind";
 pub(super) const NAME_FIELD: &str = "name";
 pub(super) const PACKAGE_NAME_FIELD: &str = "package_name";

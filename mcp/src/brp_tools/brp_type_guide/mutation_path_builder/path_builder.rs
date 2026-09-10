@@ -249,15 +249,16 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
 
         // For each variant chain, assemble wrapped example from compatible children
         for chain in all_chains {
-            // Use shared choke point for filtering and value extraction
+            // `support::collect_children_for_chain` selects direct children compatible
+            // with `chain`, excludes `Mutability::NotMutable`, and extracts their examples.
             let examples_for_chain =
                 support::collect_children_for_chain(child_paths, context, Some(&chain));
 
-            // Convert to values for assembly
-            // Assemble from filtered children
+            // `builder.assemble_from_children` assembles the filtered examples into a value.
             let assembled_value = builder.assemble_from_children(context, examples_for_chain)?;
 
-            // Use shared helper to wrap with availability status
+            // `support::wrap_example_with_availability` builds a `RootExample`
+            // from the assembled value and the children's unavailability reasons for `chain`.
             let root_example = support::wrap_example_with_availability(
                 Example::Json(assembled_value),
                 child_paths,
@@ -418,7 +419,9 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
         // Compute parent's mutation status from children's statuses
         let (parent_status, mutability_reason) = determine_parent_mutability(context, &all_paths);
 
-        // Build examples appropriately based on mutation status
+        // `parent_status` selects `Example::NotApplicable` for `NotMutable`, an example
+        // assembled from `Mutable` children for `PartiallyMutable`, or `final_example` for
+        // `Mutable`.
         let example_to_use: Example = match parent_status {
             Mutability::NotMutable => Example::NotApplicable,
             Mutability::PartiallyMutable => {
@@ -486,7 +489,7 @@ pub(super) fn recurse_mutation_paths(
     context: &RecursionContext,
 ) -> Result<Vec<MutationPathInternal>> {
     let mutation_result = match type_kind {
-        // Enum is distinct from the rest but now returns MutationResult too
+        // `process_enum` and the other builders return `Result<_, BuilderError>`.
         TypeKind::Enum => enum_builder::process_enum(context),
         TypeKind::Struct => MutationPathBuilder::new(StructMutationBuilder).build_paths(context),
         TypeKind::Tuple | TypeKind::TupleStruct => {
@@ -499,8 +502,8 @@ pub(super) fn recurse_mutation_paths(
         TypeKind::Value => MutationPathBuilder::new(ValueMutationBuilder).build_paths(context),
     };
 
-    // Convert BuilderError to public Result interface at module boundary
-    // This is the choke point where NotMutableReason becomes a success with NotMutable path
+    // Convert `BuilderError::NotMutable(reason)` into an `Ok` path vector through
+    // `build_not_mutable_path`; propagate `BuilderError::System` as an error.
     match mutation_result {
         Ok(paths) => Ok(paths),
         Err(BuilderError::NotMutable(reason)) => Ok(vec![MutationPathBuilder::<
