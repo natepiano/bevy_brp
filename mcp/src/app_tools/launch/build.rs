@@ -48,6 +48,19 @@ pub(super) enum BuildScope {
     Package,
 }
 
+impl BuildScope {
+    /// Directory cargo runs in under this scope.
+    ///
+    /// Cargo selects packages relative to its working directory, so the workspace scope
+    /// has to run from the workspace root for `--workspace` to mean the whole workspace.
+    const fn build_dir<'a>(self, manifest_dir: &'a Path, workspace_root: &'a Path) -> &'a Path {
+        match self {
+            Self::Workspace => workspace_root,
+            Self::Package => manifest_dir,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(super) enum BuildState {
     NotFound,
@@ -129,16 +142,10 @@ fn build_cargo_command(
     scope: BuildScope,
 ) -> Command {
     let mut command = Command::new(CARGO_COMMAND_NAME);
-    match scope {
-        BuildScope::Workspace => {
-            command.current_dir(workspace_root);
-            command.arg(CARGO_BUILD_SUBCOMMAND);
-            command.arg(CARGO_WORKSPACE_FLAG);
-        },
-        BuildScope::Package => {
-            command.current_dir(manifest_dir);
-            command.arg(CARGO_BUILD_SUBCOMMAND);
-        },
+    command.current_dir(scope.build_dir(manifest_dir, workspace_root));
+    command.arg(CARGO_BUILD_SUBCOMMAND);
+    if scope == BuildScope::Workspace {
+        command.arg(CARGO_WORKSPACE_FLAG);
     }
 
     target_type.add_cargo_args(&mut command, target_name);
@@ -157,14 +164,14 @@ fn execute_build_command(
     target_name: &str,
     target_type: TargetType,
     profile: &str,
-    manifest_dir: &Path,
+    build_dir: &Path,
 ) -> Result<Output> {
     debug!("Running cargo build for {target_type} '{target_name}' with command: {command:?}");
 
     let output = command.output().map_err(|e| {
         Error::ProcessManagement(format!(
             "Failed to run cargo build for {target_type} '{target_name}' (profile: {profile}, dir: {}): {e}",
-            manifest_dir.display()
+            build_dir.display()
         ))
     })?;
 
@@ -172,7 +179,7 @@ fn execute_build_command(
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(Error::ProcessManagement(format!(
             "Cargo build failed for {target_type} '{target_name}' (profile: {profile}, dir: {}): {stderr}",
-            manifest_dir.display()
+            build_dir.display()
         ))
         .into());
     }
@@ -240,7 +247,7 @@ pub(super) fn run_cargo_build(
         target_name,
         target_type,
         profile,
-        manifest_dir,
+        scope.build_dir(manifest_dir, workspace_root),
     )?;
     let build_state = parse_build_output(&output.stdout, target_name);
     log_build_result(build_state, target_name, target_type);

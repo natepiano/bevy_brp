@@ -8,7 +8,7 @@ The response includes a launched_as field ("app" or "example") indicating how th
 
 If the target is not found as either type, returns an enriched error with an available_targets array listing all apps and examples (name, kind, path). Present these to the user as a table so they can pick the correct target.
 
-Optional args parameter passes command-line arguments to the launched process. For apps, args are appended directly. For examples, args are passed after a `--` separator (cargo run --example foo -- args...).
+Optional args parameter passes command-line arguments to the launched process. Apps and examples both run their built binary directly, so args are appended to it unchanged.
 
 Features: Non-blocking execution, temp directory logs, debug/release profiles, multi-instance support.
 
@@ -18,7 +18,8 @@ Multi-instance launching:
 
 Notes:
 - App launches use a lock-free freshness check before invoking Cargo. If the binary appears up to date, the tool launches it directly without running cargo build. If the binary is missing, stale, or freshness cannot be determined confidently, the tool runs cargo build first.
-- Example launches always invoke cargo run --example. Cargo decides whether the example is already fresh or needs rebuilding.
+- Example launches always invoke cargo build before running, so cargo decides whether the example is already fresh or needs rebuilding. The freshness short-circuit above applies to apps only.
+- Builds run from the workspace root with --workspace so they reuse the artifacts a workspace build already produced. A target name defined by more than one member of the same workspace is built with only its own package selected instead, because cargo applies --bin and --example to every package it selects.
 - Optional `path` parameter overrides the default search roots (MCP workspace roots / cwd). When provided, only the specified OS-level directory is searched for Bevy projects.
 - If multiple targets with the same name exist in different packages, you must specify the package_name parameter.
 - `package_name` matches the `package_name` field returned by `brp_list_bevy` for exact disambiguation.
