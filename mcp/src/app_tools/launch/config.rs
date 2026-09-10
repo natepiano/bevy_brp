@@ -9,6 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::build;
+use super::build::BuildScope;
 use super::build::BuildState;
 use super::build_freshness;
 use super::build_freshness::FreshnessCheckResult;
@@ -149,7 +150,7 @@ pub(super) trait LaunchConfigTrait: Clone {
 
     fn extra_log_info(&self, target: &BevyTarget) -> Option<String>;
 
-    fn ensure_built(&self, target: &BevyTarget) -> Result<BuildState> {
+    fn ensure_built(&self, target: &BevyTarget, scope: BuildScope) -> Result<BuildState> {
         if Self::TARGET_TYPE == TargetType::App {
             let freshness = build_freshness::check_target_freshness(target, self.profile());
             match &freshness {
@@ -176,6 +177,8 @@ pub(super) trait LaunchConfigTrait: Clone {
             Self::TARGET_TYPE,
             self.profile(),
             manifest_dir,
+            &target.workspace_root,
+            scope,
         )
     }
 }
@@ -250,10 +253,9 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
 
     fn set_port(&mut self, port: Port) { self.port = port; }
 
-    fn build_command(&self, _: &BevyTarget) -> Command {
-        build::build_cargo_example_command(
-            &self.target,
-            self.profile(),
+    fn build_command(&self, target: &BevyTarget) -> Command {
+        build::build_app_command(
+            &target.get_binary_path(self.profile()),
             Some(self.port),
             self.env.as_ref(),
             self.arguments.as_deref(),

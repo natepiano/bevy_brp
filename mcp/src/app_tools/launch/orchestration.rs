@@ -8,6 +8,7 @@ use tracing::debug;
 use tracing::warn;
 
 use super::build;
+use super::build::BuildScope;
 use super::build::BuildState;
 use super::config;
 use super::config::LaunchParams;
@@ -188,10 +189,30 @@ fn launch_target_with_cached<T: config::LaunchConfigTrait>(
 
     debug!("Environment variable: BRP_EXTRAS_PORT={}", config.port());
 
+    // cargo applies --bin and --example to every package it selects, so a name that
+    // two members of one workspace both define would build both and write them to a
+    // single output path. Record each candidate's workspace before the lookup below
+    // consumes the list, then keep the build package-scoped when the name repeats.
+    let candidate_workspaces: Vec<PathBuf> = cached_targets
+        .iter()
+        .map(|candidate| candidate.workspace_root.clone())
+        .collect();
+
     let target = find_and_validate_target_with_cache(config, search_paths, cached_targets)
         .map_err(handle_target_discovery_error)?;
 
-    let build_state = config.ensure_built(&target)?;
+    let shares_name_in_workspace = candidate_workspaces
+        .iter()
+        .filter(|workspace| **workspace == target.workspace_root)
+        .count()
+        > 1;
+    let build_scope = if shares_name_in_workspace {
+        BuildScope::Package
+    } else {
+        BuildScope::Workspace
+    };
+
+    let build_state = config.ensure_built(&target, build_scope)?;
     match build_state {
         BuildState::Fresh => debug!("Target was already up to date, launching immediately"),
         BuildState::Rebuilt => debug!("Target was rebuilt before launch"),

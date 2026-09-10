@@ -17,16 +17,36 @@ use super::constants::CARGO_RELEASE_FLAG;
 use super::logging;
 use crate::app_tools::constants::CARGO_BUILD_SUBCOMMAND;
 use crate::app_tools::constants::CARGO_COMMAND_NAME;
-use crate::app_tools::constants::CARGO_EXAMPLE_FLAG;
 use crate::app_tools::constants::CARGO_MESSAGE_FORMAT_JSON_FLAG;
-use crate::app_tools::constants::CARGO_RUN_SUBCOMMAND;
+use crate::app_tools::constants::CARGO_WORKSPACE_FLAG;
 use crate::app_tools::constants::PROFILE_RELEASE;
-use crate::app_tools::constants::USER_ARGUMENT_SEPARATOR;
 use crate::app_tools::targets::TargetType;
 use crate::brp_tools::BRP_EXTRAS_PORT_ENV_VAR;
 use crate::brp_tools::Port;
 use crate::error::Error;
 use crate::error::Result;
+
+/// Which packages cargo selects when it builds a launch target.
+///
+/// Cargo unifies features over the packages it selects, not over the workspace, so
+/// `cargo build --example x` run inside one package resolves a different feature set
+/// for a shared dependency than `cargo build --workspace` resolves for the same
+/// dependency. Those two sets compile to separate artifacts, so a developer who runs
+/// `cargo clippy --workspace` and then launches a target compiles the dependency graph
+/// twice. Selecting the whole workspace makes a launch build reuse what a workspace
+/// build already produced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum BuildScope {
+    /// Select every workspace member, resolving features the way a bare
+    /// `cargo build --workspace` does. Cargo applies `--bin` and `--example` to every
+    /// package it selects, so this is only correct when the target name is unique
+    /// within the workspace.
+    Workspace,
+    /// Select only the package that holds the target. Required when more than one
+    /// member of the workspace defines a target under this name, because building
+    /// both would write them to a single output path.
+    Package,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum BuildState {
@@ -85,33 +105,6 @@ pub(super) fn setup_launch_logging(
     Ok((log_file_path, log_file_for_redirect))
 }
 
-pub(super) fn build_cargo_example_command(
-    example_name: &str,
-    profile: &str,
-    port: Option<Port>,
-    env: Option<&HashMap<String, String>>,
-    command_line_arguments: Option<&[String]>,
-) -> Command {
-    let mut command = Command::new(CARGO_COMMAND_NAME);
-    command
-        .arg(CARGO_RUN_SUBCOMMAND)
-        .arg(CARGO_EXAMPLE_FLAG)
-        .arg(example_name);
-
-    if profile == PROFILE_RELEASE {
-        command.arg(CARGO_RELEASE_FLAG);
-    }
-
-    if let Some(user_arguments) = command_line_arguments {
-        command.arg(USER_ARGUMENT_SEPARATOR).args(user_arguments);
-    }
-
-    set_brp_env_vars(&mut command, port);
-    set_user_env_vars(&mut command, env);
-
-    command
-}
-
 pub(super) fn build_app_command(
     binary_path: &Path,
     port: Option<Port>,
@@ -132,10 +125,21 @@ fn build_cargo_command(
     target_type: TargetType,
     profile: &str,
     manifest_dir: &Path,
+    workspace_root: &Path,
+    scope: BuildScope,
 ) -> Command {
     let mut command = Command::new(CARGO_COMMAND_NAME);
-    command.current_dir(manifest_dir);
-    command.arg(CARGO_BUILD_SUBCOMMAND);
+    match scope {
+        BuildScope::Workspace => {
+            command.current_dir(workspace_root);
+            command.arg(CARGO_BUILD_SUBCOMMAND);
+            command.arg(CARGO_WORKSPACE_FLAG);
+        },
+        BuildScope::Package => {
+            command.current_dir(manifest_dir);
+            command.arg(CARGO_BUILD_SUBCOMMAND);
+        },
+    }
 
     target_type.add_cargo_args(&mut command, target_name);
 
@@ -220,8 +224,17 @@ pub(super) fn run_cargo_build(
     target_type: TargetType,
     profile: &str,
     manifest_dir: &Path,
+    workspace_root: &Path,
+    scope: BuildScope,
 ) -> Result<BuildState> {
-    let mut command = build_cargo_command(target_name, target_type, profile, manifest_dir);
+    let mut command = build_cargo_command(
+        target_name,
+        target_type,
+        profile,
+        manifest_dir,
+        workspace_root,
+        scope,
+    );
     let output = execute_build_command(
         &mut command,
         target_name,
