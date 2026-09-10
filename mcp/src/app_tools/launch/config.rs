@@ -321,16 +321,12 @@ pub(super) fn build_launch_result<T: LaunchConfigTrait>(
         } else {
             None
         },
-        binary_path: if T::TARGET_TYPE == TargetType::App {
-            Some(
-                target
-                    .get_binary_path(config.profile())
-                    .display()
-                    .to_string(),
-            )
-        } else {
-            None
-        },
+        binary_path: Some(
+            target
+                .get_binary_path(config.profile())
+                .display()
+                .to_string(),
+        ),
         launched_as: Some(T::TARGET_TYPE.to_string()),
         duplicate_paths: None,
         message_template: Some(message),
