@@ -42,7 +42,13 @@ schemars.workspace   = true
 serde.workspace      = true
 serde_json.workspace = true
 
-# Test apps use same features as extras
+# The full default set is required here, not a leftover from before the workspace
+# started trimming features. examples/extras_plugin.rs spawns one entity per Bevy
+# component so the type-guide and mutation tools have real targets, which reaches
+# bevy::gltf, bevy::audio, bevy::animation, bevy::light, bevy::pbr,
+# bevy::anti_alias and bevy::world_serialization. Cargo resolves features per
+# crate, so a narrower list would break that example, not only the four smaller
+# targets beside it. extras, by contrast, resolves to five bevy features.
 bevy = { workspace = true, default-features = true }
 
 [lints]

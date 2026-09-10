@@ -21,5 +21,9 @@ path = "examples/extras_plugin_duplicate.rs"
 workspace = true
 
 [dependencies]
+# Same feature set as bevy_brp_test_apps on purpose. `cargo build --example` runs
+# with this package selected alone, so a narrower list would resolve to its own
+# bevy feature permutation and compile the graph again instead of reusing the
+# artifacts the test-app build already produced.
 bevy            = { workspace = true, default-features = true }
 bevy_brp_extras = { workspace = true }
