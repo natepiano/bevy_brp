@@ -53,7 +53,7 @@ Validate that `package_name` parameter successfully resolves conflicts when mult
 - `args` are passed through to examples via `--` separator
 
 ## Special Notes
-- **Current test environment**: Duplicate examples exist (`extras_plugin_duplicate` in `test-duplicate-a` and `test-duplicate-b`)
+- **Current test environment**: Duplicate examples exist - `extras_plugin_duplicate` is defined by packages `test-app-a` and `test-app-b`, which live in the `test-duplicate-a` and `test-duplicate-b` directories. `package_name` takes the package name, not the directory name.
 - **Search order fixture**: The `test_app` example in `test-duplicate-a/examples/test_app.rs` intentionally shares its name with the `test_app` binary in `test-app/src/bin/test_app.rs`. See `test-duplicate-a/Cargo.toml` for documentation.
 - **Args fixture**: Both `test_app` binaries (app and example) log `MARKER:<value>` at info level when launched with `--marker <value>`. This is used to verify args passthrough.
 - **IMPORTANT**: Missing duplicate examples is a FAILED test, not SKIPPED - the test environment must provide duplicate examples

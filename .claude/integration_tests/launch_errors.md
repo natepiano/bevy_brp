@@ -53,7 +53,7 @@ Validate error handling and message quality when package disambiguation fails or
 - Error handling provides consistent, actionable guidance
 
 ## Special Notes
-- **Current test environment**: Duplicate examples exist (`extras_plugin_duplicate` in `test-duplicate-a` and `test-duplicate-b`)
+- **Current test environment**: Duplicate examples exist - `extras_plugin_duplicate` is defined by packages `test-app-a` and `test-app-b`, which live in the `test-duplicate-a` and `test-duplicate-b` directories. `package_name` takes the package name, not the directory name.
 - **IMPORTANT**: Missing duplicate examples is a FAILED test, not SKIPPED - the test environment must provide duplicate examples
 - Focus is on error handling and package disambiguation logic
 
