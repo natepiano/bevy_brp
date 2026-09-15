@@ -1,0 +1,4 @@
+trunk = "main"
+maximum_reservations = 128
+maximum_ordering_edges = 512
+gate_mode = "observe"
