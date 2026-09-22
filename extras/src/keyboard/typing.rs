@@ -6,6 +6,7 @@ use std::str::FromStr;
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy::window::WindowEvent;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
@@ -187,16 +188,21 @@ pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World
 pub(super) fn process_text_typing(
     mut commands: Commands,
     mut query: Query<(Entity, &mut TextTypingQueue)>,
+    primary_window: Query<Entity, With<PrimaryWindow>>,
     mut keyboard_events: MessageWriter<KeyboardInput>,
     mut window_events: MessageWriter<WindowEvent>,
 ) {
+    let window = primary_window.single().unwrap_or(Entity::PLACEHOLDER);
     for (entity, mut queue) in &mut query {
         match queue.typing_phase {
             TypingPhase::ReleaseCurrentKeys => {
                 // Release the current keys
                 if !queue.current_keys.is_empty() {
-                    let release_events =
-                        events::create_keyboard_events(&queue.current_keys, ButtonState::Released);
+                    let release_events = events::create_keyboard_events(
+                        &queue.current_keys,
+                        ButtonState::Released,
+                        window,
+                    );
                     for event in release_events {
                         window_events.write(WindowEvent::from(event.clone()));
                         keyboard_events.write(event);
@@ -216,6 +222,7 @@ pub(super) fn process_text_typing(
                         &keys,
                         ButtonState::Pressed,
                         Some(c),
+                        window,
                     );
                     for event in press_events {
                         window_events.write(WindowEvent::from(event.clone()));

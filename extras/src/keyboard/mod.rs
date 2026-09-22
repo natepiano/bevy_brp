@@ -27,8 +27,17 @@ impl Plugin for KeyboardPlugin {
 )]
 mod tests {
     use bevy::app::App;
+    use bevy::app::Update;
+    use bevy::ecs::message::MessageCursor;
+    use bevy::input::ButtonState;
+    use bevy::input::keyboard::KeyboardInput;
+    use bevy::prelude::Entity;
     use bevy::prelude::In;
+    use bevy::prelude::Messages;
     use bevy::prelude::MinimalPlugins;
+    use bevy::window::PrimaryWindow;
+    use bevy::window::Window;
+    use bevy::window::WindowEvent;
     use bevy_remote::error_codes::INVALID_PARAMS;
     use serde_json::json;
     use strum::IntoEnumIterator;
@@ -39,9 +48,86 @@ mod tests {
     use super::keys::SendKeysResponse;
     use super::keys::TimedKeyRelease;
     use super::send_keys_handler;
+    use super::type_text_handler;
+    use super::typing;
     use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
 
     const CUSTOM_KEY_DURATION_MS: u32 = 500;
+
+    /// An app with the keyboard message channels and one primary window.
+    fn app_with_primary_window() -> (App, Entity) {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_message::<KeyboardInput>()
+            .add_message::<WindowEvent>();
+        let window = app
+            .world_mut()
+            .spawn((Window::default(), PrimaryWindow))
+            .id();
+        (app, window)
+    }
+
+    fn keyboard_presses(app: &App) -> Vec<KeyboardInput> {
+        let messages = app.world().resource::<Messages<KeyboardInput>>();
+        MessageCursor::default()
+            .read(messages)
+            .filter(|event| event.state == ButtonState::Pressed)
+            .cloned()
+            .collect()
+    }
+
+    /// A press from `send_keys` names the primary window, the way a `winit`
+    /// press does, so a text field owned by that window accepts it.
+    #[test]
+    fn send_keys_press_names_the_primary_window() {
+        let (mut app, window) = app_with_primary_window();
+
+        let result = send_keys_handler(In(Some(json!({ "keys": ["KeyA"] }))), app.world_mut());
+        assert!(result.is_ok());
+
+        let presses = keyboard_presses(&app);
+        assert_eq!(presses.len(), 1);
+        assert_eq!(presses[0].window, window);
+        assert_eq!(presses[0].text.as_deref(), Some("a"));
+    }
+
+    /// A `type_text` press names the primary window and carries the typed
+    /// character, including a shifted one.
+    #[test]
+    fn type_text_press_names_the_primary_window() {
+        let (mut app, window) = app_with_primary_window();
+        app.add_systems(Update, typing::process_text_typing);
+
+        let result = type_text_handler(In(Some(json!({ "text": "A" }))), app.world_mut());
+        assert!(result.is_ok());
+        app.update();
+
+        let presses = keyboard_presses(&app);
+        let typed = presses
+            .iter()
+            .find(|event| event.text.is_some())
+            .expect("the typed character's press carries text");
+        assert_eq!(typed.window, window);
+        assert_eq!(typed.text.as_deref(), Some("A"));
+        assert!(presses.iter().all(|event| event.window == window));
+    }
+
+    /// Without a primary window the events still go out, addressed to the
+    /// placeholder, so a headless app keeps its `ButtonInput` path.
+    #[test]
+    fn send_keys_without_a_window_uses_the_placeholder() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_message::<KeyboardInput>()
+            .add_message::<WindowEvent>();
+
+        let result = send_keys_handler(In(Some(json!({ "keys": ["KeyA"] }))), app.world_mut());
+        assert!(result.is_ok());
+
+        let presses = keyboard_presses(&app);
+        assert_eq!(presses.len(), 1);
+        assert_eq!(presses[0].window, Entity::PLACEHOLDER);
+    }
 
     #[test]
     fn test_duration_validation_exceeds_maximum() {

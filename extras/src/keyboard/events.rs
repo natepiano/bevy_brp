@@ -5,18 +5,35 @@ use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::keyboard::NativeKey;
 use bevy::prelude::Entity;
+use bevy::prelude::With;
+use bevy::prelude::World;
+use bevy::window::PrimaryWindow;
 
 use super::key_code::KeyCodeWrapper;
 
-/// Create keyboard events from validated key code wrappers.
+/// The window every injected keyboard event names: the primary window when
+/// the app has one, `Entity::PLACEHOLDER` otherwise.
+///
+/// Real `winit` events carry their window, and text editors compare it
+/// against the window that owns the focused field, so an event with a
+/// placeholder window is dropped as text even though `ButtonInput` sees it.
+pub(super) fn primary_window_entity(world: &mut World) -> Entity {
+    world
+        .query_filtered::<Entity, With<PrimaryWindow>>()
+        .single(world)
+        .unwrap_or(Entity::PLACEHOLDER)
+}
+
+/// Create keyboard events from validated key code wrappers, addressed to `window`.
 ///
 /// Populates `logical_key` and `text` fields for printable characters,
 /// enabling text input simulation that works with Bevy's text input systems.
 pub(super) fn create_keyboard_events(
     wrappers: &[KeyCodeWrapper],
     button_state: ButtonState,
+    window: Entity,
 ) -> Vec<KeyboardInput> {
-    create_keyboard_events_with_text(wrappers, button_state, None)
+    create_keyboard_events_with_text(wrappers, button_state, None, window)
 }
 
 /// Create keyboard events with an optional target character override.
@@ -28,6 +45,7 @@ pub(super) fn create_keyboard_events_with_text(
     wrappers: &[KeyCodeWrapper],
     button_state: ButtonState,
     target_char: Option<char>,
+    window: Entity,
 ) -> Vec<KeyboardInput> {
     // Find the last non-modifier key index (that's where we set the text)
     let last_non_modifier_idx = wrappers.iter().rposition(|w| {
@@ -75,7 +93,7 @@ pub(super) fn create_keyboard_events_with_text(
                 state: button_state,
                 key_code,
                 logical_key,
-                window: Entity::PLACEHOLDER,
+                window,
                 repeat: false,
                 text,
             }

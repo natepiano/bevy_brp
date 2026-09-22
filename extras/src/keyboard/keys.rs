@@ -6,6 +6,7 @@ use std::time::Duration;
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy::window::WindowEvent;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
@@ -119,8 +120,9 @@ pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World
         });
     }
 
-    // Always send press events first
-    let press_events = events::create_keyboard_events(&wrappers, ButtonState::Pressed);
+    // Always send press events first, addressed to the primary window
+    let window = events::primary_window_entity(world);
+    let press_events = events::create_keyboard_events(&wrappers, ButtonState::Pressed, window);
     for event in press_events {
         window_event::write_input_event(world, event);
     }
@@ -148,16 +150,18 @@ pub(super) fn process_timed_key_releases(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut TimedKeyRelease)>,
+    primary_window: Query<Entity, With<PrimaryWindow>>,
     mut keyboard_events: MessageWriter<KeyboardInput>,
     mut window_events: MessageWriter<WindowEvent>,
 ) {
+    let window = primary_window.single().unwrap_or(Entity::PLACEHOLDER);
     for (entity, mut timed_release) in &mut query {
         timed_release.timer.tick(time.delta());
 
         if timed_release.timer.is_finished() {
             // Send release events for all keys (text is None for release events)
             let release_events =
-                events::create_keyboard_events(&timed_release.keys, ButtonState::Released);
+                events::create_keyboard_events(&timed_release.keys, ButtonState::Released, window);
             for event in release_events {
                 window_events.write(WindowEvent::from(event.clone()));
                 keyboard_events.write(event);
