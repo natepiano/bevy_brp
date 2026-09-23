@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix `send_keys` and `type_text` sending keyboard events to `Entity::PLACEHOLDER` instead of the primary window, which made text fields drop the typed text; apps with no window still use the placeholder
+
 ## [0.22.6] - 2026-09-09
 
 ### Changed

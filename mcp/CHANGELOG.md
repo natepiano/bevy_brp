@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `brp_launch` runs examples from their built binary instead of `cargo run --example`, so arguments are passed straight to the binary with no `--` separator
+- Update `rmcp` to 3.3.0 and `rustls` to 0.23.45 (RUSTSEC-2026-0285)
+
+### Fixed
+- Fix `brp_launch` rebuilding the workspace's dependencies. Cargo ran from the package directory, which enabled a different set of bevy features than a workspace build, so a launch recompiled about 86 crates that were already built. Launches now build from the workspace root with `--workspace`, and fall back to a package-scoped build when two members define a target with the same name
+- Fix `brp_launch` build failures naming the manifest directory instead of the directory cargo actually ran in
+- Fix `brp_launch` leaving `binary_path` out of the response for examples
+
 ## [0.22.6] - 2026-09-09
 
 ### Changed
