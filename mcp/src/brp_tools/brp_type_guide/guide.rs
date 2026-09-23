@@ -14,6 +14,7 @@ use std::sync::Arc;
 use serde::Serialize;
 use serde_json::Value;
 
+use super::brp_type_name::BrpTypeName;
 use super::constants::AGENT_GUIDANCE;
 use super::constants::ENTITY_WARNING;
 use super::constants::ERROR_GUIDANCE;
@@ -21,7 +22,6 @@ use super::constants::TYPE_BEVY_ENTITY;
 use super::mutation_path_builder;
 use super::mutation_path_builder::MutationPathExternal;
 use super::mutation_path_builder::SpawnInsertExample;
-use super::response::BrpTypeName;
 use super::response::SchemaInfo;
 use super::type_kind::TypeKind;
 use super::type_knowledge::TypeKnowledge;

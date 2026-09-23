@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use serde_json::Value;
 use serde_json::json;
 
-use super::enum_builder::EnumPathInfo;
+use super::enum_path_info::EnumPathInfo;
 use super::mutability::Mutability;
 use super::mutability::MutabilityIssue;
 use super::mutability::MutabilityIssueTarget;

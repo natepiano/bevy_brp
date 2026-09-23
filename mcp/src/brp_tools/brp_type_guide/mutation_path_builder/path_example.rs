@@ -10,7 +10,7 @@ use serde_json::Value;
 use super::constants::RESPONSE_EXAMPLE_FIELD;
 use super::constants::RESPONSE_EXAMPLES_FIELD;
 use super::enum_builder;
-use super::enum_builder::ExampleGroup;
+use super::example_group::ExampleGroup;
 
 /// Self-documenting wrapper for example values in mutation paths.
 #[derive(Debug, Clone, PartialEq, Eq)]

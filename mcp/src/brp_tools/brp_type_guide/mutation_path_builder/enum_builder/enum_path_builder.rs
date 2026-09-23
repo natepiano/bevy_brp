@@ -34,12 +34,12 @@ use itertools::Itertools;
 use serde_json::Value;
 use serde_json::json;
 
-use super::EnumPathInfo;
-use super::ExampleGroup;
 use super::variant_kind::VariantKind;
 use crate::brp_tools::brp_type_guide::BrpTypeName;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::BuilderError;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::NotMutableReason;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::enum_path_info::EnumPathInfo;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::example_group::ExampleGroup;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::mutability::Mutability;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::mutability::MutabilityIssue;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::mutation_path_external::RootExample;

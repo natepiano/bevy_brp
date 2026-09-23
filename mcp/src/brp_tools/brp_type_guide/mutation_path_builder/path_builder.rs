@@ -26,7 +26,7 @@ use serde_json::json;
 
 use super::BuilderError;
 use super::enum_builder;
-use super::enum_builder::EnumPathInfo;
+use super::enum_path_info::EnumPathInfo;
 use super::mutability::Mutability;
 use super::mutability::MutabilityIssue;
 use super::mutation_path_external::RootExample;

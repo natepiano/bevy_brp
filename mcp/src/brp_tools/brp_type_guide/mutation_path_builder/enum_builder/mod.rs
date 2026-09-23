@@ -2,8 +2,7 @@ mod enum_path_builder;
 mod variant_kind;
 
 use super::BuilderError;
-pub(super) use super::enum_path_info::EnumPathInfo;
-pub(super) use super::example_group::ExampleGroup;
+use super::example_group::ExampleGroup;
 use super::mutation_path_internal::MutationPathInternal;
 use super::path_example::Example;
 use super::recursion_context::RecursionContext;

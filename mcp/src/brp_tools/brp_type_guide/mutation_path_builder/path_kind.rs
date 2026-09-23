@@ -7,7 +7,7 @@ use std::ops::Deref;
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::enum_builder::EnumPathInfo;
+use super::enum_path_info::EnumPathInfo;
 use super::option_classification::OptionClassification;
 use super::variant_name::VariantName;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;

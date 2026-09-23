@@ -12,7 +12,7 @@ use serde_json::Value;
 use strum::AsRefStr;
 use strum::Display;
 
-pub use super::brp_type_name::BrpTypeName;
+use super::brp_type_name::BrpTypeName;
 use super::guide::TypeGuide;
 use super::type_kind::TypeKind;
 
