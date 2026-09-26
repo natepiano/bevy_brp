@@ -20,6 +20,7 @@ use super::constants::STATUS_POLL_INTERVAL;
 use super::constants::TARGET_DEBUG_PATH;
 use super::constants::TARGET_RELEASE_PATH;
 use super::process;
+use super::process::ListeningInstance;
 use crate::brp_tools;
 use crate::brp_tools::Port;
 use crate::brp_tools::ResponseStatus;
@@ -106,6 +107,23 @@ impl From<bool> for BrpPortStatus {
 
 impl From<BrpPortStatus> for bool {
     fn from(value: BrpPortStatus) -> Self { matches!(value, BrpPortStatus::Responding) }
+}
+
+/// Error when nothing listens on the requested port but processes with the app name listen on
+/// other ports
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
+struct ProcessOnOtherPortError {
+    #[to_error_info]
+    app_name: String,
+
+    #[to_error_info]
+    port: u16,
+
+    #[to_error_info]
+    running_instances: Vec<ListeningInstance>,
+
+    #[to_message]
+    message_template: Option<String>,
 }
 
 /// Error when process is running but BRP not responding
@@ -228,7 +246,18 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
         return resolve_pid_on_port(&system, app_name, port, brp_port_status, process_id);
     }
 
-    if let Some(process_id) = find_exact_match_pid(&system, app_name) {
+    let process_ids = find_exact_match_pids(&system, app_name);
+    let instances = process::listening_instances(&process_ids);
+    if !instances.is_empty() {
+        let process_on_other_port_error =
+            ProcessOnOtherPortError::new(app_name.to_string(), port.0, instances.clone())
+                .with_message_template(other_port_message(app_name, port, &instances));
+        Err(Error::Structured {
+            result: Box::new(process_on_other_port_error),
+        })?;
+    }
+
+    if let Some(&process_id) = process_ids.first() {
         Err(Error::Structured {
             result: Box::new(BrpNotRespondingError::new(
                 app_name.to_string(),
@@ -329,12 +358,35 @@ fn missing_process_message(
     }
 }
 
-fn find_exact_match_pid(system: &System, app_name: &str) -> Option<u32> {
-    system.processes().values().find_map(|process| {
-        (!matches!(process.status(), sysinfo::ProcessStatus::Zombie)
-            && process::process_matches_name_exact(process, app_name))
-        .then(|| process.pid().as_u32())
-    })
+fn other_port_message(app_name: &str, port: Port, instances: &[ListeningInstance]) -> String {
+    let running_instances = instances
+        .iter()
+        .map(|instance| format!("PID {} on port {}", instance.pid, instance.port))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "Process '{app_name}' is not listening on port {}. Running instances: {running_instances}.",
+        port.0
+    )
+}
+
+/// `sysinfo` lists each Linux thread as its own entry with the parent's name and command line,
+/// so name matching must skip threads or it reports a thread ID as the process ID.
+fn is_live_process(process: &Process) -> bool {
+    process.thread_kind().is_none() && !matches!(process.status(), sysinfo::ProcessStatus::Zombie)
+}
+
+fn find_exact_match_pids(system: &System, app_name: &str) -> Vec<u32> {
+    let mut process_ids: Vec<u32> = system
+        .processes()
+        .values()
+        .filter(|process| {
+            is_live_process(process) && process::process_matches_name_exact(process, app_name)
+        })
+        .map(|process| process.pid().as_u32())
+        .collect();
+    process_ids.sort_unstable();
+    process_ids
 }
 
 fn collect_similar_app_names(system: &System, app_name: &str) -> Vec<String> {
@@ -342,7 +394,7 @@ fn collect_similar_app_names(system: &System, app_name: &str) -> Vec<String> {
         .processes()
         .values()
         .filter(|process| {
-            !matches!(process.status(), sysinfo::ProcessStatus::Zombie)
+            is_live_process(process)
                 && process_matches_app_substring(process, app_name)
                 && !is_bevy_brp_mcp(process)
         })

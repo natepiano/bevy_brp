@@ -6,7 +6,7 @@ Example:
   "entity": 123,
   "components": [
     "bevy_sprite::sprite::Sprite",
-    "bevy_render::camera::camera::Camera"
+    "bevy_camera::camera::Camera"
   ]
 }
 ```

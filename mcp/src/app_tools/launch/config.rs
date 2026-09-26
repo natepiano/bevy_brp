@@ -82,13 +82,13 @@ pub struct LaunchResult {
     /// Array of launched instances (1 or more)
     #[to_result]
     instances:         Vec<LaunchedInstance>,
-    /// Working directory used for launch
+    /// Working directory of the launched processes: the target package's manifest directory
     #[to_metadata(skip_if_none)]
     working_directory: Option<String>,
     /// Build profile used (debug/release)
     #[to_metadata(skip_if_none)]
     profile:           Option<String>,
-    /// Binary path of the launched app (only for apps, not examples)
+    /// Binary path of the launched app or example
     #[to_metadata(skip_if_none)]
     binary_path:       Option<String>,
     /// Launch duration in milliseconds
@@ -309,9 +309,9 @@ pub(super) fn build_launch_result<T: LaunchConfigTrait>(
     LaunchResult {
         target: Some(config.target().to_string()),
         instances,
-        working_directory: std::env::current_dir()
+        working_directory: build::validate_manifest_directory(&target.manifest)
             .ok()
-            .map(|dir| dir.display().to_string()),
+            .map(|manifest_dir| manifest_dir.display().to_string()),
         profile: Some(config.profile().to_string()),
         duration_ms: Some(launch_duration.as_millis()),
         timestamp: Some(chrono::Utc::now().to_rfc3339()),

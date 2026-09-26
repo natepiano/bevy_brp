@@ -10,6 +10,10 @@ import json
 from pathlib import Path
 from typing import TypedDict
 
+# Failure reason operation_manager.py records when a subagent keeps requesting an operation
+# without executing it. process_results.py classifies it as a retry, not a review failure.
+PROVISION_LIMIT_REASON = "Provision limit exceeded (subagent not executing)"
+
 
 class MutationTestConfig(TypedDict):
     """Configuration for mutation testing."""

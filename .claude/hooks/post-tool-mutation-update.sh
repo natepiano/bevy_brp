@@ -13,11 +13,13 @@ fi
 # Extract port and tool name from tool_input
 PORT=$(echo "$INPUT" | jq -r '.tool_input.port // empty')
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"')
+# PostToolUse for a succeeded call, PostToolUseFailure for one the MCP server flagged isError
+EVENT_NAME=$(echo "$INPUT" | jq -r '.hook_event_name // "PostToolUse"')
 
 # Check if port is in mutation test range (30001-30010)
 if [ -z "$PORT" ] || [ "$PORT" -lt 30001 ] || [ "$PORT" -gt 30010 ]; then
     MESSAGE="Hook: Port ${PORT} not in test range, skipping"
-    echo "{\"continue\": true, \"systemMessage\": \"${MESSAGE}\", \"hookSpecificOutput\": {\"hookEventName\": \"PostToolUse\", \"additionalContext\": \"${MESSAGE}\"}}"
+    echo "{\"continue\": true, \"systemMessage\": \"${MESSAGE}\", \"hookSpecificOutput\": {\"hookEventName\": \"${EVENT_NAME}\", \"additionalContext\": \"${MESSAGE}\"}}"
     exit 0
 fi
 
@@ -34,5 +36,5 @@ if [ $UPDATE_RESULT -ne 0 ]; then
     MESSAGE="Hook: ${MESSAGE}"
 fi
 
-echo "{\"continue\": true, \"systemMessage\": \"${MESSAGE}\", \"hookSpecificOutput\": {\"hookEventName\": \"PostToolUse\", \"additionalContext\": \"${MESSAGE}\"}}"
+echo "{\"continue\": true, \"systemMessage\": \"${MESSAGE}\", \"hookSpecificOutput\": {\"hookEventName\": \"${EVENT_NAME}\", \"additionalContext\": \"${MESSAGE}\"}}"
 exit 0

@@ -24,7 +24,7 @@ import sys
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import TypedDict, cast
 
 # Add the script directory to Python path for imports
 script_dir = Path(__file__).parent
@@ -47,6 +47,8 @@ MutationConfig = MutationTestConfig
 
 # Constants
 OPERATION_ID_START = 1  # Operation IDs start at 1 for better human readability
+# Tools whose operations change a value - the operations split across parts
+MUTATION_TOOLS = ("mcp__brp__world_mutate_components", "mcp__brp__world_mutate_resources")
 
 
 # Type definitions for JSON structures (extends config.py's TypeData)
@@ -138,14 +140,6 @@ class TestPlan(TypedDict):
     tests: list[TypeTest]
 
 
-class OperationIndices(TypedDict):
-    """Indices of key operations within an operation list."""
-
-    spawn_idx: int | None
-    query_idx: int | None
-    mutation_start_idx: int | None
-
-
 # Load configuration from config file
 try:
     mutation_config = load_config()
@@ -156,9 +150,6 @@ except FileNotFoundError as e:
 max_subagents: int = mutation_config["max_subagents"]
 ops_per_subagent: int = mutation_config["ops_per_subagent"]
 base_port: int = mutation_config["base_port"]
-
-# Calculate batch capacity (total operations across all subagents)
-batch_capacity: int = max_subagents * ops_per_subagent
 
 # Get the JSON file path
 json_file = ".claude/transient/all_types.json"
@@ -182,7 +173,6 @@ batch_num: int = -1  # Placeholder, will be set after renumbering
 
 def renumber_batches(
     data: AllTypesData,
-    batch_capacity: int,
     max_subagents: int,
     ops_per_subagent: int,
     excluded_type_names: set[str],
@@ -200,7 +190,6 @@ def renumber_batches(
 
     Args:
         data: AllTypesData containing type_guide
-        batch_capacity: Total operation capacity for a batch (max_subagents * ops_per_subagent)
         max_subagents: Maximum number of subagents per batch
         ops_per_subagent: Operation capacity per subagent
         excluded_type_names: Set of type names to exclude from testing
@@ -263,96 +252,45 @@ def renumber_batches(
                 type_name, type_data_raw, mutation_type
             )
 
-            # Calculate operations needed for this type
-            ops_needed = calculate_type_operations(type_data)
+            all_operations = generate_test_operations(type_data)
 
-            # Check if type can fit in empty batch (sanity check - warn if not in current batch)
-            if ops_needed > batch_capacity:
+            # Sanity check: the type must fit in an empty batch
+            _, parts_in_empty_batch = plan_type_placement(
+                all_operations, ops_per_subagent, ops_per_subagent
+            )
+            if len(parts_in_empty_batch) > max_subagents:
                 print(
-                    f"Warning: Type '{type_name}' requires {ops_needed} operations "
-                    + f"but batch capacity is only {batch_capacity} operations. "
-                    + "This type will be skipped. Increase max_subagents or ops_per_subagent in config."
+                    f"Warning: Type '{type_name}' requires {len(all_operations)} operations "
+                    + f"in {len(parts_in_empty_batch)} parts but a batch has only "
+                    + f"{max_subagents} subagents. This type will be skipped. "
+                    + "Increase max_subagents or ops_per_subagent in config."
                 )
                 type_guide[type_name]["batch_number"] = -1  # Mark as skipped
                 type_idx += 1
                 continue
 
-            # Can this type fit in remaining batch capacity?
-            # Calculate actual operations including query overhead for splits
-            can_fit = False
-
-            # Calculate how many subagents remain (including current partial one)
-            remaining_subagents = max_subagents - current_subagent_idx
-
-            # Simulate packing to see if it fits
-            test_ops_remaining = ops_needed
-            test_subagent_idx = 0
-            test_ops_in_subagent = (
-                current_ops_in_subagent  # How many ops USED in current subagent
+            # Plan the parts from the current position with the same planner the
+            # assignment phase uses, so both phases pack the batch identically
+            start_offset, parts = plan_type_placement(
+                all_operations, ops_per_subagent - current_ops_in_subagent, ops_per_subagent
             )
-            parts_needed = 0
+            last_subagent_idx = current_subagent_idx + start_offset + len(parts) - 1
 
-            while test_ops_remaining > 0 and test_subagent_idx < remaining_subagents:
-                # How much can we fit in this subagent?
-                available_in_subagent = ops_per_subagent - test_ops_in_subagent
-                if available_in_subagent <= 0:
-                    # Move to next subagent
-                    test_subagent_idx += 1
-                    test_ops_in_subagent = 0
-                    continue
-
-                # For components, part 2+ needs a query operation (part 1 already has it)
-                extra_ops = 0
-                if parts_needed > 0 and mutation_type == "Component":
-                    extra_ops = 1  # Query operation for this part
-
-                ops_in_this_part = min(
-                    test_ops_remaining, available_in_subagent - extra_ops
-                )
-                if ops_in_this_part <= 0:
-                    # Can't fit even the query, need next subagent
-                    test_subagent_idx += 1
-                    test_ops_in_subagent = 0
-                    continue
-
-                test_ops_remaining -= ops_in_this_part
-                test_ops_in_subagent += ops_in_this_part + extra_ops
-                parts_needed += 1
-
-                if test_ops_in_subagent >= ops_per_subagent:
-                    test_subagent_idx += 1
-                    test_ops_in_subagent = 0
-
-            # Did we fit all operations?
-            if test_ops_remaining == 0:
-                can_fit = True
-
-            if can_fit:
-                # Yes, assign to current batch
+            if last_subagent_idx < max_subagents:
                 type_guide[type_name]["batch_number"] = current_batch
                 packed_any_in_batch = True
 
-                # Advance position accounting for query overhead in splits
-                # This must match exactly how the simulation worked
-                ops_to_place = ops_needed
-                part_num = 0
-                while ops_to_place > 0:
-                    available = ops_per_subagent - current_ops_in_subagent
+                # Advance to the subagent holding the last part
+                if start_offset == 0 and len(parts) == 1:
+                    current_ops_in_subagent += len(parts[0])
+                else:
+                    current_ops_in_subagent = len(parts[-1])
+                current_subagent_idx = last_subagent_idx
 
-                    # For components, part 2+ needs a query operation
-                    extra_ops = 0
-                    if part_num > 0 and mutation_type == "Component":
-                        extra_ops = 1
-
-                    ops_in_this_part = min(ops_to_place, available - extra_ops)
-                    current_ops_in_subagent += ops_in_this_part + extra_ops
-                    ops_to_place -= ops_in_this_part
-                    part_num += 1
-
-                    # If current subagent is full, move to next
-                    if current_ops_in_subagent >= ops_per_subagent:
-                        current_subagent_idx += 1
-                        current_ops_in_subagent = 0
+                # If current subagent is full, move to next
+                if current_ops_in_subagent >= ops_per_subagent:
+                    current_subagent_idx += 1
+                    current_ops_in_subagent = 0
 
             # Move to next type (whether it fit or not)
             type_idx += 1
@@ -400,11 +338,12 @@ def extract_mutation_type(schema_info: dict[str, object] | None) -> str | None:
     if not reflect_traits or not isinstance(reflect_traits, list):
         return None
 
-    # Check for Component or Resource in reflect_traits
-    if "Component" in reflect_traits:
-        return "Component"
+    # Bevy 0.20 registers `ReflectComponent` alongside `ReflectResource`, so a resource lists
+    # both traits; check Resource first
     if "Resource" in reflect_traits:
         return "Resource"
+    if "Component" in reflect_traits:
+        return "Component"
 
     return None
 
@@ -463,7 +402,7 @@ def format_type_description(
         Formatted description string like "TypeName (C: 10 ops)" or "TypeName (R: 5 ops, 2 of 3)"
     """
     # Find the last :: that appears before any < to handle generic types correctly
-    # For "bevy_time::time::Time<bevy_time::time::Real>", we want "Time<bevy_time::time::Real>"
+    # For "bevy_time::time::Time<bevy_time::real::Real>", we want "Time<bevy_time::time::Real>"
     if "<" in type_name:
         # Find position of first <
         generic_start = type_name.index("<")
@@ -495,22 +434,17 @@ def format_type_description(
 ENTITY_ID_PLACEHOLDER = 8589934670  # Placeholder entity ID used in spawn/resource examples
 
 
-def contains_entity_placeholder(value: Any) -> bool:  # pyright: ignore[reportExplicitAny]
-    """
-    Check if a value contains the entity ID placeholder anywhere in its structure.
-
-    Note: Uses Any type for recursive JSON traversal - unavoidable for arbitrary JSON structures.
-    """
+def contains_entity_placeholder(value: object) -> bool:
+    """Check if a value contains the entity ID placeholder anywhere in its structure."""
     if isinstance(value, int) and value == ENTITY_ID_PLACEHOLDER:
         return True
     elif isinstance(value, list):
-        for item in value:  # pyright: ignore[reportUnknownVariableType]
-            if contains_entity_placeholder(item):  # pyright: ignore[reportUnknownArgumentType]
-                return True
+        return any(contains_entity_placeholder(item) for item in cast(list[object], value))
     elif isinstance(value, dict):
-        for val in value.values():  # pyright: ignore[reportUnknownVariableType]
-            if contains_entity_placeholder(val):  # pyright: ignore[reportUnknownArgumentType]
-                return True
+        return any(
+            contains_entity_placeholder(val)
+            for val in cast(dict[object, object], value).values()
+        )
 
     return False
 
@@ -738,78 +672,108 @@ def generate_test_operations(type_data: TypeDataComplete) -> list[TestOperation]
     return operations
 
 
-def calculate_type_operations(type_data: TypeDataComplete) -> int:
+def plan_type_parts(
+    all_operations: list[TestOperation],
+    first_part_slots: int,
+    slots_per_part: int,
+) -> list[list[TestOperation]]:
     """
-    Calculate how many operations a type will generate.
+    Split a type's operations into parts that each fit in one subagent, filling greedily.
+
+    Part 1 gets `first_part_slots` (the space left in the current subagent); every later
+    part gets `slots_per_part`. Each part runs on a different app instance, so every part
+    starts with the type's setup operations - exactly what part 1 has: the spawn (components)
+    or insert (resources) when the type has an example, then the query that finds the entity
+    id (components). A type without a spawn/insert example has only the query as setup and
+    depends on the app creating the type at startup. The mutations follow, in order.
+
+    A part never ends on a root example (path "" setting an enum variant) whose follow-on
+    mutation falls in the next part; the root example moves to the next part with its
+    follow-on, so no part exceeds its slots.
 
     Args:
-        type_data: The type to evaluate
+        all_operations: All operations for the type, setup operations first
+        first_part_slots: Slots available to part 1
+        slots_per_part: Slots available to each later part
 
     Returns:
-        Number of operations this type will generate
+        The operations of each part in order: a single part when the type fits in
+        `first_part_slots`, and an empty list when `first_part_slots` cannot hold the setup
+        operations plus one mutation (the type then starts in the next subagent).
+
+    Raises:
+        ValueError: If `slots_per_part` cannot hold the setup operations plus one mutation.
     """
-    # Generate operations to count them (using placeholder port)
-    all_operations = generate_test_operations(type_data)
-    return len(all_operations)
+    if len(all_operations) <= first_part_slots:
+        return [all_operations]
 
-
-def _find_operation_indices(all_operations: list[TestOperation]) -> OperationIndices:
-    """
-    Find indices of spawn, query, and mutation start operations.
-
-    Args:
-        all_operations: List of all operations for a type
-
-    Returns:
-        OperationIndices with spawn_idx, query_idx, and mutation_start_idx
-    """
-    spawn_idx: int | None = None
-    query_idx: int | None = None
-    mutation_start_idx: int | None = None
-
-    for idx, op in enumerate(all_operations):
-        tool = op.get("tool", "")
-        if tool in ["mcp__brp__world_spawn_entity", "mcp__brp__world_insert_resources"]:
-            spawn_idx = idx
-        elif tool == "mcp__brp__world_query":
-            query_idx = idx
-        elif tool in [
-            "mcp__brp__world_mutate_components",
-            "mcp__brp__world_mutate_resources",
-        ]:
-            if mutation_start_idx is None:
-                mutation_start_idx = idx
-
-    return OperationIndices(
-        spawn_idx=spawn_idx, query_idx=query_idx, mutation_start_idx=mutation_start_idx
-    )
-
-
-def find_split_points(mutations: list[TestOperation], num_parts: int) -> list[int]:
-    """
-    Find split points that divide mutations into roughly equal parts.
-    Simple division with no root mutation backtracking - prepending handles correctness.
-
-    Args:
-        mutations: List of mutation operations to split
-        num_parts: Number of parts to split into
-
-    Returns:
-        List of split indices (length = num_parts - 1)
-        For 4 parts, returns 3 indices indicating where to split
-    """
-    if num_parts == 1:
+    setup_operations = [op for op in all_operations if op.get("tool") not in MUTATION_TOOLS]
+    mutations = [op for op in all_operations if op.get("tool") in MUTATION_TOOLS]
+    if not mutations:
+        # Setup operations alone cannot be split - the type needs a fresh subagent
         return []
 
-    mutation_count = len(mutations)
-    mutations_per_part = mutation_count / num_parts
+    parts: list[list[TestOperation]] = []
+    mutations_consumed = 0
+    slots = first_part_slots
+    while mutations_consumed < len(mutations):
+        mutation_end = min(
+            mutations_consumed + slots - len(setup_operations), len(mutations)
+        )
+        # Keep a root example in the same part as the mutation that follows it
+        if (
+            mutations_consumed < mutation_end < len(mutations)
+            and mutations[mutation_end - 1].get("is_root_example")
+        ):
+            mutation_end -= 1
 
-    split_indices: list[int] = []
-    for part_num in range(1, num_parts):
-        split_idx = int(part_num * mutations_per_part)
-        split_indices.append(split_idx)
+        if mutation_end <= mutations_consumed:
+            if not parts:
+                return []
+            raise ValueError(
+                f"{slots_per_part} slots per subagent cannot hold "
+                + f"{len(setup_operations)} setup operations plus one mutation"
+            )
 
-    return split_indices
+        parts.append(setup_operations + mutations[mutations_consumed:mutation_end])
+        mutations_consumed = mutation_end
+        slots = slots_per_part
+
+    return parts
+
+
+def plan_type_placement(
+    all_operations: list[TestOperation],
+    slots_left_in_subagent: int,
+    ops_per_subagent: int,
+) -> tuple[int, list[list[TestOperation]]]:
+    """
+    Plan a type's parts starting from the current subagent.
+
+    Both batch packing (`renumber_batches`) and test plan assignment call this, so the
+    parts they compute always agree.
+
+    Args:
+        all_operations: All operations for the type
+        slots_left_in_subagent: Unused slots in the current subagent
+        ops_per_subagent: Slots in an empty subagent
+
+    Returns:
+        `(start_offset, parts)`. `start_offset` is 0 when part 1 goes in the current
+        subagent and 1 when the current subagent cannot hold part 1, so the type starts in
+        the next one. Part N goes in subagent `current + start_offset + N - 1`.
+    """
+    parts = plan_type_parts(all_operations, slots_left_in_subagent, ops_per_subagent)
+    if parts:
+        return 0, parts
+
+    parts = plan_type_parts(all_operations, ops_per_subagent, ops_per_subagent)
+    if not parts:
+        raise ValueError(
+            f"{ops_per_subagent} slots per subagent cannot hold the setup operations "
+            + "plus one mutation"
+        )
+    return 1, parts
 
 
 def finalize_subagent(
@@ -866,215 +830,6 @@ def finalize_subagent(
         ),
     )
     assignments.append(assignment)
-
-
-def split_operations_for_part_new(
-    all_operations: list[TestOperation],
-    part_number: int,
-    total_parts: int,
-    slots_per_subagent: int,
-    accumulated_slots: int = 0,
-) -> list[TestOperation]:
-    """
-    Split operations for subagent-boundary splitting with GREEDY filling.
-
-    Each part uses as many operations as it can based on available slots.
-    Part 1 includes spawn/insert, all parts include query for components.
-    Part 2+ includes query + most recent root mutation to re-establish state.
-
-    Greedy strategy: Each part takes `slots_per_subagent` worth of operations,
-    filling subagents to capacity before moving to the next.
-
-    Args:
-        all_operations: All operations for this type
-        part_number: Which part this is (1-indexed)
-        total_parts: Total number of parts
-        slots_per_subagent: How many slots THIS part gets (greedy allocation)
-        accumulated_slots: How many slots have been used by previous parts
-    """
-    if total_parts == 1:
-        return all_operations
-
-    # Find operation indices
-    indices = _find_operation_indices(all_operations)
-    spawn_idx = indices["spawn_idx"]
-    query_idx = indices["query_idx"]
-    mutation_start_idx = indices["mutation_start_idx"]
-
-    # Get all mutation operations
-    mutations: list[TestOperation] = []
-    if mutation_start_idx is not None:
-        mutations = all_operations[mutation_start_idx:]
-
-    # Calculate how many mutations have been consumed by previous parts
-    # This is different from accumulated_slots because it doesn't count re-emitted operations
-    if part_number == 1:
-        accumulated_mutations = 0
-    else:
-        # For part 2+: Calculate actual mutation consumption
-        # Part 1 overhead: spawn + query (only counted once)
-        part1_overhead = (1 if spawn_idx is not None else 0) + (
-            1 if query_idx is not None else 0
-        )
-
-        # Parts 2+ overhead per part: query only (root examples are now emitted inline)
-        parts_2plus_overhead = 1  # query only
-
-        # How many parts have already run (part_number - 1)
-        # Part 1 consumed: (accumulated_slots for part 1) - part1_overhead
-        # Parts 2+ each consumed: slots_per_subagent - parts_2plus_overhead
-        if part_number == 2:
-            # Only part 1 has run
-            accumulated_mutations = accumulated_slots - part1_overhead
-        else:
-            # Part 1 + multiple parts 2+
-            # First, get part 1's mutation consumption from the original accumulated_slots
-            # We need to track this separately, but for now we can calculate it
-            # from the pattern: accumulated_slots includes all operations including re-emits
-            #
-            # accumulated_slots = part1_total + sum(part2+_totals)
-            # part1_total = part1_overhead + part1_mutations
-            # part2+_total = parts_2plus_overhead + part2+_mutations
-            #
-            # For part N (N > 2):
-            # accumulated_slots = (part1_overhead + part1_mutations) + (N-2) * (parts_2plus_overhead + partX_mutations)
-            # But this is complex. Let's track mutations consumed directly:
-
-            # Actually, we can calculate from accumulated_slots:
-            # Remove overhead from all previous parts to get total mutations consumed
-            total_overhead = part1_overhead  # Part 1 overhead
-
-            # Each part 2+ adds query + root_mutation overhead
-            num_parts_2plus_completed = part_number - 2
-            total_overhead += num_parts_2plus_completed * parts_2plus_overhead
-
-            accumulated_mutations = accumulated_slots - total_overhead
-
-    # Calculate how many operations are overhead (spawn + query only)
-    # No propagation logic needed - root examples are always emitted
-    overhead_ops = 0
-    if spawn_idx is not None and part_number == 1:
-        overhead_ops += 1
-    if query_idx is not None:
-        overhead_ops += 1
-
-    # Calculate mutation range based on accumulated mutations (GREEDY)
-    mutation_start = accumulated_mutations
-    mutations_in_this_part = slots_per_subagent - overhead_ops
-    mutation_end = accumulated_mutations + mutations_in_this_part
-
-    # Clamp to actual mutation count
-    total_mutations = len(mutations)
-    mutation_start = max(0, min(mutation_start, total_mutations))
-    mutation_end = max(mutation_start, min(mutation_end, total_mutations))
-
-    # Never split a root example from its follow-on operation
-    # If last operation in this part is a root example, extend by 1 to include the pair
-    if mutation_end > mutation_start and mutation_end < total_mutations:
-        last_included_idx = mutation_end - 1
-        if last_included_idx >= 0 and last_included_idx < len(mutations):
-            last_op = mutations[last_included_idx]
-            if last_op.get("is_root_example"):
-                # Extend to include the follow-on operation (allows 1 op overage)
-                mutation_end = min(mutation_end + 1, total_mutations)
-
-    result: list[TestOperation] = []
-
-    # Part 1: includes spawn
-    if part_number == 1:
-        if spawn_idx is not None:
-            result.append(all_operations[spawn_idx])
-
-    # All parts: include query for components
-    if query_idx is not None:
-        result.append(all_operations[query_idx])
-
-    # Add this part's mutations (includes root examples which are now always emitted)
-    result.extend(mutations[mutation_start:mutation_end])
-
-    return result
-
-
-def split_operations_for_part(
-    all_operations: list[TestOperation], part_number: int, total_parts: int
-) -> list[TestOperation]:
-    """
-    Split operations for multi-part type testing with variable part counts.
-
-    Part 1: spawn/insert + query + first chunk of mutations
-    Part 2+: query + root_mutation (if needed) + chunk of mutations (no spawn)
-
-    Root mutations (path="") are prepended to parts that start with deep paths
-    to establish correct variant structure.
-    """
-    if total_parts == 1:
-        return all_operations
-
-    # Find operation indices
-    indices = _find_operation_indices(all_operations)
-    spawn_idx = indices["spawn_idx"]
-    query_idx = indices["query_idx"]
-    mutation_start_idx = indices["mutation_start_idx"]
-
-    # Get all mutation operations
-    mutations: list[TestOperation] = []
-    if mutation_start_idx is not None:
-        mutations = all_operations[mutation_start_idx:]
-
-    # Find all split points using simple fixed-size division
-    split_indices = find_split_points(mutations, total_parts)
-
-    if part_number == 1:
-        # Part 1: spawn + query + first chunk of mutations
-        result: list[TestOperation] = []
-
-        # Add spawn if it exists
-        if spawn_idx is not None:
-            result.append(all_operations[spawn_idx])
-
-        # Add query for components
-        if query_idx is not None:
-            result.append(all_operations[query_idx])
-
-        # Add mutations up to first split
-        if split_indices:
-            result.extend(mutations[: split_indices[0]])
-        else:
-            result.extend(mutations)
-
-        return result
-    else:
-        # Part 2+: query + possibly prepended root + chunk of mutations
-        result = []
-
-        # Add query for components
-        if query_idx is not None:
-            result.append(all_operations[query_idx])
-
-        # Determine mutation range for this part
-        start_idx = split_indices[part_number - 2]  # Previous split point
-        end_idx = (
-            split_indices[part_number - 1]
-            if part_number < total_parts
-            else len(mutations)
-        )
-
-        # Check if we need to prepend a root mutation
-        if start_idx < len(mutations):
-            first_op = mutations[start_idx]
-            first_path = first_op.get("path", "")
-
-            # If first operation is NOT a root mutation, find most recent root
-            if first_path != "":
-                for i in range(start_idx - 1, -1, -1):
-                    if mutations[i].get("path") == "":
-                        result.append(mutations[i])  # Duplicate the root mutation
-                        break
-
-        # Add this part's mutation chunk
-        result.extend(mutations[start_idx:end_idx])
-
-        return result
 
 
 # Load and parse JSON file
@@ -1142,9 +897,7 @@ if excluded_types_file.exists():
 # Deduplication and validation now handled by initialize_test_metadata.py
 
 # Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
-data = renumber_batches(
-    data, batch_capacity, max_subagents, ops_per_subagent, excluded_type_names
-)
+data = renumber_batches(data, max_subagents, ops_per_subagent, excluded_type_names)
 
 # Write updated data back to file
 try:
@@ -1186,11 +939,9 @@ if not batch_types:
 
 
 # Build complete type data with operations for distribution
-# New approach: Track subagent boundaries for splitting
 class TypeWithOps(TypedDict):
     type_data: TypeDataComplete
     all_operations: list[TestOperation]
-    ops_needed: int
 
 
 types_with_ops: list[TypeWithOps] = []
@@ -1209,15 +960,8 @@ for type_item in batch_types:
     # Use a placeholder port - will be assigned later
     all_operations = generate_test_operations(type_data)
 
-    # Use actual operation count from generated operations
-    ops_needed = len(all_operations)
-
     types_with_ops.append(
-        TypeWithOps(
-            type_data=type_data,
-            all_operations=all_operations,
-            ops_needed=ops_needed,
-        )
+        TypeWithOps(type_data=type_data, all_operations=all_operations)
     )
 
 # BACKUP OLD TEST FILES BEFORE CREATING NEW ONES
@@ -1256,8 +1000,8 @@ if os.path.exists(DEBUG_LOG):
     except OSError as e:
         print(f"Warning: Backup failed: {e}", file=sys.stderr)
 
-# Distribute types across subagents with boundary-only splitting
-# Track which subagent we're on and how many operations are filled
+# Distribute types across subagents in order, splitting a type into parts at subagent
+# boundaries. Track which subagent we're on and how many operations are filled
 assignments: list[SubagentAssignment] = []
 current_subagent_num = 1
 current_subagent_ops_used = 0
@@ -1268,7 +1012,6 @@ operation_id_counter = OPERATION_ID_START
 for type_with_ops in types_with_ops:
     type_data = type_with_ops["type_data"]
     all_operations = type_with_ops["all_operations"]
-    ops_needed = type_with_ops["ops_needed"]
     type_name = type_data["type_name"]
     mutation_type = type_data.get("mutation_type")
 
@@ -1277,28 +1020,40 @@ for type_with_ops in types_with_ops:
         # No more subagents available - stop processing types
         break
 
-    # Check if this type can fit in current subagent without splitting
-    ops_remaining_in_subagent = ops_per_subagent - current_subagent_ops_used
+    # Plan the parts the same way renumber_batches did when it packed this batch
+    start_offset, parts = plan_type_placement(
+        all_operations, ops_per_subagent - current_subagent_ops_used, ops_per_subagent
+    )
+    total_parts = len(parts)
+    last_subagent_num = current_subagent_num + start_offset + total_parts - 1
+    if last_subagent_num > max_subagents:
+        # Packing guarantees a fit, so this only happens if the plans diverge; the type
+        # stays untested and is packed again on the next run
+        print(
+            f"Note: Skipping type '{type_name}' - its {total_parts} part(s) need subagents "
+            + f"through {last_subagent_num} but only {max_subagents} exist",
+            file=sys.stderr,
+        )
+        continue
 
-    # If type doesn't fit in remaining space AND current subagent is empty, something is wrong
-    if ops_needed > ops_per_subagent:
-        # Type is too large for any single subagent - must be split
-        needs_splitting = True
-    elif ops_needed <= ops_remaining_in_subagent:
-        # Type fits entirely in current subagent
-        needs_splitting = False
-    elif not current_subagent_tests:
-        # Current subagent is empty, type doesn't fit - must be split or there's a bug
-        needs_splitting = True
-    else:
-        # Type doesn't fit in remaining space, but we have tests already
-        # We'll split it to use remaining space in this subagent
-        needs_splitting = True
+    for part_number, part_operations in enumerate(parts, start=1):
+        # Each later part - and part 1 when the current subagent cannot hold it - goes in
+        # the next subagent
+        if part_number > 1 or start_offset > 0:
+            finalize_subagent(
+                current_subagent_num,
+                current_subagent_tests,
+                current_subagent_descriptions,
+                batch_num,
+                assignments,
+            )
+            current_subagent_tests = []
+            current_subagent_descriptions = []
+            current_subagent_num += 1
+            current_subagent_ops_used = 0
+            operation_id_counter = OPERATION_ID_START  # Reset operation IDs for new subagent
 
-    # Handle non-split case (type fits entirely in current subagent)
-    if not needs_splitting:
-        # Fits entirely in current subagent (no split needed)
-        operations = deepcopy(all_operations)
+        operations = deepcopy(part_operations)
 
         # Renumber operation IDs
         port = calculate_port(current_subagent_num, mutation_config)
@@ -1307,215 +1062,40 @@ for type_with_ops in types_with_ops:
             op["port"] = port
             operation_id_counter += 1
 
-        # Add to current subagent
         test: TypeTest = {
             "type_name": type_name,
             "mutation_type": mutation_type or "Unknown",
             "operations": operations,
         }
+        if total_parts > 1:
+            test["part_number"] = part_number
+            test["total_parts"] = total_parts
         current_subagent_tests.append(test)
 
-        # Format description
-        description = format_type_description(type_name, mutation_type, len(operations))
-        current_subagent_descriptions.append(description)
-
-        # Update operation count usage
-        current_subagent_ops_used += ops_needed
-
-        # If subagent is full, finalize it and start new one
-        if current_subagent_ops_used >= ops_per_subagent:
-            # Finalize current subagent
-            finalize_subagent(
-                current_subagent_num,
-                current_subagent_tests,
-                current_subagent_descriptions,
-                batch_num,
-                assignments,
+        description = (
+            format_type_description(
+                type_name, mutation_type, len(operations), part_number, total_parts
             )
-
-            # Clear the current subagent data immediately after finalizing
-            current_subagent_tests = []
-            current_subagent_descriptions = []
-
-            # Check if we can start a new subagent
-            if current_subagent_num >= max_subagents:
-                # We've reached the limit - stop processing more types
-                break
-
-            # Start new subagent
-            current_subagent_num += 1
-            current_subagent_ops_used = 0
-            operation_id_counter = (
-                OPERATION_ID_START  # Reset operation IDs for new subagent
-            )
-
-    else:
-        # Type needs to span multiple subagents - split at boundaries with GREEDY filling
-        remaining_ops = ops_needed
-        part_number = 1
-        accumulated_ops_so_far = (
-            0  # Track how many operations we've used for greedy splitting
+            if total_parts > 1
+            else format_type_description(type_name, mutation_type, len(operations))
         )
+        current_subagent_descriptions.append(description)
+        current_subagent_ops_used += len(operations)
 
-        # Calculate total_parts considering current subagent's available space
-        # First part uses ops_remaining_in_subagent, remaining parts use full ops_per_subagent
-        if ops_remaining_in_subagent > 0:
-            after_first_part = ops_needed - ops_remaining_in_subagent
-            if after_first_part > 0:
-                total_parts = 1 + (
-                    (after_first_part + ops_per_subagent - 1) // ops_per_subagent
-                )
-            else:
-                total_parts = 1
-        else:
-            total_parts = (ops_needed + ops_per_subagent - 1) // ops_per_subagent
-
-        # Check if we have enough subagents to complete all parts
-        subagents_needed = current_subagent_num + total_parts - 1
-        if subagents_needed > max_subagents:
-            # Not enough subagents to complete this multi-part type
-            # Try to find a smaller type that fits instead
-            remaining_subagents = max_subagents - current_subagent_num + 1
-            remaining_capacity = (
-                ops_remaining_in_subagent + (remaining_subagents - 1) * ops_per_subagent
-            )
-
-            # Search for a smaller type in the remaining types
-            found_smaller = False
-            current_idx = types_with_ops.index(type_with_ops)
-            for check_idx in range(current_idx + 1, len(types_with_ops)):
-                check_type_with_ops = types_with_ops[check_idx]
-                check_ops_needed = check_type_with_ops["ops_needed"]
-
-                if check_ops_needed <= remaining_capacity:
-                    # Calculate parts needed for this smaller type
-                    if ops_remaining_in_subagent > 0:
-                        check_after_first = check_ops_needed - ops_remaining_in_subagent
-                        if check_after_first > 0:
-                            check_parts = 1 + (
-                                (check_after_first + ops_per_subagent - 1)
-                                // ops_per_subagent
-                            )
-                        else:
-                            check_parts = 1
-                    else:
-                        check_parts = (
-                            check_ops_needed + ops_per_subagent - 1
-                        ) // ops_per_subagent
-
-                    # Verify this smaller type can complete within remaining subagents
-                    check_subagents_needed = current_subagent_num + check_parts - 1
-                    if check_subagents_needed <= max_subagents:
-                        # Found a smaller type that fits - swap and process it
-                        types_with_ops[current_idx], types_with_ops[check_idx] = (
-                            types_with_ops[check_idx],
-                            types_with_ops[current_idx],
-                        )
-                        found_smaller = True
-                        break
-
-            if not found_smaller:
-                # No smaller types found that can complete - done with this batch
-                print(
-                    f"Note: Skipping type '{type_name}' - requires {total_parts} parts but only {remaining_subagents} subagent(s) remaining",
-                    file=sys.stderr,
-                )
-                break
-
-            # Skip to next iteration to process the swapped smaller type
-            continue
-
-        while remaining_ops > 0:
-            # Calculate how many slots are available in this subagent
-            # For part 1: use remaining space in current subagent
-            # For parts 2+: use full subagent capacity
-            if part_number == 1 and ops_remaining_in_subagent > 0:
-                slots_for_this_part = ops_remaining_in_subagent
-            else:
-                slots_for_this_part = ops_per_subagent
-
-            # Check if we have slots available for this part
-            if slots_for_this_part > 0 and remaining_ops > 0:
-                # Get operations for this part (pass slots available, not ops consumed)
-                operations = split_operations_for_part_new(
-                    all_operations,
-                    part_number,
-                    total_parts,
-                    slots_for_this_part,  # How many slots available in this subagent
-                    accumulated_ops_so_far,  # How many operations previous parts used
-                )
-                operations = deepcopy(operations)
-
-                # Use ACTUAL operation count (accounts for pair-preservation overage)
-                actual_ops_in_this_part = len(operations)
-
-                # Renumber operation IDs
-                port = calculate_port(current_subagent_num, mutation_config)
-                for op in operations:
-                    op["operation_id"] = operation_id_counter
-                    op["port"] = port
-                    operation_id_counter += 1
-
-                # Add to current subagent
-                test = cast(
-                    TypeTest,
-                    cast(
-                        object,
-                        {
-                            "type_name": type_name,
-                            "mutation_type": mutation_type or "Unknown",
-                            "part_number": part_number,
-                            "total_parts": total_parts,
-                            "operations": operations,
-                        },
-                    ),
-                )
-                current_subagent_tests.append(test)
-
-                # Format description
-                description = format_type_description(
-                    type_name, mutation_type, len(operations), part_number, total_parts
-                )
-                current_subagent_descriptions.append(description)
-
-                # Update counters with actual operation count
-                current_subagent_ops_used += actual_ops_in_this_part
-                ops_remaining_in_subagent -= actual_ops_in_this_part
-                remaining_ops -= actual_ops_in_this_part
-                accumulated_ops_so_far += actual_ops_in_this_part
-                part_number += 1
-
-            # Check if we need to finalize current subagent and start a new one
-            if current_subagent_ops_used >= ops_per_subagent or (
-                remaining_ops > 0 and ops_remaining_in_subagent == 0
-            ):
-                # Finalize current subagent
-                finalize_subagent(
-                    current_subagent_num,
-                    current_subagent_tests,
-                    current_subagent_descriptions,
-                    batch_num,
-                    assignments,
-                )
-
-                # Clear the current subagent data immediately after finalizing
-                current_subagent_tests = []
-                current_subagent_descriptions = []
-
-                # Always increment subagent counter after finalizing
-                current_subagent_num += 1
-
-                # Check if we can start a new subagent
-                if current_subagent_num > max_subagents:
-                    # We've reached the limit - stop splitting this type
-                    break
-
-                # Start new subagent
-                current_subagent_ops_used = 0
-                ops_remaining_in_subagent = ops_per_subagent
-                operation_id_counter = (
-                    OPERATION_ID_START  # Reset operation IDs for new subagent
-                )
+    # If subagent is full, finalize it and start new one
+    if current_subagent_ops_used >= ops_per_subagent:
+        finalize_subagent(
+            current_subagent_num,
+            current_subagent_tests,
+            current_subagent_descriptions,
+            batch_num,
+            assignments,
+        )
+        current_subagent_tests = []
+        current_subagent_descriptions = []
+        current_subagent_num += 1
+        current_subagent_ops_used = 0
+        operation_id_counter = OPERATION_ID_START  # Reset operation IDs for new subagent
 
 # Finalize last subagent if it has tests (and wasn't already finalized)
 if current_subagent_tests:

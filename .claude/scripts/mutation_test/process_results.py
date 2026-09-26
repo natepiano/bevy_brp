@@ -23,6 +23,7 @@ script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
 
 from config import (  # noqa: E402
+    PROVISION_LIMIT_REASON,
     AllTypesData,
     find_current_batch,
     get_mutation_test_log,
@@ -226,27 +227,19 @@ def build_diagnostic_entry(
     type_name = test["type_name"]
     operations = test["operations"]
 
-    # Find first failed operation (if any) and determine status
+    # The first operation that did not succeed decides the status: a recorded failure is FAIL,
+    # an operation never executed is RETRY. Null statuses after a failure are expected because
+    # the subagent stops at the first failure.
     failed_op_id: int | None = None
-    has_null_status = False
+    diag_status = "PASS"
 
     for op in operations:
         op_status = op.get("status")
-        if op_status is None:
-            has_null_status = True
-            if failed_op_id is None:
-                failed_op_id = cast(int | None, op.get("operation_id"))
-        elif op_status.upper() != "SUCCESS":
-            if failed_op_id is None:
-                failed_op_id = cast(int | None, op.get("operation_id"))
-
-    # Determine diagnostic status
-    if failed_op_id is None:
-        diag_status = "PASS"
-    elif has_null_status:
-        diag_status = "RETRY"
-    else:
-        diag_status = "FAIL"
+        if op_status is not None and op_status.upper() == "SUCCESS":
+            continue
+        failed_op_id = cast(int | None, op.get("operation_id"))
+        diag_status = "RETRY" if op_status is None else "FAIL"
+        break
 
     return cast(
         DiagnosticEntry,
@@ -326,7 +319,10 @@ def convert_test_to_result(
         op_status = op.get("status")
 
         # Spawn/insert operation
-        if op_tool == "mcp__brp__world_spawn_entity":
+        if op_tool in [
+            "mcp__brp__world_spawn_entity",
+            "mcp__brp__world_insert_resources",
+        ]:
             if op_status and op_status.upper() == "SUCCESS":
                 spawn_insert = True
                 # Note: entity_id tracking removed - not needed for validation
@@ -337,14 +333,21 @@ def convert_test_to_result(
                 # Detect subagent failure (never executed operation)
                 if op_status is None:
                     error_msg = "Subagent failure - operation not executed (status field is null)"
+                is_spawn = op_tool == "mcp__brp__world_spawn_entity"
+                request_sent: dict[str, object] = (
+                    {"components": op.get("components", {}), "port": op.get("port")}
+                    if is_spawn
+                    else {
+                        "resource": op.get("resource"),
+                        "value": op.get("value"),
+                        "port": op.get("port"),
+                    }
+                )
                 failure_details = FailureDetails(
-                    failed_operation="spawn",
+                    failed_operation="spawn" if is_spawn else "insert",
                     failed_mutation_path=None,
                     error_message=error_msg if error_msg else "Unknown error",
-                    request_sent={
-                        "components": op.get("components", {}),
-                        "port": op.get("port"),
-                    },
+                    request_sent=request_sent,
                     response_received={
                         "error": error_msg if error_msg else "Unknown error"
                     },
@@ -454,6 +457,7 @@ def is_retry_failure(result: TestResult) -> bool:
     Retry scenarios:
     - Subagent crashed mid-execution (some operations succeeded, rest are null)
     - Error message contains "status field is null"
+    - Subagent requested an operation repeatedly without executing it (PROVISION_LIMIT_REASON)
 
     Review scenarios:
     - Got actual BRP error response (like "0 entities found")
@@ -463,7 +467,7 @@ def is_retry_failure(result: TestResult) -> bool:
         return False
 
     error_msg = fail_details.get("error_message", "")
-    return "status field is null" in error_msg
+    return "status field is null" in error_msg or PROVISION_LIMIT_REASON in error_msg
 
 
 def aggregate_results_by_type(results: list[TestResult]) -> dict[str, TestResult]:
@@ -722,7 +726,7 @@ review_log_path: str | None = None
 retry_summaries: list[FailureSummary] = []
 review_summaries: list[FailureSummary] = []
 
-if failed > 0 or missing > 0:
+if failed > 0 or missing > 0 or retry > 0:
     # Get all failures
     all_failures = [
         r for r in results if r["status"] in ["FAIL", "COMPONENT_NOT_FOUND"]
@@ -807,9 +811,9 @@ if failed > 0 or missing > 0:
 # Determine final status
 # RETRY_ONLY = only retry failures (subagent crashes), will be retried automatically
 # FAILURES_DETECTED = at least one real BRP validation failure needing review
-# SUCCESS = no failures
+# SUCCESS = no failures and no retries
 final_status = "SUCCESS"
-if failed > 0 or missing > 0:
+if failed > 0 or missing > 0 or retry > 0:
     if len(review_summaries) == 0:
         final_status = "RETRY_ONLY"
     else:

@@ -18,6 +18,7 @@ use super::brp_type_name::BrpTypeName;
 use super::constants::AGENT_GUIDANCE;
 use super::constants::ENTITY_WARNING;
 use super::constants::ERROR_GUIDANCE;
+use super::constants::NOT_IN_REGISTRY_GUIDANCE;
 use super::constants::TYPE_BEVY_ENTITY;
 use super::mutation_path_builder;
 use super::mutation_path_builder::MutationPathExternal;
@@ -111,11 +112,21 @@ impl TypeGuide {
         let spawn_insert_example =
             mutation_path_builder::extract_spawn_insert_example(&mutation_paths, &reflect_traits);
 
-        // Extract schema info from registry
-        let schema_info = Some(Self::extract_schema_info(registry_schema));
-
         // Generate agent guidance (with Entity warning)
         let agent_guidance = Self::generate_agent_guidance(&mutation_paths)?;
+
+        // Ordering: `spawn_insert_example` and `agent_guidance` above read the full path set.
+        // Collapsing an immutable component first would drop its root example (and with it the
+        // spawn/insert example that is the only way to replace it) and its Entity-typed child
+        // paths (ChildOf's `.0`) that trigger the Entity warning.
+        let mutation_paths = mutation_path_builder::collapse_immutable_component_paths(
+            &brp_type_name,
+            registry_schema,
+            mutation_paths,
+        );
+
+        // Extract schema info from registry
+        let schema_info = Some(Self::extract_schema_info(registry_schema));
 
         Ok(Self {
             type_name: brp_type_name,
@@ -136,7 +147,7 @@ impl TypeGuide {
             mutation_paths: Vec::new(),
             spawn_insert_example: None,
             schema_info: None,
-            agent_guidance: AGENT_GUIDANCE.to_string(),
+            agent_guidance: NOT_IN_REGISTRY_GUIDANCE.to_string(),
             error: Some(error_message),
         }
     }
@@ -156,6 +167,8 @@ impl TypeGuide {
             error: Some(error_message),
         }
     }
+
+    pub(super) const fn is_registered(&self) -> bool { self.in_registry.is_registered() }
 
     pub(super) const fn is_successful_discovery(&self) -> bool {
         self.in_registry.is_registered() && self.error.is_none()

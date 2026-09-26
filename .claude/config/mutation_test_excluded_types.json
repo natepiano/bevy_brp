@@ -5,15 +5,11 @@
       "reason": "New Bevy 0.19 dev-tools overlay type, not spawned at startup in the extras_plugin test app, so query-only test partitions find 0 entities. Low value to mutation-test (it spawns and mutates fine in single-part tests); the suite already covers sufficient component/resource types."
     },
     {
-      "type_name": "bevy_ecs::hierarchy::ChildOf",
-      "reason": "Immutable type - causes panic when mutated. Bevy's immutable types are not properly reflected yet; query says it supports mutation but it doesn't."
-    },
-    {
       "type_name": "bevy_render::view::window::screenshot::Screenshot",
       "reason": "Ephemeral component - only exists during screenshot operations. Not suitable for mutation testing as it's immediately consumed."
     },
     {
-      "type_name": "bevy_scene::components::DynamicSceneRoot",
+      "type_name": "bevy_world_serialization::components::DynamicWorldRoot",
       "reason": "Component not present in extras_plugin test app - only added when spawning dynamic scenes."
     },
     {
@@ -27,14 +23,6 @@
     {
       "type_name": "bevy_ecs::observer::distributed_storage::ObservedBy",
       "reason": "Internal ECS component. Automatically managed by Bevy's observer system to track which observers are watching an entity. Not user-spawnable and only added when observers are registered."
-    },
-    {
-      "type_name": "bevy_picking::hover::DirectlyHovered",
-      "reason": "Immutable component (marked with #[component(immutable)]). Automatically managed by Bevy's picking system based on HoverMap. Cannot be mutated through reflection - ComponentInfo::mutable() returns false, but this information is not exposed through BRP registry.schema."
-    },
-    {
-      "type_name": "bevy_picking::hover::Hovered",
-      "reason": "Immutable component (marked with #[component(immutable)]). Automatically managed by Bevy's picking system based on HoverMap and entity hierarchy. Cannot be mutated through reflection - ComponentInfo::mutable() returns false, but this information is not exposed through BRP registry.schema."
     },
     {
       "type_name": "bevy_pbr::wireframe::Mesh3dWireframe",
@@ -53,7 +41,7 @@
       "reason": "Immutable component. Does not have #[reflect(Component)] configured to allow mutations through reflection. All mutation attempts panic with: 'Cannot call ReflectComponent::reflect_mut on component TilemapChunk. It is immutable, and cannot modified through reflection'."
     },
     {
-      "type_name": "bevy_core_pipeline::skybox::Skybox",
+      "type_name": "bevy_light::probe::Skybox",
       "reason": "Root path mutation to Default value causes app crash. The component contains Handle<Image> with Strong variant (Arc<StrongHandle>) that lacks ReflectSerialize registration, making it impossible to serialize/deserialize through BRP. Additionally, Default value creates invalid texture state - skybox shader expects Cube texture dimension but Default provides D2, causing wgpu validation panic: 'Texture binding 0 expects dimension = Cube, but given a view with dimension = D2' in prepare_skybox_bind_groups system."
     },
     {
@@ -89,16 +77,32 @@
       "reason": "Excessively large component with many fields. Not representative of typical component mutation testing needs. The large number of mutation operations creates disproportionate test time without providing proportional value for validating BRP mutation functionality. If other mutations work, this will work too."
     },
     {
-      "type_name": "bevy_render::sync_world::RenderEntity",
-      "reason": "Main-world-to-render-world entity mapping. TupleStruct containing entity ID that references render world entity. Mutating existing entities crashes render systems (bevy_ui_render::extract_ui_camera_view, bevy_anti_alias::taa::extract_taa_settings) with 'Camera entity wasn't synced: EntityDoesNotExistError' when the referenced entity doesn't exist in render world. Can only safely spawn new entities with arbitrary values (no immediate crash), but mutations on existing entities with active render dependencies cause app crash on next render frame. Not suitable for mutation testing since we can't mutate existing entities, only newly spawned ones - this doesn't test general mutation behavior."
-    },
-    {
       "type_name": "bevy_camera::camera::RenderTarget",
       "reason": "External resource reference type. RenderTarget::TextureView variant contains ManualTextureViewHandle (a u32 handle ID) that must reference a valid texture view registered in Bevy's render pipeline. Setting arbitrary values (e.g., 1) causes the render system to panic when it tries to use the non-existent texture view on the next frame. Similarly, RenderTarget::Window expects a valid window entity, and RenderTarget::Image requires a valid image handle. These resources cannot be created via BRP, making all mutable variants unsafe to test with arbitrary example values."
     },
     {
       "type_name": "bevy_picking::hover::PickingInteraction",
-      "reason": "System-managed picking component. Automatically managed by Bevy's picking system based on pointer interaction state. Similar to already-excluded DirectlyHovered and Hovered components. Not spawned in extras_plugin.rs at startup, causing Part 2 queries to fail with 0 entities. Cannot be manually spawned as it requires active picking system interaction."
+      "reason": "System-managed picking component. Automatically managed by Bevy's picking system based on pointer interaction state. Not spawned in extras_plugin.rs at startup, causing Part 2 queries to fail with 0 entities. Cannot be manually spawned as it requires active picking system interaction."
+    },
+    {
+      "type_name": "bevy_scene::scene_component::SceneComponentInfo",
+      "reason": "`&'static str` field lacks ReflectDeserialize so it cannot be spawned/inserted via BRP; it only exists on entities spawned from scenes and no entity in extras_plugin carries it, so query/mutation steps find 0 entities."
+    },
+    {
+      "type_name": "bevy_dev_tools::fps_overlay::FpsOverlayConfig",
+      "reason": "Resource initialized only by the dev-only FpsOverlayPlugin, which draws an on-screen overlay; extras_plugin does not add it, so world.insert_resources fails with \"Resource is not registered\"."
+    },
+    {
+      "type_name": "bevy_input::button_input::ButtonInput<bevy_input::gamepad::GamepadButton>",
+      "reason": "No plugin initializes it as a resource (InputPlugin covers KeyCode, Key and MouseButton only); it is registered because it is a field of the Gamepad component, so world.insert_resources fails with \"Resource is not registered\"."
+    },
+    {
+      "type_name": "bevy_time::delayed_commands::DelayedCommandQueue",
+      "reason": "Consumed by Bevy: check_delayed_command_queues despawns the entity once submit_at <= elapsed time. The spawn example's submit_at is already past, so the entity is gone before the query step finds it (0 entities)."
+    },
+    {
+      "type_name": "bevy_ui::widget::text::TextNodeFlags",
+      "reason": "Rewritten by Bevy's text measure system: the root example sets needs_measure_fn, and the next frame's measure pass calls clear_no_wrap_measure() on wrapping text, resetting no_wrap_measure to None so the .no_wrap_measure.0 paths hit a Unit variant."
     }
   ]
 }

@@ -12,8 +12,9 @@
 //!
 //! During the 2D/UI epoch, `NatesList` contains a yellow marker at (52, 44)
 //! and a magenta marker at (100, 56), while `Screenshot2dAabb` contains a
-//! yellow marker at (112, 128). During the 3D epoch, `Screenshot3dAabb`
-//! contains a yellow marker at (168, 114). Coordinates are target-space pixels.
+//! yellow marker at (112, 128) and its red fill at (112, 110). During the 3D
+//! epoch, `Screenshot3dAabb` contains a yellow marker at (168, 114).
+//! Coordinates are target-space pixels.
 //! `ScreenshotFixturesPlugin` leaves existing camera state unchanged; its two
 //! offscreen cameras declare their own initial active states when spawned.
 
@@ -25,14 +26,14 @@ use bevy::camera::Viewport;
 use bevy::camera::primitives::Aabb;
 use bevy::camera::visibility::NoCpuCulling;
 use bevy::camera::visibility::RenderLayers;
-use bevy::core_pipeline::tonemapping::DebandDither;
-use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::math::Rot2;
 use bevy::prelude::*;
 use bevy::render::render_resource::Extent3d;
 use bevy::render::render_resource::TextureDimension;
 use bevy::render::render_resource::TextureFormat;
 use bevy::render::render_resource::TextureUsages;
+use bevy::render::view::DebandDither;
+use bevy::render::view::Tonemapping;
 use bevy::ui::ComputedNode;
 use bevy::window::PrimaryWindow;
 
@@ -93,7 +94,6 @@ const VIEWPORT_POSITION: UVec2 = UVec2::new(16, 12);
 const VIEWPORT_SIZE: UVec2 = UVec2::new(224, 168);
 
 // world geometry
-const AABB_DEPTH: f32 = 1.0;
 const DISJOINT_AABB_POSITION: Vec3 = Vec3::new(72.0, -48.0, 0.0);
 const ERROR_AABB_HALF_EXTENTS: Vec3 = Vec3::new(8.0, 8.0, 0.5);
 const HIDDEN_AABB_POSITION: Vec3 = Vec3::new(72.0, 48.0, 0.0);
@@ -253,24 +253,13 @@ fn spawn_ui_fixtures(commands: &mut Commands, camera: Entity) {
 
 fn spawn_two_d_fixtures(commands: &mut Commands) {
     let rotation = Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
+    // Bevy computes this sprite's `Aabb` from its size. It keeps CPU culling because
+    // Bevy 0.20.0-rc.1 never draws a sprite that has `NoCpuCulling`.
     commands.spawn((
         Sprite::from_color(TWO_D_COLOR, TWO_D_ENTITY_SIZE),
-        Aabb::from_min_max(
-            Vec3::new(
-                -TWO_D_ENTITY_SIZE.x / 2.0,
-                -TWO_D_ENTITY_SIZE.y / 2.0,
-                -AABB_DEPTH / 2.0,
-            ),
-            Vec3::new(
-                TWO_D_ENTITY_SIZE.x / 2.0,
-                TWO_D_ENTITY_SIZE.y / 2.0,
-                AABB_DEPTH / 2.0,
-            ),
-        ),
         Transform::from_translation(TWO_D_ENTITY_POSITION)
             .with_rotation(rotation)
             .with_scale(TWO_D_ENTITY_SCALE),
-        NoCpuCulling,
         RenderLayers::layer(TWO_D_RENDER_LAYER),
         Name::new(TWO_D_AABB_NAME),
     ));

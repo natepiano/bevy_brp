@@ -38,7 +38,8 @@ EOF
 
 **Bash Usage:**
 - Bash is ONLY for the exact PNG assertion, directory assertion, and screenshot
-  cleanup command forms listed below
+  cleanup command forms listed below, and for
+  `.claude/scripts/integration_tests/query_validate.sh` when a test file names it
 - Bash is NEVER for: creating test data, calling BRP methods, writing scripts
 - Use the relative command paths exactly as written. Do NOT convert them to absolute
   paths; the permission allowlist only matches the relative forms.

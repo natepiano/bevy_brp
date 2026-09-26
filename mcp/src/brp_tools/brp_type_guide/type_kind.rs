@@ -51,6 +51,24 @@ impl TypeKind {
             Self::Value => "components",
         }
     }
+
+    /// Returns the lowercase noun naming this kind in mutation path descriptions
+    ///
+    /// `TupleStruct` reads as "tuple struct", which `AsRef<str>` plus `to_lowercase` would
+    /// render as "tuplestruct".
+    pub(super) const fn description_label(&self) -> &'static str {
+        match self {
+            Self::Array => "array",
+            Self::Enum => "enum",
+            Self::List => "list",
+            Self::Map => "map",
+            Self::Struct => "struct",
+            Self::Set => "set",
+            Self::Tuple => "tuple",
+            Self::TupleStruct => "tuple struct",
+            Self::Value => "value",
+        }
+    }
 }
 
 impl From<&Value> for TypeKind {

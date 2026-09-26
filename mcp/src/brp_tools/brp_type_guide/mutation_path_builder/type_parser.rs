@@ -5,6 +5,11 @@
 //! - `Option<T>::Some`
 //! - `Option<Handle<Mesh>>::Some`
 //! - `core::option::Option<bevy_asset::handle::Handle<bevy_mesh::mesh::Mesh>>::Some`
+//!
+//! Generic arguments can also be tuples, arrays, slices, and references:
+//! - `core::option::Option<(bevy_ecs::entity::Entity, u8)>::Some`
+//! - `core::option::Option<[f32; 4]>::Some`
+//! - `core::option::Option<&'static str>::Some`
 
 use nom::IResult;
 use nom::Parser;
@@ -38,18 +43,64 @@ fn identifier(input: &str) -> IResult<&str, &str> {
 fn generics(input: &str) -> IResult<&str, &str> {
     combinator::recognize(sequence::delimited(
         character::complete::char('<'),
-        multi::separated_list0(
-            bytes::complete::tag(", "),
-            branch::alt((
-                // Type with generics
-                combinator::recognize(sequence::pair(type_path_inner, combinator::opt(generics))),
-                // Simple type
-                type_path_inner,
-            )),
-        ),
+        multi::separated_list0(bytes::complete::tag(", "), type_arg),
         character::complete::char('>'),
     ))
     .parse(input)
+}
+
+/// Parse one type argument: a tuple, array, slice, reference, or type path
+///
+/// `type_path_inner` matches the empty string, so it has to come last.
+fn type_arg(input: &str) -> IResult<&str, &str> {
+    branch::alt((tuple_type, array_type, reference_type, type_path_inner)).parse(input)
+}
+
+/// Parse a tuple type such as `()`, `(A,)`, or `(A, B)`
+fn tuple_type(input: &str) -> IResult<&str, &str> {
+    combinator::recognize(sequence::delimited(
+        character::complete::char('('),
+        sequence::pair(
+            multi::separated_list0(bytes::complete::tag(", "), type_arg),
+            combinator::opt(character::complete::char(',')),
+        ),
+        character::complete::char(')'),
+    ))
+    .parse(input)
+}
+
+/// Parse an array type such as `[f32; 4]` or a slice type such as `[u8]`
+fn array_type(input: &str) -> IResult<&str, &str> {
+    combinator::recognize(sequence::delimited(
+        character::complete::char('['),
+        sequence::pair(
+            type_arg,
+            combinator::opt(sequence::preceded(
+                bytes::complete::tag("; "),
+                character::complete::digit1,
+            )),
+        ),
+        character::complete::char(']'),
+    ))
+    .parse(input)
+}
+
+/// Parse a reference prefix: `&`, an optional lifetime such as `'static `, and an optional `mut `
+fn reference_prefix(input: &str) -> IResult<&str, &str> {
+    combinator::recognize((
+        character::complete::char('&'),
+        combinator::opt(sequence::terminated(
+            sequence::preceded(character::complete::char('\''), identifier),
+            character::complete::char(' '),
+        )),
+        combinator::opt(bytes::complete::tag("mut ")),
+    ))
+    .parse(input)
+}
+
+/// Parse a reference type such as `&'static str` or `&mut T`
+fn reference_type(input: &str) -> IResult<&str, &str> {
+    combinator::recognize(sequence::pair(reference_prefix, type_arg)).parse(input)
 }
 
 /// Internal type path parser (needed because we can't reference `type_path` before it's defined)
@@ -100,8 +151,42 @@ fn full_type_path(input: &str) -> IResult<&str, (&str, Option<&str>)> {
     Ok((input, (type_part, variant)))
 }
 
-/// Simplify a type by removing module paths but keeping generic structure
+/// Simplify a type by removing module paths but keeping generic, tuple, array, and reference
+/// structure
 fn simplify_type(type_str: &str) -> String {
+    // References keep their `&`, lifetime, and `mut` prefix
+    // "&'static alloc::string::String" -> "&'static String"
+    if let Ok((referent, prefix)) = reference_prefix(type_str) {
+        return format!("{prefix}{}", simplify_type(referent));
+    }
+
+    // Tuples simplify each element and keep a trailing comma
+    // "(bevy_ecs::entity::Entity, u8)" -> "(Entity, u8)", "(bevy_ecs::entity::Entity,)" ->
+    // "(Entity,)"
+    if let Some(elements) = type_str
+        .strip_prefix('(')
+        .and_then(|rest| rest.strip_suffix(')'))
+    {
+        let trailing_comma = if elements.trim_end().ends_with(',') {
+            ","
+        } else {
+            ""
+        };
+        return format!("({}{trailing_comma})", simplify_list(elements));
+    }
+
+    // Arrays simplify the element and keep the length, slices have no length
+    // "[bevy_math::Vec2; 4]" -> "[Vec2; 4]", "[bevy_math::Vec2]" -> "[Vec2]"
+    if let Some(contents) = type_str
+        .strip_prefix('[')
+        .and_then(|rest| rest.strip_suffix(']'))
+    {
+        return match split_top_level(contents, ';').as_slice() {
+            [element, length] => format!("[{}; {length}]", simplify_type(element)),
+            _ => format!("[{}]", simplify_type(contents)),
+        };
+    }
+
     // Find where generics start (if any)
     type_str.find('<').map_or_else(
         || {
@@ -132,49 +217,50 @@ fn simplify_type(type_str: &str) -> String {
 
 /// Simplify generic parameters recursively
 fn simplify_generics(generics_str: &str) -> String {
-    if !generics_str.starts_with('<') || !generics_str.ends_with('>') {
-        return generics_str.to_string();
-    }
+    generics_str
+        .strip_prefix('<')
+        .and_then(|rest| rest.strip_suffix('>'))
+        .map_or_else(
+            || generics_str.to_string(),
+            |arguments| format!("<{}>", simplify_list(arguments)),
+        )
+}
 
-    let inner = &generics_str[1..generics_str.len() - 1];
-    let mut result = String::from("<");
-    let mut depth = 0;
-    let mut current_type = String::new();
+/// Simplify each type in a comma-separated list and rejoin them with ", "
+fn simplify_list(list: &str) -> String {
+    split_top_level(list, ',')
+        .into_iter()
+        .map(simplify_type)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
 
-    for ch in inner.chars() {
+/// Split `list` at each `separator` outside `<>`, `()`, and `[]` nesting
+///
+/// Each piece is trimmed, and the empty final piece a trailing separator leaves is dropped, so
+/// `"A,"` and `"A"` both split to `["A"]` and `""` splits to `[]`.
+fn split_top_level(list: &str, separator: char) -> Vec<&str> {
+    let mut pieces = Vec::new();
+    let mut depth = 0_usize;
+    let mut piece_start = 0;
+
+    for (index, ch) in list.char_indices() {
         match ch {
-            '<' => {
-                depth += 1;
-                current_type.push(ch);
+            '<' | '(' | '[' => depth += 1,
+            '>' | ')' | ']' => depth = depth.saturating_sub(1),
+            _ if ch == separator && depth == 0 => {
+                pieces.push(list[piece_start..index].trim());
+                piece_start = index + ch.len_utf8();
             },
-            '>' => {
-                depth -= 1;
-                current_type.push(ch);
-            },
-            ',' if depth == 0 => {
-                // End of a type parameter
-                if !result.ends_with('<') {
-                    result.push_str(", ");
-                }
-                result.push_str(&simplify_type(current_type.trim()));
-                current_type.clear();
-            },
-            _ => {
-                current_type.push(ch);
-            },
+            _ => {},
         }
     }
 
-    // Handle the last type parameter
-    if !current_type.trim().is_empty() {
-        if !result.ends_with('<') {
-            result.push_str(", ");
-        }
-        result.push_str(&simplify_type(current_type.trim()));
+    let last_piece = list[piece_start..].trim();
+    if !last_piece.is_empty() {
+        pieces.push(last_piece);
     }
-
-    result.push('>');
-    result
+    pieces
 }
 
 /// Parse a complete type path and extract simplified variant name
@@ -304,6 +390,108 @@ mod tests {
         assert_eq!(
             extract_simplified_variant_name(input),
             "BottomEnum::VariantA"
+        );
+    }
+
+    #[test]
+    fn test_option_with_tuple_of_paths() {
+        let input = "core::option::Option<(bevy_ecs::entity::Entity, bevy_input_focus::gained_and_lost::FocusCause)>::Some";
+        let result = parse_type_with_variant(input).unwrap();
+        assert_eq!(result.simplified_type, "Option<(Entity, FocusCause)>");
+        assert_eq!(result.variant, Some("Some".to_string()));
+        assert_eq!(
+            extract_simplified_variant_name(input),
+            "Option<(Entity, FocusCause)>::Some"
+        );
+    }
+
+    #[test]
+    fn test_option_with_tuple_of_primitives() {
+        assert_eq!(
+            extract_simplified_variant_name("core::option::Option<(u8, u8)>::Some"),
+            "Option<(u8, u8)>::Some"
+        );
+    }
+
+    #[test]
+    fn test_option_with_tuple_of_primitive_and_path() {
+        assert_eq!(
+            extract_simplified_variant_name(
+                "core::option::Option<(bool, bevy_math::rects::rect::Rect)>::Some"
+            ),
+            "Option<(bool, Rect)>::Some"
+        );
+    }
+
+    #[test]
+    fn test_option_with_single_element_tuple() {
+        assert_eq!(
+            extract_simplified_variant_name(
+                "core::option::Option<(bevy_ecs::entity::Entity,)>::Some"
+            ),
+            "Option<(Entity,)>::Some"
+        );
+    }
+
+    #[test]
+    fn test_option_with_unit() {
+        assert_eq!(
+            extract_simplified_variant_name("core::option::Option<()>::None"),
+            "Option<()>::None"
+        );
+    }
+
+    #[test]
+    fn test_option_with_array() {
+        assert_eq!(
+            extract_simplified_variant_name("core::option::Option<[f32; 4]>::Some"),
+            "Option<[f32; 4]>::Some"
+        );
+    }
+
+    #[test]
+    fn test_option_with_slice_of_arrays() {
+        assert_eq!(
+            extract_simplified_variant_name(
+                "core::option::Option<&'static [[bevy_math::Vec2; 2]]>::Some"
+            ),
+            "Option<&'static [[Vec2; 2]]>::Some"
+        );
+    }
+
+    #[test]
+    fn test_option_with_static_reference() {
+        assert_eq!(
+            extract_simplified_variant_name("core::option::Option<&'static str>::Some"),
+            "Option<&'static str>::Some"
+        );
+    }
+
+    #[test]
+    fn test_option_with_mutable_reference() {
+        assert_eq!(
+            extract_simplified_variant_name(
+                "core::option::Option<&mut bevy_ecs::entity::Entity>::Some"
+            ),
+            "Option<&mut Entity>::Some"
+        );
+    }
+
+    #[test]
+    fn test_option_with_vec_of_tuple_containing_array() {
+        assert_eq!(
+            extract_simplified_variant_name(
+                "core::option::Option<alloc::vec::Vec<(bevy_ecs::entity::Entity, [u8; 2])>>::Some"
+            ),
+            "Option<Vec<(Entity, [u8; 2])>>::Some"
+        );
+    }
+
+    #[test]
+    fn test_result_with_unit_and_path() {
+        assert_eq!(
+            extract_simplified_variant_name("core::result::Result<(), alloc::string::String>::Ok"),
+            "Result<(), String>::Ok"
         );
     }
 }

@@ -10,6 +10,8 @@ pub(super) const AGENT_GUIDANCE: &str = "The 'mutation_paths' field provides val
 pub(super) const ENTITY_WARNING: &str = " CAUTION: This type contains bevy_ecs::entity::Entity fields - you must use valid Entity IDs from the running app to replace the example value '{}'. Invalid Entity values may crash the application.";
 /// Guidance for types that failed during processing
 pub(super) const ERROR_GUIDANCE: &str = "This type was found in the registry but failed during processing. Check the 'error' field for details. No mutation paths or spawn format are available due to the processing failure.";
+/// Guidance for types absent from the app's type registry
+pub(super) const NOT_IN_REGISTRY_GUIDANCE: &str = "This type is not in the app's type registry, so no spawn example or mutation paths are available. Check the fully-qualified type path against 'mcp__brp__world_list_components', 'mcp__brp__world_list_resources', or 'mcp__brp__registry_schema', and make sure the app registers the type for reflection.";
 
 // bevy component type constants
 pub(super) const BEVY_ASSET_HANDLE_PREFIX: &str = "bevy_asset::handle::Handle<";
@@ -21,21 +23,14 @@ pub(super) const TYPE_BEVY_ENTITY: &str = "bevy_ecs::entity::Entity";
 pub(super) const TYPE_BEVY_GLOBAL_TRANSFORM: &str =
     "bevy_transform::components::global_transform::GlobalTransform";
 pub(super) const TYPE_BEVY_GLYPH_ATLAS_LOCATION: &str = "bevy_text::glyph::GlyphAtlasLocation";
+pub(super) const TYPE_BEVY_INPUT_FOCUS: &str = "bevy_input_focus::InputFocus";
 pub(super) const TYPE_BEVY_NAME: &str = "bevy_ecs::name::Name";
 pub(super) const TYPE_BEVY_VIDEO_MODE: &str = "bevy_window::monitor::VideoMode";
 pub(super) const TYPE_BEVY_WINDOW_RESOLUTION: &str = "bevy_window::window::WindowResolution";
 pub(super) const TYPE_BLOOM: &str = "bevy_post_process::bloom::settings::Bloom";
 
 // bevy math type constants
-pub(super) const TYPE_BEVY_MAT2: &str = "bevy_math::mat2::Mat2";
-pub(super) const TYPE_BEVY_MAT3: &str = "bevy_math::mat3::Mat3";
-pub(super) const TYPE_BEVY_MAT4: &str = "bevy_math::mat4::Mat4";
-pub(super) const TYPE_BEVY_QUAT: &str = "bevy_math::quat::Quat";
 pub(super) const TYPE_BEVY_RECT: &str = "bevy_math::rects::rect::Rect";
-pub(super) const TYPE_BEVY_VEC2: &str = "bevy_math::vec2::Vec2";
-pub(super) const TYPE_BEVY_VEC3: &str = "bevy_math::vec3::Vec3";
-pub(super) const TYPE_BEVY_VEC3A: &str = "bevy_math::vec3a::Vec3A";
-pub(super) const TYPE_BEVY_VEC4: &str = "bevy_math::vec4::Vec4";
 
 // bevy time default values
 /// Default value for `Time<_>::wrap_period` (one hour, in seconds). Bevy panics
@@ -53,6 +48,10 @@ pub(super) const TYPE_BEVY_TIME_VIRTUAL_CONTAINER: &str =
     "bevy_time::time::Time<bevy_time::virt::Virtual>";
 pub(super) const TYPE_BEVY_VIRTUAL: &str = "bevy_time::virt::Virtual";
 
+// ecs role noun constants
+pub(super) const ROLE_COMPONENT: &str = "component";
+pub(super) const ROLE_RESOURCE: &str = "resource";
+
 // example generation constants
 /// Maximum recursion depth for type example generation to prevent stack overflow
 pub(super) const MAX_TYPE_RECURSION_DEPTH: usize = 10;
@@ -60,6 +59,11 @@ pub(super) const MAX_TYPE_RECURSION_DEPTH: usize = 10;
 // glam type constants
 pub(super) const TYPE_GLAM_AFFINE2: &str = "glam::Affine2";
 pub(super) const TYPE_GLAM_AFFINE3A: &str = "glam::Affine3A";
+pub(super) const TYPE_GLAM_BVEC2: &str = "glam::BVec2";
+pub(super) const TYPE_GLAM_BVEC3: &str = "glam::BVec3";
+pub(super) const TYPE_GLAM_BVEC3A: &str = "glam::BVec3A";
+pub(super) const TYPE_GLAM_BVEC4: &str = "glam::BVec4";
+pub(super) const TYPE_GLAM_BVEC4A: &str = "glam::BVec4A";
 pub(super) const TYPE_GLAM_DVEC2: &str = "glam::DVec2";
 pub(super) const TYPE_GLAM_DVEC3: &str = "glam::DVec3";
 pub(super) const TYPE_GLAM_DVEC4: &str = "glam::DVec4";
@@ -79,6 +83,13 @@ pub(super) const TYPE_GLAM_VEC3: &str = "glam::Vec3";
 pub(super) const TYPE_GLAM_VEC3A: &str = "glam::Vec3A";
 pub(super) const TYPE_GLAM_VEC4: &str = "glam::Vec4";
 
+// immutable component guidance constants
+/// Description of the single root path left for an immutable component or resource
+/// (placeholders: `{role}` from `ROLE_*`, `{type}` for the short name and kind label, `{tool}`
+/// from `TOOL_*`)
+pub(super) const IMMUTABLE_ROOT_DESCRIPTION_TEMPLATE: &str =
+    "This immutable {role} cannot be mutated in place; replace the entire {type} with '{tool}'";
+
 // json fields
 pub(super) const DURATION_FIELD_NANOS: &str = "nanos";
 pub(super) const DURATION_FIELD_SECS: &str = "secs";
@@ -88,6 +99,10 @@ pub(super) const NOT_MUTABLE_FIELD: &str = "not_mutable";
 pub(super) const PARTIALLY_MUTABLE_FIELD: &str = "partially_mutable";
 pub(super) const WINDOW_TARGET_FIELD: &str = "Window";
 pub(super) const WINDOW_TARGET_PRIMARY: &str = "Primary";
+
+// mcp tool name constants
+pub(super) const TOOL_WORLD_INSERT_COMPONENTS: &str = "mcp__brp__world_insert_components";
+pub(super) const TOOL_WORLD_INSERT_RESOURCES: &str = "mcp__brp__world_insert_resources";
 
 // non-zero integer type constants
 pub(super) const TYPE_CORE_NON_ZERO_I128: &str = "core::num::NonZeroI128";
@@ -105,8 +120,7 @@ pub(super) const TYPE_CORE_NON_ZERO_USIZE: &str = "core::num::NonZeroUsize";
 
 // operation guidance constants
 /// Guidance for `resource` when type is a Resource
-pub(super) const INSERT_RESOURCE_GUIDANCE: &str =
-    "The 'example' below can be used to insert this resource.";
+pub(super) const INSERT_RESOURCE_GUIDANCE: &str = "The 'example' below can be used as the 'value' argument to 'mcp__brp__world_insert_resources' to insert this resource.";
 /// Template for Component without spawn example (use with `OPERATION_SPAWN`)
 pub(super) const NO_COMPONENT_EXAMPLE_TEMPLATE: &str =
     "This component does not have a {} example because the root mutation path is not 'mutable'.";
@@ -155,11 +169,15 @@ pub(super) const TYPE_CORE_DURATION: &str = "core::time::Duration";
 pub(super) const EXAMPLE_AFFINE2: [f32; 6] = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
 pub(super) const EXAMPLE_AFFINE3A: [f32; 12] =
     [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0];
+pub(super) const EXAMPLE_BVEC2: [bool; 2] = [true, true];
+pub(super) const EXAMPLE_BVEC3: [bool; 3] = [true, true, true];
+pub(super) const EXAMPLE_BVEC4: [bool; 4] = [true, true, true, true];
 pub(super) const EXAMPLE_DVEC2: [f64; 2] = [1.0, 2.0];
 pub(super) const EXAMPLE_DVEC3: [f64; 3] = [1.0, 2.0, 3.0];
 pub(super) const EXAMPLE_DVEC4: [f64; 4] = [1.0, 2.0, 3.0, 4.0];
 pub(super) const EXAMPLE_GLOBAL_TRANSFORM: [f32; 12] =
     [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0];
+pub(super) const EXAMPLE_INPUT_FOCUS_RECORDED_CHANGES: [u64; 0] = [];
 pub(super) const EXAMPLE_IVEC2: [i64; 2] = [0, 0];
 pub(super) const EXAMPLE_IVEC3: [i64; 3] = [0, 0, 0];
 pub(super) const EXAMPLE_IVEC4: [i64; 4] = [0, 0, 0, 0];
@@ -187,6 +205,7 @@ pub(super) const FIELD_CAMERA3D_SCREEN_SPACE_SPECULAR_TRANSMISSION_STEPS: &str =
 pub(super) const FIELD_CAMERA_TARGET: &str = "target";
 pub(super) const FIELD_FIXED_TIMESTEP: &str = "timestep";
 pub(super) const FIELD_GLYPH_ATLAS_LOCATION_GLYPH_INDEX: &str = "glyph_index";
+pub(super) const FIELD_INPUT_FOCUS_RECORDED_CHANGES: &str = "recorded_changes";
 pub(super) const FIELD_RECT_MAX: &str = "max";
 pub(super) const FIELD_RECT_MIN: &str = "min";
 pub(super) const FIELD_TIME_WRAP_PERIOD: &str = "wrap_period";
@@ -229,7 +248,6 @@ pub(super) const EXAMPLE_NON_ZERO_U32: u64 = 1;
 pub(super) const EXAMPLE_NON_ZERO_U64: u64 = 1;
 pub(super) const EXAMPLE_NON_ZERO_U8: u64 = 1;
 pub(super) const EXAMPLE_NON_ZERO_USIZE: u64 = 1;
-pub(super) const EXAMPLE_STATIC_STR: &str = "static string";
 pub(super) const EXAMPLE_STRING: &str = "Hello, World!";
 pub(super) const EXAMPLE_U128: &str = "987654321098765432109876543210";
 pub(super) const EXAMPLE_U16: u64 = 5000;
@@ -248,6 +266,8 @@ pub(super) const ZERO_NANOS: u32 = 0;
 pub(super) const ZERO_SECONDS: u64 = 0;
 
 // type knowledge simplified types
+pub(super) const SIMPLIFIED_INPUT_FOCUS_RECORDED_CHANGES: &str =
+    "Vec<Option<(Entity, FocusCause)>>";
 pub(super) const SIMPLIFIED_NON_ZERO_I128: &str = "NonZeroI128";
 pub(super) const SIMPLIFIED_NON_ZERO_I16: &str = "NonZeroI16";
 pub(super) const SIMPLIFIED_NON_ZERO_I32: &str = "NonZeroI32";

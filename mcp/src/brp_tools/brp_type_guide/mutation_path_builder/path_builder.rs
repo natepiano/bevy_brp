@@ -199,6 +199,37 @@ impl<B: TypeKindBuilder<Item = PathKind>> MutationPathBuilder<B> {
         }
     }
 
+    /// Build the example for a `PartiallyMutable` path from its direct children's examples
+    ///
+    /// `child_examples` holds one example per direct child. When every child example is
+    /// complete (`Example::is_complete`), e.g. a field holding an enum with a constructible
+    /// variant, `assembled_example` constructs the type and is returned. Otherwise the value is
+    /// reassembled without the `Example::NotApplicable` children and returned as
+    /// `Example::Partial`.
+    fn partially_mutable_example(
+        &self,
+        context: &RecursionContext,
+        child_examples: &HashMap<MutationPathDescriptor, Example>,
+        assembled_example: Example,
+    ) -> Example {
+        if child_examples.values().all(Example::is_complete) {
+            return assembled_example;
+        }
+
+        let available_child_examples: HashMap<_, _> = child_examples
+            .iter()
+            .filter(|(_, example)| !matches!(example, Example::NotApplicable))
+            .map(|(descriptor, example)| (descriptor.clone(), example.clone()))
+            .collect();
+
+        let assembled = self
+            .inner
+            .assemble_from_children(context, available_child_examples)
+            .unwrap_or_else(|_| json!(null));
+
+        Example::Partial(assembled)
+    }
+
     /// Build `partial_root_examples` from children on ascending from recursion
     ///
     /// `MutationPathBuilder` propagates `partial_root_examples` for non-enum builders
@@ -413,40 +444,18 @@ impl<B: TypeKindBuilder<Item = PathKind>> TypeKindBuilder for MutationPathBuilde
         let partial_root_examples =
             Self::build_partial_root_examples(&self.inner, context, direct_children.as_slice())?;
 
-        // Use knowledge example if available (for Teach types), otherwise use assembled example
-        let final_example = knowledge_example.unwrap_or(assembled_example);
-
         // Compute parent's mutation status from children's statuses
         let (parent_status, mutability_reason) = determine_parent_mutability(context, &all_paths);
 
-        // `parent_status` selects `Example::NotApplicable` for `NotMutable`, an example
-        // assembled from `Mutable` children for `PartiallyMutable`, or `final_example` for
-        // `Mutable`.
+        // `parent_status` selects `Example::NotApplicable` for `NotMutable`, the result of
+        // `partially_mutable_example` for `PartiallyMutable`, or for `Mutable` the knowledge
+        // example if available (for Teach types), otherwise the assembled example.
         let example_to_use: Example = match parent_status {
             Mutability::NotMutable => Example::NotApplicable,
             Mutability::PartiallyMutable => {
-                // Build partial example with only mutable children
-                let mutable_child_examples: HashMap<_, _> = child_examples
-                    .iter()
-                    .filter(|(descriptor, _)| {
-                        // Find the child path and check if it's mutable
-                        all_paths.iter().any(|p| {
-                            p.path_kind.to_mutation_path_descriptor() == **descriptor
-                                && matches!(p.mutability, Mutability::Mutable)
-                        })
-                    })
-                    .map(|(k, ex)| (k.clone(), ex.clone()))
-                    .collect();
-
-                // Assemble from only mutable children
-                let assembled = self
-                    .inner
-                    .assemble_from_children(context, mutable_child_examples)
-                    .unwrap_or_else(|_| json!(null));
-
-                Example::Json(assembled)
+                self.partially_mutable_example(context, &child_examples, assembled_example)
             },
-            Mutability::Mutable => final_example,
+            Mutability::Mutable => knowledge_example.unwrap_or(assembled_example),
         };
 
         // Return error only for NotMutable, success for Mutable and PartiallyMutable

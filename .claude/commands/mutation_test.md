@@ -346,22 +346,7 @@ Please select one of the keywords above.
 
 For each pattern, run quick diagnosis. If diagnosis matches, execute pattern section.
 
-**Pattern 1: Missing Component**
-
-Quick diagnosis - Check /tmp/mutation_test.log for this type:
-```bash
-grep "{failed_type_name}" /tmp/mutation_test.log | grep -E "spawn_entity.*SUCCESS|query.*FAIL"
-```
-
-Signature:
-- One port shows: `spawn_entity` → `SUCCESS`
-- Different, subsequent port shows for the same type: `query` → `FAIL` (Query returned 0 entities)
-
-**If signature matches**: Execute <MissingComponent/>
-
----
-
-**Pattern 2: BRP Connection Lost**
+**Pattern 1: BRP Connection Lost**
 
 Quick diagnosis - Check /tmp/mutation_test.log:
 ```bash
@@ -378,44 +363,6 @@ Signature:
 
 **No patterns matched**: Execute <InvestigateFailure/>
 </CheckCommonPatterns>
-
-<MissingComponent>
-**Pattern: Missing Component in Test App**
-
-Run diagnostic:
-```bash
-grep -c "{failed_type_name}" test-app/examples/extras_plugin.rs
-```
-
-**If count = 0** (component not spawned at startup):
-
-Parse /tmp/mutation_test.log to extract:
-- Port where spawn succeeded
-- Port where query failed
-- Operation IDs
-
-Present findings:
-```
-✅ PATTERN: Missing Component in Test App
-
-Type `{type_name}` is not spawned in extras_plugin.rs at app startup.
-
-Log Evidence:
-- Port {spawn_port}: op_id={spawn_op_id} spawn_entity → SUCCESS ✅
-- Port {query_port}: op_id={query_op_id} query → FAIL (0 entities) ❌
-
-Root Cause:
-Multi-part tests on different ports run separate app instances. Part 2 expected
-to find entities from startup, but extras_plugin.rs doesn't spawn this type.
-
-**Fix**: Add `{type_name}` entity to test-app/examples/extras_plugin.rs
-Search for similar components to find appropriate spawn function.
-```
-
-**If count > 0** (component exists):
-Present: "Component exists in extras_plugin.rs - different issue."
-Execute <InvestigateFailure/> for full analysis.
-</MissingComponent>
 
 <BRPConnectionLost>
 **Pattern: BRP Connection Lost**

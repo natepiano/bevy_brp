@@ -1,6 +1,6 @@
 Gets resource data via `world.get_resources` BRP method. Useful for inspecting global state, retrieving config, and monitoring/debugging.
 
-Example names: "bevy_time::time::Time", "my_game::config::GameConfig"
+Example names: "bevy_time::time::Time<bevy_time::real::Real>", "my_game::config::GameConfig"
 
 Returns JSON data structured per resource type.
 

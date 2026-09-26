@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Update to Bevy 0.20.0-rc.1
+- Update `rmcp` to 3.4.1
+- `brp_status` reports an app that is running on a different port with a new error that lists each running instance's PID and port, instead of suggesting a missing `RemotePlugin`
+- Error details now always arrive in `error_info`, as structured errors already did. Errors that carried details in `metadata` move them to `error_info`: format errors (`original_error`, `type_guide`), `brp_execute`, `brp_list_agent_tools`, `rpc_discover`, `brp_extras_screenshot`, `world_find_entities_by_name` and `brp_launch`
+
+### Fixed
+- Fix `world_query` `component_count` counting each entity row's keys instead of its components
+- Fix `brp_status` reporting a thread ID as the process ID on Linux
+- Fix `brp_launch` reporting the MCP server's directory as `working_directory` instead of the package directory the app runs in
+- Fix `brp_type_guide` mutation path descriptions naming the wrong type kind, e.g. calling a tuple struct field an enum
+- Fix `brp_type_guide` giving resources entity spawn guidance; resources now get a `resource` entry that points to `world_insert_resources`
+- Fix errors for a type missing from the app's type registry calling it a format error. The message now names the unregistered type, and its type guide says to check the type path instead of pointing at mutation paths it does not have
+- Fix `brp_type_guide` offering mutation paths for immutable components (`#[component(immutable)]`, e.g. `ChildOf`, `Hovered`, `SliderValue`), which panicked the app when used. The registry's `componentInfo.mutable` now collapses them to one `not_mutable` root that points to `world_insert_components` (or `world_insert_resources`); the spawn/insert example is kept
+- Fix `brp_type_guide` examples for `glam::BVec2`/`BVec3`/`BVec4`/`BVec3A`/`BVec4A`, which BRP expects as bool arrays such as `[true, true]`, not `{"x": true, "y": true}`
+- Fix `brp_type_guide` marking `&str` fields mutable and putting them in spawn examples. `&'static str` lacks `ReflectDeserialize`, so those fields are now `not_mutable` with the reason, e.g. `SceneComponentInfo.component_name`
+- Fix `brp_type_guide` offering element paths such as `.recorded_changes[0]` for `InputFocus.recorded_changes`, a list Bevy drains every frame. The field is mutated whole, with example `[]`
+- Fix enum variant names with tuple, array or reference generic arguments showing as `UnknownType::Some`; they now read e.g. `Option<(Entity, FocusCause)>::Some`
+- Fix `brp_type_guide` giving `{}` as the insert example for `DefaultCursor` and `OverrideCursor`, which BRP rejects; both now get `{"System":"Default"}`. A partially mutable type or enum variant now gets a full example when every field has one (e.g. a field holding an enum with a mutable variant, such as a `Handle` through its `Uuid` variant), so `EntityCursor::Custom`, `CursorIcon::Custom` and `Option<EntityCursor>::Some` are constructible and `Sprite`/`ImageNode` get full spawn examples. `{}` is offered only for named-field structs with `Default`, and descriptions no longer say "No example is provided." when one is
+- Fix a missing resource being reported as a format error. A resource the app never initialized (`Resource is not registered` from `world_insert_resources`, `Resource not registered` from get, mutate and remove) now says to add the plugin that owns it or call `init_resource`/`insert_resource` in the app, since BRP cannot insert it. A resource no entity holds (`Resource entity does not exist.`) says to insert it with `world_insert_resources` first
+
 ## [0.22.7] - 2026-09-23
 
 ### Changed

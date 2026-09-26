@@ -206,6 +206,7 @@
 //! rules and the BRP error data returned for a rejected entry.
 
 mod agent_tools;
+mod component_registration;
 mod constants;
 #[cfg(feature = "diagnostics")]
 mod diagnostics;

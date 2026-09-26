@@ -103,6 +103,15 @@ Each camera epoch below uses three `mcp__brp__world_mutate_components` calls on
 `bevy_camera::camera::Camera`, path `.is_active`, and a JSON boolean `value`, applied
 in the listed order. Assert each mutation succeeds before continuing.
 
+`Screenshot2dUiCamera` stays active from startup through step 7; step 8 is the
+first epoch that sets it to `false`, after the last 2D/UI pixel assertion. Never set
+it to `false` before a step that asserts 2D/UI pixels: in Bevy 0.20.0-rc.1, a
+`Camera2d` set to `false` and then back to `true` no longer draws the sprites it drew
+before (UI nodes still render), so the 2D marker and `Screenshot2dAabb` pixels read
+black. Steps 9 and 13 reactivate it only after every 2D/UI pixel assertion, so a
+second run against the same app instance fails at step 3; relaunch the app between
+runs.
+
 ## Test Steps
 
 ### 0. Prepare every destination once
@@ -149,8 +158,11 @@ Then make exactly three `mcp__brp__world_find_entities_by_name` calls on
 Apply the camera epoch:
 
 1. `ScreenshotPrimaryWindowCamera`: `true`
-2. `Screenshot2dUiCamera`: `false`
+2. `Screenshot2dUiCamera`: `true`
 3. `Screenshot3dCamera`: `false`
+
+The 2D/UI camera renders only to the offscreen fixture image, so leaving it active
+does not affect the primary-window capture.
 
 Immediately before capture, call `mcp__brp__world_get_components` on
 `[extras_app port]` for the stored `ScreenshotPrimaryWindowTarget` ID and component
@@ -197,8 +209,10 @@ supplying only its canonical camera ID, with no `entity`, `name`, or `padding`.
 - Assert no entity-only fields (`capture_kind`, `entity`, `name`, `camera`,
   `bounds_kind`, or `rect`) were added to `result`.
 - In one batch call assert `present`, `dimensions` `224x168`, `nonuniform`, and
-  three markers with image origin `(16, 12)`: yellow `(255, 255, 0)` at target
-  pixels `(52, 44)` and `(112, 128)`, and magenta `(255, 0, 255)` at `(100, 56)`.
+  four markers with image origin `(16, 12)`: yellow `(255, 255, 0)` at target
+  pixels `(52, 44)` and `(112, 128)`, magenta `(255, 0, 255)` at `(100, 56)`, and
+  red `(255, 0, 0)` at `(112, 110)`, proving the `Screenshot2dAabb` sprite itself
+  is drawn.
 
 Retain this PNG as the reference for every later 2D/UI crop.
 
@@ -306,9 +320,9 @@ Each is expected to fail, so none may publish a file.
    `name`. Assert a local MCP error explaining that padding requires an entity or
    name selector.
 
-For raw BRP errors in cases 2-7, assert `metadata.method` is
-`"brp_extras/screenshot"`, `metadata.port` is `[extras_app port]`, and
-`metadata.code` is `-32602`.
+For raw BRP errors in cases 2-7, assert `error_info.method` is
+`"brp_extras/screenshot"`, `error_info.port` is `[extras_app port]`, and
+`error_info.code` is `-32602`.
 
 After all nine calls return, issue one batch call asserting `absent` for all nine
 destinations, proving no failed capture published a file.
@@ -328,8 +342,10 @@ without padding or an explicit camera.
 - Assert `result.bounds_kind` is `"aabb"`, `result.camera` is the stored
   `Screenshot3dCamera` ID, and `result.rect` is
   `{ "x": 16, "y": 12, "width": 224, "height": 168 }`.
-- In one batch call assert `present`, `dimensions` `224x168`, `nonuniform`, and
-  yellow `(255, 255, 0)` at target pixel `(168, 114)` with image origin `(16, 12)`.
+- In one batch call assert `present`, `dimensions` `224x168`, `nonuniform`,
+  yellow `(255, 255, 0)` at target pixel `(168, 114)`, and green `(0, 255, 0)` at
+  target pixel `(168, 100)`, both with image origin `(16, 12)`. The green pixel
+  proves the `Screenshot3dAabb` mesh itself is drawn.
 
 Retain this PNG as the reference for every later 3D crop.
 
@@ -363,11 +379,11 @@ Apply the camera epoch for this case only:
 Capture case `neg_ambiguous_camera` for `Screenshot2dAabb` by direct ID without an
 explicit camera.
 
-- Assert top-level status is `"error"`, `metadata.method` is
-  `"brp_extras/screenshot"`, `metadata.port` is `[extras_app port]`, and
-  `metadata.code` is `-32602`.
-- Assert `metadata.data.reason` is `"ambiguous_camera"`.
-- Assert `metadata.data.camera_candidates` contains exactly the stored 2D/UI and
+- Assert top-level status is `"error"`, `error_info.method` is
+  `"brp_extras/screenshot"`, `error_info.port` is `[extras_app port]`, and
+  `error_info.code` is `-32602`.
+- Assert `error_info.data.reason` is `"ambiguous_camera"`.
+- Assert `error_info.data.camera_candidates` contains exactly the stored 2D/UI and
   3D camera IDs in ascending entity-ID order.
 - Assert the output path remains absent with a batch `absent` entry.
 
@@ -379,9 +395,9 @@ the `absent` assertion because the directory must already exist.
 
 - Before the call, execute the exact Bash command `test -d <cwd>/mcp`. Assert its
   exit status is zero, proving that `<cwd>/mcp` exists as a directory.
-- Assert top-level status is `"error"`, `metadata.method` is
-  `"brp_extras/screenshot"`, `metadata.port` is `[extras_app port]`, and
-  `metadata.code` is `-32603`.
+- Assert top-level status is `"error"`, `error_info.method` is
+  `"brp_extras/screenshot"`, `error_info.port` is `[extras_app port]`, and
+  `error_info.code` is `-32603`.
 - Assert the error text contains `Failed to publish screenshot` and names
   `<cwd>/mcp`.
 - After the call, execute the exact Bash command `test -d <cwd>/mcp` again. Assert
@@ -415,8 +431,8 @@ Then call the still-registered `mcp__brp__brp_extras_screenshot` tool with
 
 - Assert this is an invoked-tool error, not an unavailable-MCP-tool error.
 - Assert top-level `status` is `"error"`.
-- Assert `metadata.method` is `"brp_extras/screenshot"`, `metadata.code` is
-  `-32601`, and `metadata.port` is `[no_extras_app port]`.
+- Assert `error_info.method` is `"brp_extras/screenshot"`, `error_info.code` is
+  `-32601`, and `error_info.port` is `[no_extras_app port]`.
 - Assert the destination remains absent.
 
 This proves name discovery and exact-name resolution use standard

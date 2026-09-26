@@ -1,6 +1,7 @@
 mod api;
 mod builder_error;
 mod constants;
+mod ecs_role;
 mod enum_builder;
 mod enum_path_info;
 mod example_group;
@@ -21,6 +22,7 @@ mod variant_name;
 
 pub(super) use api::SpawnInsertExample;
 pub(super) use api::build_mutation_paths;
+pub(super) use api::collapse_immutable_component_paths;
 pub(super) use api::extract_spawn_insert_example;
 use builder_error::BuilderError;
 pub(super) use mutation_path_external::MutationPathExternal;

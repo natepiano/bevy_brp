@@ -128,7 +128,7 @@ Displays only the requested mutation path:
 
 ### Example 2: Full type path
 ```bash
-/get_guide bevy_core_pipeline::bloom::settings::Bloom
+/get_guide bevy_post_process::bloom::settings::Bloom
 ```
 
 ### Example 3: Specific mutation path

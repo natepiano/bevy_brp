@@ -14,7 +14,7 @@ mcp__brp__world_query(data={}, filter={"with": ["bevy_transform::components::tra
 {
   "components": ["bevy_transform::components::transform::Transform"],
   "option": ["bevy_sprite::sprite::Sprite"],  // or "all" to get all components
-  "has": ["bevy_render::camera::camera::Camera"]
+  "has": ["bevy_camera::camera::Camera"]
 }
 ```
 
@@ -31,8 +31,8 @@ Fields (all optional within the data object):
 Specifies which entities to include based on whether they have specified components:
 ```json
 {
-  "with": ["bevy_transform::components::transform::Transform", "bevy_render::camera::camera::Camera"],
-  "without": ["bevy_ui::node::Node"]
+  "with": ["bevy_transform::components::transform::Transform", "bevy_camera::camera::Camera"],
+  "without": ["bevy_ui::ui_node::Node"]
 }
 ```
 
@@ -60,7 +60,7 @@ Get Transform and optional Sprite from all cameras:
     "option": ["bevy_sprite::sprite::Sprite"]
   },
   "filter": {
-    "with": ["bevy_render::camera::camera::Camera"]
+    "with": ["bevy_camera::camera::Camera"]
   }
 }
 ```
@@ -71,7 +71,7 @@ Find entities with Sprite but without UI nodes (entity IDs only):
   "data": {},
   "filter": {
     "with": ["bevy_sprite::sprite::Sprite"],
-    "without": ["bevy_ui::node::Node"]
+    "without": ["bevy_ui::ui_node::Node"]
   }
 }
 ```

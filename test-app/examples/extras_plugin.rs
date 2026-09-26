@@ -51,6 +51,7 @@ use bevy::input::gamepad::GamepadSettings;
 use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input_focus::InputFocus;
+use bevy::input_focus::directional_navigation::DirectionalNavigationPlugin;
 use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::input_focus::tab_navigation::TabIndex;
 use bevy::light::CascadeShadowConfig;
@@ -79,6 +80,8 @@ use bevy::pbr::ScreenSpaceAmbientOcclusion;
 use bevy::pbr::ScreenSpaceReflections;
 use bevy::pbr::decal::ForwardDecalMaterialExt;
 use bevy::pbr::wireframe::WireframeConfig;
+use bevy::picking::cursor::CursorIconPlugin;
+use bevy::picking::hover::Hovered;
 use bevy::picking::mesh_picking::MeshPickingPlugin;
 use bevy::picking::mesh_picking::MeshPickingSettings;
 use bevy::picking::mesh_picking::ray_cast::RayCastVisibility;
@@ -109,18 +112,18 @@ use bevy::ui::BoxShadow;
 use bevy::ui::CalculatedClip;
 use bevy::ui::FocusPolicy;
 use bevy::ui::Gradient;
-use bevy::ui::Interaction;
 use bevy::ui::InterpolationColorSpace;
 use bevy::ui::LinearGradient;
 use bevy::ui::MaxTrackSizingFunction;
 use bevy::ui::MinTrackSizingFunction;
 use bevy::ui::Outline;
 use bevy::ui::RepeatedGridTrack;
+use bevy::ui::UiGlobalTransform;
 use bevy::ui::UiTargetCamera;
 use bevy::ui::ZIndex;
 use bevy::ui::gradients::ColorStop;
-use bevy::ui::widget::Button;
 use bevy::ui::widget::Label;
+use bevy::ui_widgets::Button;
 use bevy::window::CursorIcon;
 use bevy::window::MonitorSelection;
 use bevy::window::PrimaryWindow;
@@ -994,6 +997,7 @@ fn main() {
         .add_plugins(brp_extras_plugin)
         .add_plugins(ParameterizedBrpPlugin)
         .add_plugins(MeshPickingPlugin)
+        .add_plugins(CursorIconPlugin)
         .add_plugins(screenshot_fixtures::ScreenshotFixturesPlugin)
         .init_resource::<KeyboardInputHistory>()
         .init_resource::<TextInputContent>()
@@ -1027,6 +1031,7 @@ fn main() {
             picking_mode:    SpritePickingMode::AlphaThreshold(SPRITE_ALPHA_THRESHOLD),
         })
         .insert_resource(InputFocus::default())
+        .add_plugins(DirectionalNavigationPlugin)
         .add_systems(
             Startup,
             (setup_test_entities, setup_ui, minimize_window_on_start),
@@ -2068,9 +2073,10 @@ fn spawn_text_container(parent: &mut RelatedSpawnerCommands<ChildOf>, port: &Res
             BackgroundColor(TEXT_CONTAINER_BACKGROUND), /* Blue background for the entire text
                                                          * area */
             BoxShadowSamples(BOX_SHADOW_SAMPLES),
-            CalculatedClip {
-                clip: bevy::math::Rect::from_corners(Vec2::ZERO, CALCULATED_CLIP_MAX),
-            },
+            CalculatedClip::default().with_rect(
+                bevy::math::Rect::from_corners(Vec2::ZERO, CALCULATED_CLIP_MAX),
+                &UiGlobalTransform::default(),
+            ),
             Name::new(CALCULATED_CLIP_TEST_ENTITY_NAME),
         ))
         .with_children(|parent| {
@@ -2151,7 +2157,7 @@ fn spawn_button_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
         ), /* Yellow outline
             * for testing */
         FocusPolicy::Block,                          // For testing mutations
-        Interaction::None,                           // For testing mutations
+        Hovered::default(),                          // Picking hover state for `Button`
         ZIndex(0),                                   // For testing mutations
         bevy::ui::RelativeCursorPosition::default(), // For testing mutations
         Name::new(BUTTON_TEST_ENTITY_NAME),

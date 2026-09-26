@@ -69,7 +69,7 @@ Call `mcp__brp__brp_list_agent_tools` on `[no_extras_app port]`.
 
 - Require top-level `status: "error"`.
 - Require the error message to name `BrpExtrasPlugin`.
-- Require error `metadata` to contain these exact values:
+- Require `error_info` to contain these exact values:
   - `stage: "catalog_request"`
   - `method: "brp_extras/agent_tools"`
   - `port: [no_extras_app port]`
@@ -104,7 +104,7 @@ operands:
 ```
 
 - Require top-level `status: "error"`.
-- Require error `metadata` to contain these exact values:
+- Require `error_info` to contain these exact values:
   - `stage: "execution"`
   - `method: "test/multiply"`
   - `port: [extras_app port]`
@@ -127,14 +127,14 @@ complete top-level `result` payload as `second_catalog`.
   `test/multiply`.
 - `brp_list_agent_tools` returns one exact curated record with semantic parameter
   and result schemas plus `brp_execute` usage guidance.
-- The application without `BrpExtrasPlugin` reports method-not-found metadata and
+- The application without `BrpExtrasPlugin` reports method-not-found `error_info` and
   no successful catalog result.
 - `brp_execute` returns the exact typed success value and preserves the exact
-  checked-overflow error metadata.
+  checked-overflow `error_info`.
 - Repeated catalog reads return identical results without MCP catalog state.
 
 ## Failure Criteria
 
 Stop on the first mismatch in status, method inventory, catalog contents, semantic
-schemas, missing-plugin metadata, execution result, overflow metadata, or repeated
+schemas, missing-plugin `error_info`, execution result, overflow `error_info`, or repeated
 catalog equality.

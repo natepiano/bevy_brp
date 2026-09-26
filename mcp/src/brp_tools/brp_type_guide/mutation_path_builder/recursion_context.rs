@@ -89,6 +89,7 @@ use crate::brp_tools::brp_type_guide::constants::MAX_TYPE_RECURSION_DEPTH;
 use crate::brp_tools::brp_type_guide::type_knowledge::BRP_TYPE_KNOWLEDGE;
 use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeAction;
 use crate::brp_tools::brp_type_guide::type_knowledge::KnowledgeKey;
+use crate::brp_tools::brp_type_guide::type_knowledge::KnownNotMutable;
 use crate::brp_tools::brp_type_guide::type_knowledge::TypeKnowledge;
 use crate::brp_tools::brp_type_guide::variant_signature::VariantSignature;
 use crate::error::Error;
@@ -350,6 +351,12 @@ impl RecursionContext {
             Some(TypeKnowledge::TeachAndRecurse { example }) => {
                 // Use this example but continue recursing children
                 Ok(KnowledgeAction::UseExampleAndRecurse(example.clone()))
+            },
+            Some(TypeKnowledge::NotMutable { reason }) => match reason {
+                // `recurse_mutation_paths` turns this into a single `NotMutable` path
+                KnownNotMutable::MissingReflectDeserialize => Err(BuilderError::NotMutable(
+                    NotMutableReason::MissingReflectDeserialize(self.type_name().clone()),
+                )),
             },
             None => {
                 // No knowledge - proceed with normal processing

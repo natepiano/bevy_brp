@@ -141,7 +141,7 @@ pub(super) fn process_enum(
             // Use preferred example from processed variants
             select_preferred_example(&enum_examples).ok_or_else(|| {
                 BuilderError::System(Report::new(Error::InvalidState(format!(
-                    "Enum {} has no valid example: no knowledge and no mutable variants",
+                    "Enum {} has no valid example: no knowledge and no constructible variants",
                     context.type_name()
                 ))))
             })?
@@ -165,61 +165,43 @@ pub(super) fn process_enum(
 ///
 /// # Invariant
 ///
-/// After `build_variant_group_example`, only fully `Mutable` variants have `example: Some(value)`.
-/// Both `NotMutable` and `PartiallyMutable` variants will have `example: None` because:
-/// - `NotMutable`: The variant's fields cannot be serialized at all
-/// - `PartiallyMutable`: Some variatns are mutable, some are not
+/// After `build_variant_group_example`, a variant has `example: Some(value)` only when every
+/// field has a complete example (`Example::is_complete`). `NotMutable` variants and variants
+/// with a field that has no complete example have `example: None`. `PartiallyMutable` variants
+/// whose fields all have complete examples (e.g. a field holding an enum with a `Mutable`
+/// variant) keep their example.
 ///
 /// This invariant ensures that any `Some(value)` we find is safe to use for spawning.
 ///
 /// # Why This Matters
 ///
-/// When an enum has mixed mutability, we must select a variant that can be fully constructed.
 /// If we select a variant with `example: None`, it propagates up `PathExample.for_parent`,
-/// causing parent enums to build invalid examples.
+/// causing parent types to build invalid examples.
 ///
 /// ## Example Problem Case
 ///
 /// For `Option<Handle<Image>>` where `Handle<Image>` has:
-/// - `Strong` variant → `partially_mutable`, example: `None` (has non-serializable `Arc` field)
+/// - `Strong` variant → `not_mutable`, example: `None` (non-serializable `Arc` field)
 /// - `Uuid` variant → `mutable`, example: `Some({"Uuid": "..."})`
 ///
-/// If we pick `Strong` first (because it's non-unit), we get:
-/// 1. `Strong`'s example is `None`
-/// 2. This becomes `enum_example_for_parent: None` for `Handle<Image>`
-/// 3. Parent `Option<Handle<Image>>::Some` uses this to build: `{"Some": null}`
-/// 4. Result: Invalid spawn example that crashes when used
+/// If we pick `Strong`, its `None` example becomes the `for_parent` of `Handle<Image>`, and
+/// `Option<Handle<Image>>::Some` builds `{"Some": null}`, an invalid spawn example.
 ///
 /// # Selection Strategy
 ///
-/// 1. **First priority**: Non-unit `Mutable` variant with a complete example
-///    - Provides rich examples for tuple/struct variants
-///    - Explicitly checks `mutability` to ensure spawnability
+/// Picks the first group with the lowest `ExampleGroup::preference`:
 ///
-/// 2. **Second priority**: ANY `Mutable` variant with an example (including unit)
-///    - Handles enums where all non-unit variants are `not_mutable`/`partially_mutable`
-///    - Unit variants are always `Mutable` (no fields to construct)
+/// 1. `VariantPreference::MutableFields`: tuple/struct variant whose fields are all `Mutable`
+/// 2. `VariantPreference::ConstructibleFields`: tuple/struct variant with an example
+///    - `Option<EntityCursor>` picks `Some({"System": "Default"})` over `None`: `Some` is
+///      `partially_mutable`, but `EntityCursor::System` gives its field a complete example
+/// 3. `VariantPreference::Unit`: unit variant
 ///
-/// 3. **Fallback**: Return `None` if no `Mutable` variants exist
-///    - The entire enum is not spawnable
+/// Returns `None` when no variant has an example; the entire enum is not spawnable.
 pub(super) fn select_preferred_example(examples: &[ExampleGroup]) -> Option<Example> {
-    // First priority: Find a non-unit Mutable variant with a complete example
-    // Note: We check mutability explicitly for clarity and safety, even though
-    // example.is_some() now implies Mutable due to build_variant_group_example's logic
     examples
         .iter()
-        .find(|eg| {
-            !matches!(eg.signature, VariantSignature::Unit)
-                && eg.example.is_some()
-                && eg.mutability == Mutability::Mutable
-        })
-        .or_else(|| {
-            // Second priority: Fall back to ANY Mutable variant with an example (including unit)
-            // This handles cases where all non-unit variants are not_mutable/partially_mutable
-            examples
-                .iter()
-                .find(|eg| eg.example.is_some() && eg.mutability == Mutability::Mutable)
-        })
+        .min_by_key(|eg| eg.preference())
         .and_then(|eg| eg.example.clone().map(Example::Json))
 }
 
@@ -341,42 +323,33 @@ fn determine_signature_mutability(
     }
 }
 
-/// Build an example for a variant group based on mutation status
-/// Skip example generation for non-spawnable variants
+/// Build an example for a variant group when every field has a complete example
 ///
-/// We omit examples for `NotMutable` and `PartiallyMutable` variants because:
-/// 1. `child_examples` only contains mutable fields (`Arc`/`Handle` fields are excluded)
-/// 2. Building an example with incomplete fields would create invalid spawn example values
-/// 3. Attempting to spawn with incomplete examples causes Bevy reflection to panic
-/// 4. `select_preferred_example()` will automatically skip variants with `None` examples and choose
-///    a fully `Mutable` variant (or return `None` if no `Mutable` variants exist)
+/// A `NotMutable` field contributes `Example::NotApplicable` and a field with non-mutable
+/// descendants and no complete example contributes `Example::Partial`. Either one leaves the
+/// variant without an example, because spawning with an incomplete value makes Bevy reflection
+/// panic. A `PartiallyMutable` variant whose fields all have complete examples (e.g. a field
+/// holding an enum with a `Mutable` variant) gets an example. `select_preferred_example()` skips
+/// variants with `None` examples.
 fn build_variant_group_example(
     signature: &VariantSignature,
     variants_in_group: &[VariantName],
     child_examples: &HashMap<MutationPathDescriptor, Example>,
-    mutability: Mutability,
     context: &RecursionContext,
 ) -> std::result::Result<Option<Value>, BuilderError> {
     let representative_variant_name = variants_in_group
         .first()
         .ok_or_else(|| Report::new(Error::InvalidState("Empty variant group".to_string())))?;
 
-    let example = if matches!(
-        mutability,
-        Mutability::NotMutable | Mutability::PartiallyMutable
-    ) {
-        None // Omit example field for variants that cannot be fully constructed
-    } else {
-        Some(
-            build_variant_example(
-                signature,
-                representative_variant_name,
-                child_examples,
-                context.type_name(),
-            )
-            .to_value(),
+    let example = child_examples.values().all(Example::is_complete).then(|| {
+        build_variant_example(
+            signature,
+            representative_variant_name,
+            child_examples,
+            context.type_name(),
         )
-    };
+        .to_value()
+    });
 
     Ok(example)
 }
@@ -478,7 +451,6 @@ fn process_signature_groups(
             variant_signature,
             variant_names,
             &child_examples,
-            mutability,
             context,
         )?;
 
@@ -689,7 +661,9 @@ fn build_variant_example_for_chain(
 /// Returns `Ok(())` if variant is constructible (Mutable variants, Unit variants)
 /// Returns `Err(reason)` if variant cannot be constructed, with human-readable explanation
 ///
-/// For `PartiallyMutable` variants, collects actual reasons from `NotMutable` child fields.
+/// For `PartiallyMutable` variants, collects the reasons of the direct child fields whose
+/// example for the parent is incomplete (`Example::is_complete`); the same test decides whether
+/// `build_variant_group_example` gives the variant an example.
 /// For `NotMutable` variants, indicates all fields are problematic.
 fn analyze_variant_constructibility(
     variant_name: &VariantName,
@@ -719,24 +693,22 @@ fn analyze_variant_constructibility(
     }
 
     // PartiallyMutable variants - collect problematic field reasons
-    // A variant is unconstructible if it has:
+    // A variant is unconstructible if a field has no complete example:
     // 1. NotMutable fields (cannot provide values)
-    // 2. PartiallyMutable fields (contain NotMutable descendants, cannot provide complete values)
+    // 2. PartiallyMutable fields whose example is `Example::Partial` (non-mutable descendants with
+    //    no complete example). A field holding an enum with a constructible variant has a complete
+    //    example and does not block construction.
     let problematic_fields: Vec<String> = child_paths
         .iter()
         .filter(|p| p.is_direct_child_at_depth(*context.depth))
-        // Filter to only paths belonging to the current variant
+        // Filter to only paths belonging to the current variant: the last `variant_chain`
+        // entry is this enum's variant, earlier entries belong to enclosing enums
         .filter(|p| {
-            p.enum_path_info.as_ref().is_some_and(|data| {
-                !data.variant_chain.is_empty() && &data.variant_chain[0] == variant_name
-            })
+            p.enum_path_info
+                .as_ref()
+                .is_some_and(|data| data.variant_chain.last() == Some(variant_name))
         })
-        .filter(|p| {
-            matches!(
-                p.mutability,
-                Mutability::NotMutable | Mutability::PartiallyMutable
-            )
-        })
+        .filter(|p| !p.example.for_parent().is_complete())
         .map(|p| {
             let type_name = p.type_name.short_name();
 
@@ -770,8 +742,7 @@ fn analyze_variant_constructibility(
         .collect();
 
     if problematic_fields.is_empty() {
-        // `PartiallyMutable` variants should have at least one entry in
-        // `problematic_fields` explaining the incomplete field data.
+        // Every field of this `PartiallyMutable` variant has a complete example
         return Ok(());
     }
 

@@ -20,6 +20,8 @@ pub const HTTP_REQUEST_TIMEOUT: Duration = std::time::Duration::from_secs(30);
 /// is an example of what would be returned with -23501 when incorrectly trying to modify
 /// `ClearColor`   "Error accessing element with .red access(offset 3): Expected variant field
 /// access to access Struct variant, found a Tuple variant instead."
+/// `bevy_remote` names this code `RESOURCE_ERROR` and also reports a resource absent from the world
+/// with it - see `RESOURCE_NOT_INITIALIZED_MESSAGES` and `RESOURCE_NOT_IN_WORLD_MESSAGES`.
 pub(super) const BRP_ERROR_ACCESS_ERROR: i32 = -23_501;
 /// BRP error code for invalid request - can occur under multiple circumstances including
 /// The underlying error is generally something like "Unknown component type" which our code will
@@ -41,6 +43,22 @@ pub(super) const ERROR_PATTERNS: &[&str] = &[
     r"Unknown component type: `([^`]+)`",
     r"([a-zA-Z0-9_:]+) is invalid:",
 ];
+
+/// Guidance placed ahead of the original message when the app never initialized the resource
+pub(super) const RESOURCE_NOT_INITIALIZED_GUIDANCE: &str = "The app never initialized this resource, so BRP cannot insert, read, mutate or remove it - add the plugin that owns it, or call 'init_resource' or 'insert_resource' in the app";
+/// Messages `bevy_remote` reports with `BRP_ERROR_ACCESS_ERROR` when the resource's component was
+/// never registered, meaning the app never initialized the resource. `world.insert_resources`
+/// reports "Resource is not registered: `...`" and get, mutate and remove report "Resource not
+/// registered: `...`". BRP cannot insert such a resource, so neither an insert nor a format
+/// correction applies.
+pub(super) const RESOURCE_NOT_INITIALIZED_MESSAGES: &[&str] =
+    &["Resource is not registered", "Resource not registered"];
+/// Guidance placed ahead of the original message when no entity holds the resource
+pub(super) const RESOURCE_NOT_IN_WORLD_GUIDANCE: &str = "Resource is not present in the world - insert it with 'mcp__brp__world_insert_resources' first";
+/// Messages `bevy_remote` reports with `BRP_ERROR_ACCESS_ERROR` when the resource's component is
+/// registered but no entity holds the resource: "Resource entity does not exist." An insert fixes
+/// it, so no format correction applies.
+pub(super) const RESOURCE_NOT_IN_WORLD_MESSAGES: &[&str] = &["Resource entity does not exist"];
 
 // format error details
 pub(super) const FORMAT_ERROR_HELP_FIELD: &str = "help";

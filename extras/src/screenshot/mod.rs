@@ -552,11 +552,11 @@ mod native_tests {
     use bevy::camera::RenderTargetInfo;
     use bevy::camera::Viewport;
     use bevy::camera::primitives::Aabb;
-    use bevy::math::primitives::ViewFrustum;
     use bevy::render::render_resource::Extent3d;
     use bevy::render::render_resource::TextureDimension;
     use bevy::render::render_resource::TextureFormat;
     use bevy::render::view::screenshot::ScreenshotCaptured;
+    use bevy::shape::ViewFrustum;
     use bevy::window::WindowRef;
     use bevy_remote::BrpMessage;
     use bevy_remote::BrpSender;

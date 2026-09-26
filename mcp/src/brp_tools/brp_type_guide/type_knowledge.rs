@@ -20,6 +20,9 @@ use super::constants::EXAMPLE_AFFINE3A;
 use super::constants::EXAMPLE_ALPHA_MODE_2D_MASK;
 use super::constants::EXAMPLE_BLOOM_MAX_MIP_DIMENSION;
 use super::constants::EXAMPLE_BOOL;
+use super::constants::EXAMPLE_BVEC2;
+use super::constants::EXAMPLE_BVEC3;
+use super::constants::EXAMPLE_BVEC4;
 use super::constants::EXAMPLE_CAMERA3D_DEPTH_TEXTURE_USAGES;
 use super::constants::EXAMPLE_CAMERA3D_SCREEN_SPACE_SPECULAR_TRANSMISSION_STEPS;
 use super::constants::EXAMPLE_CHAR;
@@ -37,6 +40,7 @@ use super::constants::EXAMPLE_I16;
 use super::constants::EXAMPLE_I32;
 use super::constants::EXAMPLE_I64;
 use super::constants::EXAMPLE_I128;
+use super::constants::EXAMPLE_INPUT_FOCUS_RECORDED_CHANGES;
 use super::constants::EXAMPLE_ISIZE;
 use super::constants::EXAMPLE_IVEC2;
 use super::constants::EXAMPLE_IVEC3;
@@ -58,7 +62,6 @@ use super::constants::EXAMPLE_NON_ZERO_U64;
 use super::constants::EXAMPLE_NON_ZERO_U128;
 use super::constants::EXAMPLE_NON_ZERO_USIZE;
 use super::constants::EXAMPLE_QUAT;
-use super::constants::EXAMPLE_STATIC_STR;
 use super::constants::EXAMPLE_STRING;
 use super::constants::EXAMPLE_U8;
 use super::constants::EXAMPLE_U16;
@@ -86,6 +89,7 @@ use super::constants::FIELD_CAMERA3D_DEPTH_TEXTURE_USAGES;
 use super::constants::FIELD_CAMERA3D_SCREEN_SPACE_SPECULAR_TRANSMISSION_STEPS;
 use super::constants::FIELD_FIXED_TIMESTEP;
 use super::constants::FIELD_GLYPH_ATLAS_LOCATION_GLYPH_INDEX;
+use super::constants::FIELD_INPUT_FOCUS_RECORDED_CHANGES;
 use super::constants::FIELD_TIME_WRAP_PERIOD;
 use super::constants::FIELD_VIDEO_MODE_BIT_DEPTH;
 use super::constants::FIELD_VIDEO_MODE_PHYSICAL_SIZE;
@@ -93,6 +97,7 @@ use super::constants::FIELD_VIDEO_MODE_REFRESH_RATE_MILLIHERTZ;
 use super::constants::FIELD_VIRTUAL_MAX_DELTA;
 use super::constants::FIELD_WINDOW_RESOLUTION_PHYSICAL_HEIGHT;
 use super::constants::FIELD_WINDOW_RESOLUTION_PHYSICAL_WIDTH;
+use super::constants::SIMPLIFIED_INPUT_FOCUS_RECORDED_CHANGES;
 use super::constants::SIMPLIFIED_NON_ZERO_I8;
 use super::constants::SIMPLIFIED_NON_ZERO_I16;
 use super::constants::SIMPLIFIED_NON_ZERO_I32;
@@ -116,20 +121,13 @@ use super::constants::TYPE_BEVY_ENTITY;
 use super::constants::TYPE_BEVY_FIXED;
 use super::constants::TYPE_BEVY_GLOBAL_TRANSFORM;
 use super::constants::TYPE_BEVY_GLYPH_ATLAS_LOCATION;
-use super::constants::TYPE_BEVY_MAT2;
-use super::constants::TYPE_BEVY_MAT3;
-use super::constants::TYPE_BEVY_MAT4;
+use super::constants::TYPE_BEVY_INPUT_FOCUS;
 use super::constants::TYPE_BEVY_NAME;
-use super::constants::TYPE_BEVY_QUAT;
 use super::constants::TYPE_BEVY_RECT;
 use super::constants::TYPE_BEVY_TIME_EMPTY_CONTAINER;
 use super::constants::TYPE_BEVY_TIME_FIXED_CONTAINER;
 use super::constants::TYPE_BEVY_TIME_REAL_CONTAINER;
 use super::constants::TYPE_BEVY_TIME_VIRTUAL_CONTAINER;
-use super::constants::TYPE_BEVY_VEC2;
-use super::constants::TYPE_BEVY_VEC3;
-use super::constants::TYPE_BEVY_VEC3A;
-use super::constants::TYPE_BEVY_VEC4;
 use super::constants::TYPE_BEVY_VIDEO_MODE;
 use super::constants::TYPE_BEVY_VIRTUAL;
 use super::constants::TYPE_BEVY_WINDOW_RESOLUTION;
@@ -153,6 +151,11 @@ use super::constants::TYPE_F32;
 use super::constants::TYPE_F64;
 use super::constants::TYPE_GLAM_AFFINE2;
 use super::constants::TYPE_GLAM_AFFINE3A;
+use super::constants::TYPE_GLAM_BVEC2;
+use super::constants::TYPE_GLAM_BVEC3;
+use super::constants::TYPE_GLAM_BVEC3A;
+use super::constants::TYPE_GLAM_BVEC4;
+use super::constants::TYPE_GLAM_BVEC4A;
 use super::constants::TYPE_GLAM_DVEC2;
 use super::constants::TYPE_GLAM_DVEC3;
 use super::constants::TYPE_GLAM_DVEC4;
@@ -244,6 +247,14 @@ impl KnowledgeKey {
     }
 }
 
+/// Why BRP cannot build a type that carries `TypeKnowledge::NotMutable`
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum KnownNotMutable {
+    /// The type registers `ReflectSerialize` but not `ReflectDeserialize` (`&'static str`), so
+    /// BRP can read it but cannot deserialize a JSON value into it
+    MissingReflectDeserialize,
+}
+
 /// Hardcoded BRP format knowledge for a type
 #[derive(Debug, Clone)]
 pub(super) enum TypeKnowledge {
@@ -254,6 +265,8 @@ pub(super) enum TypeKnowledge {
         example:         Value,
         simplified_type: String,
     },
+    /// Type BRP cannot build from JSON, so every path of this type is `NotMutable`
+    NotMutable { reason: KnownNotMutable },
 }
 
 /// Action to take based on type knowledge lookup
@@ -292,10 +305,13 @@ impl TypeKnowledge {
         }
     }
 
-    /// Get the example value for this knowledge
-    pub(super) const fn example(&self) -> &Value {
+    /// Get the example value for this knowledge; `NotMutable` knowledge has none
+    pub(super) const fn example(&self) -> Option<&Value> {
         match self {
-            Self::TeachAndRecurse { example } | Self::TreatAsRootValue { example, .. } => example,
+            Self::TeachAndRecurse { example } | Self::TreatAsRootValue { example, .. } => {
+                Some(example)
+            },
+            Self::NotMutable { .. } => None,
         }
     }
 
@@ -319,7 +335,8 @@ impl TypeKnowledge {
     pub(super) fn get_entity_example_value() -> Result<u64> {
         BRP_TYPE_KNOWLEDGE
             .get(&KnowledgeKey::exact(TYPE_BEVY_ENTITY))
-            .and_then(|knowledge| knowledge.example().as_u64())
+            .and_then(Self::example)
+            .and_then(Value::as_u64)
             .ok_or_else(|| {
                 Error::InvalidState(
                     "Entity type knowledge missing or invalid in BRP_TYPE_KNOWLEDGE".to_string(),
@@ -408,13 +425,19 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
             KnowledgeKey::exact(TYPE_STRING),
             TypeKnowledge::as_root_value(json!(EXAMPLE_STRING), TYPE_STRING),
         );
+        // `&'static str` registers `ReflectSerialize` but not `ReflectDeserialize`, so BRP reads
+        // it but fails every spawn, insert, or mutate of it (`SceneComponentInfo.component_name`)
         map.insert(
             KnowledgeKey::exact(TYPE_STR_REF),
-            TypeKnowledge::as_root_value(json!(EXAMPLE_STATIC_STR), TYPE_STR),
+            TypeKnowledge::NotMutable {
+                reason: KnownNotMutable::MissingReflectDeserialize,
+            },
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STR),
-            TypeKnowledge::as_root_value(json!(EXAMPLE_STATIC_STR), TYPE_STR),
+            TypeKnowledge::NotMutable {
+                reason: KnownNotMutable::MissingReflectDeserialize,
+            },
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CHAR),
@@ -456,23 +479,11 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         // ===== Bevy math types (these serialize as arrays, not objects!) =====
         // Vec2
         map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_VEC2),
-            TypeKnowledge::new(json!(EXAMPLE_VEC2)),
-        );
-        map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC2),
             TypeKnowledge::new(json!(EXAMPLE_VEC2)),
         );
 
         // Vec3
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_VEC3),
-            TypeKnowledge::new(json!(EXAMPLE_VEC3)),
-        );
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_VEC3A),
-            TypeKnowledge::new(json!(EXAMPLE_VEC3)),
-        );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC3),
             TypeKnowledge::new(json!(EXAMPLE_VEC3)),
@@ -483,10 +494,6 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         );
 
         // Vec4
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_VEC4),
-            TypeKnowledge::new(json!(EXAMPLE_VEC4)),
-        );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC4),
             TypeKnowledge::new(json!(EXAMPLE_VEC4)),
@@ -534,11 +541,32 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
             TypeKnowledge::new(json!(EXAMPLE_UVEC4)),
         );
 
-        // Quaternion
+        // Boolean vectors - glam serializes all five as bool sequences. bevy_reflect describes
+        // BVec2/3/4 as structs with bool fields, so they keep their field paths. BVec3A/BVec4A
+        // are opaque reflected values, and `ValueMutationBuilder` fails before a
+        // `TeachAndRecurse` example applies, so they need a root value example.
         map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_QUAT),
-            TypeKnowledge::new(json!(EXAMPLE_QUAT)),
+            KnowledgeKey::exact(TYPE_GLAM_BVEC2),
+            TypeKnowledge::new(json!(EXAMPLE_BVEC2)),
         );
+        map.insert(
+            KnowledgeKey::exact(TYPE_GLAM_BVEC3),
+            TypeKnowledge::new(json!(EXAMPLE_BVEC3)),
+        );
+        map.insert(
+            KnowledgeKey::exact(TYPE_GLAM_BVEC4),
+            TypeKnowledge::new(json!(EXAMPLE_BVEC4)),
+        );
+        map.insert(
+            KnowledgeKey::exact(TYPE_GLAM_BVEC3A),
+            TypeKnowledge::as_root_value(json!(EXAMPLE_BVEC3), TYPE_GLAM_BVEC3A),
+        );
+        map.insert(
+            KnowledgeKey::exact(TYPE_GLAM_BVEC4A),
+            TypeKnowledge::as_root_value(json!(EXAMPLE_BVEC4), TYPE_GLAM_BVEC4A),
+        );
+
+        // Quaternion
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_QUAT),
             TypeKnowledge::new(json!(EXAMPLE_QUAT)),
@@ -546,16 +574,8 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
 
         // Matrices
         map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_MAT2),
-            TypeKnowledge::new(json!(EXAMPLE_MAT2)),
-        );
-        map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT2),
             TypeKnowledge::new(json!(EXAMPLE_MAT2)),
-        );
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_MAT3),
-            TypeKnowledge::new(json!(EXAMPLE_MAT3)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT3),
@@ -568,10 +588,6 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
             TypeKnowledge::new(json!(EXAMPLE_MAT3)),
         );
         // Mat4 - BRP expects flat array of 16 values, not nested 2D array
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_MAT4),
-            TypeKnowledge::new(json!(EXAMPLE_MAT4)),
-        );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT4),
             TypeKnowledge::new(json!(EXAMPLE_MAT4)),
@@ -733,6 +749,22 @@ pub(super) static BRP_TYPE_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, TypeKnowled
         map.insert(
             KnowledgeKey::struct_field(TYPE_BLOOM, FIELD_BLOOM_MAX_MIP_DIMENSION),
             TypeKnowledge::as_root_value(json!(EXAMPLE_BLOOM_MAX_MIP_DIMENSION), TYPE_U32),
+        );
+
+        // ===== InputFocus field-specific values =====
+        // bevy_input_focus drains `recorded_changes` every frame, so an element path such as
+        // `.recorded_changes[0]` no longer exists by the next BRP call. Treating the list as a
+        // root value leaves one mutable `.recorded_changes` path with no element paths. Marking
+        // the elements not_mutable instead would downgrade the list and the `InputFocus` root to
+        // partially_mutable, because `determine_parent_mutability` aggregates every descendant
+        // path. `[]` is the example because a non-empty list emits focus events for the example
+        // entity.
+        map.insert(
+            KnowledgeKey::struct_field(TYPE_BEVY_INPUT_FOCUS, FIELD_INPUT_FOCUS_RECORDED_CHANGES),
+            TypeKnowledge::as_root_value(
+                json!(EXAMPLE_INPUT_FOCUS_RECORDED_CHANGES),
+                SIMPLIFIED_INPUT_FOCUS_RECORDED_CHANGES,
+            ),
         );
 
         // ===== NonZero types =====

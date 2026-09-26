@@ -20,6 +20,7 @@ Usage:
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -29,13 +30,24 @@ from typing import Any, TypedDict, cast
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
 
-from config import MutationTestConfig, load_config as load_mutation_config
+from config import PROVISION_LIMIT_REASON, MutationTestConfig, load_config as load_mutation_config
 
 # Load configuration at module level
 CONFIG = load_mutation_config()
 MUTATION_TEST_LOG = CONFIG["mutation_test_log"]
 MAX_SUBAGENTS = CONFIG["max_subagents"]
 BASE_PORT = CONFIG["base_port"]
+
+# The body of a JSON string: characters other than quote and backslash, or an escape pair
+JSON_STRING_BODY = r'((?:[^"\\]|\\.)*)'
+# Where the MCP server puts the error text in a failed response, most specific first:
+# `error_info.original_error` holds the BRP message, `message` the MCP summary
+ERROR_MESSAGE_PATTERNS = (
+    re.compile(r'"original_error"\s*:\s*"' + JSON_STRING_BODY + '"'),
+    re.compile(r'"message"\s*:\s*"' + JSON_STRING_BODY + '"'),
+)
+# Characters of an unparseable error kept when no message field is found
+RAW_ERROR_PREFIX_LENGTH = 500
 
 
 class QueryResultEntry(TypedDict):
@@ -44,16 +56,18 @@ class QueryResultEntry(TypedDict):
     entity: int
 
 
-class HookEvent(TypedDict):
+class HookEvent(TypedDict, total=False):
     """Type for hook event JSON structure with structured responses."""
 
-    tool_response: str  # JSON-serialized BrpResponse
+    hook_event_name: str  # PostToolUse or PostToolUseFailure
+    tool_response: str  # PostToolUse: JSON-serialized BrpResponse
+    error: str  # PostToolUseFailure: JSON-serialized BrpResponse of the failed call
     tool_name: str
     tool_input: dict[str, object]
 
 
-class BrpResponseMetadata(TypedDict, total=False):
-    """Type for BRP response metadata field."""
+class BrpResponseErrorInfo(TypedDict, total=False):
+    """Type for BRP error response error_info field."""
 
     original_error: str
 
@@ -63,7 +77,7 @@ class BrpResponse(TypedDict, total=False):
 
     status: str
     message: str
-    metadata: BrpResponseMetadata
+    error_info: BrpResponseErrorInfo
     result: list[QueryResultEntry]
 
 
@@ -155,12 +169,22 @@ def skip_remaining_operations_in_test(
     test: dict[str, Any],  # pyright: ignore[reportExplicitAny]
     reason: str,
 ) -> None:
-    """Mark all non-completed operations in test as FAIL with skip reason."""
+    """
+    Mark all non-completed operations in test as FAIL with skip reason.
+
+    An operation that already failed keeps its recorded error after the reason, so the
+    error that exhausted the retries still reaches the results.
+    """
     operations = cast(list[dict[str, Any]], test.get("operations", []))  # pyright: ignore[reportExplicitAny]
     for op in operations:
         if op.get("status") != "SUCCESS":
+            last_error = cast(str | None, op.get("error"))
             op["status"] = "FAIL"
-            op["error"] = f"Skipped: {reason}"
+            op["error"] = (
+                f"Skipped: {reason}; last error: {last_error}"
+                if last_error
+                else f"Skipped: {reason}"
+            )
             # Set high call_count so find_next_operation won't retry
             op["call_count"] = 999
 
@@ -266,6 +290,31 @@ def validate_query_result(
         return "FAIL", f"Unexpected error validating query result: {e}"
 
 
+def extract_error_message(error_text: str) -> str:
+    """
+    Extract the error message from a PostToolUseFailure `error` that is not valid JSON.
+
+    Claude Code truncates a long `error` string mid-document, inserting a marker such as
+    "... [1651 characters truncated] ...", so `json.loads` rejects it. Take the
+    `original_error` value, else the `message` value, else a bounded prefix of the raw text.
+    """
+    for pattern in ERROR_MESSAGE_PATTERNS:
+        match = pattern.search(error_text)
+        if match and match.group(1):
+            escaped = match.group(1)
+            try:
+                # strict=False accepts the raw newlines a truncation marker inserts
+                return cast(str, json.loads(f'"{escaped}"', strict=False))
+            except json.JSONDecodeError:
+                return escaped
+
+    if not error_text:
+        return "Unknown error"
+    if len(error_text) <= RAW_ERROR_PREFIX_LENGTH:
+        return error_text
+    return f"{error_text[:RAW_ERROR_PREFIX_LENGTH]}... [truncated]"
+
+
 def parse_mcp_response_with_input(
     mcp_response_arg: str,
     tool_name: str,
@@ -289,10 +338,17 @@ def parse_mcp_response_with_input(
         mcp_data = cast(HookEvent, mcp_data_raw)
         tool_input = mcp_data.get("tool_input", {})
 
-        # Extract response JSON - tool_response is now a JSON string directly
-        response_text = mcp_data["tool_response"]
-        response_json_raw = json.loads(response_text)  # pyright: ignore[reportAny]
-        response_json = cast(BrpResponse, response_json_raw)
+        # A succeeded call carries the MCP response in `tool_response`. A call the MCP server
+        # flagged `isError` fires PostToolUseFailure instead, which carries it in `error`.
+        if mcp_data.get("hook_event_name") == "PostToolUseFailure":
+            error_text = mcp_data.get("error", "")
+            try:
+                response_json = cast(BrpResponse, json.loads(error_text))
+            except json.JSONDecodeError:
+                return ("FAIL", extract_error_message(error_text), tool_input)
+        else:
+            response_text = mcp_data.get("tool_response", "")
+            response_json = cast(BrpResponse, json.loads(response_text))
 
         # Determine initial status from MCP response
         if response_json.get("status") == "success":
@@ -301,9 +357,9 @@ def parse_mcp_response_with_input(
         else:
             status = "FAIL"
             # Extract error message
-            metadata = response_json.get("metadata")
+            error_info = response_json.get("error_info")
             error = (
-                (metadata.get("original_error") if metadata else None)
+                (error_info.get("original_error") if error_info else None)
                 or response_json.get("message")
                 or "Unknown error"
             )
@@ -825,7 +881,7 @@ def action_get_next(port: int) -> None:
     # Termination check 2: Provision retry limit exceeded (subagent not executing)
     if times_provided >= 4:
         handle_test_failure(
-            port, file_path, test_plan, current_test, operation_id, "Provision limit exceeded (subagent not executing)"
+            port, file_path, test_plan, current_test, operation_id, PROVISION_LIMIT_REASON
         )
         return
 

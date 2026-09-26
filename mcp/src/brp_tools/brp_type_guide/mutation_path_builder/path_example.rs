@@ -18,6 +18,12 @@ pub enum Example {
     /// A regular JSON value
     Json(Value),
 
+    /// Value assembled from only the children that have examples
+    ///
+    /// Used for `PartiallyMutable` non-enum paths where at least one child has no complete
+    /// example, so the value cannot construct the type.
+    Partial(Value),
+
     /// Explicit `Option::None` (serializes to null)
     OptionNone,
 
@@ -29,10 +35,13 @@ impl Example {
     /// Convert to `Value` for JSON operations (assembly, serialization)
     pub fn to_value(&self) -> Value {
         match self {
-            Self::Json(value) => value.clone(),
+            Self::Json(value) | Self::Partial(value) => value.clone(),
             Self::OptionNone | Self::NotApplicable => Value::Null,
         }
     }
+
+    /// Returns true if this `Example` constructs the whole type (`Json` or `OptionNone`)
+    pub const fn is_complete(&self) -> bool { matches!(self, Self::Json(_) | Self::OptionNone) }
 
     /// Returns true if this `Example` represents a null-equivalent value
     /// (`OptionNone` or `NotApplicable`)

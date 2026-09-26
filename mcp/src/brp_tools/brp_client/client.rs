@@ -19,12 +19,15 @@ use super::constants::FORMAT_ERROR_SUGGESTED_ACTION;
 use super::constants::FORMAT_ERROR_SUGGESTED_ACTION_FIELD;
 use super::constants::FORMAT_ERROR_TYPE_GUIDE_FIELD;
 use super::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
+use super::constants::RESOURCE_NOT_IN_WORLD_GUIDANCE;
+use super::constants::RESOURCE_NOT_INITIALIZED_GUIDANCE;
 use super::http_client::BrpHttpClient;
 use super::operation::Operation;
 use super::response_handling::BrpClientCallJsonResponse;
 use super::response_handling::BrpClientError;
 use super::response_handling::BrpToolConfig;
 use super::response_handling::FormatCorrectionStatus;
+use super::response_handling::ResourceAbsence;
 use super::response_handling::ResponseStatus;
 use super::response_handling::ResultStructBrpExt;
 use crate::brp_tools::Port;
@@ -118,7 +121,7 @@ impl BrpClient {
             },
             ResponseStatus::Error(err) => {
                 // Check if this result type supports adding the `TypeGuide`
-                if R::ADD_TYPE_GUIDE_TO_ERROR && err.has_format_error_code() {
+                if R::ADD_TYPE_GUIDE_TO_ERROR && err.is_format_error() {
                     // embed type_guide information
                     self.try_add_type_guide_to_error(&err)
                         .await
@@ -130,8 +133,7 @@ impl BrpClient {
                         })
                 } else {
                     // Regular error - enhance with context if possible
-                    let enhanced_message =
-                        self.enhance_error_message(err.get_message(), err.get_code());
+                    let enhanced_message = self.enhance_error_message(&err);
                     Err(Error::tool_call_failed(enhanced_message).into())
                 }
             },
@@ -249,8 +251,23 @@ impl BrpClient {
     /// Enhance error messages with additional context when available
     ///
     /// Currently enhances:
+    /// - Resource-absence errors: For a resource the app never initialized, directs the caller to
+    ///   add the plugin that owns it or initialize it in the app; for a resource no entity holds,
+    ///   directs the caller to insert it with `world_insert_resources` first
     /// - `Entity` deserialization errors: Adds `Entity` IDs from parameters
-    fn enhance_error_message(&self, original_message: &str, error_code: i32) -> String {
+    fn enhance_error_message(&self, error: &BrpClientError) -> String {
+        let original_message = error.get_message();
+        let error_code = error.get_code();
+
+        // A missing resource needs an app change or an insert, not a format correction
+        if let Some(absence) = error.resource_absence() {
+            let guidance = match absence {
+                ResourceAbsence::NotInitialized => RESOURCE_NOT_INITIALIZED_GUIDANCE,
+                ResourceAbsence::NotInWorld => RESOURCE_NOT_IN_WORLD_GUIDANCE,
+            };
+            return format!("{guidance}: {original_message} (error {error_code})");
+        }
+
         // Check for entity deserialization errors
         if original_message.contains("Attempting to deserialize an invalid entity") {
             // Try to extract entity ID from parameters
@@ -316,8 +333,21 @@ impl BrpClient {
         let type_guide_response =
             brp_type_guide::generate_type_guide_response(self.port, &extracted_types).await?;
 
+        // An unregistered type has no format to correct, so name the actual problem
+        let unregistered_types = type_guide_response.unregistered_types();
+        let message = if unregistered_types.is_empty() {
+            "Format error - see 'type_guide' field for correct format".to_string()
+        } else {
+            let type_list = unregistered_types
+                .iter()
+                .map(|type_name| format!("`{type_name}`"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("Not in the app's type registry: {type_list} - see 'type_guide' field")
+        };
+
         Err(Error::tool_call_failed_with_details(
-            "Format error - see 'type_guide' field for correct format",
+            message,
             serde_json::json!({
                 FORMAT_ERROR_ORIGINAL_ERROR_FIELD: error.get_message(),
                 FORMAT_ERROR_TYPE_GUIDE_FIELD: type_guide_response
@@ -359,5 +389,65 @@ pub(crate) fn method_not_found_message(method: &str, message: &str) -> String {
         )
     } else {
         message.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BrpClient;
+    use super::BrpClientError;
+    use super::BrpMethod;
+    use super::Port;
+    use super::RESOURCE_NOT_IN_WORLD_GUIDANCE;
+    use super::RESOURCE_NOT_INITIALIZED_GUIDANCE;
+    use crate::brp_tools::brp_client::constants::BRP_ERROR_ACCESS_ERROR;
+
+    const TEST_PORT: Port = Port(15_702);
+
+    #[test]
+    fn test_resource_not_in_world_error_directs_to_insert() {
+        let client = BrpClient::new(BrpMethod::WorldGetResources, TEST_PORT, None);
+        let error = BrpClientError {
+            code:    BRP_ERROR_ACCESS_ERROR,
+            message: "Resource entity does not exist.".to_string(),
+            data:    None,
+        };
+        assert_eq!(
+            client.enhance_error_message(&error),
+            format!(
+                "{RESOURCE_NOT_IN_WORLD_GUIDANCE}: Resource entity does not exist. (error -23501)"
+            )
+        );
+    }
+
+    #[test]
+    fn test_resource_not_initialized_error_directs_to_app() {
+        let client = BrpClient::new(BrpMethod::WorldInsertResources, TEST_PORT, None);
+        let error = BrpClientError {
+            code:    BRP_ERROR_ACCESS_ERROR,
+            message: "Resource is not registered: `extras_plugin::KeyboardInputHistory`"
+                .to_string(),
+            data:    None,
+        };
+        assert_eq!(
+            client.enhance_error_message(&error),
+            format!(
+                "{RESOURCE_NOT_INITIALIZED_GUIDANCE}: Resource is not registered: `extras_plugin::KeyboardInputHistory` (error -23501)"
+            )
+        );
+    }
+
+    #[test]
+    fn test_path_access_error_keeps_original_message() {
+        let client = BrpClient::new(BrpMethod::WorldMutateResources, TEST_PORT, None);
+        let error = BrpClientError {
+            code:    BRP_ERROR_ACCESS_ERROR,
+            message: "Error accessing element with `.red` access(offset 3)".to_string(),
+            data:    None,
+        };
+        assert_eq!(
+            client.enhance_error_message(&error),
+            "Error accessing element with `.red` access(offset 3) (error -23501)"
+        );
     }
 }

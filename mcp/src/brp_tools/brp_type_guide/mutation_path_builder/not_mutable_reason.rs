@@ -31,6 +31,7 @@ use std::fmt::Formatter;
 use serde_json::Value;
 use serde_json::json;
 
+use super::ecs_role::EcsRole;
 use super::mutability::Mutability;
 use super::mutability::MutabilityIssue;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
@@ -42,11 +43,20 @@ use crate::brp_tools::brp_type_guide::constants::PARTIALLY_MUTABLE_FIELD;
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum NotMutableReason {
+    /// Component or resource declared `#[component(immutable)]` (`componentInfo.mutable` is
+    /// `false`), so the only route to change it is inserting a whole replacement value
+    ImmutableComponent {
+        type_name: BrpTypeName,
+        ecs_role:  EcsRole,
+    },
     /// Container type has non-mutable element type
     ImmutableHandle {
         container_type: BrpTypeName,
         element_type:   BrpTypeName,
     },
+    /// Type registers `ReflectSerialize` but not `ReflectDeserialize` (`&'static str`), so BRP
+    /// cannot build it from JSON
+    MissingReflectDeserialize(BrpTypeName),
     /// Type not found in registry
     NotInRegistry(BrpTypeName),
     /// Recursion depth limit exceeded during analysis
@@ -137,12 +147,28 @@ impl NotMutableReason {
 impl Display for NotMutableReason {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::ImmutableComponent {
+                type_name,
+                ecs_role,
+            } => {
+                let role = ecs_role.noun();
+                let tool = ecs_role.insert_tool();
+                let example_field = ecs_role.example_field();
+                write!(
+                    f,
+                    "`{type_name}` is an immutable {role} (`#[component(immutable)]`), so BRP cannot mutate it in place and mutating it panics the app. Replace it whole with '{tool}', using the '{example_field}' example as the {role} value."
+                )
+            },
             Self::ImmutableHandle {
                 container_type,
                 element_type,
             } => write!(
                 f,
                 "`{container_type}` is a TupleStruct wrapper around `{element_type}` which lacks the `ReflectDeserialize` type data required for mutation"
+            ),
+            Self::MissingReflectDeserialize(type_name) => write!(
+                f,
+                "`{type_name}` registers `ReflectSerialize` but not `ReflectDeserialize`, so BRP can read this value but cannot build it from JSON for spawn, insert, or mutate operations"
             ),
             Self::NotInRegistry(type_name) => {
                 write!(f, "`{type_name}` not found in schema registry")
@@ -173,7 +199,9 @@ impl Display for NotMutableReason {
 impl From<&NotMutableReason> for Option<Value> {
     fn from(reason: &NotMutableReason) -> Self {
         match reason {
-            NotMutableReason::ImmutableHandle { .. }
+            NotMutableReason::ImmutableComponent { .. }
+            | NotMutableReason::ImmutableHandle { .. }
+            | NotMutableReason::MissingReflectDeserialize(_)
             | NotMutableReason::NotInRegistry(_)
             | NotMutableReason::RecursionLimitExceeded(_)
             | NotMutableReason::ComplexCollectionKey(_)

@@ -18,6 +18,7 @@ use bevy_remote::http::RemoteHttpPlugin;
 use super::DEFAULT_REMOTE_PORT;
 use super::agent_tools;
 use super::agent_tools::RegisteredAgentTools;
+use super::component_registration;
 #[cfg(not(target_arch = "wasm32"))]
 use super::constants::BRP_EXTRAS_PORT_ENV_VAR;
 use super::constants::EXTRAS_COMMAND_PREFIX;
@@ -363,6 +364,13 @@ fn build_shared(app: &mut App) {
     app.add_plugins(KeyboardPlugin);
     app.add_plugins(MousePlugin);
     app.add_plugins(ScreenshotPlugin);
+
+    // Register every reflected component so `registry.schema` reports `componentInfo.mutable`
+    // for components nothing has spawned yet
+    app.add_systems(
+        Startup,
+        component_registration::register_reflected_components,
+    );
 
     // Add the system to handle deferred shutdown
     app.add_systems(Update, shutdown::deferred_shutdown_system);

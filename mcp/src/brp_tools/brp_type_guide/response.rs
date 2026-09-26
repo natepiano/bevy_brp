@@ -84,6 +84,21 @@ pub(crate) struct TypeGuideResponse {
     pub type_guide:       HashMap<BrpTypeName, TypeGuide>,
 }
 
+impl TypeGuideResponse {
+    /// Requested types absent from the app's type registry, in request order
+    pub(crate) fn unregistered_types(&self) -> Vec<&str> {
+        self.requested_types
+            .iter()
+            .filter(|type_name| {
+                self.type_guide
+                    .get(&BrpTypeName::from(type_name.as_str()))
+                    .is_some_and(|guide| !guide.is_registered())
+            })
+            .map(String::as_str)
+            .collect()
+    }
+}
+
 /// Summary statistics for the discovery operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct TypeGuideSummary {

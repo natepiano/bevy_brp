@@ -678,7 +678,8 @@ fn generate_count_computation(
                 .map(|entities| {
                     entities
                         .iter()
-                        .filter_map(|e| e.as_object())
+                        .filter_map(|entity| entity.get(#COMPONENTS_FIELD))
+                        .filter_map(serde_json::Value::as_object)
                         .map(serde_json::Map::len)
                         .sum()
                 })

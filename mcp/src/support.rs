@@ -62,6 +62,8 @@ pub(crate) enum SchemaField {
     Kind,
     /// The module path field.
     ModulePath,
+    /// The `mutable` field inside `componentInfo`.
+    Mutable,
     /// The `oneOf` field for enum variants.
     OneOf,
     /// The `prefixItems` field for tuple types.

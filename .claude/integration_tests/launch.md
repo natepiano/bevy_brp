@@ -35,7 +35,7 @@ Validate that `package_name` parameter successfully resolves conflicts when mult
 - **Verify `launched_as` field is `"example"` in the response metadata**
 - Wait for the example to start, then use `mcp__brp__brp_list_logs` to find the log file containing the port used
 - Execute `mcp__brp__brp_read_log` with that filename and keyword `"MARKER"`
-- **Verify the log contains `MARKER:example_args_test`** — this proves `args` were passed through the `--` separator to the example process
+- **Verify the log contains `MARKER:example_args_test`** — this proves `args` were passed directly to the example binary
 
 ### 6. Cleanup
 - Shutdown any launched apps from all test steps (steps 2-5)
@@ -50,7 +50,7 @@ Validate that `package_name` parameter successfully resolves conflicts when mult
 - `search_order="example"` causes example to be found before app when both exist with same name
 - Default `search_order` (app) causes app to be found before example when both exist with same name
 - `args` are passed through to app binaries directly
-- `args` are passed through to examples via `--` separator
+- `args` are passed directly to the example binary, the same way as for apps
 
 ## Special Notes
 - **Current test environment**: Duplicate examples exist - `extras_plugin_duplicate` is defined by packages `test-app-a` and `test-app-b`, which live in the `test-duplicate-a` and `test-duplicate-b` directories. `package_name` takes the package name, not the directory name.

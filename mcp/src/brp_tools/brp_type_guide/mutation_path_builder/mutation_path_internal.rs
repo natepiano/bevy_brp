@@ -10,6 +10,7 @@ use std::collections::HashSet;
 use serde_json::Value;
 use serde_json::json;
 
+use super::ecs_role::EcsRole;
 use super::enum_path_info::EnumPathInfo;
 use super::mutability::Mutability;
 use super::mutability::MutabilityIssue;
@@ -26,9 +27,7 @@ use super::variant_name::VariantName;
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::brp_tools::brp_type_guide::constants::OPERATION_INSERT;
 use crate::brp_tools::brp_type_guide::constants::OPERATION_SPAWN;
-use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_COMPONENT;
 use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_DEFAULT;
-use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_RESOURCE;
 use crate::brp_tools::brp_type_guide::type_kind::TypeKind;
 use crate::support::JsonObjectAccess;
 use crate::support::SchemaField;
@@ -39,12 +38,16 @@ type ResolvedEnumPathInfo = (
     Option<RootExample>,
 );
 
-/// Whether a root path's type implements `Default` (gates spawn-guidance and empty-object
-/// example fallback).
+/// Whether a path accepts an empty object `{}` for spawn, insert and root mutate operations
+///
+/// Only a root named-field `Struct` that reflects `Default` accepts `{}`: BRP fills the missing
+/// fields from `Default`. An enum needs a single variant key, a single-field tuple struct takes
+/// its field's value, and other tuple structs and value types do not deserialize from `{}`.
+/// Gates the `{}` example fallback and its description guidance.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum RootDefault {
-    Present,
-    Absent,
+enum EmptyObjectRoot {
+    Accepted,
+    Rejected,
 }
 
 /// Parameters for constructing a `PathInfo`.
@@ -127,15 +130,22 @@ impl MutationPathInternal {
         let field_schema = registry.get(&self.type_name).unwrap_or(&Value::Null);
         let type_kind: TypeKind = field_schema.into();
 
-        // Check for Default trait once at the top for root paths
-        let root_default = self.has_default_for_root(field_schema);
-
-        // `resolve_description` uses `self.mutability` and `root_default` to select guidance.
-        let description = self.resolve_description(&type_kind, root_default, field_schema);
+        // Check once whether this is a root named-field struct with `Default`
+        let empty_object_root = self.empty_object_root(&type_kind, field_schema);
 
         // `resolve_path_example` selects a `PathExample` from `self.mutability`,
-        // `root_default`, and `self.example`.
-        let path_example = self.resolve_path_example(root_default);
+        // `empty_object_root`, and `self.example`.
+        let path_example = self.resolve_path_example(empty_object_root);
+
+        // `resolve_description` uses `self.mutability`, `empty_object_root`, and whether
+        // `path_example` provides an example to select guidance.
+        let description = self.resolve_description(
+            &type_kind,
+            empty_object_root,
+            &path_example,
+            field_schema,
+            registry,
+        );
 
         // Extract enum-specific metadata only for mutable/partially mutable paths
         let (enum_instructions, applicable_variants, root_example) = self.resolve_enum_path_info();
@@ -161,10 +171,12 @@ impl MutationPathInternal {
         )
     }
 
-    /// Check if this path is a root path with Default trait support
-    fn has_default_for_root(&self, field_schema: &Value) -> RootDefault {
-        if !matches!(self.path_kind, PathKind::RootValue { .. }) {
-            return RootDefault::Absent;
+    /// Check if this path is a root named-field struct with Default trait support
+    fn empty_object_root(&self, type_kind: &TypeKind, field_schema: &Value) -> EmptyObjectRoot {
+        if !matches!(self.path_kind, PathKind::RootValue { .. })
+            || !matches!(type_kind, TypeKind::Struct)
+        {
+            return EmptyObjectRoot::Rejected;
         }
 
         let has_default = field_schema
@@ -175,74 +187,70 @@ impl MutationPathInternal {
                     .any(|t| t == REFLECT_TRAIT_DEFAULT)
             });
         if has_default {
-            RootDefault::Present
+            EmptyObjectRoot::Accepted
         } else {
-            RootDefault::Absent
+            EmptyObjectRoot::Rejected
         }
     }
 
     /// Generate human-readable description for this mutation path
     ///
     /// Uses type-specific terminology (fields, elements, entries, variants) instead of
-    /// generic "descendants". Adds spawn guidance for paths with Default trait and notes
-    /// when examples are unavailable for `PartiallyMutable` and `NotMutable` paths.
+    /// generic "descendants". For `PartiallyMutable` and `NotMutable` paths, adds the empty
+    /// object guidance when `empty_object_root` accepts `{}`, otherwise notes when
+    /// `path_example` provides no example.
+    ///
+    /// `type_kind` is the kind of `self.type_name`; `Mutability::Mutable` paths name their
+    /// containing type instead, so `PathKind::description` resolves that kind from `registry`.
     fn resolve_description(
         &self,
         type_kind: &TypeKind,
-        root_default: RootDefault,
+        empty_object_root: EmptyObjectRoot,
+        path_example: &PathExample,
         field_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
     ) -> String {
-        match self.mutability {
-            Mutability::PartiallyMutable => {
-                let base_message = format!(
-                    "This {} path is partially mutable due to some of its {} not being mutable",
-                    type_kind.as_ref().to_lowercase(),
-                    type_kind.child_terminology()
-                );
-                match root_default {
-                    RootDefault::Present => {
-                        let guidance = Self::get_default_spawn_guidance(field_schema);
-                        format!("{base_message}.{guidance}")
-                    },
-                    RootDefault::Absent => format!("{base_message}. No example is provided."),
-                }
-            },
+        let base_message = match self.mutability {
+            Mutability::PartiallyMutable => format!(
+                "This {} path is partially mutable due to some of its {} not being mutable",
+                type_kind.description_label(),
+                type_kind.child_terminology()
+            ),
             Mutability::NotMutable => {
-                let is_root = matches!(self.path_kind, PathKind::RootValue { .. });
-                let base_message =
-                    format!("This {} is not mutable", type_kind.as_ref().to_lowercase());
-
-                if is_root && matches!(root_default, RootDefault::Present) {
-                    let guidance = Self::get_default_spawn_guidance(field_schema);
-                    format!("{base_message}.{guidance}")
-                } else {
-                    format!("{base_message}. No example is provided.")
-                }
+                format!("This {} is not mutable", type_kind.description_label())
             },
-            Mutability::Mutable => self
-                .path_kind
-                .description(type_kind, self.enum_path_info.as_ref()),
+            Mutability::Mutable => {
+                return self
+                    .path_kind
+                    .description(registry, self.enum_path_info.as_ref());
+            },
+        };
+
+        match empty_object_root {
+            EmptyObjectRoot::Accepted => {
+                let guidance = Self::get_default_spawn_guidance(field_schema);
+                format!("{base_message}.{guidance}")
+            },
+            EmptyObjectRoot::Rejected
+                if matches!(path_example.preferred_example(), Example::NotApplicable) =>
+            {
+                format!("{base_message}. No example is provided.")
+            },
+            EmptyObjectRoot::Rejected => format!("{base_message}."),
         }
     }
 
-    /// Get the appropriate Default spawn guidance based on whether the type is a Component or
-    /// Resource
+    /// Get the appropriate Default spawn guidance based on the type's `EcsRole`
     fn get_default_spawn_guidance(field_schema: &Value) -> String {
         let reflect_traits = field_schema
             .get_field_array(SchemaField::ReflectTypes)
             .map(|arr| arr.iter().filter_map(Value::as_str).collect::<Vec<_>>())
             .unwrap_or_default();
 
-        let is_component = reflect_traits.contains(&REFLECT_TRAIT_COMPONENT);
-        let is_resource = reflect_traits.contains(&REFLECT_TRAIT_RESOURCE);
-
-        let operation = if is_component {
-            OPERATION_SPAWN
-        } else if is_resource {
-            OPERATION_INSERT
-        } else {
-            // Fallback for types that are neither Component nor Resource
-            OPERATION_SPAWN
+        // `EcsRole::Other` keeps the spawn wording used for components.
+        let operation = match EcsRole::from(reflect_traits.as_slice()) {
+            EcsRole::Resource => OPERATION_INSERT,
+            EcsRole::Component | EcsRole::Other => OPERATION_SPAWN,
         };
 
         format!(
@@ -253,16 +261,18 @@ impl MutationPathInternal {
     /// Resolve the appropriate `PathExample` based on mutability status
     ///
     /// - `NotMutable`: Returns `NotApplicable` (no example provided)
-    /// - `PartiallyMutable`: Returns enum examples or empty object if Default trait exists
+    /// - `PartiallyMutable`: Returns enum examples or a complete example; without a complete
+    ///   example, an empty object if `empty_object_root` accepts one, otherwise `NotApplicable`
     /// - Mutable: Returns the original example
-    fn resolve_path_example(&self, root_default: RootDefault) -> PathExample {
+    fn resolve_path_example(&self, empty_object_root: EmptyObjectRoot) -> PathExample {
         match self.mutability {
             Mutability::NotMutable => PathExample::Simple(Example::NotApplicable),
             Mutability::PartiallyMutable => match &self.example {
                 PathExample::EnumRoot { .. } => self.example.clone(),
-                PathExample::Simple(_) => match root_default {
-                    RootDefault::Present => PathExample::Simple(Example::Json(json!({}))),
-                    RootDefault::Absent => PathExample::Simple(Example::NotApplicable),
+                PathExample::Simple(example) if example.is_complete() => self.example.clone(),
+                PathExample::Simple(_) => match empty_object_root {
+                    EmptyObjectRoot::Accepted => PathExample::Simple(Example::Json(json!({}))),
+                    EmptyObjectRoot::Rejected => PathExample::Simple(Example::NotApplicable),
                 },
             },
             Mutability::Mutable => self.example.clone(),
@@ -322,4 +332,48 @@ pub(super) fn child_variant_chains(
                 .flat_map(|partials| partials.keys().cloned())
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::Map;
+    use serde_json::Value;
+
+    use super::MutationPathInternal;
+    use crate::brp_tools::brp_type_guide::constants::OPERATION_INSERT;
+    use crate::brp_tools::brp_type_guide::constants::OPERATION_SPAWN;
+    use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_COMPONENT;
+    use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_DEFAULT;
+    use crate::brp_tools::brp_type_guide::constants::REFLECT_TRAIT_RESOURCE;
+    use crate::support::JsonObjectAccess;
+    use crate::support::SchemaField;
+
+    fn schema_with_reflect_traits(reflect_traits: &[&str]) -> Value {
+        let mut schema = Value::Object(Map::new());
+        schema.insert_field(SchemaField::ReflectTypes.as_ref(), reflect_traits.to_vec());
+        schema
+    }
+
+    #[test]
+    fn default_guidance_for_resource_names_insert() {
+        // Bevy 0.20 `#[reflect(Resource)]` also registers `ReflectComponent`.
+        let schema = schema_with_reflect_traits(&[
+            REFLECT_TRAIT_COMPONENT,
+            REFLECT_TRAIT_DEFAULT,
+            REFLECT_TRAIT_RESOURCE,
+        ]);
+
+        let guidance = MutationPathInternal::get_default_spawn_guidance(&schema);
+
+        assert!(guidance.contains(&format!(" for {OPERATION_INSERT} ")));
+    }
+
+    #[test]
+    fn default_guidance_for_component_names_spawn() {
+        let schema = schema_with_reflect_traits(&[REFLECT_TRAIT_COMPONENT, REFLECT_TRAIT_DEFAULT]);
+
+        let guidance = MutationPathInternal::get_default_spawn_guidance(&schema);
+
+        assert!(guidance.contains(&format!(" for {OPERATION_SPAWN} ")));
+    }
 }

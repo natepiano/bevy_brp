@@ -1,9 +1,11 @@
 //! Bevy UI entity bounds and target resolution.
 
 use bevy::camera::visibility::InheritedVisibility;
+use bevy::math::Affine2;
 use bevy::math::Rect;
 use bevy::prelude::*;
 use bevy::ui::CalculatedClip;
+use bevy::ui::CalculatedClipRect;
 use bevy::ui::ComputedNode;
 use bevy::ui::ComputedUiRenderTargetInfo;
 use bevy::ui::ComputedUiTargetCamera;
@@ -131,38 +133,30 @@ fn transformed_rect(
         return Err(ui_error(entity, "has invalid or empty computed dimensions"));
     }
 
-    let half_size = size / 2.0;
     let affine = ui_global_transform.affine();
-    let corners = [
-        affine.transform_point2(Vec2::new(-half_size.x, -half_size.y)),
-        affine.transform_point2(Vec2::new(-half_size.x, half_size.y)),
-        affine.transform_point2(Vec2::new(half_size.x, -half_size.y)),
-        affine.transform_point2(half_size),
-    ];
-    if corners.iter().any(|corner| !corner.is_finite()) {
+    let node_polygon = rect_corners(Rect::from_center_size(Vec2::ZERO, size))
+        .map(|corner| affine.transform_point2(corner));
+    if node_polygon.iter().any(|corner| !corner.is_finite()) {
         return Err(ui_error(entity, "produced non-finite transformed bounds"));
-    }
-
-    let mut min = Vec2::splat(f32::INFINITY);
-    let mut max = Vec2::splat(f32::NEG_INFINITY);
-    for corner in corners {
-        min = min.min(corner);
-        max = max.max(corner);
     }
 
     let local_target = Rect::from_corners(
         Vec2::ZERO,
         computed_ui_render_target_info.physical_size().as_vec2(),
     );
-    if calculated_clip.is_some_and(|clip| !clip.clip.min.is_finite() || !clip.clip.max.is_finite())
-    {
-        return Err(ui_error(entity, "has non-finite clip coordinates"));
-    }
-    let local_clip = calculated_clip.map_or(local_target, |clip| local_target.intersect(clip.clip));
-    let local_rect = Rect::from_corners(min, max).intersect(local_clip);
-    if local_rect.is_empty() {
-        return Err(ui_error(entity, "is outside its UI viewport or clip"));
-    }
+    let clip_rects = validated_clip_rects(entity, calculated_clip)?;
+    let target_region = CalculatedClipRect {
+        rect:                local_target,
+        world_to_clip_local: Affine2::IDENTITY,
+    };
+    let outside_error = || ui_error(entity, "is outside its UI viewport or clip");
+    let local_clip = polygon_bounds(&clip_polygon(rect_corners(local_target), clip_rects))
+        .ok_or_else(outside_error)?;
+    let local_rect = polygon_bounds(&clip_polygon(
+        node_polygon,
+        clip_rects.iter().chain([&target_region]),
+    ))
+    .ok_or_else(outside_error)?;
 
     let viewport = camera
         .camera
@@ -186,6 +180,108 @@ fn transformed_rect(
     }
 
     Ok(rect)
+}
+
+/// Returns the clip regions inherited through `CalculatedClip`, empty when the node is unclipped.
+///
+/// An infinite `CalculatedClipRect::rect` edge is the representation Bevy uses for an
+/// `OverflowAxis::Visible` axis, so it means "unbounded" and is accepted; NaN edges and
+/// non-finite `world_to_clip_local` transforms are rejected.
+fn validated_clip_rects(
+    entity: Entity,
+    calculated_clip: Option<&CalculatedClip>,
+) -> BrpResult<&[CalculatedClipRect]> {
+    let Some(calculated_clip) = calculated_clip else {
+        return Ok(&[]);
+    };
+    let clip_rects = calculated_clip
+        .rects()
+        .ok_or_else(|| ui_error(entity, "is fully clipped"))?;
+    if clip_rects
+        .iter()
+        .any(|clip_rect| clip_rect.rect.min.is_nan() || clip_rect.rect.max.is_nan())
+    {
+        return Err(ui_error(entity, "has NaN clip coordinates"));
+    }
+    if clip_rects
+        .iter()
+        .any(|clip_rect| !clip_rect.world_to_clip_local.is_finite())
+    {
+        return Err(ui_error(entity, "has a non-finite clip transform"));
+    }
+    Ok(clip_rects)
+}
+
+/// Corners of `rect` in boundary order, as `clip_polygon` requires.
+const fn rect_corners(rect: Rect) -> [Vec2; 4] {
+    [
+        rect.min,
+        Vec2::new(rect.max.x, rect.min.y),
+        rect.max,
+        Vec2::new(rect.min.x, rect.max.y),
+    ]
+}
+
+/// Clips a convex polygon against every finite edge of each `CalculatedClipRect` with the
+/// Sutherland-Hodgman algorithm, matching `bevy::ui_render::clipping::clip_polygon`.
+fn clip_polygon<'a>(
+    polygon: impl Into<Vec<Vec2>>,
+    clip_rects: impl IntoIterator<Item = &'a CalculatedClipRect>,
+) -> Vec<Vec2> {
+    let mut visible = polygon.into();
+    for clip_rect in clip_rects {
+        let edges = [
+            (-clip_rect.rect.min.x, Vec2::X),
+            (clip_rect.rect.max.x, Vec2::NEG_X),
+            (clip_rect.rect.max.y, Vec2::NEG_Y),
+            (-clip_rect.rect.min.y, Vec2::Y),
+        ];
+        for (edge, inward_normal) in edges {
+            if !edge.is_finite() {
+                continue;
+            }
+            let distance = |point: Vec2| {
+                clip_rect
+                    .world_to_clip_local
+                    .transform_point2(point)
+                    .dot(inward_normal)
+                    + edge
+            };
+            let Some(&last) = visible.last() else {
+                return visible;
+            };
+            let mut clipped = Vec::with_capacity(visible.len() + 1);
+            let mut previous = last;
+            let mut previous_distance = distance(previous);
+            for &vertex in &visible {
+                let vertex_distance = distance(vertex);
+                if (previous_distance >= 0.0) != (vertex_distance >= 0.0) {
+                    let t = previous_distance / (previous_distance - vertex_distance);
+                    clipped.push(previous.lerp(vertex, t));
+                }
+                if vertex_distance >= 0.0 {
+                    clipped.push(vertex);
+                }
+                previous = vertex;
+                previous_distance = vertex_distance;
+            }
+            visible = clipped;
+        }
+    }
+    visible
+}
+
+/// Axis-aligned bounds of a clipped polygon, or `None` when nothing with area remains.
+fn polygon_bounds(polygon: &[Vec2]) -> Option<Rect> {
+    if polygon.len() < 3 {
+        return None;
+    }
+    let (min, max) = polygon.iter().fold(
+        (Vec2::splat(f32::INFINITY), Vec2::splat(f32::NEG_INFINITY)),
+        |(min, max), &vertex| (min.min(vertex), max.max(vertex)),
+    );
+    let bounds = Rect { min, max };
+    (!bounds.is_empty()).then_some(bounds)
 }
 
 fn containing_rect(rect: Rect) -> BrpResult<URect> {
@@ -223,6 +319,7 @@ fn invalid_ui_camera_error(entity: Entity, camera: Entity) -> BrpError {
 #[cfg(test)]
 mod tests {
     use std::error::Error;
+    use std::f32::consts::FRAC_PI_4;
     use std::io;
     use std::io::Error as IoError;
 
@@ -237,7 +334,6 @@ mod tests {
     use bevy::camera::Viewport;
     use bevy::camera::primitives::Aabb;
     use bevy::camera::visibility::RenderLayers;
-    use bevy::math::Affine2;
     use bevy::render::render_resource::Extent3d;
     use bevy::render::render_resource::TextureDimension;
     use bevy::render::render_resource::TextureFormat;
@@ -370,6 +466,12 @@ mod tests {
         entity
     }
 
+    fn calculated_clip(rect: Rect, world_to_clip_local: Affine2) -> CalculatedClip {
+        let mut calculated_clip = CalculatedClip::default();
+        calculated_clip.push_rect(rect, world_to_clip_local);
+        calculated_clip
+    }
+
     fn resolved(
         test_ui: &mut TestUi,
         entity: Entity,
@@ -423,9 +525,10 @@ mod tests {
             .app
             .world_mut()
             .entity_mut(entity)
-            .insert(CalculatedClip {
-                clip: Rect::new(25.25, 18.25, 35.25, 24.25),
-            });
+            .insert(calculated_clip(
+                Rect::new(25.25, 18.25, 35.25, 24.25),
+                Affine2::IDENTITY,
+            ));
 
         let resolved = resolved(&mut test_ui, entity, None, 20)?;
 
@@ -527,7 +630,74 @@ mod tests {
     }
 
     #[test]
-    fn non_finite_clip_corners_are_invalid_parameters_errors() -> Result<(), Box<dyn Error>> {
+    fn rotated_clip_bounds_the_visible_polygon() -> Result<(), Box<dyn Error>> {
+        let mut test_ui = test_ui(UVec2::splat(100), None);
+        let world_to_clip_local =
+            Affine2::from_angle_translation(FRAC_PI_4, Vec2::splat(50.0)).inverse();
+        let clip = calculated_clip(Rect::new(-10.0, -10.0, 10.0, 10.0), world_to_clip_local);
+
+        let enclosing = spawn_node(
+            &mut test_ui,
+            Vec2::splat(40.0),
+            Affine2::from_translation(Vec2::splat(50.0)),
+        );
+        test_ui
+            .app
+            .world_mut()
+            .entity_mut(enclosing)
+            .insert(clip.clone());
+        let resolved = resolved(&mut test_ui, enclosing, None, 0)?;
+        assert_eq!(resolved.rect, URect::new(35, 35, 65, 65));
+
+        // Inside the clip's axis-aligned bounds but outside the rotated clip itself.
+        let outside_rotated_clip = spawn_node(
+            &mut test_ui,
+            Vec2::splat(6.0),
+            Affine2::from_translation(Vec2::splat(62.0)),
+        );
+        test_ui
+            .app
+            .world_mut()
+            .entity_mut(outside_rotated_clip)
+            .insert(clip);
+        let error = resolution_error(resolve(
+            test_ui.app.world_mut(),
+            outside_rotated_clip,
+            None,
+            0,
+        ))?;
+        assert!(error.message.contains("outside its UI viewport or clip"));
+        Ok(())
+    }
+
+    #[test]
+    fn infinite_clip_edges_are_unbounded() -> Result<(), Box<dyn Error>> {
+        let mut test_ui = test_ui(UVec2::splat(100), None);
+        let entity = spawn_node(
+            &mut test_ui,
+            Vec2::splat(20.0),
+            Affine2::from_translation(Vec2::splat(50.0)),
+        );
+        test_ui
+            .app
+            .world_mut()
+            .entity_mut(entity)
+            .insert(calculated_clip(
+                Rect {
+                    min: Vec2::new(-5.0, f32::NEG_INFINITY),
+                    max: Vec2::new(5.0, f32::INFINITY),
+                },
+                Affine2::from_translation(Vec2::splat(-50.0)),
+            ));
+
+        let resolved = resolved(&mut test_ui, entity, None, 0)?;
+
+        assert_eq!(resolved.rect, URect::new(45, 40, 55, 60));
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_and_full_clips_are_invalid_parameters_errors() -> Result<(), Box<dyn Error>> {
         let mut test_ui = test_ui(UVec2::splat(100), None);
         let entity = spawn_node(
             &mut test_ui,
@@ -535,26 +705,32 @@ mod tests {
             Affine2::from_translation(Vec2::splat(50.0)),
         );
         let invalid_clips = [
-            Rect {
-                min: Vec2::new(f32::NAN, 0.0),
-                max: Vec2::splat(60.0),
-            },
-            Rect {
-                min: Vec2::ZERO,
-                max: Vec2::new(60.0, f32::INFINITY),
-            },
+            (
+                calculated_clip(
+                    Rect {
+                        min: Vec2::new(f32::NAN, 0.0),
+                        max: Vec2::splat(60.0),
+                    },
+                    Affine2::IDENTITY,
+                ),
+                "NaN clip coordinates",
+            ),
+            (
+                calculated_clip(
+                    Rect::new(0.0, 0.0, 60.0, 60.0),
+                    Affine2::from_translation(Vec2::new(f32::INFINITY, 0.0)),
+                ),
+                "non-finite clip transform",
+            ),
+            (CalculatedClip::FullyClipped, "is fully clipped"),
         ];
 
-        for clip in invalid_clips {
-            test_ui
-                .app
-                .world_mut()
-                .entity_mut(entity)
-                .insert(CalculatedClip { clip });
+        for (clip, expected_message) in invalid_clips {
+            test_ui.app.world_mut().entity_mut(entity).insert(clip);
             let error = resolution_error(resolve(test_ui.app.world_mut(), entity, None, 0))?;
 
             assert_eq!(error.code, INVALID_PARAMS);
-            assert!(error.message.contains("non-finite clip coordinates"));
+            assert!(error.message.contains(expected_message));
         }
         Ok(())
     }

@@ -44,13 +44,13 @@ The `.claude/transient/all_types.json` file stores complete BRP type guides with
       "mutation_paths": [
         {
           "path": ".is_active",
-          "description": "Mutate the is_active field of Camera",
+          "description": "Mutate the is_active field of Camera struct",
           "path_info": {...},
           "example": true
         },
         {
           "path": ".hdr",
-          "description": "Mutate the hdr field of Camera",
+          "description": "Mutate the hdr field of Camera struct",
           "path_info": {...},
           "example": false
         }

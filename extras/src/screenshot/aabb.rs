@@ -217,7 +217,7 @@ mod tests {
     use bevy::camera::Viewport;
     use bevy::camera::primitives::Frustum;
     use bevy::camera::visibility::VisibleEntities;
-    use bevy::math::primitives::ViewFrustum;
+    use bevy::shape::ViewFrustum;
     use bevy::window::WindowRef;
 
     use super::*;

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Update to Bevy 0.20.0-rc.1
+
+### Fixed
+- Fix UI entity screenshots failing with `non-finite clip coordinates` when an ancestor clips only one axis (`Overflow::clip_x()` or `Overflow::clip_y()`). Bevy represents the unclipped axis with infinite edges; those edges are now treated as unbounded. Crops also follow Bevy 0.20's transformed `CalculatedClip` regions, so a rotated clipping ancestor bounds the crop to the visible part of the node
+- Fix `registry.schema` omitting `componentInfo` for components nothing had spawned yet. BRP clients couldn't see that a `#[component(immutable)]` component (e.g. `AccessibleLabel`) was immutable, so a `world.mutate_components` call on one panicked the app. `BrpExtrasPlugin` now registers every reflected component with the `World` at startup.
+
 ## [0.22.7] - 2026-09-23
 
 ### Fixed

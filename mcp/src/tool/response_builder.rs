@@ -53,7 +53,7 @@ impl Response {
         ResponseBuilder::error(call_info).message(message).build()
     }
 
-    /// Create an error response with message and optional details
+    /// Create an error response with message and optional details in `error_info`
     pub(super) fn error_with_details(
         message: impl Into<String>,
         details: Option<&Value>,
@@ -61,7 +61,7 @@ impl Response {
     ) -> ToolCallJsonResponse {
         ResponseBuilder::error(call_info)
             .message(message)
-            .add_optional_details(details)
+            .add_error_details(details)
             .build()
     }
 }
@@ -113,48 +113,28 @@ impl ResponseBuilder {
         self
     }
 
-    /// Add a field to the metadata object. Creates a new object if metadata is None.
-    fn add_field(mut self, key: &str, value: impl Serialize) -> Result<Self> {
-        let value_json = serde_json::to_value(value)
-            .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
-
-        // Skip fields marked for nullable skipping
-        if let Value::String(s) = &value_json
-            && s == SKIP_NULL_FIELD_SENTINEL
-        {
-            return Ok(self);
-        }
-
-        if let Some(AnySchemaValue(Value::Object(map))) = &mut self.metadata {
-            map.insert(key.to_string(), value_json);
-        } else {
-            let mut map = serde_json::Map::new();
-            map.insert(key.to_string(), value_json);
-            self.metadata = Some(AnySchemaValue(Value::Object(map)));
-        }
-
-        Ok(self)
-    }
-
-    /// Add multiple fields from an optional JSON object to metadata
-    /// Useful for adding error details or other optional metadata
-    fn add_optional_details(self, details: Option<&Value>) -> Self {
+    /// Add each non-null field of an optional JSON object to `error_info`, the same placement
+    /// structured errors use for their fields
+    fn add_error_details(self, details: Option<&Value>) -> Self {
         match details {
             Some(Value::Object(map)) => {
                 map.iter()
                     .filter(|(_, v)| !v.is_null())
                     .fold(self, |builder, (key, value)| {
-                        builder.clone().add_field(key, value).unwrap_or_else(|_| {
-                            tracing::warn!("Failed to add detail field '{key}'");
-                            builder // Keep the original builder if add_field fails
-                        })
+                        builder
+                            .clone()
+                            .add_field_to(key, value, FieldPlacement::ErrorInfo)
+                            .unwrap_or_else(|_| {
+                                tracing::warn!("Failed to add detail field '{key}'");
+                                builder // Keep the original builder if add_field_to fails
+                            })
                     })
             },
             _ => self,
         }
     }
 
-    /// Add a field to the specified location (metadata or result object)
+    /// Add a field to the specified location (metadata, result, or `error_info` object)
     pub fn add_field_to(
         mut self,
         key: &str,

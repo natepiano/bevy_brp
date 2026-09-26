@@ -14,6 +14,7 @@ use super::mutability::Mutability;
 use super::mutation_path_external::RootExample;
 use super::mutation_path_internal::MutationPathInternal;
 use super::path_example::Example;
+use super::path_example::PathExample;
 use super::path_kind::MutationPathDescriptor;
 use super::recursion_context::RecursionContext;
 use super::variant_name::VariantName;
@@ -65,11 +66,49 @@ fn is_variant_chain_compatible(child: &MutationPathInternal, child_chain: &[Vari
     }
 }
 
+/// Rank of the variant a root example picks for an enum field its chain leaves unconstrained
+///
+/// Every `Mutable` variant, unit or not, ranks ahead of a variant with non-mutable descendants,
+/// so a variant that is only constructible through a nested enum never displaces a simpler
+/// value. Ties keep the chain's key order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum RootVariantRank {
+    /// Unit variant, or tuple/struct variant whose fields are all `Mutable`
+    Mutable,
+    /// Variant with non-mutable descendants
+    PartiallyMutable,
+}
+
+/// Rank the variant that ends `variant_chain` among an enum `child`'s variant groups
+///
+/// Returns `None` for a non-enum child: its candidate chains end in variants of different
+/// descendant enums, so they keep their key order.
+fn root_variant_rank(
+    child: &MutationPathInternal,
+    variant_chain: &[VariantName],
+) -> Option<RootVariantRank> {
+    let PathExample::EnumRoot { groups, .. } = &child.example else {
+        return None;
+    };
+    let variant = variant_chain.last()?;
+    groups
+        .iter()
+        .find(|group| group.applicable_variants.contains(variant))
+        .map(|group| match group.mutability {
+            Mutability::Mutable => RootVariantRank::Mutable,
+            Mutability::PartiallyMutable | Mutability::NotMutable => {
+                RootVariantRank::PartiallyMutable
+            },
+        })
+}
+
 /// Extract the appropriate value from a child path for assembly
 ///
 /// Priority order:
 /// 1. Variant-specific value from `partial_root_examples` (for deeply nested enums)
-/// 2. `example.for_parent()` (fallback for all other cases)
+/// 2. For an enum child the chain leaves unconstrained, the available variant ranked first by
+///    `RootVariantRank`, then by chain
+/// 3. `example.for_parent()` (fallback for all other cases)
 fn extract_child_value_for_chain(
     child: &MutationPathInternal,
     child_chain: Option<&[VariantName]>,
@@ -97,7 +136,9 @@ fn extract_child_value_for_chain(
                         .filter(|(child_chain, _)| {
                             child_chain.len() == chain.len() + 1 && child_chain.starts_with(chain)
                         })
-                        .sorted_by_key(|(child_chain, _)| *child_chain)
+                        .sorted_by_key(|(child_chain, _)| {
+                            (root_variant_rank(child, child_chain), *child_chain)
+                        })
                         .find_map(|(_, root_ex)| get_value(root_ex))
                 })
             })

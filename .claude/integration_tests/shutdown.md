@@ -34,16 +34,17 @@ This test uses pre-launched app instances referenced by label:
   - similar_app_name: possibly "extras_plugin" (if detected)
 - Verify message mentions BRP is responding on the port (another process may be using it)
 
-### 3. BrpNotRespondingError - App Running Without BRP
+### 3. ProcessOnOtherPortError - App Running On A Different Port
 - Execute `mcp__brp__brp_status` with app_name: "no_extras_plugin", port: 29998
-  - **NOTE**: Uses port 29998 where nothing is listening. The tool finds the no_extras_plugin process by name (it's running on port 25000) but BRP doesn't respond on 29998, triggering BrpNotRespondingError.
+  - **NOTE**: Uses port 29998 where nothing is listening. The tool finds the no_extras_plugin process by name, sees it listening on port 25000, and reports where the app actually runs instead of suggesting a missing RemotePlugin.
 - Verify response has status: "error"
 - Verify error_info contains:
   - app_name: "no_extras_plugin"
-  - pid: (should be present)
   - port: 29998
-- Verify message indicates process is running but not responding to BRP on specified port
-- Verify message suggests adding RemotePlugin to Bevy app
+  - running_instances: an array containing `{"pid": <no_brp_app pid>, "port": 25000}`
+- Verify every `running_instances` pid is a real process ID (not a thread ID): it must equal the pid `brp_shutdown` reports for port 25000 in step 4
+- Verify message says the process is not listening on port 29998 and lists "PID <pid> on port 25000"
+- Verify message does NOT suggest adding RemotePlugin
 
 ### 4. Process Kill Shutdown (Degraded Success)
 - Execute `mcp__brp__brp_shutdown` with app_name: "no_extras_plugin", port: 25000
@@ -90,7 +91,7 @@ This test uses pre-launched app instances referenced by label:
 ## Expected Results
 - ✅ ProcessNotFoundError includes all expected fields in error_info
 - ✅ ProcessNotFoundError distinguishes between BRP responding/not responding cases
-- ✅ BrpNotRespondingError includes PID and suggests adding RemotePlugin
+- ✅ ProcessOnOtherPortError lists the app's real PID and the port it listens on
 - ✅ ProcessNotRunningError for shutdown includes app_name in error_info
 - ✅ Process kill shutdown is "success" with warning, not error
 - ✅ Error responses use error_info, success responses use metadata

@@ -10,6 +10,9 @@ use error_stack::ResultExt;
 use netstat2::AddressFamilyFlags;
 use netstat2::ProtocolFlags;
 use netstat2::ProtocolSocketInfo;
+use netstat2::TcpState;
+use serde::Deserialize;
+use serde::Serialize;
 use sysinfo::Process;
 
 use super::constants::APP_EXTENSION_SUFFIX;
@@ -159,4 +162,43 @@ pub fn get_pid_for_port(port: Port) -> Option<u32> {
             }
             None
         })
+}
+
+/// A process and one TCP port it is listening on
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct ListeningInstance {
+    pub pid:  u32,
+    pub port: u16,
+}
+
+/// List every TCP port in the `Listen` state owned by one of `process_ids`
+pub fn listening_instances(process_ids: &[u32]) -> Vec<ListeningInstance> {
+    let address_family_flags = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
+    let protocol_flags = ProtocolFlags::TCP;
+
+    let mut instances: Vec<ListeningInstance> =
+        netstat2::get_sockets_info(address_family_flags, protocol_flags)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|socket_info| match socket_info.protocol_socket_info {
+                ProtocolSocketInfo::Tcp(tcp_socket_info)
+                    if tcp_socket_info.state == TcpState::Listen =>
+                {
+                    socket_info
+                        .associated_pids
+                        .iter()
+                        .find(|process_id| process_ids.contains(process_id))
+                        .map(|&pid| ListeningInstance {
+                            pid,
+                            port: tcp_socket_info.local_port,
+                        })
+                },
+                _ => None,
+            })
+            .collect();
+
+    // An IPv4 and an IPv6 listener on the same port report the same instance twice
+    instances.sort_by_key(|instance| (instance.pid, instance.port));
+    instances.dedup_by_key(|instance| (instance.pid, instance.port));
+    instances
 }
