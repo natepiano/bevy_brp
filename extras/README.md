@@ -14,6 +14,7 @@ bevy_brp_extras does two things
 
 | bevy        | bevy_brp_extras |
 |-------------|-----------------|
+| 0.20.0-rc.1 | 0.23.0-rc.1     |
 | 0.19        | 0.22.7          |
 | 0.18        | 0.19.0          |
 | 0.17        | 0.17.2          |
@@ -45,7 +46,7 @@ The crop comes from the final composited target, so it may include overlapping U
 Your Bevy app must have the `png` feature enabled. Without it, the request fails before capture begins.
 
 ```toml
-bevy = { version = "0.19", features = ["png"] }
+bevy = { version = "0.20.0-rc.1", features = ["png"] }
 ```
 
 **Diagnostics note**: `get_diagnostics` requires the `diagnostics` cargo feature (enabled by default). Disable with `default-features = false` if you don't want `FrameTimeDiagnosticsPlugin` added to your app.
@@ -60,7 +61,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy_brp_extras = "0.22.7"
+bevy_brp_extras = "0.23.0-rc.1"
 ```
 
 Add the plugin to your Bevy app

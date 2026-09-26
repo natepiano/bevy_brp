@@ -11,6 +11,7 @@ A Model Context Protocol (MCP) server that enables AI coding assistants to launc
 
 | bevy        | bevy_brp_mcp    |
 |-------------|-----------------|
+| 0.20.0-rc.1 | 0.23.0-rc.1     |
 | 0.19        | 0.22.7          |
 | 0.18        | 0.19.0          |
 | 0.17        | 0.17.2          |
@@ -119,7 +120,7 @@ In either case you'll need to make sure to enable bevy's "bevy_remote" feature.
 ### Application-defined BRP methods and agent tools
 
 `rpc_discover` exhaustively lists methods in Bevy's live `RemoteMethods` resource, including
-application-defined and built-in methods. Bevy 0.19 reports their names but not descriptions or
+application-defined and built-in methods. Bevy 0.20 reports their names but not descriptions or
 parameter/result schemas.
 
 Applications using `BrpExtrasPlugin` can publish a curated subset of existing instant methods for
@@ -245,7 +246,7 @@ presentation dependence when the application is designed to use them.
 Generic AABB crops are supported. Complete Bevy UI components use UI bounds when the default-enabled
 `bevy_brp_extras` `ui` feature is enabled. That feature gates the extras crate's UI resolver,
 imports, and capability; it is not a promise that upstream UI crates vanish from `cargo tree`,
-because Bevy 0.19 `bevy_remote` already brings that dependency family transitively. Enabling `ui`
+because Bevy 0.20 `bevy_remote` already brings that dependency family transitively. Enabling `ui`
 also enables the Bevy text and sprite dependencies required by Bevy UI. Textual UI-tree or
 `snapshot` inspection remains a separate capability.
 
