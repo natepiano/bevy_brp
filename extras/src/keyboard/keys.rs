@@ -146,9 +146,13 @@ pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World
 }
 
 /// System that processes timed key releases
+///
+/// The hold runs on `Time<Real>`, not the default (virtual) clock: apps pause
+/// or scale the virtual clock (a title screen, an editor pause, a replay), and
+/// an injected key must still come back up so the next press is a fresh one.
 pub(super) fn process_timed_key_releases(
     mut commands: Commands,
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     mut query: Query<(Entity, &mut TimedKeyRelease)>,
     primary_window: Query<Entity, With<PrimaryWindow>>,
     mut keyboard_events: MessageWriter<KeyboardInput>,

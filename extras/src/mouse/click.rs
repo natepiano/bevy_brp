@@ -161,9 +161,12 @@ pub(crate) fn double_click_mouse_handler(
 /// - Sends the second press event
 /// - Spawns a `TimedButtonRelease` for the release
 /// - Despawns the scheduled click entity
+///
+/// The delay runs on `Time<Real>` so a paused virtual clock cannot stall the
+/// second click.
 pub(super) fn process_scheduled_clicks(
     mut commands: Commands,
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     mut query: Query<(Entity, &mut ScheduledClick)>,
     mut button_events: MessageWriter<MouseButtonInput>,
     mut window_events: MessageWriter<WindowEvent>,
