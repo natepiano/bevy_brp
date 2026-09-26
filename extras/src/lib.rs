@@ -102,7 +102,7 @@
 //! computed target camera. Partial UI computed state is rejected. Disabling default features
 //! retains AABB capture without compiling this crate's UI bounds resolver, imports, or capability.
 //! This does not guarantee removal of UI crates from the dependency graph because upstream Bevy
-//! 0.19 `bevy_remote` brings that family transitively through `bevy_dev_tools`. Both modes crop the
+//! 0.20 `bevy_remote` brings that family transitively through `bevy_dev_tools`. Both modes crop the
 //! complete composited target, so overlapping content and post-processing remain visible. With
 //! neither `camera` nor `entity`, the method captures the primary window. With only `camera`, it
 //! captures that camera's physical viewport. The method never resolves names or descendants. If
