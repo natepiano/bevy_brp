@@ -26,6 +26,8 @@ impl Plugin for KeyboardPlugin {
     reason = "tests should panic on unexpected values"
 )]
 mod tests {
+    use std::time::Duration;
+
     use bevy::app::App;
     use bevy::app::Update;
     use bevy::ecs::message::MessageCursor;
@@ -35,6 +37,9 @@ mod tests {
     use bevy::prelude::In;
     use bevy::prelude::Messages;
     use bevy::prelude::MinimalPlugins;
+    use bevy::prelude::Real;
+    use bevy::prelude::Time;
+    use bevy::prelude::Virtual;
     use bevy::window::PrimaryWindow;
     use bevy::window::Window;
     use bevy::window::WindowEvent;
@@ -45,6 +50,7 @@ mod tests {
     use super::constants::DEFAULT_KEY_DURATION_MS;
     use super::constants::MAX_KEY_DURATION_MS;
     use super::key_code::KeyCodeWrapper;
+    use super::keys;
     use super::keys::SendKeysResponse;
     use super::keys::TimedKeyRelease;
     use super::send_keys_handler;
@@ -65,6 +71,84 @@ mod tests {
             .spawn((Window::default(), PrimaryWindow))
             .id();
         (app, window)
+    }
+
+    /// An app whose virtual clock is paused and whose real clock only moves
+    /// when a test advances it: no `TimePlugin`, so nothing else touches
+    /// either clock between updates.
+    fn app_with_paused_virtual_clock() -> App {
+        let mut app = App::new();
+        app.add_message::<KeyboardInput>()
+            .add_message::<WindowEvent>()
+            .add_systems(Update, keys::process_timed_key_releases);
+        let mut virtual_time = Time::<Virtual>::default();
+        virtual_time.pause();
+        app.insert_resource(Time::<Real>::default())
+            .insert_resource(virtual_time)
+            .insert_resource(Time::<()>::default());
+        app
+    }
+
+    fn keyboard_releases(app: &App) -> Vec<KeyboardInput> {
+        let messages = app.world().resource::<Messages<KeyboardInput>>();
+        MessageCursor::default()
+            .read(messages)
+            .filter(|event| event.state == ButtonState::Released)
+            .cloned()
+            .collect()
+    }
+
+    /// The hold is measured on the wall clock: a key injected while the app
+    /// has paused its virtual clock (title screen, editor pause) still comes
+    /// back up after its duration, so the next press is a fresh one.
+    #[test]
+    fn key_releases_while_the_virtual_clock_is_paused() {
+        let mut app = app_with_paused_virtual_clock();
+
+        let result = send_keys_handler(In(Some(json!({ "keys": ["Backquote"] }))), app.world_mut());
+        assert!(result.is_ok());
+
+        app.world_mut()
+            .resource_mut::<Time<Real>>()
+            .advance_by(Duration::from_millis(u64::from(DEFAULT_KEY_DURATION_MS)));
+        app.update();
+
+        assert_eq!(app.world().resource::<Time>().delta(), Duration::ZERO);
+        let releases = keyboard_releases(&app);
+        assert_eq!(
+            releases.len(),
+            1,
+            "the key must be released on the real clock"
+        );
+        assert_eq!(
+            releases[0].key_code,
+            bevy::input::keyboard::KeyCode::Backquote
+        );
+        let pending = app
+            .world_mut()
+            .query::<&TimedKeyRelease>()
+            .iter(app.world())
+            .count();
+        assert_eq!(pending, 0, "the release entity is gone once it has fired");
+    }
+
+    /// A hold shorter than its duration is still held: the real clock is
+    /// what is measured, not merely "the next frame".
+    #[test]
+    fn key_stays_held_until_its_duration_on_the_real_clock() {
+        let mut app = app_with_paused_virtual_clock();
+
+        let result = send_keys_handler(In(Some(json!({ "keys": ["Backquote"] }))), app.world_mut());
+        assert!(result.is_ok());
+
+        app.world_mut()
+            .resource_mut::<Time<Real>>()
+            .advance_by(Duration::from_millis(
+                u64::from(DEFAULT_KEY_DURATION_MS) / 2,
+            ));
+        app.update();
+
+        assert!(keyboard_releases(&app).is_empty());
     }
 
     fn keyboard_presses(app: &App) -> Vec<KeyboardInput> {
