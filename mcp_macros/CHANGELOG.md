@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.23.0-rc.1] - 2026-09-26
+
+### Fixed
+- Fix the generated `component_count` for query results counting each entity row's keys (`entity`, `components`, `has`) instead of the entries in its `components` map
 
 ## [0.22.7] - 2026-09-23
 

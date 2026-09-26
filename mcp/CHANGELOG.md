@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.23.0-rc.1] - 2026-09-26
 
 ### Changed
 - Update to Bevy 0.20.0-rc.1
@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `brp_type_guide` offering element paths such as `.recorded_changes[0]` for `InputFocus.recorded_changes`, a list Bevy drains every frame. The field is mutated whole, with example `[]`
 - Fix enum variant names with tuple, array or reference generic arguments showing as `UnknownType::Some`; they now read e.g. `Option<(Entity, FocusCause)>::Some`
 - Fix `brp_type_guide` giving `{}` as the insert example for `DefaultCursor` and `OverrideCursor`, which BRP rejects; both now get `{"System":"Default"}`. A partially mutable type or enum variant now gets a full example when every field has one (e.g. a field holding an enum with a mutable variant, such as a `Handle` through its `Uuid` variant), so `EntityCursor::Custom`, `CursorIcon::Custom` and `Option<EntityCursor>::Some` are constructible and `Sprite`/`ImageNode` get full spawn examples. `{}` is offered only for named-field structs with `Default`, and descriptions no longer say "No example is provided." when one is
+- Fix help text examples for `world_query`, `world_remove_components`, `world_get_resources` and `world_list_resources` using type paths missing from Bevy's type registry, e.g. `bevy_render::camera::camera::Camera` is now `bevy_camera::camera::Camera`
 - Fix a missing resource being reported as a format error. A resource the app never initialized (`Resource is not registered` from `world_insert_resources`, `Resource not registered` from get, mutate and remove) now says to add the plugin that owns it or call `init_resource`/`insert_resource` in the app, since BRP cannot insert it. A resource no entity holds (`Resource entity does not exist.`) says to insert it with `world_insert_resources` first
 
 ## [0.22.7] - 2026-09-23
