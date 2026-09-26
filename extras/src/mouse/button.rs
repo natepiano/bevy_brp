@@ -108,10 +108,11 @@ pub(crate) fn send_mouse_button_handler(
 /// System to process timed button releases
 ///
 /// Ticks timers on `TimedButtonRelease` components. When a timer finishes,
-/// sends the button release event and despawns the entity.
+/// sends the button release event and despawns the entity. The hold runs on
+/// `Time<Real>` so a paused virtual clock cannot leave the button pressed.
 pub(super) fn process_timed_button_releases(
     mut commands: Commands,
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     mut query: Query<(Entity, &mut TimedButtonRelease)>,
     mut button_events: MessageWriter<MouseButtonInput>,
     mut window_events: MessageWriter<WindowEvent>,
