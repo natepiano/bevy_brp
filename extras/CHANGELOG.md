@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix `send_keys`, `send_mouse_button`, and `double_click_mouse` leaving keys and buttons pressed while the app paused or slowed its virtual clock. The hold and the double click's second-click delay now run on `Time<Real>`, so an injected key comes back up after its duration whatever the app does with `Time<Virtual>`
+
 ## [0.22.7] - 2026-09-23
 
 ### Fixed
