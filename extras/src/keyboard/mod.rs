@@ -32,14 +32,15 @@ mod tests {
     use bevy::app::Update;
     use bevy::ecs::message::MessageCursor;
     use bevy::input::ButtonState;
+    use bevy::input::keyboard::KeyCode;
     use bevy::input::keyboard::KeyboardInput;
     use bevy::prelude::Entity;
     use bevy::prelude::In;
     use bevy::prelude::Messages;
     use bevy::prelude::MinimalPlugins;
-    use bevy::prelude::Real;
     use bevy::prelude::Time;
     use bevy::prelude::Virtual;
+    use bevy::time::TimeUpdateStrategy;
     use bevy::window::PrimaryWindow;
     use bevy::window::Window;
     use bevy::window::WindowEvent;
@@ -73,20 +74,30 @@ mod tests {
         (app, window)
     }
 
-    /// An app whose virtual clock is paused and whose real clock only moves
-    /// when a test advances it: no `TimePlugin`, so nothing else touches
-    /// either clock between updates.
+    /// An app from [`app_with_primary_window`] running `process_timed_key_releases`, with
+    /// `Time<Virtual>` paused and `Time<Real>` advancing only through [`advance_real_clock`].
+    ///
+    /// `TimePlugin` still runs `time_system`, which copies the paused `Time<Virtual>` into `Time`
+    /// every frame, as in an app that has paused its game clock. Because the virtual clock never
+    /// advances, `FixedMain` never runs and `signal_message_update_system` never marks the
+    /// `MessageRegistry` ready, so `Messages` buffers are not swapped: every message written
+    /// during a test stays readable.
     fn app_with_paused_virtual_clock() -> App {
-        let mut app = App::new();
-        app.add_message::<KeyboardInput>()
-            .add_message::<WindowEvent>()
-            .add_systems(Update, keys::process_timed_key_releases);
-        let mut virtual_time = Time::<Virtual>::default();
-        virtual_time.pause();
-        app.insert_resource(Time::<Real>::default())
-            .insert_resource(virtual_time)
-            .insert_resource(Time::<()>::default());
+        let (mut app, _) = app_with_primary_window();
+        app.add_systems(Update, keys::process_timed_key_releases)
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+        app.world_mut().resource_mut::<Time<Virtual>>().pause();
+        // The first `time_system` run records the start instant without advancing `Time<Real>`.
+        app.update();
         app
+    }
+
+    /// Advances `Time<Real>` by `ms` milliseconds and runs one frame.
+    fn advance_real_clock(app: &mut App, ms: u32) {
+        app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+            u64::from(ms),
+        )));
+        app.update();
     }
 
     fn keyboard_releases(app: &App) -> Vec<KeyboardInput> {
@@ -108,10 +119,7 @@ mod tests {
         let result = send_keys_handler(In(Some(json!({ "keys": ["Backquote"] }))), app.world_mut());
         assert!(result.is_ok());
 
-        app.world_mut()
-            .resource_mut::<Time<Real>>()
-            .advance_by(Duration::from_millis(u64::from(DEFAULT_KEY_DURATION_MS)));
-        app.update();
+        advance_real_clock(&mut app, DEFAULT_KEY_DURATION_MS);
 
         assert_eq!(app.world().resource::<Time>().delta(), Duration::ZERO);
         let releases = keyboard_releases(&app);
@@ -120,10 +128,7 @@ mod tests {
             1,
             "the key must be released on the real clock"
         );
-        assert_eq!(
-            releases[0].key_code,
-            bevy::input::keyboard::KeyCode::Backquote
-        );
+        assert_eq!(releases[0].key_code, KeyCode::Backquote);
         let pending = app
             .world_mut()
             .query::<&TimedKeyRelease>()
@@ -141,12 +146,7 @@ mod tests {
         let result = send_keys_handler(In(Some(json!({ "keys": ["Backquote"] }))), app.world_mut());
         assert!(result.is_ok());
 
-        app.world_mut()
-            .resource_mut::<Time<Real>>()
-            .advance_by(Duration::from_millis(
-                u64::from(DEFAULT_KEY_DURATION_MS) / 2,
-            ));
-        app.update();
+        advance_real_clock(&mut app, DEFAULT_KEY_DURATION_MS / 2);
 
         assert!(keyboard_releases(&app).is_empty());
     }
