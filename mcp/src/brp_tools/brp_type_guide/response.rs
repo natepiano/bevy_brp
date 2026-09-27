@@ -86,7 +86,7 @@ pub(crate) struct TypeGuideResponse {
 
 impl TypeGuideResponse {
     /// Requested types absent from the app's type registry, in request order
-    pub(crate) fn unregistered_types(&self) -> Vec<&str> {
+    pub(in crate::brp_tools) fn unregistered_types(&self) -> Vec<&str> {
         self.requested_types
             .iter()
             .filter(|type_name| {
