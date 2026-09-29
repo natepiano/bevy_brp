@@ -51,6 +51,12 @@
       "app_type": "example"
     },
     {
+      "test_name": "extras_gamepad",
+      "test_file": ".claude/integration_tests/extras_gamepad.md",
+      "app_name": "extras_plugin",
+      "app_type": "example"
+    },
+    {
       "test_name": "watch_component",
       "test_file": ".claude/integration_tests/watch_component.md",
       "app_name": "extras_plugin",

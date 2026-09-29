@@ -1,0 +1,11 @@
+Connects a simulated gamepad to a Bevy app via bevy_brp_extras. The app sees it as a real pad: its input managers, menus and join screens all react to it. Returns the gamepad entity; pass it as `gamepad` to the other gamepad tools.
+
+The pad is a `Gamepad` from the next frame on, so anything that spawns per-pad state (an input mapping, a player slot) does so one frame later.
+
+Examples:
+```json
+{}                          // Connect a pad
+{"name": "Player 2 pad"}    // Connect a pad with a custom name
+```
+
+Prerequisites: bevy_brp_extras dependency (with its default `gamepad` feature) and BrpExtrasPlugin registered.

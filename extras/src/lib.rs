@@ -138,6 +138,36 @@
 //! for uppercase and symbols.
 //! - `text` (string, required): text to type (letters, numbers, symbols, newlines, tabs)
 //!
+//! ## Gamepad
+//!
+//! Requires the `gamepad` cargo feature (enabled by default). A simulated gamepad is fed
+//! through the same messages `bevy_gilrs` writes, so the app treats it as a real pad. Button
+//! and axis names are Bevy's [`GamepadButton`](bevy::input::gamepad::GamepadButton) and
+//! [`GamepadAxis`](bevy::input::gamepad::GamepadAxis) variants (`"South"`, `"LeftStickX"`).
+//! A change takes effect in the next frame's `PreUpdate`.
+//!
+//! ### `brp_extras/connect_gamepad`
+//! Spawns and connects a simulated gamepad. Returns `{"gamepad": <entity>}`.
+//! - `name` (string, optional): name reported for the pad
+//!
+//! ### `brp_extras/send_gamepad_button`
+//! Sets a button's value on a simulated gamepad.
+//! - `gamepad` (u64, required): entity from `connect_gamepad`
+//! - `button` (string, required)
+//! - `value` (f32, optional, default: 1.0): analog value in `[0.0, 1.0]`; `0.0` releases
+//! - `duration_ms` (u32, optional, max: 60000): release after this long on the real clock, so it
+//!   works while the app pauses its virtual clock. Omitted, the button stays until set again
+//!
+//! ### `brp_extras/set_gamepad_axis`
+//! Sets an axis on a simulated gamepad. Axes stay where they are put.
+//! - `gamepad` (u64, required)
+//! - `axis` (string, required)
+//! - `value` (f32, required): in `[-1.0, 1.0]`
+//!
+//! ### `brp_extras/disconnect_gamepad`
+//! Disconnects a simulated gamepad. Bevy removes its `Gamepad` component, as for a real pad.
+//! - `gamepad` (u64, required)
+//!
 //! ## Mouse
 //!
 //! All mouse methods accept an optional `window` parameter (entity ID) to target
@@ -209,6 +239,8 @@ mod agent_tools;
 mod constants;
 #[cfg(feature = "diagnostics")]
 mod diagnostics;
+#[cfg(feature = "gamepad")]
+mod gamepad;
 mod keyboard;
 mod mouse;
 mod plugin;
