@@ -61,8 +61,12 @@ Test the "all" option with a filter that produces a small inline response:
   }
   ```
 - Verify by reading the JSON response directly (Camera entities are few, fits in context)
-- Check: Returns 5 Camera entities with all their components
-- Check: Each entity includes many components (Transform, Camera, Visibility, etc.)
+- Check: Returns 5 Camera entities, each with many components (Transform, Visibility, Projection, etc.)
+- Check: The other 3 cameras, including `ScreenshotPrimaryWindowCamera`, include `bevy_camera::camera::Camera`
+- Check: `Screenshot2dUiCamera` and `Screenshot3dCamera` include neither `bevy_camera::camera::Camera` nor
+  `bevy_camera::camera::RenderTarget`. This is expected: `bevy_remote` leaves out any component it cannot
+  serialize and still reports success. Their `Camera.viewport` holds a `Range<f32>` and their image
+  `RenderTarget` holds a `Handle<Image>`, and neither registers `ReflectSerialize`
 - Check: Component data is present (not empty `{}`)
 - **Do NOT use jq or bash commands** - the response is returned directly in the tool output
 
