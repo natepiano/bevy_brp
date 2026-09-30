@@ -1,0 +1,8 @@
+Disconnects a simulated gamepad (from brp_extras_connect_gamepad). Bevy removes its `Gamepad` component and leaves the entity, as it does for a real pad; pending timed releases are dropped.
+
+Example:
+```json
+{"gamepad": 4294967300}
+```
+
+Prerequisites: bevy_brp_extras dependency (with its default `gamepad` feature) and BrpExtrasPlugin registered.

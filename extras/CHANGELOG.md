@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Simulated gamepads: `connect_gamepad`, `send_gamepad_button`, `set_gamepad_axis` and `disconnect_gamepad` drive a pad the app treats as real, behind the default `gamepad` feature. Timed button releases run on the real clock
+
 ## [0.22.8] - 2026-09-27
 
 ### Fixed

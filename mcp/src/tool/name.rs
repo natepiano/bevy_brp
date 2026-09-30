@@ -44,8 +44,12 @@ use crate::brp_tools::BrpStopWatch;
 use crate::brp_tools::BrpTypeGuide;
 use crate::brp_tools::ClickMouseParams;
 use crate::brp_tools::ClickMouseResult;
+use crate::brp_tools::ConnectGamepadParams;
+use crate::brp_tools::ConnectGamepadResult;
 use crate::brp_tools::DespawnEntityParams;
 use crate::brp_tools::DespawnEntityResult;
+use crate::brp_tools::DisconnectGamepadParams;
+use crate::brp_tools::DisconnectGamepadResult;
 use crate::brp_tools::DoubleClickMouseParams;
 use crate::brp_tools::DoubleClickMouseResult;
 use crate::brp_tools::DoubleTapGestureParams;
@@ -96,10 +100,14 @@ use crate::brp_tools::RpcDiscoverResult;
 use crate::brp_tools::ScreenshotParams;
 use crate::brp_tools::ScrollMouseParams;
 use crate::brp_tools::ScrollMouseResult;
+use crate::brp_tools::SendGamepadButtonParams;
+use crate::brp_tools::SendGamepadButtonResult;
 use crate::brp_tools::SendKeysParams;
 use crate::brp_tools::SendKeysResult;
 use crate::brp_tools::SendMouseButtonParams;
 use crate::brp_tools::SendMouseButtonResult;
+use crate::brp_tools::SetGamepadAxisParams;
+use crate::brp_tools::SetGamepadAxisResult;
 use crate::brp_tools::SetWindowTitleParams;
 use crate::brp_tools::SetWindowTitleResult;
 use crate::brp_tools::SpawnEntityParams;
@@ -337,6 +345,34 @@ pub enum ToolName {
         result = "SendMouseButtonResult"
     )]
     BrpExtrasSendMouseButton,
+    /// `brp_extras_connect_gamepad` - Connect a simulated gamepad
+    #[brp_tool(
+        brp_method = "brp_extras/connect_gamepad",
+        params = "ConnectGamepadParams",
+        result = "ConnectGamepadResult"
+    )]
+    BrpExtrasConnectGamepad,
+    /// `brp_extras_send_gamepad_button` - Set a simulated gamepad button
+    #[brp_tool(
+        brp_method = "brp_extras/send_gamepad_button",
+        params = "SendGamepadButtonParams",
+        result = "SendGamepadButtonResult"
+    )]
+    BrpExtrasSendGamepadButton,
+    /// `brp_extras_set_gamepad_axis` - Set a simulated gamepad axis
+    #[brp_tool(
+        brp_method = "brp_extras/set_gamepad_axis",
+        params = "SetGamepadAxisParams",
+        result = "SetGamepadAxisResult"
+    )]
+    BrpExtrasSetGamepadAxis,
+    /// `brp_extras_disconnect_gamepad` - Disconnect a simulated gamepad
+    #[brp_tool(
+        brp_method = "brp_extras/disconnect_gamepad",
+        params = "DisconnectGamepadParams",
+        result = "DisconnectGamepadResult"
+    )]
+    BrpExtrasDisconnectGamepad,
     /// `brp_extras_click_mouse` - Click mouse button
     #[brp_tool(
         brp_method = "brp_extras/click_mouse",
@@ -591,6 +627,26 @@ impl ToolName {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
+            Self::BrpExtrasConnectGamepad => Annotation::new(
+                "connect gamepad",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasSendGamepadButton => Annotation::new(
+                "send gamepad button",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
+            Self::BrpExtrasSetGamepadAxis => Annotation::new(
+                "set gamepad axis",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveIdempotent,
+            ),
+            Self::BrpExtrasDisconnectGamepad => Annotation::new(
+                "disconnect gamepad",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveIdempotent,
+            ),
             Self::BrpExtrasClickMouse => Annotation::new(
                 "click mouse button",
                 ToolCategory::Extras,
@@ -784,6 +840,18 @@ impl ToolName {
             Self::BrpExtrasSendMouseButton => {
                 Some(parameters::build_parameters_from::<SendMouseButtonParams>)
             },
+            Self::BrpExtrasConnectGamepad => {
+                Some(parameters::build_parameters_from::<ConnectGamepadParams>)
+            },
+            Self::BrpExtrasSendGamepadButton => {
+                Some(parameters::build_parameters_from::<SendGamepadButtonParams>)
+            },
+            Self::BrpExtrasSetGamepadAxis => {
+                Some(parameters::build_parameters_from::<SetGamepadAxisParams>)
+            },
+            Self::BrpExtrasDisconnectGamepad => {
+                Some(parameters::build_parameters_from::<DisconnectGamepadParams>)
+            },
             Self::BrpExtrasClickMouse => {
                 Some(parameters::build_parameters_from::<ClickMouseParams>)
             },
@@ -866,6 +934,10 @@ impl ToolName {
             Self::BrpExtrasSetWindowTitle => Arc::new(BrpExtrasSetWindowTitle),
             Self::BrpExtrasMoveMouse => Arc::new(BrpExtrasMoveMouse),
             Self::BrpExtrasSendMouseButton => Arc::new(BrpExtrasSendMouseButton),
+            Self::BrpExtrasConnectGamepad => Arc::new(BrpExtrasConnectGamepad),
+            Self::BrpExtrasSendGamepadButton => Arc::new(BrpExtrasSendGamepadButton),
+            Self::BrpExtrasSetGamepadAxis => Arc::new(BrpExtrasSetGamepadAxis),
+            Self::BrpExtrasDisconnectGamepad => Arc::new(BrpExtrasDisconnectGamepad),
             Self::BrpExtrasClickMouse => Arc::new(BrpExtrasClickMouse),
             Self::BrpExtrasDoubleClickMouse => Arc::new(BrpExtrasDoubleClickMouse),
             Self::BrpExtrasDragMouse => Arc::new(BrpExtrasDragMouse),

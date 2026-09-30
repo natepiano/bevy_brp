@@ -1,0 +1,12 @@
+Sets an axis on a simulated gamepad (from brp_extras_connect_gamepad). The axis stays where it is put until set again; set it back to 0.0 to center the stick.
+
+Axes: LeftStickX, LeftStickY, LeftZ, RightStickX, RightStickY, RightZ
+
+Examples:
+```json
+{"gamepad": 4294967300, "axis": "LeftStickX", "value": -1.0}  // Left stick fully left
+{"gamepad": 4294967300, "axis": "LeftStickY", "value": 1.0}   // Left stick fully up
+{"gamepad": 4294967300, "axis": "LeftStickX", "value": 0.0}   // Center
+```
+
+Prerequisites: bevy_brp_extras dependency (with its default `gamepad` feature) and BrpExtrasPlugin registered.
