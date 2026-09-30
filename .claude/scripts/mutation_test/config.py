@@ -10,9 +10,9 @@ import json
 from pathlib import Path
 from typing import TypedDict
 
-# Failure reason operation_manager.py records when a subagent keeps requesting an operation
-# without executing it. process_results.py classifies it as a retry, not a review failure.
-PROVISION_LIMIT_REASON = "Provision limit exceeded (subagent not executing)"
+# Failure reason operation_manager.py records when an operation keeps being handed out
+# without a result. process_results.py classifies it as a retry, not a review failure.
+PROVISION_LIMIT_REASON = "Provision limit exceeded (operation handed out without a result)"
 
 
 class MutationTestConfig(TypedDict):
@@ -21,7 +21,6 @@ class MutationTestConfig(TypedDict):
     ops_per_subagent: int
     max_subagents: int
     base_port: int
-    stop_after_each_batch: bool
     mutation_test_log: str
     test_plan_file_pattern: str
 
@@ -104,7 +103,6 @@ def load_config() -> MutationTestConfig:
         ops_per_subagent=int(config_data["ops_per_subagent"]),
         max_subagents=int(config_data["max_subagents"]),
         base_port=int(config_data["base_port"]),
-        stop_after_each_batch=bool(config_data["stop_after_each_batch"]),
         mutation_test_log=resolve_path(str(config_data["mutation_test_log"])),
         test_plan_file_pattern=resolve_path(str(config_data["test_plan_file_pattern"])),
     )

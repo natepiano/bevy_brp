@@ -10,8 +10,6 @@
 <CreateContext>
 TARGET_FILE = .claude/transient/all_types.json
 PURPOSE = Creates a FRESH mutation test tracking file by discovering all registered component types via BRP. This ALWAYS creates a new file - test metadata will be initialized by prepare.py when needed.
-APP_PORT = 22222
-APP_NAME = extras_plugin
 </CreateContext>
 
 <CreateKeywords>
@@ -52,71 +50,39 @@ APP_NAME = extras_plugin
 
 **MANDATORY**: Create TodoWrite to track command progress through all steps and decision points.
 
-Create a todo list with the following 5 items:
-1. "Execute app launch" (pending → in_progress when starting STEP 1)
-2. "Discover all registered types using brp_all_type_guides" (pending → in_progress when starting STEP 2)
-3. "Save fresh BRP response and run comparison" (pending → in_progress when starting STEP 3)
-4. "Clean shutdown of test application" (pending → in_progress when starting STEP 4)
-5. "Present results and get user decision on baseline promotion" (pending → in_progress when starting STEP 5)
+Create a todo list with the following 3 items:
+1. "Fetch type guides with fetch_type_guides.py" (pending → in_progress when starting STEP 1)
+2. "Compare against baseline" (pending → in_progress when starting STEP 2)
+3. "Present results and get user decision on baseline promotion" (pending → in_progress when starting STEP 3)
 
 Mark each todo as "in_progress" when beginning that step, and "completed" when the step finishes successfully.
 
 <ExecutionSteps>
     **EXECUTE THESE STEPS IN ORDER:**
 
-    **STEP 1:** Execute the <AppLaunch/>
-    **STEP 2:** Execute the <TypeDiscovery/>
-    **STEP 3:** Execute the <FileSaveAndComparison/> (save raw BRP response and run comparison)
-    **STEP 4:** Execute the <AppCleanup/>
-    **STEP 5:** Execute the <UserValidation/> → **STOP** and present final summary
+    **STEP 1:** Execute the <FetchTypeGuides/>
+    **STEP 2:** Execute the <Comparison/>
+    **STEP 3:** Execute the <UserValidation/> → **STOP** and present final summary
 </ExecutionSteps>
 
-## STEP 1: APP LAUNCH
+## STEP 1: FETCH TYPE GUIDES
 
-<AppLaunch>
-    Launch the extras_plugin app on the designated port:
-
-    1. **Launch Example**:
+<FetchTypeGuides>
+    Run in the background (`run_in_background: true`) and wait for the completion notification:
     ```bash
-    mcp__brp__brp_launch(
-        target_name="${APP_NAME}",
-        port=${APP_PORT}
-    )
-    ```
-</AppLaunch>
-
-## STEP 2: TYPE DISCOVERY
-
-<TypeDiscovery>
-    Get all type guides using the comprehensive discovery tool:
-
-    Call `brp_all_type_guides` to get type guides for all registered types in one operation:
-    ```bash
-    mcp__brp__brp_all_type_guides(port=${APP_PORT})
+    python3 .claude/scripts/mutation_test/fetch_type_guides.py
     ```
 
-    This automatically discovers all registered types and returns their type guides. The tool will save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_all_type_guides_12345.json`).
+    It builds bevy_brp_mcp from this checkout, launches extras_plugin on port 22222, calls `brp_all_type_guides`, writes a FRESH ${TARGET_FILE} (BRP data only; prepare.py initializes test metadata), and shuts the app down.
 
-    **VALIDATION**: Confirm the tool returned a valid filepath and type count.
+    **VALIDATION**: stdout JSON has `status` "success" and a `type_guides` count. On `status` "error", report `message` and stop.
 
-    **CRITICAL**: Note the returned filepath for use in Step 3.
+    **Fix loop**: fix the code → rerun this script → STEP 2.
+</FetchTypeGuides>
 
-</TypeDiscovery>
+## STEP 2: COMPARISON
 
-## STEP 3: FILE SAVE AND COMPARISON
-
-<FileSaveAndComparison>
-    Save the raw BRP response (ALWAYS creates fresh file):
-
-    ```bash
-    cp [FILEPATH] ${TARGET_FILE}
-    ```
-
-    Replace `[FILEPATH]` with the actual path from Step 2.
-
-    **IMPORTANT**: This creates a FRESH file with ONLY BRP data (no test metadata). Test metadata will be automatically initialized by prepare.py when the mutation test runs.
-
-    **After saving, run comparison**:
+<Comparison>
     ```bash
     python3 .claude/scripts/create_mutation_test_json/compare.py .claude/transient/all_types_baseline.json ${TARGET_FILE}
     ```
@@ -126,27 +92,10 @@ Mark each todo as "in_progress" when beginning that step, and "completed" when t
     - Comparison results (total changes, types modified/added/removed)
     - `✅ No changes detected!` or `⚠️ CHANGES DETECTED: X changes`
 
-    **VALIDATION**: Confirm the file was saved and comparison completed successfully.
+    **VALIDATION**: Confirm the comparison completed successfully.
+</Comparison>
 
-</FileSaveAndComparison>
-
-## STEP 4: APP CLEANUP
-
-<AppCleanup>
-    Shutdown the application:
-
-    ```bash
-    mcp__brp__brp_shutdown(
-        app_name="${APP_NAME}",
-        port=${APP_PORT}
-    )
-    ```
-
-    **VALIDATION**: Confirm the app has been cleanly shutdown before proceeding.
-
-</AppCleanup>
-
-## STEP 5: USER VALIDATION
+## STEP 3: USER VALIDATION
 
 <UserValidation>
     Present the final summary using the exact template below:
@@ -211,7 +160,7 @@ Based on the comparison results above, should I mark this version as the new goo
 </NoIntermediateFiles>
 
 <DirectToolsOnly>
-**Direct tool usage only** - Use only MCP tools and the provided shell scripts
+**Direct tool usage only** - Use only the provided scripts
 </DirectToolsOnly>
 
 <SingleOutputFile>
@@ -313,7 +262,7 @@ Patterns: `.field.0` (variant), `.field[0]` (array), `.field.0.nested` (nested i
        - Using type/path combinations from previous runs instead of current session
 
     6. After all combinations reviewed OR user stops:
-       - Return to main decision prompt from Step 5
+       - Return to main decision prompt from Step 3
 </ComparisonReviewWorkflow>
 
 <PatternOverviewFormat>

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Process mutation test results from subagent test plans.
+Process mutation test results from the per-port test plans.
 Converts test plan JSON files into batch results format for merging.
 
 Configuration is loaded from .claude/config/mutation_test_config.json.
 The batch number is auto-discovered by finding the first untested batch.
 
-Usage:
-  python3 mutation_test_process_results.py
+Usage (run.py calls it after each batch):
+  python3 .claude/scripts/mutation_test/process_results.py
 """
 
 import glob
@@ -229,7 +229,7 @@ def build_diagnostic_entry(
 
     # The first operation that did not succeed decides the status: a recorded failure is FAIL,
     # an operation never executed is RETRY. Null statuses after a failure are expected because
-    # the subagent stops at the first failure.
+    # a type stops at its first failure.
     failed_op_id: int | None = None
     diag_status = "PASS"
 
@@ -290,8 +290,8 @@ def convert_test_to_result(
                 )
             seen_operation_ids.add(operation_id)
 
-    # Check if subagent never executed the test (all operations have null status)
-    # This indicates subagent workflow failure, not a BRP validation failure
+    # Check if the runner never executed the test (all operations have null status)
+    # This indicates a runner failure, not a BRP validation failure
     all_null = all(op.get("status") is None for op in operations)
     if all_null:
         # Track this type and part for grouped warning output
@@ -330,9 +330,9 @@ def convert_test_to_result(
                 status = "FAIL"
                 failed_operation_id = cast(int | None, op.get("operation_id"))
                 error_msg = op.get("error")
-                # Detect subagent failure (never executed operation)
+                # Detect runner failure (never executed operation)
                 if op_status is None:
-                    error_msg = "Subagent failure - operation not executed (status field is null)"
+                    error_msg = "Runner failure - operation not executed (status field is null)"
                 is_spawn = op_tool == "mcp__brp__world_spawn_entity"
                 request_sent: dict[str, object] = (
                     {"components": op.get("components", {}), "port": op.get("port")}
@@ -370,9 +370,9 @@ def convert_test_to_result(
                 status = "FAIL"
                 failed_operation_id = cast(int | None, op.get("operation_id"))
                 error_msg = op.get("error")
-                # Detect subagent failure (never executed operation)
+                # Detect runner failure (never executed operation)
                 if op_status is None:
-                    error_msg = "Subagent failure - operation not executed (status field is null)"
+                    error_msg = "Runner failure - operation not executed (status field is null)"
                 op_filter = op.get("filter")
                 op_data = op.get("data")
                 failure_details = FailureDetails(
@@ -405,9 +405,9 @@ def convert_test_to_result(
                 status = "FAIL"
                 failed_operation_id = cast(int | None, op.get("operation_id"))
                 error_msg = op.get("error")
-                # Detect subagent failure (never executed operation)
+                # Detect runner failure (never executed operation)
                 if op_status is None:
-                    error_msg = "Subagent failure - operation not executed (status field is null)"
+                    error_msg = "Runner failure - operation not executed (status field is null)"
                 failure_details = FailureDetails(
                     failed_operation="mutation",
                     failed_mutation_path=mutation_path,
@@ -452,12 +452,12 @@ def convert_test_to_result(
 
 def is_retry_failure(result: TestResult) -> bool:
     """
-    Determine if a failure should be retried (subagent crash) vs reviewed (real BRP error).
+    Determine if a failure should be retried (runner failure) vs reviewed (real BRP error).
 
     Retry scenarios:
-    - Subagent crashed mid-execution (some operations succeeded, rest are null)
+    - Execution stopped mid-type (some operations succeeded, rest are null)
     - Error message contains "status field is null"
-    - Subagent requested an operation repeatedly without executing it (PROVISION_LIMIT_REASON)
+    - An operation was handed out repeatedly without a result (PROVISION_LIMIT_REASON)
 
     Review scenarios:
     - Got actual BRP error response (like "0 entities found")
@@ -550,8 +550,8 @@ null_status_types: dict[str, list[tuple[int, int]]] = {}
 # Diagnostic entries for all tested types (built during first loop)
 diagnostic_entries: list[DiagnosticEntry] = []
 
-# Determine how many subagents were actually used
-# With operation-based packing, we use up to max_subagents
+# Determine how many ports were actually used
+# With operation-based packing, we use up to max_subagents ports
 # The actual count depends on how many test plans were created
 subagent_count = max_subagents
 
@@ -809,7 +809,7 @@ if failed > 0 or missing > 0 or retry > 0:
     review_summaries = [build_summary(f) for f in review_failures]
 
 # Determine final status
-# RETRY_ONLY = only retry failures (subagent crashes), will be retried automatically
+# RETRY_ONLY = only retry failures (runner failures), will be retried automatically
 # FAILURES_DETECTED = at least one real BRP validation failure needing review
 # SUCCESS = no failures and no retries
 final_status = "SUCCESS"
