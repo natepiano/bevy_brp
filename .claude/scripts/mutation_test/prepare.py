@@ -10,12 +10,16 @@ Configuration is loaded from .claude/config/mutation_test_config.json.
 The batch number is auto-discovered by finding the first untested batch.
 
 Usage:
-  python3 mutation_test_prepare.py
+  python3 prepare.py [--keep-failed]
+
+  --keep-failed leaves failed types failed instead of resetting them to untested. run.py
+  passes it for every batch after its first, so one pass never retests its own failures.
 
 Output:
   Returns AllAssignmentsOutput with assignments and test plan files.
 """
 
+import argparse
 import glob
 import json
 import os
@@ -140,6 +144,14 @@ class TestPlan(TypedDict):
     tests: list[TypeTest]
 
 
+parser = argparse.ArgumentParser(description="Prepare the next mutation test batch")
+_ = parser.add_argument(
+    "--keep-failed",
+    action="store_true",
+    help="Keep failed types failed instead of resetting them to untested",
+)
+keep_failed: bool = cast(bool, parser.parse_args().keep_failed)
+
 # Load configuration from config file
 try:
     mutation_config = load_config()
@@ -176,12 +188,13 @@ def renumber_batches(
     max_subagents: int,
     ops_per_subagent: int,
     excluded_type_names: set[str],
+    keep_failed: bool,
 ) -> AllTypesData:
     """
     Pack ALL untested types into batches in a single pass.
 
     Algorithm:
-    1. Reset failed tests to untested
+    1. Reset failed tests to untested (skipped with keep_failed)
     2. Find next batch number to use
     3. Pack everything that fits into current batch
     4. Increment batch number
@@ -193,22 +206,26 @@ def renumber_batches(
         max_subagents: Maximum number of subagents per batch
         ops_per_subagent: Operation capacity per subagent
         excluded_type_names: Set of type names to exclude from testing
+        keep_failed: Leave failed tests failed, with their batch numbers
     """
     type_guide = data["type_guide"]
 
     # Step 1: Reset failed tests to untested and clear their batch numbers
-    for type_name, type_data in type_guide.items():
-        if type_name in excluded_type_names:
-            continue
-        if type_data.get("test_status") == "failed":
-            type_data["test_status"] = "untested"
-            type_data["fail_reason"] = ""
-            type_data["batch_number"] = None
+    if not keep_failed:
+        for type_name, type_data in type_guide.items():
+            if type_name in excluded_type_names:
+                continue
+            if type_data.get("test_status") == "failed":
+                type_data["test_status"] = "untested"
+                type_data["fail_reason"] = ""
+                type_data["batch_number"] = None
 
-    # Step 2: Find highest batch number assigned to passed/auto-passed tests
+    # Step 2: Find highest batch number assigned to passed/auto-passed tests, and to
+    # kept failed tests so new batch numbers never collide with theirs
+    numbered_statuses = ["passed", "auto_passed"] + (["failed"] if keep_failed else [])
     max_batch = 0
     for type_data in type_guide.values():
-        if type_data.get("test_status") in ["passed", "auto_passed"]:
+        if type_data.get("test_status") in numbered_statuses:
             batch_num = type_data.get("batch_number")
             if batch_num is not None and batch_num > max_batch:
                 max_batch = batch_num
@@ -896,8 +913,11 @@ if excluded_types_file.exists():
 
 # Deduplication and validation now handled by initialize_test_metadata.py
 
-# Renumber batches before every batch (resets failed→untested, reassigns batch numbers)
-data = renumber_batches(data, max_subagents, ops_per_subagent, excluded_type_names)
+# Renumber batches before every batch (resets failed→untested unless keep_failed,
+# reassigns batch numbers)
+data = renumber_batches(
+    data, max_subagents, ops_per_subagent, excluded_type_names, keep_failed
+)
 
 # Write updated data back to file
 try:

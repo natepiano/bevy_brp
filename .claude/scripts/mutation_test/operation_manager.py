@@ -1,30 +1,23 @@
 #!/usr/bin/env python3
 """
-Unified operation manager for mutation testing.
+Operation manager for mutation testing.
 
-Handles both:
-1. Getting next operation (for subagent)
-2. Updating operation status (for hook)
+The mutation test runner (run.py) calls it once per operation, from one worker thread
+per port, holding one lock around every call:
+1. `action_get_next(port)` hands out the next operation of the port's test plan
+2. `action_update(port, event)` records the result of the call the runner made
 
-Usage:
-  # Get next operation
-  python3 operation_manager.py --port 30001 --action get-next
-
-  # Update operation status
-  echo "$MCP_RESPONSE" | python3 operation_manager.py \\
-    --port 30001 \\
-    --action update \\
-    --tool-name mcp__brp__world_spawn_entity \\
-    --mcp-response -
+Both read and write the port's test plan file and append to the mutation test log.
+The log lines double as the protocol the timeout and summary logic parses, so their
+wording (" provided to subagent", " status=", "** FINISHED **", ...) stays fixed.
 """
 
-import argparse
 import json
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import Any, Required, TypedDict, cast
 
 # Add script directory to path for imports
 script_dir = Path(__file__).parent
@@ -57,13 +50,29 @@ class QueryResultEntry(TypedDict):
 
 
 class HookEvent(TypedDict, total=False):
-    """Type for hook event JSON structure with structured responses."""
+    """
+    The result of one operation's tool call, in the shape of a Claude Code tool hook event.
 
-    hook_event_name: str  # PostToolUse or PostToolUseFailure
+    run.py builds it from the MCP response: `tool_response` or `error` holds the tool's JSON
+    response text (`content[0].text`), `tool_input` the arguments it sent.
+    """
+
+    hook_event_name: str  # PostToolUse, or PostToolUseFailure for a call flagged isError
     tool_response: str  # PostToolUse: JSON-serialized BrpResponse
     error: str  # PostToolUseFailure: JSON-serialized BrpResponse of the failed call
-    tool_name: str
+    tool_name: str  # The operation's `tool`, e.g. mcp__brp__world_spawn_entity
     tool_input: dict[str, object]
+
+
+class GetNextResponse(TypedDict, total=False):
+    """What `action_get_next` hands the runner."""
+
+    status: Required[str]  # "next_operation" or "finished"
+    operation: dict[str, object]  # Present with "next_operation"
+
+
+class OperationManagerError(RuntimeError):
+    """A test plan file could not be read or written."""
 
 
 class BrpResponseErrorInfo(TypedDict, total=False):
@@ -91,51 +100,6 @@ class TestPlan(TypedDict):
     tests: list[dict[str, Any]]  # pyright: ignore[reportExplicitAny]
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Unified operation manager for mutation testing"
-    )
-    _ = parser.add_argument(
-        "--port", type=int, required=True, help="Port number (used to locate test plan file)"
-    )
-    _ = parser.add_argument(
-        "--action",
-        required=True,
-        choices=["get-next", "update"],
-        help="Action to perform: get-next or update",
-    )
-
-    # Update-specific arguments
-    _ = parser.add_argument(
-        "--tool-name",
-        help="MCP tool name (required for update action)",
-    )
-    _ = parser.add_argument(
-        "--mcp-response",
-        help="Full MCP response JSON (use '-' for stdin, required for update action)",
-    )
-
-    return parser.parse_args()
-
-
-def validate_args(args: argparse.Namespace) -> None:
-    """Validate argument combinations."""
-    action = cast(str, args.action)
-
-    if action == "update":
-        tool_name = cast(str | None, getattr(args, "tool_name", None))
-        mcp_response = cast(str | None, getattr(args, "mcp_response", None))
-
-        if not tool_name:
-            print("Error: --tool-name is required for update action", file=sys.stderr)
-            sys.exit(1)
-
-        if not mcp_response:
-            print("Error: --mcp-response is required for update action", file=sys.stderr)
-            sys.exit(1)
-
-
 def get_plan_file_path(port: int, config: MutationTestConfig) -> str:
     """Get test plan file path for given port."""
     return config["test_plan_file_pattern"].format(port=port)
@@ -147,22 +111,19 @@ def load_test_plan(file_path: str) -> TestPlan:
         with open(file_path, encoding="utf-8") as f:
             test_plan_raw = json.load(f)  # pyright: ignore[reportAny]
             return cast(TestPlan, test_plan_raw)
-    except FileNotFoundError:
-        print(f"Error: Test plan file not found: {file_path}", file=sys.stderr)
-        sys.exit(1)
+    except FileNotFoundError as e:
+        raise OperationManagerError(f"Test plan file not found: {file_path}") from e
     except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON in test plan file: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise OperationManagerError(f"Invalid JSON in test plan file {file_path}: {e}") from e
 
 
 def save_test_plan(file_path: str, test_plan: TestPlan) -> None:
-    """Save test plan to file atomically."""
+    """Save test plan to file."""
     try:
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(test_plan, f, indent=2)
     except IOError as e:
-        print(f"Error: Failed to write test plan file: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise OperationManagerError(f"Failed to write test plan file {file_path}: {e}") from e
 
 
 def skip_remaining_operations_in_test(
@@ -294,9 +255,9 @@ def extract_error_message(error_text: str) -> str:
     """
     Extract the error message from a PostToolUseFailure `error` that is not valid JSON.
 
-    Claude Code truncates a long `error` string mid-document, inserting a marker such as
-    "... [1651 characters truncated] ...", so `json.loads` rejects it. Take the
-    `original_error` value, else the `message` value, else a bounded prefix of the raw text.
+    A truncated response (Claude Code cut long `error` strings mid-document when a hook
+    delivered them) makes `json.loads` reject the text. Take the `original_error` value,
+    else the `message` value, else a bounded prefix of the raw text.
     """
     for pattern in ERROR_MESSAGE_PATTERNS:
         match = pattern.search(error_text)
@@ -316,7 +277,7 @@ def extract_error_message(error_text: str) -> str:
 
 
 def parse_mcp_response_with_input(
-    mcp_response_arg: str,
+    mcp_data: HookEvent,
     tool_name: str,
     operation: dict[str, Any],  # pyright: ignore[reportExplicitAny]
     port: int,
@@ -328,16 +289,8 @@ def parse_mcp_response_with_input(
     Returns:
         Tuple of (final_status, final_error, tool_input)
     """
+    tool_input = mcp_data.get("tool_input", {})
     try:
-        # Read from stdin if '-'
-        if mcp_response_arg == "-":
-            mcp_data_raw = json.load(sys.stdin)  # pyright: ignore[reportAny]
-        else:
-            mcp_data_raw = json.loads(mcp_response_arg)  # pyright: ignore[reportAny]
-
-        mcp_data = cast(HookEvent, mcp_data_raw)
-        tool_input = mcp_data.get("tool_input", {})
-
         # A succeeded call carries the MCP response in `tool_response`. A call the MCP server
         # flagged `isError` fires PostToolUseFailure instead, which carries it in `error`.
         if mcp_data.get("hook_event_name") == "PostToolUseFailure":
@@ -373,18 +326,15 @@ def parse_mcp_response_with_input(
         return (status, error, tool_input)
 
     except Exception as e:
-        # Subagent mistakenly called --action update for previous operation
-        # Hook already handled the update correctly, so this is just informational
+        # The response text is not a JSON tool response; record the call as failed
         try:
             with open(MUTATION_TEST_LOG, "a", encoding="utf-8") as f:
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                prior_op_id = operation_id - 1
-                _ = f.write(f"[{timestamp}] port={port} op_id={prior_op_id} subagent mistakenly called update\n")
+                _ = f.write(f"[{timestamp}] port={port} op_id={operation_id} unparseable MCP response: {e}\n")
                 f.flush()
         except Exception:
             pass
-        empty_dict: dict[str, object] = {}
-        return ("FAIL", f"Failed to parse MCP response: {e}", empty_dict)
+        return ("FAIL", f"Failed to parse MCP response: {e}", tool_input)
 
 
 def handle_test_failure(
@@ -394,12 +344,12 @@ def handle_test_failure(
     current_test: dict[str, Any],  # pyright: ignore[reportExplicitAny]
     operation_id: int,
     reason: str,
-) -> None:
+) -> GetNextResponse:
     """
     Handle test failure by skipping remaining operations and trying next test.
 
     Logs the skip, marks remaining operations as failed, saves plan,
-    and provides next operation or finishes if no more tests.
+    and returns the next operation, or "finished" if no more tests.
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     type_name = cast(str, current_test.get("type_name", "unknown"))
@@ -429,8 +379,7 @@ def handle_test_failure(
                 _ = f.write(f"[{timestamp}] port={port} ** FINISHED **\n")
         except Exception:
             pass
-        print(json.dumps({"status": "finished"}, indent=2))
-        return
+        return {"status": "finished"}
 
     # Provide next operation from next test
     next_op_id = cast(int, next_operation.get("operation_id"))
@@ -441,9 +390,7 @@ def handle_test_failure(
     except Exception:
         pass
 
-    execution_params = get_execution_params(next_operation)
-    response = {"status": "next_operation", "operation": execution_params}
-    print(json.dumps(response, indent=2))
+    return {"status": "next_operation", "operation": get_execution_params(next_operation)}
 
 
 def check_and_log_timeouts(
@@ -510,7 +457,7 @@ def check_and_log_timeouts(
     return timed_out_ports
 
 
-def action_get_next(port: int) -> None:
+def action_get_next(port: int) -> GetNextResponse:
     """Get next operation that needs execution."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -655,8 +602,7 @@ def action_get_next(port: int) -> None:
                 _ = f.write(f"[{timestamp}] port={port} ** REQUEST AFTER TERMINATION ** - Returning finished status\n")
         except Exception:
             pass
-        print(json.dumps({"status": "finished"}, indent=2))
-        return
+        return {"status": "finished"}
 
     # Resume after timeout - subagent is still alive
     if port_timeout_terminated:
@@ -857,14 +803,12 @@ def action_get_next(port: int) -> None:
         except Exception:
             # Silently ignore debug log write failures
             pass
-        print(json.dumps({"status": "finished"}, indent=2))
-        return
+        return {"status": "finished"}
 
     # Check termination conditions before providing operation to subagent
     # Safety check: operation exists, so current_test must also exist
     if current_test is None:
-        print(json.dumps({"status": "finished"}, indent=2))
-        return
+        return {"status": "finished"}
 
     operation_id = cast(int, operation.get("operation_id"))
     call_count = cast(int, operation.get("call_count", 0))
@@ -873,21 +817,19 @@ def action_get_next(port: int) -> None:
 
     # Termination check 1: Execution retry limit exceeded
     if call_count >= 4:
-        handle_test_failure(
+        return handle_test_failure(
             port, file_path, test_plan, current_test, operation_id, "Execution retry limit exceeded"
         )
-        return
 
-    # Termination check 2: Provision retry limit exceeded (subagent not executing)
+    # Termination check 2: Provision retry limit exceeded (handed out without a result)
     if times_provided >= 4:
-        handle_test_failure(
+        return handle_test_failure(
             port, file_path, test_plan, current_test, operation_id, PROVISION_LIMIT_REASON
         )
-        return
 
     # Termination check 3: Hard safety limit (should never reach this if checks 1-2 work)
     if call_count > 10 or times_provided > 10:
-        handle_test_failure(
+        return handle_test_failure(
             port,
             file_path,
             test_plan,
@@ -895,18 +837,16 @@ def action_get_next(port: int) -> None:
             operation_id,
             f"Excessive retries (call_count={call_count}, times_provided={times_provided})",
         )
-        return
 
     # Termination check 3: BRP connection failed
     if "JSON-RPC error: HTTP request failed" in error:
-        handle_test_failure(
+        return handle_test_failure(
             port, file_path, test_plan, current_test, operation_id, "BRP connection failed"
         )
-        return
 
     # Termination check 4: Resource/component not found
     if "not present in the world" in error:
-        handle_test_failure(
+        return handle_test_failure(
             port,
             file_path,
             test_plan,
@@ -914,7 +854,6 @@ def action_get_next(port: int) -> None:
             operation_id,
             "Resource/component not found",
         )
-        return
 
     # Operation is viable - increment times_provided and provide to subagent
     operation["times_provided"] = times_provided + 1
@@ -932,15 +871,16 @@ def action_get_next(port: int) -> None:
         pass
 
     # Return operation with execution parameters only
-    execution_params = get_execution_params(operation)
-    response = {"status": "next_operation", "operation": execution_params}
-    print(json.dumps(response, indent=2))
+    return {"status": "next_operation", "operation": get_execution_params(operation)}
 
 
-def action_update(
-    port: int, tool_name: str, mcp_response_arg: str
-) -> None:
-    """Update operation status based on MCP response."""
+def action_update(port: int, event: HookEvent) -> str:
+    """
+    Update operation status based on MCP response.
+
+    Returns a one-line message naming the operation and its recorded status.
+    """
+    tool_name = event.get("tool_name", "")
     file_path = get_plan_file_path(port, CONFIG)
     test_plan = load_test_plan(file_path)
 
@@ -948,21 +888,19 @@ def action_update(
     operation, current_test = find_next_operation(test_plan)
 
     if operation is None:
-        print("No operation to update", flush=True)
-        return
+        return "No operation to update"
 
     operation_id = cast(int, operation.get("operation_id"))
 
     # Verify tool matches before updating status
     expected_tool = cast(str, operation.get("tool", ""))
     if expected_tool != tool_name:
-        # Tool mismatch - auxiliary operation (e.g., entity_id_substitution query)
-        # Don't update status, exit silently
-        sys.exit(0)
+        # Tool mismatch - not the call of the operation handed out; leave its status alone
+        return f"Op {operation_id}: ignored {tool_name} (expected {expected_tool})"
 
     # Parse MCP response once and extract both status/error and tool_input
     status, error, tool_input = parse_mcp_response_with_input(
-        mcp_response_arg, tool_name, operation, port, operation_id
+        event, tool_name, operation, port, operation_id
     )
 
     # Update operation with final status
@@ -1017,28 +955,4 @@ def action_update(
     # Write updated test plan back atomically
     save_test_plan(file_path, test_plan)
 
-    # Output message for hook
-    if status == "SUCCESS":
-        print(f"✅ Op {operation_id}: SUCCESS", flush=True)
-    else:
-        print(f"💥 Op {operation_id}: FAIL", flush=True)
-
-
-def main() -> None:
-    """Main entry point."""
-    args = parse_args()
-    validate_args(args)
-
-    port: int = cast(int, args.port)
-    action: str = cast(str, args.action)
-
-    if action == "get-next":
-        action_get_next(port)
-    elif action == "update":
-        tool_name: str = cast(str, args.tool_name)
-        mcp_response_arg: str = cast(str, args.mcp_response)
-        action_update(port, tool_name, mcp_response_arg)
-
-
-if __name__ == "__main__":
-    main()
+    return f"Op {operation_id}: {status}"
