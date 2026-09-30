@@ -22,6 +22,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Rust caches save only from main. Branch and PR runs restore main's caches
+# instead of writing their own, which evicted main's under the repo's 10 GB
+# Actions cache limit.
 jobs:
   # Fast format check on one OS
   format:
@@ -106,6 +109,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ hashFiles('flake.lock') }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run clippy
         run: nix develop -c cargo clippy --workspace --all-targets --all-features -- -D warnings
@@ -138,6 +142,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ hashFiles('flake.lock') }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Build release
         run: nix develop -c cargo build --release --all-features --workspace --examples
@@ -173,6 +178,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ hashFiles('flake.lock') }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Free disk space
         run: |
@@ -204,6 +210,13 @@ jobs:
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
+
+      # No flake.lock in the key: this job builds without nix, so a nixpkgs
+      # bump would discard the cache without changing anything it holds.
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run replacement publication test
         run: >-
@@ -238,6 +251,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ hashFiles('flake.lock') }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install cargo-mend
         run: cargo install cargo-mend
