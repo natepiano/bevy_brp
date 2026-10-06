@@ -7,6 +7,7 @@
 
 use std::time::Duration;
 
+use bevy::ecs::message::Message;
 use bevy::input::InputSystems;
 use bevy::input::gamepad::GamepadConnection;
 use bevy::input::gamepad::GamepadConnectionEvent;
@@ -28,7 +29,11 @@ use crate::constants::METHOD_CONNECT_GAMEPAD;
 use crate::constants::METHOD_DISCONNECT_GAMEPAD;
 use crate::constants::METHOD_SEND_GAMEPAD_BUTTON;
 use crate::constants::METHOD_SET_GAMEPAD_AXIS;
+use crate::constants::METHOD_SET_GAMEPAD_BUTTON;
 use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
+
+/// Default hold for a timed button press
+const DEFAULT_GAMEPAD_DURATION_MS: u32 = 100;
 
 /// Maximum hold for a timed button press
 const MAX_GAMEPAD_DURATION_MS: u32 = 60_000;
@@ -46,7 +51,7 @@ const SIMULATED_GAMEPAD_NAME: &str = "Simulated gamepad (BRP)";
 /// would fight its driver for the pad's state.
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
-pub(crate) struct SimulatedGamepad;
+struct SimulatedGamepad;
 
 /// Request structure for `connect_gamepad`
 #[derive(Deserialize)]
@@ -61,14 +66,22 @@ struct ConnectGamepadRequest {
 struct SendGamepadButtonRequest {
     /// Simulated gamepad entity
     gamepad:     u64,
-    /// Button to set
+    /// Button to tap
     button:      GamepadButton,
-    /// Analog value in `[0.0, 1.0]` (default: 1.0, pressed)
-    #[serde(default)]
-    value:       Option<f32>,
-    /// Release after this many milliseconds (default: hold until set again, max: 60000)
+    /// Release after this many milliseconds (default: 100, max: 60000)
     #[serde(default)]
     duration_ms: Option<u32>,
+}
+
+/// Request structure for `set_gamepad_button`
+#[derive(Deserialize)]
+struct SetGamepadButtonRequest {
+    /// Simulated gamepad entity
+    gamepad: u64,
+    /// Button to set
+    button:  GamepadButton,
+    /// Analog value in `[0.0, 1.0]`
+    value:   f32,
 }
 
 /// Request structure for `set_gamepad_axis`
@@ -101,13 +114,21 @@ struct GamepadResponse {
 struct SendGamepadButtonResponse {
     /// The gamepad entity
     gamepad:     u64,
-    /// Button that was set
+    /// Button that was tapped
     button:      GamepadButton,
+    /// Hold before the release
+    duration_ms: u32,
+}
+
+/// Response structure for `set_gamepad_button`
+#[derive(Serialize)]
+struct SetGamepadButtonResponse {
+    /// The gamepad entity
+    gamepad: u64,
+    /// Button that was set
+    button:  GamepadButton,
     /// Value it was set to
-    value:       f32,
-    /// Hold before the release, if timed
-    #[serde(skip_serializing_if = "Option::is_none")]
-    duration_ms: Option<u32>,
+    value:   f32,
 }
 
 /// Response structure for `set_gamepad_axis`
@@ -148,7 +169,7 @@ impl Plugin for GamepadPlugin {
 }
 
 /// The gamepad BRP methods, for `register_extras_methods`
-pub(crate) fn remote_methods(world: &mut World) -> [(String, RemoteMethodSystemId); 4] {
+pub(crate) fn remote_methods(world: &mut World) -> [(String, RemoteMethodSystemId); 5] {
     [
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_CONNECT_GAMEPAD}"),
@@ -161,6 +182,10 @@ pub(crate) fn remote_methods(world: &mut World) -> [(String, RemoteMethodSystemI
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SEND_GAMEPAD_BUTTON}"),
             RemoteMethodSystemId::Instant(world.register_system(send_gamepad_button_handler)),
+        ),
+        (
+            format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SET_GAMEPAD_BUTTON}"),
+            RemoteMethodSystemId::Instant(world.register_system(set_gamepad_button_handler)),
         ),
         (
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_SET_GAMEPAD_AXIS}"),
@@ -177,10 +202,7 @@ pub(crate) fn remote_methods(world: &mut World) -> [(String, RemoteMethodSystemI
 ///
 /// Spawns a simulated gamepad and announces it the way `bevy_gilrs` announces a real one.
 /// It is a [`Gamepad`] from the next `PreUpdate` on.
-pub(crate) fn connect_gamepad_handler(
-    In(params): In<Option<Value>>,
-    world: &mut World,
-) -> BrpResult {
+fn connect_gamepad_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: ConnectGamepadRequest = parse_request(Some(
         params.unwrap_or_else(|| Value::Object(Map::default())),
     ))?;
@@ -199,8 +221,7 @@ pub(crate) fn connect_gamepad_handler(
             product_id: None,
         },
     );
-    world.write_message(event.clone());
-    world.write_message(RawGamepadEvent::Connection(event));
+    write_raw_gamepad_event(world, event);
 
     to_value(GamepadResponse {
         gamepad: gamepad.to_bits(),
@@ -209,72 +230,69 @@ pub(crate) fn connect_gamepad_handler(
 
 /// Handler for `send_gamepad_button` BRP method
 ///
-/// Sets a button's analog value. With `duration_ms` the button is released after that much
-/// real time; without it, it stays until set again.
-pub(crate) fn send_gamepad_button_handler(
-    In(params): In<Option<Value>>,
-    world: &mut World,
-) -> BrpResult {
+/// Taps a button for `duration_ms` on the real clock, defaulting to 100 ms.
+fn send_gamepad_button_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: SendGamepadButtonRequest = parse_request(params)?;
     let gamepad = simulated_gamepad(world, request.gamepad)?;
-    let value = request.value.unwrap_or(1.0);
-    if !(0.0..=1.0).contains(&value) {
-        return Err(invalid_params(format!(
-            "Button value {value} is outside [0.0, 1.0]"
-        )));
-    }
-    if let Some(duration_ms) = request.duration_ms
-        && duration_ms > MAX_GAMEPAD_DURATION_MS
-    {
+    let duration_ms = request.duration_ms.unwrap_or(DEFAULT_GAMEPAD_DURATION_MS);
+    if duration_ms > MAX_GAMEPAD_DURATION_MS {
         return Err(invalid_params(format!(
             "Duration exceeds maximum: {duration_ms}ms > {MAX_GAMEPAD_DURATION_MS}ms"
         )));
     }
 
-    // A new value for a button replaces any release still pending for it.
-    let pending: Vec<Entity> = world
-        .query::<(Entity, &TimedGamepadButtonRelease)>()
-        .iter(world)
-        .filter(|(_, release)| release.gamepad == gamepad && release.button == request.button)
-        .map(|(entity, _)| entity)
-        .collect();
-    for entity in pending {
-        world.despawn(entity);
-    }
-    if let Some(duration_ms) = request.duration_ms
-        && value != 0.0
-    {
-        world.spawn(TimedGamepadButtonRelease {
-            gamepad,
-            button: request.button,
-            timer: Timer::new(
-                Duration::from_millis(u64::from(duration_ms)),
-                TimerMode::Once,
-            ),
-        });
-    }
-
-    world.write_message(RawGamepadEvent::Button(RawGamepadButtonChangedEvent::new(
+    cancel_pending_button_releases(world, gamepad, ReleaseCancellation::Button(request.button));
+    world.spawn(TimedGamepadButtonRelease {
         gamepad,
-        request.button,
-        value,
-    )));
+        button: request.button,
+        timer: Timer::new(
+            Duration::from_millis(u64::from(duration_ms)),
+            TimerMode::Once,
+        ),
+    });
+
+    write_raw_gamepad_event(
+        world,
+        RawGamepadButtonChangedEvent::new(gamepad, request.button, 1.0),
+    );
 
     to_value(SendGamepadButtonResponse {
         gamepad: request.gamepad,
         button: request.button,
-        value,
-        duration_ms: request.duration_ms,
+        duration_ms,
+    })
+}
+
+/// Handler for `set_gamepad_button` BRP method
+///
+/// Sets a button's analog value until another call changes it.
+fn set_gamepad_button_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    let request: SetGamepadButtonRequest = parse_request(params)?;
+    let gamepad = simulated_gamepad(world, request.gamepad)?;
+    if !(0.0..=1.0).contains(&request.value) {
+        return Err(invalid_params(format!(
+            "Button value {} is outside [0.0, 1.0]",
+            request.value
+        )));
+    }
+
+    cancel_pending_button_releases(world, gamepad, ReleaseCancellation::Button(request.button));
+    write_raw_gamepad_event(
+        world,
+        RawGamepadButtonChangedEvent::new(gamepad, request.button, request.value),
+    );
+
+    to_value(SetGamepadButtonResponse {
+        gamepad: request.gamepad,
+        button:  request.button,
+        value:   request.value,
     })
 }
 
 /// Handler for `set_gamepad_axis` BRP method
 ///
 /// Sets an axis value. Axes stay where they are put.
-pub(crate) fn set_gamepad_axis_handler(
-    In(params): In<Option<Value>>,
-    world: &mut World,
-) -> BrpResult {
+fn set_gamepad_axis_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: SetGamepadAxisRequest = parse_request(params)?;
     let gamepad = simulated_gamepad(world, request.gamepad)?;
     if !(-1.0..=1.0).contains(&request.value) {
@@ -284,11 +302,10 @@ pub(crate) fn set_gamepad_axis_handler(
         )));
     }
 
-    world.write_message(RawGamepadEvent::Axis(RawGamepadAxisChangedEvent::new(
-        gamepad,
-        request.axis,
-        request.value,
-    )));
+    write_raw_gamepad_event(
+        world,
+        RawGamepadAxisChangedEvent::new(gamepad, request.axis, request.value),
+    );
 
     to_value(SetGamepadAxisResponse {
         gamepad: request.gamepad,
@@ -300,26 +317,15 @@ pub(crate) fn set_gamepad_axis_handler(
 /// Handler for `disconnect_gamepad` BRP method
 ///
 /// Bevy removes the [`Gamepad`] component and leaves the entity, as it does for a real pad.
-pub(crate) fn disconnect_gamepad_handler(
-    In(params): In<Option<Value>>,
-    world: &mut World,
-) -> BrpResult {
+fn disconnect_gamepad_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: DisconnectGamepadRequest = parse_request(params)?;
     let gamepad = simulated_gamepad(world, request.gamepad)?;
 
-    let pending: Vec<Entity> = world
-        .query::<(Entity, &TimedGamepadButtonRelease)>()
-        .iter(world)
-        .filter(|(_, release)| release.gamepad == gamepad)
-        .map(|(entity, _)| entity)
-        .collect();
-    for entity in pending {
-        world.despawn(entity);
-    }
+    cancel_pending_button_releases(world, gamepad, ReleaseCancellation::AllButtons);
 
+    world.entity_mut(gamepad).remove::<SimulatedGamepad>();
     let event = GamepadConnectionEvent::new(gamepad, GamepadConnection::Disconnected);
-    world.write_message(event.clone());
-    world.write_message(RawGamepadEvent::Connection(event));
+    write_raw_gamepad_event(world, event);
 
     to_value(GamepadResponse {
         gamepad: request.gamepad,
@@ -342,25 +348,25 @@ fn process_timed_gamepad_button_releases(
     mut commands: Commands,
     time: Res<Time<Real>>,
     mut query: Query<(Entity, &mut TimedGamepadButtonRelease)>,
-    gamepads: Query<&Gamepad>,
+    gamepads: Query<Option<&Gamepad>, With<SimulatedGamepad>>,
     mut raw_events: MessageWriter<RawGamepadEvent>,
+    mut button_events: MessageWriter<RawGamepadButtonChangedEvent>,
 ) {
     for (entity, mut release) in &mut query {
         release.timer.tick(time.delta());
 
-        let Ok(gamepad) = gamepads.get(release.gamepad) else {
-            commands.entity(entity).despawn();
-            continue;
+        let gamepad = match gamepads.get(release.gamepad) {
+            Err(_) => {
+                commands.entity(entity).despawn();
+                continue;
+            },
+            Ok(None) => continue,
+            Ok(Some(gamepad)) => gamepad,
         };
-        let taken = gamepad
-            .get(release.button)
-            .is_some_and(|value| value != 0.0);
-        if release.timer.is_finished() && taken {
-            raw_events.write(RawGamepadEvent::Button(RawGamepadButtonChangedEvent::new(
-                release.gamepad,
-                release.button,
-                0.0,
-            )));
+        if release.timer.is_finished() && gamepad.pressed(release.button) {
+            let event = RawGamepadButtonChangedEvent::new(release.gamepad, release.button, 0.0);
+            raw_events.write(RawGamepadEvent::from(event));
+            button_events.write(event);
             commands.entity(entity).despawn();
         }
     }
@@ -369,6 +375,42 @@ fn process_timed_gamepad_button_releases(
 // ============================================================================
 // Helpers
 // ============================================================================
+
+fn write_raw_gamepad_event<T>(world: &mut World, event: T)
+where
+    T: Clone + Message,
+    RawGamepadEvent: From<T>,
+{
+    world.write_message(RawGamepadEvent::from(event.clone()));
+    world.write_message(event);
+}
+
+enum ReleaseCancellation {
+    AllButtons,
+    Button(GamepadButton),
+}
+
+fn cancel_pending_button_releases(
+    world: &mut World,
+    gamepad: Entity,
+    cancellation: ReleaseCancellation,
+) {
+    let pending: Vec<Entity> = world
+        .query::<(Entity, &TimedGamepadButtonRelease)>()
+        .iter(world)
+        .filter(|(_, release)| {
+            release.gamepad == gamepad
+                && match cancellation {
+                    ReleaseCancellation::AllButtons => true,
+                    ReleaseCancellation::Button(button) => release.button == button,
+                }
+        })
+        .map(|(entity, _)| entity)
+        .collect();
+    for entity in pending {
+        world.despawn(entity);
+    }
+}
 
 const fn invalid_params(message: String) -> BrpError {
     BrpError {
@@ -399,8 +441,8 @@ fn simulated_gamepad(world: &World, bits: u64) -> Result<Entity, BrpError> {
         .filter(|&entity| world.get::<SimulatedGamepad>(entity).is_some())
         .ok_or_else(|| {
             invalid_params(format!(
-                "Entity {bits} is not a simulated gamepad; create one with \
-                 brp_extras/connect_gamepad"
+                "Entity {bits} is not a connected simulated gamepad (never connected, or \
+                 disconnected); connect one with brp_extras/connect_gamepad"
             ))
         })
 }
@@ -414,12 +456,17 @@ mod tests {
     use std::time::Duration;
 
     use bevy::app::App;
+    use bevy::ecs::message::MessageCursor;
     use bevy::input::InputPlugin;
     use bevy::input::gamepad::Gamepad;
     use bevy::input::gamepad::GamepadAxis;
     use bevy::input::gamepad::GamepadButton;
+    use bevy::input::gamepad::RawGamepadAxisChangedEvent;
+    use bevy::input::gamepad::RawGamepadButtonChangedEvent;
+    use bevy::input::gamepad::RawGamepadEvent;
     use bevy::prelude::Entity;
     use bevy::prelude::In;
+    use bevy::prelude::Messages;
     use bevy::prelude::MinimalPlugins;
     use bevy::prelude::Time;
     use bevy::prelude::Virtual;
@@ -430,11 +477,14 @@ mod tests {
     use serde_json::Value;
     use serde_json::json;
 
+    use super::DEFAULT_GAMEPAD_DURATION_MS;
     use super::GamepadPlugin;
+    use super::TimedGamepadButtonRelease;
     use super::connect_gamepad_handler;
     use super::disconnect_gamepad_handler;
     use super::send_gamepad_button_handler;
     use super::set_gamepad_axis_handler;
+    use super::set_gamepad_button_handler;
 
     /// An app running Bevy's gamepad systems and `process_timed_gamepad_button_releases`, with
     /// `Time<Virtual>` paused and `Time<Real>` advancing only through [`advance_real_clock`].
@@ -492,27 +542,67 @@ mod tests {
     }
 
     #[test]
-    fn button_holds_until_set_again() {
+    fn set_button_holds_until_set_again() {
         let mut app = app_with_paused_virtual_clock();
         let (bits, gamepad) = connect(&mut app);
 
         call(
-            send_gamepad_button_handler,
+            set_gamepad_button_handler,
             &mut app,
-            json!({ "gamepad": bits, "button": "South" }),
+            json!({ "gamepad": bits, "button": "South", "value": 1.0 }),
         )
         .expect("press");
         advance_real_clock(&mut app, 5_000);
         assert!(pressed(&app, gamepad, GamepadButton::South));
 
         call(
-            send_gamepad_button_handler,
+            set_gamepad_button_handler,
             &mut app,
             json!({ "gamepad": bits, "button": "South", "value": 0.0 }),
         )
         .expect("release");
         next_frame(&mut app);
         assert!(!pressed(&app, gamepad, GamepadButton::South));
+    }
+
+    #[test]
+    fn send_button_taps_for_the_default_duration() {
+        let mut app = app_with_paused_virtual_clock();
+        let (bits, gamepad) = connect(&mut app);
+
+        let response = call(
+            send_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "South" }),
+        )
+        .expect("tap");
+        assert_eq!(response["duration_ms"], DEFAULT_GAMEPAD_DURATION_MS);
+        next_frame(&mut app);
+        assert!(pressed(&app, gamepad, GamepadButton::South));
+        advance_real_clock(&mut app, 99);
+        assert!(pressed(&app, gamepad, GamepadButton::South));
+        advance_real_clock(&mut app, 1);
+        assert!(!pressed(&app, gamepad, GamepadButton::South));
+    }
+
+    #[test]
+    fn a_new_value_cancels_a_pending_release() {
+        let mut app = app_with_paused_virtual_clock();
+        let (bits, gamepad) = connect(&mut app);
+        call(
+            send_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "South" }),
+        )
+        .expect("tap");
+        call(
+            set_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "South", "value": 1.0 }),
+        )
+        .expect("hold");
+        advance_real_clock(&mut app, 5_000);
+        assert!(pressed(&app, gamepad, GamepadButton::South));
     }
 
     /// The hold is measured on the wall clock: a button pressed while the app has paused its
@@ -551,10 +641,36 @@ mod tests {
         call(
             send_gamepad_button_handler,
             &mut app,
-            json!({ "gamepad": bits, "button": "South", "duration_ms": 1 }),
+            json!({ "gamepad": bits, "button": "South", "duration_ms": 0 }),
         )
         .expect("press");
         advance_real_clock(&mut app, 50);
+        assert!(pressed(&app, gamepad, GamepadButton::South));
+        next_frame(&mut app);
+        assert!(!pressed(&app, gamepad, GamepadButton::South));
+    }
+
+    #[test]
+    fn zero_ms_tap_after_partial_set_is_seen_pressed() {
+        let mut app = app_with_paused_virtual_clock();
+        let (bits, gamepad) = connect(&mut app);
+
+        call(
+            set_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "South", "value": 0.5 }),
+        )
+        .expect("partial set");
+        next_frame(&mut app);
+        assert!(!pressed(&app, gamepad, GamepadButton::South));
+
+        call(
+            send_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "South", "duration_ms": 0 }),
+        )
+        .expect("tap");
+        next_frame(&mut app);
         assert!(pressed(&app, gamepad, GamepadButton::South));
         next_frame(&mut app);
         assert!(!pressed(&app, gamepad, GamepadButton::South));
@@ -592,6 +708,165 @@ mod tests {
         .expect("disconnect");
         next_frame(&mut app);
         assert!(app.world().get::<Gamepad>(gamepad).is_none());
+    }
+
+    #[test]
+    fn disconnect_drops_pending_releases() {
+        let mut app = app_with_paused_virtual_clock();
+        let (bits, _) = connect(&mut app);
+        call(
+            send_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "South", "duration_ms": 5_000 }),
+        )
+        .expect("tap");
+        call(
+            disconnect_gamepad_handler,
+            &mut app,
+            json!({ "gamepad": bits }),
+        )
+        .expect("disconnect");
+        let mut releases = app.world_mut().query::<&TimedGamepadButtonRelease>();
+        assert_eq!(releases.iter(app.world()).count(), 0);
+    }
+
+    #[test]
+    fn disconnected_pad_rejects_input() {
+        let mut app = app_with_paused_virtual_clock();
+        let (bits, _) = connect(&mut app);
+        call(
+            disconnect_gamepad_handler,
+            &mut app,
+            json!({ "gamepad": bits }),
+        )
+        .expect("disconnect");
+
+        for (handler, params) in [
+            (
+                send_gamepad_button_handler as fn(In<Option<Value>>, &mut World) -> BrpResult,
+                json!({ "gamepad": bits, "button": "South" }),
+            ),
+            (
+                set_gamepad_button_handler,
+                json!({ "gamepad": bits, "button": "South", "value": 1.0 }),
+            ),
+            (
+                set_gamepad_axis_handler,
+                json!({ "gamepad": bits, "axis": "LeftStickX", "value": 1.0 }),
+            ),
+            (disconnect_gamepad_handler, json!({ "gamepad": bits })),
+        ] {
+            let error = call(handler, &mut app, params).expect_err("disconnected pad");
+            assert_eq!(error.code, INVALID_PARAMS);
+            assert!(
+                error.message.contains("not a connected simulated gamepad"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn tap_sent_in_the_connect_frame_still_releases() {
+        let mut app = app_with_paused_virtual_clock();
+        let response = connect_gamepad_handler(In(None), app.world_mut()).expect("connect");
+        let bits = response["gamepad"].as_u64().expect("gamepad id");
+        let gamepad = Entity::from_bits(bits);
+        call(
+            send_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "South", "duration_ms": 100 }),
+        )
+        .expect("tap");
+        next_frame(&mut app);
+        assert!(pressed(&app, gamepad, GamepadButton::South));
+        advance_real_clock(&mut app, 100);
+        assert!(!pressed(&app, gamepad, GamepadButton::South));
+    }
+
+    #[test]
+    fn button_and_axis_changes_reach_both_raw_streams() {
+        let mut app = app_with_paused_virtual_clock();
+        let (bits, gamepad) = connect(&mut app);
+        call(
+            set_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "South", "value": 1.0 }),
+        )
+        .expect("set button");
+        call(
+            set_gamepad_axis_handler,
+            &mut app,
+            json!({ "gamepad": bits, "axis": "LeftStickX", "value": 0.5 }),
+        )
+        .expect("set axis");
+        let button_press = RawGamepadButtonChangedEvent::new(gamepad, GamepadButton::South, 1.0);
+        let axis_change = RawGamepadAxisChangedEvent::new(gamepad, GamepadAxis::LeftStickX, 0.5);
+        let button_messages = app
+            .world()
+            .resource::<Messages<RawGamepadButtonChangedEvent>>();
+        assert!(
+            MessageCursor::default()
+                .read(button_messages)
+                .any(|event| *event == button_press)
+        );
+        let axis_messages = app
+            .world()
+            .resource::<Messages<RawGamepadAxisChangedEvent>>();
+        assert!(
+            MessageCursor::default()
+                .read(axis_messages)
+                .any(|event| *event == axis_change)
+        );
+        let raw_messages = app.world().resource::<Messages<RawGamepadEvent>>();
+        assert!(
+            MessageCursor::default()
+                .read(raw_messages)
+                .any(|event| *event == RawGamepadEvent::Button(button_press))
+        );
+        assert!(
+            MessageCursor::default()
+                .read(raw_messages)
+                .any(|event| *event == RawGamepadEvent::Axis(axis_change))
+        );
+
+        call(
+            send_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "East", "duration_ms": 0 }),
+        )
+        .expect("tap");
+        next_frame(&mut app);
+        next_frame(&mut app);
+        let release = RawGamepadButtonChangedEvent::new(gamepad, GamepadButton::East, 0.0);
+        let button_messages = app
+            .world()
+            .resource::<Messages<RawGamepadButtonChangedEvent>>();
+        assert!(
+            MessageCursor::default()
+                .read(button_messages)
+                .any(|event| *event == release)
+        );
+        let raw_messages = app.world().resource::<Messages<RawGamepadEvent>>();
+        assert!(
+            MessageCursor::default()
+                .read(raw_messages)
+                .any(|event| *event == RawGamepadEvent::Button(release))
+        );
+    }
+
+    #[test]
+    fn set_button_rejects_out_of_range_values() {
+        let mut app = app_with_paused_virtual_clock();
+        let (bits, _) = connect(&mut app);
+        let error = call(
+            set_gamepad_button_handler,
+            &mut app,
+            json!({ "gamepad": bits, "button": "South", "value": 1.5 }),
+        )
+        .expect_err("out of range");
+        assert_eq!(error.code, INVALID_PARAMS);
+        assert!(error.message.contains("outside [0.0, 1.0]"));
     }
 
     #[test]

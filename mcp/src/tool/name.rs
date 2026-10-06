@@ -108,6 +108,8 @@ use crate::brp_tools::SendMouseButtonParams;
 use crate::brp_tools::SendMouseButtonResult;
 use crate::brp_tools::SetGamepadAxisParams;
 use crate::brp_tools::SetGamepadAxisResult;
+use crate::brp_tools::SetGamepadButtonParams;
+use crate::brp_tools::SetGamepadButtonResult;
 use crate::brp_tools::SetWindowTitleParams;
 use crate::brp_tools::SetWindowTitleResult;
 use crate::brp_tools::SpawnEntityParams;
@@ -352,13 +354,20 @@ pub enum ToolName {
         result = "ConnectGamepadResult"
     )]
     BrpExtrasConnectGamepad,
-    /// `brp_extras_send_gamepad_button` - Set a simulated gamepad button
+    /// `brp_extras_send_gamepad_button` - Tap a simulated gamepad button
     #[brp_tool(
         brp_method = "brp_extras/send_gamepad_button",
         params = "SendGamepadButtonParams",
         result = "SendGamepadButtonResult"
     )]
     BrpExtrasSendGamepadButton,
+    /// `brp_extras_set_gamepad_button` - Set a simulated gamepad button
+    #[brp_tool(
+        brp_method = "brp_extras/set_gamepad_button",
+        params = "SetGamepadButtonParams",
+        result = "SetGamepadButtonResult"
+    )]
+    BrpExtrasSetGamepadButton,
     /// `brp_extras_set_gamepad_axis` - Set a simulated gamepad axis
     #[brp_tool(
         brp_method = "brp_extras/set_gamepad_axis",
@@ -637,6 +646,11 @@ impl ToolName {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
+            Self::BrpExtrasSetGamepadButton => Annotation::new(
+                "set gamepad button",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveIdempotent,
+            ),
             Self::BrpExtrasSetGamepadAxis => Annotation::new(
                 "set gamepad axis",
                 ToolCategory::Extras,
@@ -645,7 +659,7 @@ impl ToolName {
             Self::BrpExtrasDisconnectGamepad => Annotation::new(
                 "disconnect gamepad",
                 ToolCategory::Extras,
-                EnvironmentImpact::AdditiveIdempotent,
+                EnvironmentImpact::DestructiveIdempotent,
             ),
             Self::BrpExtrasClickMouse => Annotation::new(
                 "click mouse button",
@@ -846,6 +860,9 @@ impl ToolName {
             Self::BrpExtrasSendGamepadButton => {
                 Some(parameters::build_parameters_from::<SendGamepadButtonParams>)
             },
+            Self::BrpExtrasSetGamepadButton => {
+                Some(parameters::build_parameters_from::<SetGamepadButtonParams>)
+            },
             Self::BrpExtrasSetGamepadAxis => {
                 Some(parameters::build_parameters_from::<SetGamepadAxisParams>)
             },
@@ -936,6 +953,7 @@ impl ToolName {
             Self::BrpExtrasSendMouseButton => Arc::new(BrpExtrasSendMouseButton),
             Self::BrpExtrasConnectGamepad => Arc::new(BrpExtrasConnectGamepad),
             Self::BrpExtrasSendGamepadButton => Arc::new(BrpExtrasSendGamepadButton),
+            Self::BrpExtrasSetGamepadButton => Arc::new(BrpExtrasSetGamepadButton),
             Self::BrpExtrasSetGamepadAxis => Arc::new(BrpExtrasSetGamepadAxis),
             Self::BrpExtrasDisconnectGamepad => Arc::new(BrpExtrasDisconnectGamepad),
             Self::BrpExtrasClickMouse => Arc::new(BrpExtrasClickMouse),
@@ -1003,6 +1021,16 @@ mod tests {
         assert_eq!(annotations.read_only_hint, Some(false));
         assert_eq!(annotations.destructive_hint, Some(true));
         assert_eq!(annotations.idempotent_hint, Some(false));
+    }
+
+    #[test]
+    fn disconnect_gamepad_is_destructive_idempotent() {
+        let annotations =
+            ToolAnnotations::from(ToolName::BrpExtrasDisconnectGamepad.get_annotations());
+
+        assert_eq!(annotations.read_only_hint, Some(false));
+        assert_eq!(annotations.destructive_hint, Some(true));
+        assert_eq!(annotations.idempotent_hint, Some(true));
     }
 
     #[test]

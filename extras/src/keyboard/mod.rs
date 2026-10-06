@@ -148,7 +148,7 @@ mod tests {
 
         advance_real_clock(&mut app, DEFAULT_KEY_DURATION_MS / 2);
 
-        assert!(keyboard_releases(&app).is_empty());
+        assert_eq!(keyboard_releases(&app), Vec::<KeyboardInput>::new());
     }
 
     fn keyboard_presses(app: &App) -> Vec<KeyboardInput> {

@@ -42,6 +42,8 @@ use super::constants::METHOD_TYPE_TEXT;
 use super::diagnostics;
 #[cfg(feature = "gamepad")]
 use super::gamepad;
+#[cfg(feature = "gamepad")]
+use super::gamepad::GamepadPlugin;
 use super::keyboard;
 use super::keyboard::KeyboardPlugin;
 use super::mouse;
@@ -364,7 +366,7 @@ fn build_shared(app: &mut App) {
     }
 
     #[cfg(feature = "gamepad")]
-    app.add_plugins(gamepad::GamepadPlugin);
+    app.add_plugins(GamepadPlugin);
     app.add_plugins(KeyboardPlugin);
     app.add_plugins(MousePlugin);
     app.add_plugins(ScreenshotPlugin);

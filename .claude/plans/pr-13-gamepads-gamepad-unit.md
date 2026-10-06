@@ -6,6 +6,7 @@
 ## Delegation Context
 
 - **Project:** bevy_brp workspace. `bevy_brp_extras` (`extras/`) is the Bevy plugin that adds the `brp_extras/*` BRP methods. `bevy_brp_mcp` (`mcp/`) is the MCP server whose `brp_extras_*` tools call them. The worktree is `/home/natepiano/rust/bevy_brp_gamepad` on branch `unit/gamepad`. It starts from `prod/pr-13-gamepads` (`b54ba886`: current `main` with PR head `37f0223d` merged in). Every path below is relative to that worktree.
+- **Project started:** 2026-10-06T16:28:51.025+00:00
 - **Stack:** Rust 2024, Bevy 0.19.1 (`bevy_input` gamepad, `bevy_remote`), serde / serde_json, schemars 1.2 (MCP tool schemas), the `bevy_brp_mcp_macros` derives (`ParamStruct`, `ResultStruct`, `BrpTools`, `ToolDescription`).
 - **Layout:**
   - `extras/src/gamepad.rs`: the whole gamepad feature (behind the default `gamepad` cargo feature). It has request and response types, `GamepadPlugin`, `remote_methods`, the four handlers, `process_timed_gamepad_button_releases`, private helpers and an inline `mod tests`.
@@ -51,109 +52,37 @@
 
 ## Phases
 
-### Phase 1 — Gamepad API fixes  · status: todo
+### Phase 1 — Gamepad API fixes  · status: done
 
-#### Work Order
+#### As-built
 
-**Goal:** `send_gamepad_button` taps for 100 ms and a new `set_gamepad_button` holds. Every press, axis change and release reaches both raw message streams. A disconnected pad rejects input. The MCP tool schemas list the 19 buttons and 6 axes. Mend is clean, and docs and tests match.
-
-**Spec:**
-
-*Item 1: send taps, set holds (`extras/src/gamepad.rs`, `extras/src/constants.rs`).*
-- Add `const DEFAULT_GAMEPAD_DURATION_MS: u32 = 100;` next to `MAX_GAMEPAD_DURATION_MS` at the top of `gamepad.rs`.
-- `SendGamepadButtonRequest` becomes `{ gamepad: u64, button: GamepadButton, #[serde(default)] duration_ms: Option<u32> }`. The `value` field goes: send is a full press (`1.0`) like a mouse click. `duration_ms` defaults to `DEFAULT_GAMEPAD_DURATION_MS`, and a value above `MAX_GAMEPAD_DURATION_MS` errors with the existing message. `0` is accepted, and the button is still seen down for one frame.
-- `send_gamepad_button_handler`: resolve the pad, validate the duration, and despawn any `TimedGamepadButtonRelease` for this `(gamepad, button)`. Then spawn a new release with `Timer::new(Duration::from_millis(u64::from(duration_ms)), TimerMode::Once)` and write the press (value `1.0`) through the both-streams helper (item 2). The response `SendGamepadButtonResponse { gamepad: u64, button: GamepadButton, duration_ms: u32 }` always carries `duration_ms`, as `SendMouseButtonResponse` does.
-- New `SetGamepadButtonRequest { gamepad: u64, button: GamepadButton, value: f32 }`, where `value` is required as in `SetGamepadAxisRequest`. New `SetGamepadButtonResponse { gamepad: u64, button: GamepadButton, value: f32 }`.
-- New `set_gamepad_button_handler`. It checks that `value` is in `[0.0, 1.0]` (existing message "Button value {value} is outside [0.0, 1.0]") and despawns any pending release for this `(gamepad, button)`, since a new value cancels a pending release. It writes the value through the both-streams helper and spawns no release, so the value stays until changed.
-- `constants.rs`: add `#[cfg(feature = "gamepad")] pub(crate) const METHOD_SET_GAMEPAD_BUTTON: &str = "set_gamepad_button";`, sorted alphabetically between `METHOD_SEND_MOUSE_BUTTON` and `METHOD_SET_GAMEPAD_AXIS`. `remote_methods` returns `[(String, RemoteMethodSystemId); 5]` with the new method.
-
-*Item 2: both message streams (`extras/src/gamepad.rs`).*
-- Add a private helper modeled on `window_event::write_input_event`:
-  `fn write_raw_gamepad_event<T>(world: &mut World, event: T) where T: Clone + Message, RawGamepadEvent: From<T>`. It writes `RawGamepadEvent::from(event.clone())`, then `event`.
-- Use it for every handler write: connect and disconnect (`GamepadConnectionEvent`, replacing the two hand-written lines), send and set button (`RawGamepadButtonChangedEvent`), and axis (`RawGamepadAxisChangedEvent`).
-- `process_timed_gamepad_button_releases` gains `mut button_events: MessageWriter<RawGamepadButtonChangedEvent>`. It writes the release to `raw_events` (as `RawGamepadEvent::Button`) and to `button_events`, as `mouse::button::process_timed_button_releases` writes both `MouseButtonInput` and `WindowEvent`.
-
-*Item 3: disconnected pads reject input (`extras/src/gamepad.rs`, `mcp/src/tool/name.rs`).*
-- `disconnect_gamepad_handler` removes `SimulatedGamepad` from the entity (`world.entity_mut(gamepad).remove::<SimulatedGamepad>()`). It keeps its current despawn of the pad's pending releases and writes the disconnection through the helper. Bevy still removes `Gamepad` and leaves the entity (with `Name` and `GamepadSettings`).
-- `simulated_gamepad` error message becomes: `"Entity {bits} is not a connected simulated gamepad (never connected, or disconnected); connect one with brp_extras/connect_gamepad"`, code `INVALID_PARAMS`. After a disconnect, every later call fails with it: send, set, axis, and a second disconnect.
-- `process_timed_gamepad_button_releases` keys pad liveness on the marker, not on `Gamepad`. It despawns a release whose pad no longer carries `SimulatedGamepad`. While the pad carries the marker but has no `Gamepad` yet, the release waits. That is the frame after a connect: the system runs `.before(InputSystems)`, so a tap sent in the connect frame used to lose its release and stick down. The query becomes `gamepads: Query<Option<&Gamepad>, With<SimulatedGamepad>>`. `Err` means despawn the release; `Ok(None)` means keep waiting; `Ok(Some(pad))` means apply the existing "taken and finished" rule.
-- `mcp/src/tool/name.rs` ~647: `BrpExtrasDisconnectGamepad` annotation becomes `EnvironmentImpact::DestructiveIdempotent`, as `WorldDespawnEntity`, `WorldRemoveComponents` and `BrpShutdown` are.
-
-*Item 4: typed `button` and `axis` MCP parameters (`mcp/`).*
-- New `mcp/src/brp_tools/gamepad.rs`, modeled on `mcp/src/brp_tools/mouse.rs`. It has `#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)] pub enum GamepadButtonWrapper` with Bevy's 19 named variants, each with a one-line doc: `South, East, North, West, C, Z, LeftTrigger, LeftTrigger2, RightTrigger, RightTrigger2, Select, Start, Mode, LeftThumb, RightThumb, DPadUp, DPadDown, DPadLeft, DPadRight`. Next to it goes `pub enum GamepadAxisWrapper` with the 6 named axes: `LeftStickX, LeftStickY, LeftZ, RightStickX, RightStickY, RightZ`. Bevy's `Other(u8)` is left out of both. Unit variants serialize as `"South"`, which is what Bevy's `GamepadButton` / `GamepadAxis` deserialize. Add `mod gamepad;` to `mcp/src/brp_tools/mod.rs`.
-- `SendGamepadButtonParams { gamepad: u64, button: GamepadButtonWrapper, duration_ms: Option<u32> (doc: "default: 100ms, max: 60000ms"), port }`. Drop `value`.
-- New `mcp/src/brp_tools/tools/brp_extras_set_gamepad_button.rs`: `SetGamepadButtonParams { gamepad: u64, button: GamepadButtonWrapper, value: f32 (doc: "Analog value in [0.0, 1.0]; 1.0 pressed, 0.0 released; stays until set again"), port }` and `SetGamepadButtonResult` (message template "Gamepad button set"). The derives and the `Option<Value>` result field are copied from `brp_extras_set_gamepad_axis.rs`. Change `SendGamepadButtonResult`'s template to "Gamepad button sent".
-- `SetGamepadAxisParams.axis: GamepadAxisWrapper`.
-- Register `BrpExtrasSetGamepadButton` everywhere `BrpExtrasSetGamepadAxis` appears. In `name.rs` that is the imports, a variant with `#[brp_tool(brp_method = "brp_extras/set_gamepad_button", params = "SetGamepadButtonParams", result = "SetGamepadButtonResult")]` placed after `BrpExtrasSendGamepadButton`, the annotation `"set gamepad button"`, `ToolCategory::Extras`, `EnvironmentImpact::AdditiveIdempotent`, `get_parameters`, and the handler `Arc::new(…)`. It also goes in `mcp/src/brp_tools/tools/mod.rs` (`mod` and `pub use`) and in `mcp/src/brp_tools/mod.rs` (`pub use`).
-- Schema fix in `mcp/src/tool/parameters.rs`. Today an enum field never reaches the agent-visible schema as an enum. `resolve_schema_value` swaps the property for its `$defs` entry. The field's own `description` (schemars puts it beside `$ref`) is then replaced by the enum's type doc. `handle_one_of_schema` maps string-const `oneOf` to `ParameterType::String`, and `add_string_property` writes only `type` and `description`. As a result `MouseButtonWrapper`'s five names never appear, and gamepad enums would hit the same gap. The fix is made where the defect lives:
-  1. In `build_parameters_from`, take `description` from the property object first and fall back to the resolved schema's.
-  2. When the resolved schema is a string enum, collect its values: a `oneOf` whose variants are all `{type: "string", const: …}` gives the consts; a `{type: "string", enum: [...]}` gives `enum`. Emit them as `"enum": [...]` on the string property. Add an `enum_values: Option<Vec<Value>>` argument or a sibling `add_string_enum_property` on `ParameterBuilder`, and leave other property kinds unchanged.
-  This also gives `SearchOrder`, `NameMatchMode`, `ScrollUnitWrapper`, `TracingLevel` and `MouseButtonWrapper` their enum lists. That change is additive, and serde already rejects any other value.
-
-*Item 5: Mend.*
-- In `gamepad.rs`, make the four handlers and `SimulatedGamepad` private (`fn` / `struct`). Each is used only inside `gamepad.rs`: the plugin reaches them through `remote_methods`. That fixes the five over-visible items. `remote_methods` stays `pub(crate)`. In `plugin.rs`, replace `use super::gamepad;` + `gamepad::GamepadPlugin` with `#[cfg(feature = "gamepad")] use super::gamepad::GamepadPlugin;` and `app.add_plugins(GamepadPlugin)`. Keep `gamepad::remote_methods`, which needs the module import as well, as a function path, following `import-the-module-for-functions`. `verify.sh lint` runs `cargo mend --fix`; it must leave nothing to fix.
-
-*Item 6: docs and tests follow.*
-- Help text. `mcp/help_text/brp_extras_send_gamepad_button.txt` changes to: tap for `duration_ms` (default 100), seen down for at least one frame, released on the real clock. Its examples are a tap, a 500 ms hold, and a 0 ms tap, and it points to `brp_extras_set_gamepad_button` for holds and analog values. New `mcp/help_text/brp_extras_set_gamepad_button.txt` covers holding until changed, `value` 0.0 releasing, a half trigger, and cancelling a pending tap release, and it carries the button list. `brp_extras_disconnect_gamepad.txt` adds that later calls on the pad fail, so connect a new one. `brp_extras_set_gamepad_axis.txt` is unchanged except for any wording that names `send_gamepad_button` holds.
-- `extras/src/lib.rs` `## Gamepad` docs: `send_gamepad_button` (`duration_ms` default 100), a new `### brp_extras/set_gamepad_button` section (`value` required), and disconnect making later calls fail. `extras/src/plugin.rs` doc list ~65 stays "connect_gamepad and friends".
-- `extras/README.md` ~28 and `mcp/README.md` ~58–61 add `set_gamepad_button`; the mcp line for send reads "Tap a simulated gamepad button". `extras/CHANGELOG.md` and `mcp/CHANGELOG.md` `[Unreleased]` lines name all five methods or tools, the send/set rule and typed button and axis names.
-- `.claude/agents/integration-tester.md`: add `mcp__brp__brp_extras_set_gamepad_button` to `tools:` after `mcp__brp__brp_extras_send_gamepad_button`.
-- `.claude/integration_tests/extras_gamepad.md`, each step using the new API:
-  - Step 3 "Hold and Release" uses `mcp__brp__brp_extras_set_gamepad_button` with `value` 1.0 and then 0.0.
-  - Step 4 "Timed Release" has three parts. A default `send_gamepad_button` `{"gamepad": G, "button": "East"}` is released within 1 s with `last_released` `"East"`. An explicit `duration_ms: 300` on `"North"` behaves the same way. A `set_gamepad_button` value 1.0 on `"West"` right after a `send` of `"West"` stays down after 1 s, because the pending release was cancelled.
-  - Step 6 keeps excessive duration, unknown button (the error lists the valid names, from serde's "unknown variant … expected one of"), out-of-range axis and non-simulated entity. It adds an out-of-range `set_gamepad_button` value of `1.5`.
-  - Step 7 adds that after disconnect, `send_gamepad_button`, `set_gamepad_button` and `set_gamepad_axis` on `G` fail with an error containing "not a connected simulated gamepad".
-  - Expected Results add "a disconnected pad rejects input".
-- Unit tests in `gamepad.rs` `mod tests`:
-  - Rename `button_holds_until_set_again` to `set_button_holds_until_set_again` and switch it to `set_gamepad_button_handler`.
-  - Switch the two timed tests to `send_gamepad_button_handler`.
-  - New tests:
-    - `send_button_taps_for_the_default_duration`: pressed after one frame, still pressed at 99 ms real time, released at `DEFAULT_GAMEPAD_DURATION_MS`.
-    - `a_new_value_cancels_a_pending_release`: send South, then set South 1.0, then advance 5 000 ms; still pressed.
-    - `disconnect_drops_pending_releases`: send with 5 000 ms, disconnect, and no `TimedGamepadButtonRelease` remains.
-    - `disconnected_pad_rejects_input`: send, set, axis and disconnect after a disconnect each return `INVALID_PARAMS` containing "not a connected simulated gamepad".
-    - `tap_sent_in_the_connect_frame_still_releases`: call connect then send with no frame between; the button is seen pressed, then released after the duration.
-    - `button_and_axis_changes_reach_both_raw_streams`: read `Messages<RawGamepadButtonChangedEvent>`, `Messages<RawGamepadAxisChangedEvent>` and `Messages<RawGamepadEvent>` with `MessageCursor::default()` as `mouse/mod.rs` `button_events` does (the paused virtual clock keeps buffers unswapped). A set, a timed release and an axis each appear in both streams.
-    - `set_button_rejects_out_of_range_values`.
-  - Remove `send` with `value` uses.
-  - `mcp` tests in `parameters.rs` `mod tests`: `enum_field_lists_its_variants`, where `build_parameters_from::<SendMouseButtonParams>().build()` has `properties.button.enum == ["Left","Right","Middle","Back","Forward"]` and the field's own description. `gamepad_tool_schemas_list_buttons_and_axes`, where `SetGamepadButtonParams` lists 19 button names and `SetGamepadAxisParams` 6 axis names. In `name.rs` `mod tests`: `disconnect_gamepad_is_destructive_idempotent`.
+- `brp_extras/send_gamepad_button` taps. `SendGamepadButtonRequest { gamepad: u64, button: GamepadButton, #[serde(default)] duration_ms: Option<u32> }` presses at `1.0` and spawns a `TimedGamepadButtonRelease` timed on the real clock. `duration_ms` defaults to `DEFAULT_GAMEPAD_DURATION_MS` (100) and errors above `MAX_GAMEPAD_DURATION_MS` (60 000); `0` still shows the button down for one frame. `SendGamepadButtonResponse { gamepad: u64, button: GamepadButton, duration_ms: u32 }` always carries the duration.
+- `brp_extras/set_gamepad_button` holds. `SetGamepadButtonRequest { gamepad: u64, button: GamepadButton, value: f32 }` requires `value` in `[0.0, 1.0]` ("Button value {value} is outside [0.0, 1.0]"), spawns no release, and the value stays until set again. `SetGamepadButtonResponse { gamepad: u64, button: GamepadButton, value: f32 }`.
+- Send and set cancel any pending release for that `(gamepad, button)`; disconnect cancels every release for the pad. All three call the private `cancel_pending_button_releases(world, gamepad, ReleaseCancellation)`, with `ReleaseCancellation::{AllButtons, Button(b)}`.
+- Every connection, button and axis write, and every timed release, reaches both `RawGamepadEvent` and its typed message, as `bevy_gilrs` writes them. Handlers use the private `write_raw_gamepad_event<T>(world: &mut World, event: T) where T: Clone + Message, RawGamepadEvent: From<T>`; `process_timed_gamepad_button_releases` writes both through `MessageWriter`s.
+- `disconnect_gamepad_handler` removes `SimulatedGamepad`; Bevy removes `Gamepad` and keeps the entity. Every later send, set, axis or disconnect on it returns `INVALID_PARAMS` "Entity {bits} is not a connected simulated gamepad (never connected, or disconnected); connect one with brp_extras/connect_gamepad".
+- `process_timed_gamepad_button_releases` queries `Query<Option<&Gamepad>, With<SimulatedGamepad>>`: no marker despawns the release; marker without `Gamepad` waits, which covers a tap sent in the connect frame (the system runs `.before(InputSystems)`); a present pad releases once `Gamepad::pressed` has reported the button and the timer is finished.
+- The four gamepad handlers and `SimulatedGamepad` are private. `remote_methods` stays `pub(crate)` and returns 5 methods, among them `METHOD_SET_GAMEPAD_BUTTON`. `plugin.rs` imports `GamepadPlugin` by name and calls `gamepad::remote_methods` by path.
+- MCP: `GamepadButtonWrapper` (19 named buttons) and `GamepadAxisWrapper` (6 named axes) type the `button` and `axis` params; Bevy's `Other(u8)` is excluded, and an unknown name fails with serde's "unknown variant … expected one of" list. `SendGamepadButtonParams` has no `value`. Tool `brp_extras_set_gamepad_button` (`SetGamepadButtonParams`, `SetGamepadButtonResult`) is `AdditiveIdempotent`; `brp_extras_disconnect_gamepad` is `DestructiveIdempotent`.
+- `build_parameters_from` takes a field's `description` from the property before its resolved `$defs` schema, and writes `"enum": [...]` on any string property whose resolved schema is a string-const `oneOf` or `{type: "string", enum: [...]}`. `MouseButtonWrapper` and both gamepad wrappers list their names.
 
 **Files:**
-- `extras/src/gamepad.rs` — items 1, 2, 3, 5; unit tests
-- `extras/src/constants.rs` — `METHOD_SET_GAMEPAD_BUTTON`
-- `extras/src/plugin.rs` — `GamepadPlugin` import (Mend)
-- `extras/src/lib.rs` — `## Gamepad` crate docs
-- `extras/README.md` — method list
-- `extras/CHANGELOG.md` — `[Unreleased]` line
-- `mcp/src/brp_tools/gamepad.rs` — new: `GamepadButtonWrapper`, `GamepadAxisWrapper`
-- `mcp/src/brp_tools/mod.rs` — `mod gamepad;`, `pub use` for set-button params and result
-- `mcp/src/brp_tools/tools/mod.rs` — `mod` + `pub use` for the new tool file
-- `mcp/src/brp_tools/tools/brp_extras_send_gamepad_button.rs` — typed `button`, drop `value`, result template
-- `mcp/src/brp_tools/tools/brp_extras_set_gamepad_button.rs` — new tool params and result
-- `mcp/src/brp_tools/tools/brp_extras_set_gamepad_axis.rs` — typed `axis`
-- `mcp/src/tool/name.rs` — new variant everywhere, disconnect annotation, test
-- `mcp/src/tool/parameters.rs` — enum values and field descriptions in the schema, tests
-- `mcp/help_text/brp_extras_send_gamepad_button.txt` — tap semantics
-- `mcp/help_text/brp_extras_set_gamepad_button.txt` — new
-- `mcp/help_text/brp_extras_disconnect_gamepad.txt` — later calls fail
-- `mcp/help_text/brp_extras_set_gamepad_axis.txt` — wording only if it names send holds
-- `mcp/README.md` — tool list
-- `mcp/CHANGELOG.md` — `[Unreleased]` line
-- `.claude/agents/integration-tester.md` — tool list
-- `.claude/integration_tests/extras_gamepad.md` — spec steps
+- `extras/src/gamepad.rs` — handlers, timed release system, private helpers `write_raw_gamepad_event` and `cancel_pending_button_releases`, inline tests
+- `extras/src/constants.rs`, `extras/src/plugin.rs`, `extras/src/lib.rs`, `extras/README.md`, `extras/CHANGELOG.md` — method constant, plugin import, `## Gamepad` crate docs, method list
+- `mcp/src/brp_tools/gamepad.rs` — `GamepadButtonWrapper`, `GamepadAxisWrapper`
+- `mcp/src/brp_tools/tools/brp_extras_send_gamepad_button.rs`, `brp_extras_set_gamepad_button.rs`, `brp_extras_set_gamepad_axis.rs` — typed params and results; `mcp/src/brp_tools/mod.rs`, `tools/mod.rs` — re-exports
+- `mcp/src/tool/name.rs`, `mcp/src/tool/parameters.rs` — tool registration and annotations; enum lists and field descriptions in tool schemas; tests
+- `mcp/help_text/brp_extras_send_gamepad_button.txt`, `brp_extras_set_gamepad_button.txt`, `brp_extras_disconnect_gamepad.txt`, `mcp/README.md`, `mcp/CHANGELOG.md` — tap vs hold; later calls fail after disconnect
+- `.claude/integration_tests/extras_gamepad.md` — steps 3–4 (set hold, send tap, cancelled release), 6 (errors), 7 (disconnected pad rejects input); `.claude/agents/integration-tester.md` — set-button tool listed
 
-**Seats:** 2 writers — split by crate: the extras side and the MCP side meet only at JSON method names and field names, which this Spec fixes, so each compiles alone.
-- `impl` — `extras/src/gamepad.rs`, `extras/src/constants.rs`, `extras/src/plugin.rs`, `extras/README.md`, `extras/CHANGELOG.md`; hub: `extras/src/lib.rs` (crate docs and `mod` list)
-- `test` opens as impl — `mcp/src/brp_tools/gamepad.rs`, `mcp/src/brp_tools/tools/brp_extras_send_gamepad_button.rs`, `mcp/src/brp_tools/tools/brp_extras_set_gamepad_button.rs`, `mcp/src/brp_tools/tools/brp_extras_set_gamepad_axis.rs`, `mcp/src/tool/parameters.rs`, `mcp/help_text/brp_extras_send_gamepad_button.txt`, `mcp/help_text/brp_extras_set_gamepad_button.txt`, `mcp/help_text/brp_extras_disconnect_gamepad.txt`, `mcp/help_text/brp_extras_set_gamepad_axis.txt`, `mcp/README.md`, `mcp/CHANGELOG.md`, `.claude/agents/integration-tester.md`, `.claude/integration_tests/extras_gamepad.md`; hub: `mcp/src/tool/name.rs` (tool registry), `mcp/src/brp_tools/mod.rs`, `mcp/src/brp_tools/tools/mod.rs` (facade re-exports). It opens as impl because the gamepad handlers are private and tested inline in `gamepad.rs`, so `extras/tests/` cannot reach them.
+**Binds later work:** `cancel_pending_button_releases` and `ReleaseCancellation` stay in `extras/src/gamepad.rs` (Shared request helpers). End-to-end extras_gamepad run executes spec steps 3–4 (tap vs hold, observed through `GamepadInputHistory`) and step 7 (a disconnected pad rejects input).
 
-**Constraints from prior phases:** none (Phase 1).
+**Gotchas:**
+- A timed release gates on `Gamepad::pressed` (digital), not the analog value; after a partial set below the press threshold, a 0 ms tap would otherwise never be seen pressed.
+- Toolchain clippy (rust 1.99) denies `clippy::assert_is_empty`; empty checks are written `assert_eq!(x, Vec::<T>::new())`.
+- Tests read `Messages<…>` with `MessageCursor::default()`: the paused virtual clock leaves message buffers unswapped.
 
-**Acceptance gate:**
-- `bash ~/.claude/scripts/delegate/verify.sh check bevy_brp_extras` and `bash ~/.claude/scripts/delegate/verify.sh check bevy_brp_mcp` green.
-- `bash ~/.claude/scripts/delegate/verify.sh test bevy_brp_extras` green, including every gamepad test named in the Spec.
-- `bash ~/.claude/scripts/delegate/verify.sh test bevy_brp_mcp` green, including `enum_field_lists_its_variants`, `gamepad_tool_schemas_list_buttons_and_axes`, `disconnect_gamepad_is_destructive_idempotent`.
-- `bash ~/.claude/scripts/delegate/verify.sh lint bevy_brp_extras` green once, with Mend reporting nothing (the five visibility items and the inline `gamepad::GamepadPlugin` path are gone).
-- No UX checks: nothing users see changes.
+**Ruled out:** a `TracingLevel` enum list — `SetTracingLevelParams.level` is a plain `String`, so the schema has no enum to list.
 
 ### Phase 2 — Shared request helpers  · status: todo
 
@@ -192,7 +121,8 @@
 - `test` opens as impl — `extras/src/keyboard/keys.rs`, `extras/src/keyboard/typing.rs`, `extras/src/gamepad.rs`. It opens as impl because this is a pure refactor with no new behavior to test, and `extras/tests/` cannot reach private handlers.
 
 **Constraints from prior phases:**
-- Phase 1 left `gamepad.rs` with five handlers (connect, disconnect, send button, set button, set axis), the private helper `write_raw_gamepad_event`, and local `invalid_params` / `parse_request` / `to_value` that this phase removes. The handlers and `SimulatedGamepad` are private; `remote_methods` is `pub(crate)`. Method constants `METHOD_CONNECT_GAMEPAD`, `METHOD_DISCONNECT_GAMEPAD`, `METHOD_SEND_GAMEPAD_BUTTON`, `METHOD_SET_GAMEPAD_BUTTON` and `METHOD_SET_GAMEPAD_AXIS` exist in `constants.rs` under `#[cfg(feature = "gamepad")]`.
+- Phase 1 left `gamepad.rs` with five handlers (connect, disconnect, send button, set button, set axis), the private helpers `write_raw_gamepad_event` and `cancel_pending_button_releases` (with its private `ReleaseCancellation` enum; both stay), and local `invalid_params` / `parse_request` / `to_value` that this phase removes. The handlers and `SimulatedGamepad` are private; `remote_methods` is `pub(crate)`. Method constants `METHOD_CONNECT_GAMEPAD`, `METHOD_DISCONNECT_GAMEPAD`, `METHOD_SEND_GAMEPAD_BUTTON`, `METHOD_SET_GAMEPAD_BUTTON` and `METHOD_SET_GAMEPAD_AXIS` exist in `constants.rs` under `#[cfg(feature = "gamepad")]`.
+- The toolchain's clippy (rust 1.99) denies pedantic `clippy::assert_is_empty`: write an empty check as `assert_eq!(x, Vec::<T>::new())`, never `assert!(x.is_empty())`. Phase 1 already fixed every existing hit.
 - The `simulated_gamepad` error text ("not a connected simulated gamepad …") and the range and duration messages are asserted by Phase 1 tests and by `.claude/integration_tests/extras_gamepad.md`. Keep them byte for byte.
 
 **Acceptance gate:**
