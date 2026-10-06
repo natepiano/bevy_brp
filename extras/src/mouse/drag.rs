@@ -9,9 +9,7 @@ use bevy::math::Vec2;
 use bevy::prelude::*;
 use bevy::window::CursorMoved;
 use bevy::window::WindowEvent;
-use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
-use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -19,7 +17,8 @@ use serde_json::Value;
 use super::constants::MIN_DRAG_FRAMES;
 use super::cursor::SimulatedCursorPosition;
 use super::support;
-use super::support::EmptyParamsPolicy;
+use crate::brp_request;
+use crate::brp_request::EmptyParamsPolicy;
 use crate::constants::METHOD_DRAG_MOUSE;
 
 // ============================================================================
@@ -98,15 +97,13 @@ pub(super) struct DragOperation {
 
 /// Handler for `drag_mouse` BRP method
 pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: DragMouseRequest = support::parse_request(params, EmptyParamsPolicy::Reject)?;
+    let request: DragMouseRequest = brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     // Validate frames
     if request.frames < MIN_DRAG_FRAMES {
-        return Err(BrpError {
-            code:    INVALID_PARAMS,
-            message: "Frames must be greater than 0".to_string(),
-            data:    None,
-        });
+        return Err(brp_request::invalid_params(
+            "Frames must be greater than 0".to_string(),
+        ));
     }
 
     let window = support::resolve_window(world, request.window)?;
@@ -122,7 +119,7 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
         drag_state:    DragState::Pressed,
     });
 
-    support::serialize_response(
+    brp_request::serialize_response(
         DragMouseResponse {
             button: request.button,
             start:  request.start,

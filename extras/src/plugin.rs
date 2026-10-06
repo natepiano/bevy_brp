@@ -40,6 +40,10 @@ use super::constants::METHOD_SHUTDOWN;
 use super::constants::METHOD_TYPE_TEXT;
 #[cfg(feature = "diagnostics")]
 use super::diagnostics;
+#[cfg(feature = "gamepad")]
+use super::gamepad;
+#[cfg(feature = "gamepad")]
+use super::gamepad::GamepadPlugin;
 use super::keyboard;
 use super::keyboard::KeyboardPlugin;
 use super::mouse;
@@ -60,6 +64,7 @@ use super::window_title;
 /// - `brp_extras/shutdown`: Gracefully shutdown the app
 /// - `brp_extras/send_keys`: Send keyboard input
 /// - `brp_extras/set_window_title`: Change the window title
+/// - `brp_extras/connect_gamepad` and friends: Drive a simulated gamepad (`gamepad` feature)
 ///
 /// On native targets, this also adds `RemoteHttpPlugin` for HTTP transport.
 /// On WASM, only the methods are registered - you need to add your own
@@ -360,6 +365,8 @@ fn build_shared(app: &mut App) {
         app.add_plugins(FrameTimeDiagnosticsPlugin::default());
     }
 
+    #[cfg(feature = "gamepad")]
+    app.add_plugins(GamepadPlugin);
     app.add_plugins(KeyboardPlugin);
     app.add_plugins(MousePlugin);
     app.add_plugins(ScreenshotPlugin);
@@ -476,6 +483,13 @@ fn register_extras_methods(world: &mut World) {
             format!("{EXTRAS_COMMAND_PREFIX}{METHOD_GET_DIAGNOSTICS}"),
             RemoteMethodSystemId::Instant(world.register_system(diagnostics::handler)),
         ));
+        methods
+    };
+
+    #[cfg(feature = "gamepad")]
+    let methods = {
+        let mut methods = methods;
+        methods.extend(gamepad::remote_methods(world));
         methods
     };
 

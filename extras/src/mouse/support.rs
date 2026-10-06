@@ -9,83 +9,11 @@ use bevy::prelude::*;
 use bevy::window::CursorMoved;
 use bevy::window::PrimaryWindow;
 use bevy_remote::BrpError;
-use bevy_remote::BrpResult;
-use bevy_remote::error_codes::INTERNAL_ERROR;
-use bevy_remote::error_codes::INVALID_PARAMS;
-use serde::Serialize;
-use serde_json::Map;
-use serde_json::Value;
 
 use super::button::TimedButtonRelease;
 use super::cursor::SimulatedCursorPosition;
-use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
+use crate::brp_request;
 use crate::window_event;
-
-/// Whether `parse_request` should accept `None` params by treating them as an empty object.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum EmptyParamsPolicy {
-    Allow,
-    Reject,
-}
-
-/// Parse BRP request parameters into strongly typed request struct
-///
-/// Handles parameter extraction, validation, and error conversion for all handlers.
-/// Provides consistent error messages across the module.
-///
-/// # Arguments
-/// * `params` - Optional JSON value from BRP request
-/// * `empty_params_policy` - `Allow` permits None params (creates empty object for
-///   deserialization); `Reject` returns an error when params is None
-///
-/// # Returns
-/// Parsed request struct or BRP error with `INVALID_PARAMS` code
-pub(super) fn parse_request<T: serde::de::DeserializeOwned>(
-    params: Option<Value>,
-    empty_params_policy: EmptyParamsPolicy,
-) -> Result<T, BrpError> {
-    if matches!(empty_params_policy, EmptyParamsPolicy::Allow) && params.is_none() {
-        // For requests with no required fields (e.g., `DoubleTapGestureRequest`)
-        return serde_json::from_value(Value::Object(Map::default())).map_err(|e| BrpError {
-            code:    INVALID_PARAMS,
-            message: format!("Failed to parse parameters: {e}"),
-            data:    None,
-        });
-    }
-
-    let params = params.ok_or_else(|| BrpError {
-        code:    INVALID_PARAMS,
-        message: MISSING_REQUEST_PARAMETERS_MESSAGE.to_string(),
-        data:    None,
-    })?;
-
-    serde_json::from_value(params).map_err(|e| BrpError {
-        code:    INVALID_PARAMS,
-        message: format!("Failed to parse parameters: {e}"),
-        data:    None,
-    })
-}
-
-/// Serialize BRP response with standardized error handling
-///
-/// Provides consistent serialization error handling and logging across all handlers.
-///
-/// # Arguments
-/// * `response` - Response struct to serialize
-/// * `handler_name` - Name of the handler (for logging)
-///
-/// # Returns
-/// Serialized JSON value or BRP error with `INTERNAL_ERROR` code
-pub(super) fn serialize_response<T: Serialize>(response: T, handler_name: &str) -> BrpResult {
-    serde_json::to_value(response).map_err(|e| {
-        warn!("Failed to serialize {handler_name} response: {e}");
-        BrpError {
-            code:    INTERNAL_ERROR,
-            message: format!("Failed to serialize response: {e}"),
-            data:    None,
-        }
-    })
-}
 
 /// Get window entity with fallback to placeholder
 ///
@@ -184,11 +112,9 @@ pub(super) fn resolve_window(
         let entity = Entity::from_bits(id);
         // Verify entity exists and is a window
         if world.get_entity(entity).is_err() {
-            return Err(BrpError {
-                code:    INVALID_PARAMS,
-                message: format!("Invalid window entity: {id}"),
-                data:    None,
-            });
+            return Err(brp_request::invalid_params(format!(
+                "Invalid window entity: {id}"
+            )));
         }
         return Ok(entity);
     }
@@ -207,9 +133,5 @@ pub(super) fn resolve_window(
         iter.next()
     };
 
-    entity.ok_or_else(|| BrpError {
-        code:    INVALID_PARAMS,
-        message: "No primary window found".to_string(),
-        data:    None,
-    })
+    entity.ok_or_else(|| brp_request::invalid_params("No primary window found".to_string()))
 }

@@ -10,8 +10,8 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::support;
-use super::support::EmptyParamsPolicy;
+use crate::brp_request;
+use crate::brp_request::EmptyParamsPolicy;
 use crate::constants::METHOD_DOUBLE_TAP_GESTURE;
 use crate::constants::METHOD_PINCH_GESTURE;
 use crate::constants::METHOD_ROTATION_GESTURE;
@@ -67,11 +67,12 @@ struct DoubleTapGestureResponse {
 
 /// Handler for `pinch_gesture` BRP method
 pub(crate) fn pinch_gesture_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: PinchGestureRequest = support::parse_request(params, EmptyParamsPolicy::Reject)?;
+    let request: PinchGestureRequest =
+        brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     window_event::write_input_event(world, PinchGesture(request.delta));
 
-    support::serialize_response(
+    brp_request::serialize_response(
         PinchGestureResponse {
             delta: request.delta,
         },
@@ -85,11 +86,11 @@ pub(crate) fn rotation_gesture_handler(
     world: &mut World,
 ) -> BrpResult {
     let request: RotationGestureRequest =
-        support::parse_request(params, EmptyParamsPolicy::Reject)?;
+        brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     window_event::write_input_event(world, RotationGesture(request.delta));
 
-    support::serialize_response(
+    brp_request::serialize_response(
         RotationGestureResponse {
             delta: request.delta,
         },
@@ -102,9 +103,9 @@ pub(crate) fn double_tap_gesture_handler(
     In(params): In<Option<Value>>,
     world: &mut World,
 ) -> BrpResult {
-    let _: DoubleTapGestureRequest = support::parse_request(params, EmptyParamsPolicy::Allow)?;
+    let _: DoubleTapGestureRequest = brp_request::parse_request(params, EmptyParamsPolicy::Allow)?;
 
     window_event::write_input_event(world, DoubleTapGesture);
 
-    support::serialize_response(DoubleTapGestureResponse {}, METHOD_DOUBLE_TAP_GESTURE)
+    brp_request::serialize_response(DoubleTapGestureResponse {}, METHOD_DOUBLE_TAP_GESTURE)
 }
