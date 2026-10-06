@@ -21,8 +21,8 @@ sends only the resolved entity ID to bevy_brp_extras. Use world_find_entities_by
 want non-exact discovery, need to inspect duplicate matches, or want to choose the entity ID yourself.
 
 Entity crops require the entity to be visible to the selected camera. If camera is omitted, exactly
-one eligible camera must be unambiguous. Crops use AABB bounds, or Bevy UI bounds when the
-bevy_brp_extras ui feature is enabled. They contain the final composited pixels inside the bounds,
+one eligible camera must be unambiguous. Crops use the entity's AABB, the union of its visible
+descendants' AABBs when it has none, or Bevy UI bounds when the bevy_brp_extras ui feature is enabled. They contain the final composited pixels inside the bounds,
 not an isolated render of the entity.
 
 The call returns only after the PNG is completely encoded and atomically published; filesystem
