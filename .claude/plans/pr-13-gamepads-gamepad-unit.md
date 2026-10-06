@@ -104,40 +104,20 @@
 
 **Ruled out:** routing `screenshot/request.rs` (`from_params`, "Invalid screenshot request") and `window_title.rs` (single-field extraction) through `brp_request` — they build their own `INVALID_PARAMS` errors with their own messages and are not copies of these helpers.
 
-### Phase 3 — End-to-end extras_gamepad run  · status: todo
+### Phase 3 — End-to-end extras_gamepad run  · status: done
 
-#### Work Order
+#### As-built
 
-**Goal:** The `extras_gamepad` integration spec passes every step through an MCP binary built from `unit/gamepad`, run against `extras_plugin` on port 20250.
-
-**Spec:**
-1. Build the worktree's MCP binary, run by the unit director in the background in `/home/natepiano/rust/bevy_brp_gamepad`: `cargo build -p bevy_brp_mcp --bin bevy_brp_mcp` → `/home/natepiano/rust/bevy_brp_gamepad/target/debug/bevy_brp_mcp`. This raw cargo line is the one exception to the verify.sh-only rule, because verify.sh has no binary-build verb. **Never `cargo install --path mcp`**: the global `~/.cargo/bin/bevy_brp_mcp` serves other sessions and productions.
-2. Write `/home/natepiano/rust/bevy_brp_gamepad/.claude/transient/mcp-unit.json` (`.claude/transient/` is git-ignored). Its content copies the global `brp` entry in `~/.claude.json` (`type: stdio`, empty `args` and `env`) with only `command` changed:
-   `{"mcpServers":{"brp":{"type":"stdio","command":"/home/natepiano/rust/bevy_brp_gamepad/target/debug/bevy_brp_mcp","args":[],"env":{}}}}`
-3. End the turn with `— blocked: waiting on the showrunner: relaunch with the worktree MCP binary`. The showrunner relaunches the unit director with `--strict-mcp-config --mcp-config /home/natepiano/rust/bevy_brp_gamepad/.claude/transient/mcp-unit.json`. The server keeps the name `brp`, so every tool stays `mcp__brp__*`, which is what `.claude/agents/integration-tester.md` lists. After the relaunch, confirm the new binary is live: `mcp__brp__brp_list_agent_tools` or any tool listing shows `brp_extras_set_gamepad_button`. If it does not, report the mismatch to the showrunner and stop.
-4. Launch: `mcp__brp__brp_launch` with `target_name: "extras_plugin"`, `port: 20250`, `profile: "debug"`, `search_order: "example"`, `path: "/home/natepiano/rust/bevy_brp_gamepad"`. The `path` builds this worktree's `test-app`, not the primary checkout's. Verify with `mcp__brp__brp_status(app_name: "extras_plugin", port: 20250)` = `running_with_brp`, retrying through `.claude/scripts/integration_tests/launch_retry.sh <attempt>` up to 5 times. Then set the window title with `mcp__brp__brp_extras_set_window_title` to `"extras_gamepad test - extras_plugin - port 20250"`.
-5. Do **not** run `/integration_tests` itself. Its single-test path first runs `cleanup_stale_test_processes.sh`, which `pkill -x extras_plugin`s every session's app, and it takes ports from the 20100 pool. Run its `DedicatedAppPrompt` (`.claude/commands/integration_tests.md` ~201–265) by hand instead. Dispatch one `integration-tester` agent (model opus) with `[TEST_NAME]=extras_gamepad`, `[ASSIGNED_PORT]=20250`, `[APP_NAME]=extras_plugin`, `[TEST_FILE]=.claude/integration_tests/extras_gamepad.md`, and `[TEST_OBJECTIVE]` = the spec's `## Objective` text. If it returns no output, re-dispatch once.
-6. Cleanup: `mcp__brp__brp_shutdown(app_name: "extras_plugin", port: 20250)`. Touch no other port or process.
-7. A failing step is this unit's own change (Phase 1 or Phase 2). Fix it in the file where the defect lives, whether that is a Phase 1 or Phase 2 file or the spec when the spec itself is wrong. Re-run `verify.sh test` for the touched crate, rebuild step 1, and ask the showrunner for another relaunch with the step 3 line only if MCP code changed (extras or test-app changes need only an app relaunch on 20250). Then re-run steps 4–6. The phase is done on one run with every step passed.
+`.claude/integration_tests/extras_gamepad.md` passes all 15 checks through an MCP binary built from this worktree against `extras_plugin` on port 20250. Steps: connect (2); hold and release (3); timed release, with East at the 100 ms default, North at 300 ms, then West sent for 3000 ms with a `set_gamepad_button` on West in the same batch (4); axis, where -0.75 arrives as about -0.737 after Bevy's dead zone (5); five error cases (6); set cancels the timed release, checking after the 3 s window that West is still held and `last_released` is still `"North"`, then releasing West (7); disconnect and post-disconnect rejection (8).
 
 **Files:**
-- `.claude/integration_tests/extras_gamepad.md` — the spec under test; edited only if a step itself is wrong
-- `extras/src/gamepad.rs` — fixed here only if a step fails on extras behavior
-- `mcp/src/tool/parameters.rs` — fixed here only if a step fails on tool schema or param handling
+- `.claude/integration_tests/extras_gamepad.md` — the gamepad integration spec, steps 1–8 above.
 
-**Seats:** 1 writer — nothing splits. The unit director runs the build, relaunch, launch and spec. A seat writes only a fix a failing step traces to.
-- `impl` — any file a failing step traces to, starting with the three listed
-- `test` opens as impl — idle unless two failures trace to disjoint crates, in which case it takes the `mcp/` one
+**Gotchas:**
+- Worktree build without touching the global binary: `cargo build -p bevy_brp_mcp --bin bevy_brp_mcp` in the worktree, then a session started with `--strict-mcp-config --mcp-config .claude/transient/mcp-unit.json` (git-ignored), a copy of the global `brp` entry with `command` set to the worktree's `target/debug/bevy_brp_mcp`. The server keeps the name `brp`, so tools stay `mcp__brp__*` as `.claude/agents/integration-tester.md` lists them. Never `cargo install --path mcp`: `~/.cargo/bin/bevy_brp_mcp` serves other sessions.
+- Never run `/integration_tests` for this spec: its `cleanup_stale_test_processes.sh` runs `pkill -x extras_plugin` against every session's app, and it assigns ports from the 20100 pool. Its DedicatedAppPrompt (`.claude/commands/integration_tests.md`) runs by hand on port 20250 instead, with `brp_launch` `path` set to the worktree (that builds the worktree's `test-app` whatever the session cwd), and shutdown touches only that port.
+- Two MCP calls reach the app about 640 ms apart even in one batch; a step that needs a call inside a timed window uses a window of seconds and checks the outcome after the window has passed.
+- `GamepadInputHistory` is shared across every pad in the app; a rerun after a run that left a button held needs a fresh app launch.
 
-**Constraints from prior phases:**
-- Phase 1: the tools are `brp_extras_connect_gamepad`, `brp_extras_send_gamepad_button` (`gamepad`, `button`, optional `duration_ms`, default 100, max 60 000), `brp_extras_set_gamepad_button` (`gamepad`, `button`, required `value` in [0.0, 1.0]), `brp_extras_set_gamepad_axis` (`gamepad`, `axis`, `value` in [-1.0, 1.0]) and `brp_extras_disconnect_gamepad`. `button` and `axis` are enums: an unknown name fails at the MCP layer with serde's "unknown variant … expected one of …". After disconnect every call on the pad fails with "not a connected simulated gamepad". The spec and `.claude/agents/integration-tester.md` already carry `set_gamepad_button`.
-- Phase 2: request errors from all extras input methods read "Failed to parse parameters: …" / "Missing request parameters".
-- Phase 2: `extras/src/brp_request.rs` owns `parse_request`, `invalid_params` and `serialize_response`; mouse, keyboard and gamepad validation errors all build through `brp_request::invalid_params`, with every message text unchanged.
-- Before this phase, `unit/gamepad` merges `origin/main` (PR #14 screenshot fixes and the 0.22.9 release), so the worktree MCP binary and `extras_plugin` build include those changes.
-- `GamepadInputHistory` (`test-app/examples/extras_plugin.rs`) reads processed Bevy gamepad messages. The default dead zone turns an axis value of -0.75 into about -0.737.
+**Ruled out:** a 300 ms hold for the cancel check — shorter than the latency between two MCP calls, so it tests a re-press, not a cancel.
 
-**Acceptance gate:**
-- The integration-tester report for `extras_gamepad` shows `Test Status: Completed` and `Failed: 0` on port 20250. It is quoted in the phase report.
-- `mcp__brp__brp_status(app_name: "extras_plugin", port: 20250)` reports the app stopped after cleanup.
-- If any fix landed, `bash ~/.claude/scripts/delegate/verify.sh test bevy_brp_extras` and/or `bash ~/.claude/scripts/delegate/verify.sh test bevy_brp_mcp` (whichever crate was touched) are green, plus `bash ~/.claude/scripts/delegate/verify.sh lint bevy_brp_extras` once.
-- No UX shots: nothing users see changes.
