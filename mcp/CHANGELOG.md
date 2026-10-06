@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The `brp_extras_screenshot` description now says an entity without its own `Aabb` crops to the union of its visible descendants' AABBs, which `bevy_brp_extras` 0.22.9 adds
+
 ## [0.22.8] - 2026-09-27
 
 ### Changed

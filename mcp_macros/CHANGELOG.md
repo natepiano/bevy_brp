@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Version bump to 0.22.9 to maintain workspace version synchronization
+
 ## [0.22.8] - 2026-09-27
 
 ### Changed
