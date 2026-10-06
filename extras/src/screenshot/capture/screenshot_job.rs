@@ -21,7 +21,7 @@ use super::target_rgb_image::EncodedCapture;
 use super::target_rgb_image::TargetRgbImage;
 use crate::screenshot::CaptureResponseMetadata;
 
-pub(super) type ImageConverter = fn(Image) -> BrpResult<TargetRgbImage>;
+pub(super) type ImageConverter = fn(Image, Option<URect>) -> BrpResult<TargetRgbImage>;
 
 pub(super) struct ScreenshotJob {
     pub(super) path:              PathBuf,
@@ -55,7 +55,7 @@ impl Default for CaptureCompletionChannel {
         Self {
             receiver: Mutex::new(receiver),
             sender,
-            converter: TargetRgbImage::try_from,
+            converter: TargetRgbImage::from_capture,
         }
     }
 }
@@ -97,9 +97,9 @@ fn prepare_capture_job(
     screenshot_job: ScreenshotJob,
     converter: ImageConverter,
 ) -> PreparedJob {
-    match converter(image) {
+    match converter(image, screenshot_job.crop) {
         Ok(target_image) => PreparedJob {
-            encoded_capture: target_image.encode(screenshot_job.crop),
+            encoded_capture: target_image.encode(),
             job:             screenshot_job,
         },
         Err(error) => PreparedJob {
@@ -229,7 +229,7 @@ mod tests {
                 temp_dir.path().join("crop.png"),
                 Some(URect::new(1, 0, 2, 2)),
             ),
-            TargetRgbImage::try_from,
+            TargetRgbImage::from_capture,
         );
 
         let encoded_capture = encoded(prepared_job)?;

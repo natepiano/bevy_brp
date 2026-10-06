@@ -5,6 +5,7 @@ use std::sync::mpsc::Sender;
 use std::time::Instant;
 
 use bevy::prelude::*;
+use bevy::render::view::screenshot::Capturing;
 use bevy::render::view::screenshot::Screenshot;
 use bevy::render::view::screenshot::ScreenshotCaptured;
 use bevy_remote::BrpError;
@@ -44,48 +45,96 @@ impl CaptureStatus {
 
 struct ActiveCapture {
     deadline:          Instant,
-    delivered_frame:   Option<FrameStamp>,
     request:           ScreenshotRequest,
     screenshot_entity: Entity,
     seen_frame:        FrameStamp,
     status:            CaptureStatus,
 }
 
-impl ActiveCapture {
-    fn read(&mut self, current_frame: FrameStamp) -> BrpResult<Option<Value>> {
-        self.seen_frame = current_frame;
-        if self.delivered_frame.is_some() {
-            return Ok(None);
-        }
+/// The last delivered request. Bevy Remote gives a call no identity, so this record swallows
+/// identical calls in the delivery frame and at most one in the next frame, which covers the
+/// delivered call's own repeat before Bevy Remote drops it. After that an identical call is a new
+/// request.
+struct DeliveredCapture {
+    frame:            FrameStamp,
+    request:          ScreenshotRequest,
+    repeat_swallowed: bool,
+}
 
-        match &self.status {
-            CaptureStatus::Completed(response) => {
-                self.delivered_frame = Some(current_frame);
-                Ok(Some(response.clone()))
-            },
-            CaptureStatus::Failed(error) => {
-                self.delivered_frame = Some(current_frame);
-                Err(error.clone())
-            },
-            CaptureStatus::Capturing(_) | CaptureStatus::Encoding => Ok(None),
+impl DeliveredCapture {
+    fn swallows(&mut self, request: &ScreenshotRequest, current_frame: FrameStamp) -> bool {
+        if &self.request != request {
+            return false;
         }
+        if current_frame == self.frame {
+            return true;
+        }
+        if current_frame == self.frame.next() && !self.repeat_swallowed {
+            self.repeat_swallowed = true;
+            return true;
+        }
+        false
     }
 }
 
+pub(super) struct CaptureRead {
+    pub(super) response:        BrpResult<Option<Value>>,
+    pub(super) released_entity: Option<Entity>,
+}
+
 #[derive(Resource, Default)]
-pub(in crate::screenshot) struct PendingScreenshotCapture {
+pub(super) struct PendingScreenshotCapture {
     active:             Option<ActiveCapture>,
     completion_channel: Option<CaptureCompletionChannel>,
     current_frame:      FrameStamp,
+    delivered:          Option<DeliveredCapture>,
 }
 
 impl PendingScreenshotCapture {
-    pub(super) fn read(&mut self, request: &ScreenshotRequest) -> Option<BrpResult<Option<Value>>> {
+    fn read(&mut self, request: &ScreenshotRequest) -> Option<CaptureRead> {
+        let current_frame = self.current_frame;
+        if self
+            .delivered
+            .as_mut()
+            .is_some_and(|delivered| delivered.swallows(request, current_frame))
+        {
+            return Some(CaptureRead {
+                response:        Ok(None),
+                released_entity: None,
+            });
+        }
+
         let active = self.active.as_mut()?;
         if &active.request != request {
-            return Some(Err(capture_in_progress_error()));
+            return Some(CaptureRead {
+                response:        Err(capture_in_progress_error()),
+                released_entity: None,
+            });
         }
-        Some(active.read(self.current_frame))
+        active.seen_frame = current_frame;
+        if !active.status.is_terminal() {
+            return Some(CaptureRead {
+                response:        Ok(None),
+                released_entity: None,
+            });
+        }
+
+        let active = self.active.take()?;
+        self.completion_channel = None;
+        self.delivered = Some(DeliveredCapture {
+            frame:            current_frame,
+            request:          active.request,
+            repeat_swallowed: false,
+        });
+        let response = match active.status {
+            CaptureStatus::Completed(response) => Ok(Some(response)),
+            CaptureStatus::Failed(error) => Err(error),
+            CaptureStatus::Capturing(_) | CaptureStatus::Encoding => Ok(None),
+        };
+        Some(CaptureRead {
+            response,
+            released_entity: Some(active.screenshot_entity),
+        })
     }
 
     fn start(
@@ -106,7 +155,6 @@ impl PendingScreenshotCapture {
         };
         self.active = Some(ActiveCapture {
             deadline: now + SCREENSHOT_CAPTURE_DEADLINE,
-            delivered_frame: None,
             request,
             screenshot_entity,
             seen_frame: self.current_frame,
@@ -177,6 +225,14 @@ impl PendingScreenshotCapture {
     }
 
     fn advance(&mut self, now: Instant) -> Option<Entity> {
+        if self
+            .delivered
+            .as_ref()
+            .is_some_and(|delivered| delivered.frame != self.current_frame)
+        {
+            self.delivered = None;
+        }
+
         let active = self.active.as_mut()?;
         if active.seen_frame != self.current_frame {
             let screenshot_entity = active.screenshot_entity;
@@ -186,12 +242,24 @@ impl PendingScreenshotCapture {
         }
         if !active.status.is_terminal() && now >= active.deadline {
             active.status = CaptureStatus::Failed(timeout_error());
-            return Some(active.screenshot_entity);
         }
         None
     }
 
-    const fn is_active(&self) -> bool { self.active.is_some() }
+    const fn is_active(&self) -> bool { self.active.is_some() || self.delivered.is_some() }
+}
+
+pub(super) fn read(
+    world: &mut World,
+    request: &ScreenshotRequest,
+) -> Option<BrpResult<Option<Value>>> {
+    let capture_read = world
+        .resource_mut::<PendingScreenshotCapture>()
+        .read(request)?;
+    if let Some(screenshot_entity) = capture_read.released_entity {
+        release_screenshot_entity(world, screenshot_entity);
+    }
+    Some(capture_read.response)
 }
 
 pub(super) fn start(
@@ -245,12 +313,23 @@ pub(super) fn screenshot_capture_active(pending: Res<PendingScreenshotCapture>) 
     pending.is_active()
 }
 
-pub(super) fn advance_capture_lifecycle(
-    mut commands: Commands,
-    mut pending: ResMut<PendingScreenshotCapture>,
-) {
-    if let Some(screenshot_entity) = pending.advance(Instant::now()) {
-        commands.entity(screenshot_entity).try_despawn();
+pub(super) fn advance_capture_lifecycle(world: &mut World) {
+    let abandoned_entity = world
+        .resource_mut::<PendingScreenshotCapture>()
+        .advance(Instant::now());
+    if let Some(screenshot_entity) = abandoned_entity {
+        release_screenshot_entity(world, screenshot_entity);
+    }
+}
+
+/// Despawns a finished or abandoned screenshot entity unless Bevy has already extracted it. Bevy
+/// owns a `Capturing` entity: it inserts `Captured` on it and despawns it itself, so despawning it
+/// here would make that insert panic.
+fn release_screenshot_entity(world: &mut World, screenshot_entity: Entity) {
+    if let Ok(entity) = world.get_entity_mut(screenshot_entity)
+        && !entity.contains::<Capturing>()
+    {
+        entity.despawn();
     }
 }
 
@@ -301,9 +380,11 @@ mod tests {
     use std::io;
 
     use bevy::MinimalPlugins;
+    use bevy::render::view::screenshot::Captured;
     use bevy_remote::RemotePlugin;
     use screenshot::CaptureResponseMetadata;
     use screenshot_job::CaptureMetadata;
+    use serde_json::json;
     use tempfile::TempDir;
 
     use super::*;
@@ -325,6 +406,191 @@ mod tests {
             },
             temp_path,
         })
+    }
+
+    fn request(path: &str) -> Result<ScreenshotRequest, io::Error> {
+        ScreenshotRequest::from_params(Some(json!({ "path": path })))
+            .map_err(|error| io::Error::other(error.message))
+    }
+
+    fn full_capture_input() -> CaptureInput {
+        CaptureInput {
+            crop:              None,
+            render_target:     Screenshot::primary_window().0,
+            response_metadata: CaptureResponseMetadata::Full,
+        }
+    }
+
+    fn start_capture(world: &mut World, request: ScreenshotRequest) -> Result<Entity, io::Error> {
+        start(world, request, full_capture_input())
+            .map_err(|error| io::Error::other(error.message))?;
+        world
+            .resource::<PendingScreenshotCapture>()
+            .active
+            .as_ref()
+            .map(|active| active.screenshot_entity)
+            .ok_or_else(|| io::Error::other("capture did not start"))
+    }
+
+    fn capture_world() -> World {
+        let mut world = World::new();
+        world.init_resource::<PendingScreenshotCapture>();
+        world
+    }
+
+    fn terminal_capture(
+        request: &ScreenshotRequest,
+        status: CaptureStatus,
+    ) -> Result<PendingScreenshotCapture, io::Error> {
+        let mut pending = PendingScreenshotCapture::default();
+        pending
+            .start(
+                request.clone(),
+                full_capture_input(),
+                Entity::PLACEHOLDER,
+                Instant::now(),
+            )
+            .map_err(|error| io::Error::other(error.message))?;
+        pending
+            .active
+            .as_mut()
+            .ok_or_else(|| io::Error::other("no active capture"))?
+            .status = status;
+        Ok(pending)
+    }
+
+    fn begin_frame(world: &mut World) -> Result<(), io::Error> {
+        world
+            .resource_mut::<PendingScreenshotCapture>()
+            .begin_frame()
+            .map(drop)
+            .map_err(|error| io::Error::other(error.message))
+    }
+
+    /// Asserts the release rule, then plays Bevy's part on a kept entity: inserting `Captured`
+    /// panics if extras despawned an entity Bevy still owns.
+    fn assert_released_unless_extracted(
+        world: &mut World,
+        screenshot_entity: Entity,
+        extracted: bool,
+    ) {
+        assert_eq!(world.get_entity(screenshot_entity).is_ok(), extracted);
+        if extracted {
+            world.entity_mut(screenshot_entity).insert(Captured);
+        }
+    }
+
+    #[test]
+    fn delivered_record_swallows_the_delivery_frame_and_one_repeat() -> Result<(), Box<dyn Error>> {
+        let shot = request("shot.png")?;
+        let mut pending = terminal_capture(&shot, CaptureStatus::Completed(json!({})))?;
+
+        let delivery = pending
+            .read(&shot)
+            .ok_or_else(|| io::Error::other("terminal capture was not read"))?;
+        assert!(matches!(delivery.response, Ok(Some(_))));
+        assert_eq!(delivery.released_entity, Some(Entity::PLACEHOLDER));
+        assert!(pending.active.is_none());
+
+        for _ in 0..IDLE_UPDATE_COUNT {
+            let repeat = pending.read(&shot);
+            assert!(matches!(
+                repeat,
+                Some(CaptureRead {
+                    response:        Ok(None),
+                    released_entity: None,
+                })
+            ));
+        }
+        assert!(pending.read(&request("other.png")?).is_none());
+        assert!(pending.advance(Instant::now()).is_none());
+        assert!(pending.is_active());
+
+        pending
+            .begin_frame()
+            .map_err(|error| io::Error::other(error.message))?;
+        assert!(matches!(
+            pending.read(&shot),
+            Some(CaptureRead {
+                response:        Ok(None),
+                released_entity: None,
+            })
+        ));
+        assert!(pending.read(&shot).is_none());
+        assert!(pending.advance(Instant::now()).is_none());
+        assert!(!pending.is_active());
+        Ok(())
+    }
+
+    #[test]
+    fn identical_call_after_the_repeat_frame_is_a_new_request() -> Result<(), Box<dyn Error>> {
+        let shot = request("shot.png")?;
+        let mut pending = terminal_capture(&shot, CaptureStatus::Failed(timeout_error()))?;
+        assert!(matches!(
+            pending.read(&shot),
+            Some(CaptureRead {
+                response: Err(_),
+                ..
+            })
+        ));
+
+        for _ in 0..2 {
+            pending
+                .begin_frame()
+                .map_err(|error| io::Error::other(error.message))?;
+            assert!(pending.advance(Instant::now()).is_none());
+        }
+        assert!(pending.read(&shot).is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn abandoned_capture_releases_only_unextracted_entities() -> Result<(), Box<dyn Error>> {
+        for extracted in [false, true] {
+            let mut world = capture_world();
+            let screenshot_entity = start_capture(&mut world, request("abandoned.png")?)?;
+            if extracted {
+                world.entity_mut(screenshot_entity).insert(Capturing);
+            }
+
+            begin_frame(&mut world)?;
+            advance_capture_lifecycle(&mut world);
+
+            assert!(!world.resource::<PendingScreenshotCapture>().is_active());
+            assert_released_unless_extracted(&mut world, screenshot_entity, extracted);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn timed_out_capture_releases_only_unextracted_entities_on_delivery()
+    -> Result<(), Box<dyn Error>> {
+        for extracted in [false, true] {
+            let mut world = capture_world();
+            let shot = request("timeout.png")?;
+            let screenshot_entity = start_capture(&mut world, shot.clone())?;
+            if extracted {
+                world.entity_mut(screenshot_entity).insert(Capturing);
+            }
+            world
+                .resource_mut::<PendingScreenshotCapture>()
+                .active
+                .as_mut()
+                .ok_or_else(|| io::Error::other("no active capture"))?
+                .deadline = Instant::now();
+
+            advance_capture_lifecycle(&mut world);
+            assert!(world.get_entity(screenshot_entity).is_ok());
+
+            let response = read(&mut world, &shot)
+                .ok_or_else(|| io::Error::other("timed-out capture was not read"))?;
+            assert!(matches!(
+                response,
+                Err(error) if error.message.contains("server deadline")
+            ));
+            assert_released_unless_extracted(&mut world, screenshot_entity, extracted);
+        }
+        Ok(())
     }
 
     #[test]

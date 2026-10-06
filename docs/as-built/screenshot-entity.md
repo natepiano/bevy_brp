@@ -27,6 +27,7 @@ fn handler(
 enum ScreenshotScope {
     Full {
         camera: Option<Entity>,
+        rect: Option<URect>,
     },
     Entity {
         entity: Entity,
@@ -47,10 +48,15 @@ The request forms are:
 | --- | --- |
 | `path` | Full primary window |
 | `path`, `camera` | Selected camera's physical viewport |
+| `path`, `rect` | `rect` crop of the primary window |
+| `path`, `camera`, `rect` | `rect` crop inside the selected camera's physical viewport |
 | `path`, `entity` | Entity crop using its computed UI camera, or the only eligible active camera for AABB bounds |
 | `path`, `camera`, `entity` | Entity crop using the selected camera |
 
-`padding` defaults to zero physical pixels and is valid only for entity capture. Relative paths are
+`padding` defaults to zero physical pixels and is valid only for entity capture. `rect`
+(`{x, y, width, height}`, u32, physical target coordinates) is valid only without `entity`; a zero
+size or an overflowing corner is rejected while decoding, and a rect outside what the scope would
+capture (the primary window, or the camera's physical viewport) is rejected naming that extent. Relative paths are
 joined to the application working directory and lexically normalized.
 
 ### MCP composition
@@ -93,8 +99,8 @@ is literal text.
 When Bevy emits `ScreenshotCaptured`, the observer transfers the job to the worker pipeline in
 `screenshot_job.rs`:
 
-1. `AsyncComputeTaskPool` converts the captured Bevy `Image` to `TargetRgbImage`, applies the
-   optional crop, and encodes PNG bytes.
+1. `AsyncComputeTaskPool` crops the captured Bevy `Image` by rows, converts only the kept pixels
+   to `TargetRgbImage`, and encodes PNG bytes with the fast deflate and the `Up` row filter.
 2. `IoTaskPool` writes those bytes to a `NamedTempFile` in the destination directory.
 3. A lazily created completion channel returns an owned `TempPath` and snapshotted response metadata
    to the main world.
@@ -102,6 +108,16 @@ When Bevy emits `ScreenshotCaptured`, the observer transfers the job to the work
    requested destination.
 5. The watching handler returns `Some(response)` only after publication, or returns a terminal
    `BrpError`.
+
+Delivery frees the slot. The read that returns the terminal result takes the active capture, drops
+the completion channel (a stale worker completion is discarded), and keeps a `DeliveredCapture`
+record of the request. Bevy Remote gives a call no identity, so the record swallows identical calls
+in the delivery frame and at most one in the next frame, the delivered call's own repeat before
+Bevy Remote drops it. The lifecycle system drops the record after that frame; a later identical call
+is a new request. A timeout only marks the capture failed; the screenshot entity is released when
+the failure is delivered or the request is abandoned. Release despawns the extras `Screenshot`
+entity only when it lacks Bevy's `Capturing`: Bevy inserts `Captured` on an extracted entity and
+despawns it itself, and the observer ignores a capture that is no longer active.
 
 The worker never publishes the destination itself. Dropping an unpublished `TempPath` removes the
 temporary file. The completion-ingest and lifecycle systems use `run_if(screenshot_capture_active)`,
@@ -132,6 +148,13 @@ applies padding, and clips to the camera viewport and target. Near- or far-plane
 conservatively use the complete viewport intersection because a reliable finite projected rectangle
 is unavailable.
 
+An entity without its own `Aabb` uses hierarchy bounds: `aabb.rs` walks `Children`, runs the same
+visibility checks and frustum test on every descendant with `Aabb` and `GlobalTransform`, skips the
+ones that fail, and unions their projections before the single padding and clipping step. The root
+check covers only `Visibility::Hidden` and `InheritedVisibility`, because a mesh-less root never
+gets `ViewVisibility`. An entity with no `Aabb` on itself or any descendant is rejected before camera
+selection.
+
 With no explicit camera, a UI entity uses its computed UI target camera. An AABB entity requires
 exactly one eligible active camera; multiple candidates return deterministic ascending camera IDs.
 
@@ -146,7 +169,7 @@ Every successful extras response includes:
 - the completion `note`
 
 Entity responses additionally include `capture_kind: "entity"`, canonical `entity`, snapshotted
-optional Bevy `name`, selected `camera`, `bounds_kind` (`"aabb"` or `"ui"`), and physical `rect`.
+optional Bevy `name`, selected `camera`, `bounds_kind` (`"aabb"`, `"hierarchy"`, or `"ui"`), and physical `rect`.
 
 The MCP preserves the raw extras response under `result`. It adds top-level entity metadata for
 direct-ID and name-selected requests, but adds top-level name metadata only when the MCP resolved a
@@ -161,9 +184,9 @@ Key files and roles:
   terminal delivery, cleanup, and main-world publication.
 - `extras/src/screenshot/capture/screenshot_job.rs` — compute/I/O worker split and temporary-file
   ownership.
-- `extras/src/screenshot/capture/target_rgb_image.rs` — RGB conversion, crop validation, and PNG
-  encoding.
-- `extras/src/screenshot/aabb.rs` — 3D/2D AABB visibility and physical projection.
+- `extras/src/screenshot/capture/target_rgb_image.rs` — crop validation, row crop, RGB conversion
+  of the kept pixels, and PNG encoding.
+- `extras/src/screenshot/aabb.rs` — 3D/2D AABB and hierarchy visibility and physical projection.
 - `extras/src/screenshot/ui.rs` — feature-gated computed UI bounds.
 - `mcp/src/brp_tools/tools/brp_extras_screenshot.rs` — MCP selectors, exact-name composition, extras
   payload, and result/error preservation.
@@ -182,11 +205,15 @@ Key files and roles:
 - A successful response means the complete PNG has already been published at the reported
   destination.
 - Publication occurs only on the main world from an owned same-directory temporary file.
-- Captured images are converted to RGB before cropping and encoding.
+- Captured images are cropped by rows first; only the kept pixels are converted to RGB and encoded.
 - Only one capture may be active. A different request while occupied returns
   `A screenshot capture is already in progress`.
 - Repeated watching invocations for the same normalized request observe the existing lifecycle
   rather than spawning another screenshot.
+- The slot frees on delivery. The delivered-request record swallows identical calls only in the
+  delivery frame and at most one in the next frame.
+- Extras despawns its screenshot entity only when it lacks Bevy's `Capturing`; an extracted entity
+  belongs to Bevy.
 - The active request has a 25-second server deadline, shorter than the MCP transport's 30-second
   timeout.
 - Terminal BRP codes and optional data are preserved by the MCP wrapper.
@@ -206,7 +233,9 @@ Key files and roles:
 
 - The single active slot has no request ID. Request equality is the complete normalized
   `ScreenshotRequest`; concurrent identical external requests cannot be distinguished from Bevy
-  Remote reinvoking the same watching request and should not be issued.
+  Remote reinvoking the same watching request and should not be issued. Sequential identical requests
+  are fine: the slot frees on delivery. `brp_extras/screenshot+watch` has no registration and is
+  unsupported.
 - The 25-second deadline is checked while capture is pending and when worker completion is ingested.
   Late worker completions are dropped and their temporary files are cleaned up. Publication is a
   synchronous main-world persist after that completion check, so a persist that starts before the
@@ -216,14 +245,14 @@ Key files and roles:
 - A render-target image present only in the main world is not eligible; it must include
   `RenderAssetUsages::RENDER_WORLD`.
 - Entity crops isolate a rectangle, not rendered ownership. They may contain background,
-  descendants, siblings, occluders, post-processing, or overlapping UI, and descendants are not
-  gathered automatically.
+  descendants, siblings, occluders, post-processing, or overlapping UI. Descendant bounds are
+  gathered only for an entity without its own `Aabb`.
 - AABB visibility uses `Visibility`, `InheritedVisibility`, `ViewVisibility`, render layers, frustum
   state, and available selected-view membership. `NoCpuCulling` intentionally bypasses selected-view
   membership.
 - UI padding cannot expand beyond inherited clipping, the camera viewport, or the live target.
-- If the `ui` feature is disabled, UI resolution is absent and entities need AABB bounds. A
-  non-AABB entity reports that UI support is disabled.
+- If the `ui` feature is disabled, UI resolution is absent and entities need AABB bounds on
+  themselves or a descendant. An entity with neither reports that UI support is disabled.
 - PNG support must be enabled in Bevy. The bytes are PNG regardless of the destination filename's
   extension.
 - WASM returns an immediate actionable error because filesystem PNG publication is unsupported.
@@ -248,7 +277,8 @@ diagnostic operation with one terminal result, not a throughput pipeline. Keepin
 capturing, encoding, completed, or failed makes ownership, timeout, and cleanup behavior explicit.
 
 Converting to RGB before encoding matches Bevy screenshot semantics and discards HDR brightness data
-carried in alpha, avoiding misleading black, white, or translucent PNGs. Writing beside the
+carried in alpha, avoiding misleading black, white, or translucent PNGs. Cropping the raw rows first
+keeps the conversion, and the Bgra8 swizzle, proportional to the kept pixels. Writing beside the
 destination and transferring an owned temporary path back to the main world provides atomic
 publication without allowing detached workers to claim success.
 
