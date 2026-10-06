@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Simulated gamepads: `connect_gamepad`, `send_gamepad_button`, `set_gamepad_button`, `set_gamepad_axis` and `disconnect_gamepad` drive a pad the app treats as real, behind the default `gamepad` feature. Send taps for 100 ms by default; set holds until changed. Typed button and axis names match Bevy's variants, and timed releases run on the real clock
+- Simulated gamepads: `connect_gamepad`, `send_gamepad_button`, `set_gamepad_button`, `set_gamepad_axis` and `disconnect_gamepad` drive a pad the app treats as real, behind the default `gamepad` feature. Send taps for 100 ms by default; set holds until changed. Typed button and axis names match Bevy's variants, and timed releases run on the real clock. Thanks [johanhelsing](https://github.com/johanhelsing)!
 - Add `rect` to `brp_extras/screenshot`: a `{x, y, width, height}` crop in physical target coordinates for a full-window or camera capture. It must lie inside the primary window or the camera's viewport, and it is rejected with `entity`; extras without it answer "unknown field `rect`"
 - Entity screenshots of an entity without its own `Aabb` crop to the union of its visible descendants' AABBs, reported as `bounds_kind: "hierarchy"`
 
