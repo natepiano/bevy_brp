@@ -102,6 +102,8 @@ pub(crate) const RESPONSE_Y_FIELD: &str = "y";
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const SCREENSHOT_BOUNDS_KIND_AABB: &str = "aabb";
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const SCREENSHOT_BOUNDS_KIND_HIERARCHY: &str = "hierarchy";
 #[cfg(all(feature = "ui", not(target_arch = "wasm32")))]
 pub(crate) const SCREENSHOT_BOUNDS_KIND_UI: &str = "ui";
 #[cfg(not(target_arch = "wasm32"))]

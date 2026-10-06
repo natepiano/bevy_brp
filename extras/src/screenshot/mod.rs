@@ -22,8 +22,6 @@ use bevy::asset::RenderAssetUsages;
 use bevy::camera::NormalizedRenderTarget;
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::camera::RenderTarget;
-#[cfg(all(not(feature = "ui"), not(target_arch = "wasm32")))]
-use bevy::camera::primitives::Aabb;
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::camera::primitives::Frustum;
 #[cfg(not(target_arch = "wasm32"))]
@@ -99,6 +97,8 @@ use crate::constants::RESPONSE_X_FIELD;
 use crate::constants::RESPONSE_Y_FIELD;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::constants::SCREENSHOT_BOUNDS_KIND_AABB;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::constants::SCREENSHOT_BOUNDS_KIND_HIERARCHY;
 #[cfg(all(feature = "ui", not(target_arch = "wasm32")))]
 use crate::constants::SCREENSHOT_BOUNDS_KIND_UI;
 #[cfg(not(target_arch = "wasm32"))]
@@ -144,6 +144,7 @@ pub(super) struct EntityResponseMetadata {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum BoundsKind {
     Aabb,
+    Hierarchy,
     #[cfg(feature = "ui")]
     Ui,
 }
@@ -224,6 +225,7 @@ fn completed_response(path: &Path, metadata: &CaptureResponseMetadata) -> Value 
         response[PARAM_CAMERA] = json!(metadata.camera.to_bits());
         response[RESPONSE_BOUNDS_KIND_FIELD] = json!(match metadata.bounds_kind {
             BoundsKind::Aabb => SCREENSHOT_BOUNDS_KIND_AABB,
+            BoundsKind::Hierarchy => SCREENSHOT_BOUNDS_KIND_HIERARCHY,
             #[cfg(feature = "ui")]
             BoundsKind::Ui => SCREENSHOT_BOUNDS_KIND_UI,
         });
@@ -302,20 +304,19 @@ fn entity_capture_input(
         ));
     }
 
-    #[cfg(not(feature = "ui"))]
-    if world.get::<Aabb>(entity).is_none() {
+    if !aabb::has_bounds(world, entity) {
         return Err(unsupported_bounds_error(entity));
     }
 
     let selected_camera = select_camera(world, requested_camera)?;
-    let rect = aabb::resolve(world, entity, &selected_camera, padding)?;
+    let resolved = aabb::resolve(world, entity, &selected_camera, padding)?;
     Ok(entity_capture_from_parts(
         world,
         entity,
         selected_camera.entity,
         selected_camera.render_target,
-        rect,
-        BoundsKind::Aabb,
+        resolved.rect,
+        resolved.bounds_kind,
     ))
 }
 
@@ -484,12 +485,16 @@ fn invalid_entity_error(entity: Entity) -> BrpError {
     }
 }
 
-#[cfg(all(not(feature = "ui"), not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 fn unsupported_bounds_error(entity: Entity) -> BrpError {
+    #[cfg(feature = "ui")]
+    let ui_detail = "it is not a UI node";
+    #[cfg(not(feature = "ui"))]
+    let ui_detail = "UI bounds support is disabled";
     BrpError {
         code:    INVALID_PARAMS,
         message: format!(
-            "Screenshot entity {} has no supported bounds; UI bounds support is disabled",
+            "Screenshot entity {} has no supported bounds; neither it nor a descendant has an Aabb, and {ui_detail}",
             entity.to_bits()
         ),
         data:    None,
@@ -837,16 +842,22 @@ mod native_tests {
         Ok(())
     }
 
-    #[cfg(not(feature = "ui"))]
     #[test]
-    fn non_aabb_capture_names_disabled_ui_support() -> Result<(), Box<dyn Error>> {
+    fn boundless_capture_names_missing_aabb_and_ui_bounds() -> Result<(), Box<dyn Error>> {
         let mut world = World::new();
         let entity = world.spawn_empty().id();
+        world.spawn(ChildOf(entity));
 
         let error = entity_capture_input(&mut world, entity, None, 0)
             .err()
             .ok_or_else(|| io::Error::other("unsupported bounds did not fail"))?;
 
+        assert!(
+            error
+                .message
+                .contains("neither it nor a descendant has an Aabb")
+        );
+        #[cfg(not(feature = "ui"))]
         assert!(error.message.contains("UI bounds support is disabled"));
         Ok(())
     }
