@@ -29,8 +29,9 @@ Validate the brp_extras simulated gamepad methods: connect, button tap, hold and
 - `mcp__brp__brp_extras_send_gamepad_button` with `{"gamepad": G, "button": "East"}` (default 100 ms)
 - Within 1 second, verify: `pressed_buttons` is `[]` and `last_released` is `"East"`
 - Send `{"gamepad": G, "button": "North", "duration_ms": 300}` with the same tool; within 1 second, verify `pressed_buttons` is `[]` and `last_released` is `"North"`
-- Send `{"gamepad": G, "button": "West", "duration_ms": 300}`, then immediately call `mcp__brp__brp_extras_set_gamepad_button` with `{"gamepad": G, "button": "West", "value": 1.0}`; after 1 second verify `pressed_buttons` still contains `"West"` because set cancelled the pending release
-- Release West with `mcp__brp__brp_extras_set_gamepad_button` and `{"gamepad": G, "button": "West", "value": 0.0}` before continuing
+- Send `{"gamepad": G, "button": "West", "duration_ms": 3000}`, then call `mcp__brp__brp_extras_set_gamepad_button` with `{"gamepad": G, "button": "West", "value": 1.0}` in the same batch, so the set arrives inside the 3-second hold
+- Verify: `pressed_buttons` contains `"West"` and `last_released` is still `"North"`
+- Leave West held through steps 5 and 6; together they take longer than 3 seconds, so step 7 runs after the cancelled release would have fired
 
 ### 5. Axis
 - `mcp__brp__brp_extras_set_gamepad_axis` with `{"gamepad": G, "axis": "LeftStickX", "value": -0.75}`
@@ -44,7 +45,12 @@ Validate the brp_extras simulated gamepad methods: connect, button tap, hold and
 - Out-of-range axis: `{"gamepad": G, "axis": "LeftStickX", "value": 1.5}` should fail
 - Not a simulated gamepad: `{"gamepad": 1, "button": "South"}` should fail naming entity `1`
 
-### 7. Disconnect
+### 7. Set Cancels the Timed Release
+- Verify: `pressed_buttons` still contains `"West"` and `last_released` is still `"North"`: the set in step 4 cancelled West's 3-second release
+- Release West with `mcp__brp__brp_extras_set_gamepad_button` and `{"gamepad": G, "button": "West", "value": 0.0}`
+- Verify: `pressed_buttons` is `[]` and `last_released` is `"West"`
+
+### 8. Disconnect
 - `mcp__brp__brp_extras_disconnect_gamepad` with `{"gamepad": G}`
 - Verify: the `world_query` from step 2 no longer lists `G`
 - `mcp__brp__brp_extras_send_gamepad_button`, `mcp__brp__brp_extras_set_gamepad_button`, and `mcp__brp__brp_extras_set_gamepad_axis` on `G` each fail with an error containing `not a connected simulated gamepad`
@@ -53,6 +59,7 @@ Validate the brp_extras simulated gamepad methods: connect, button tap, hold and
 - A simulated gamepad becomes a `Gamepad` the app sees
 - Button presses, releases and axis changes arrive as Bevy gamepad messages (verified via `GamepadInputHistory`)
 - A sent button taps for 100 ms by default; a set button stays down until changed
+- A set on a button with a pending timed release cancels that release
 - A disconnected pad rejects input
 - Invalid inputs return errors
 
