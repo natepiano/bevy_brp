@@ -58,8 +58,6 @@ use self::capture::CaptureInput;
 #[cfg(not(target_arch = "wasm32"))]
 use self::capture::CapturePlugin;
 #[cfg(not(target_arch = "wasm32"))]
-use self::capture::PendingScreenshotCapture;
-#[cfg(not(target_arch = "wasm32"))]
 use self::constants::PARAM_CAMERA;
 #[cfg(not(target_arch = "wasm32"))]
 use self::constants::PARAM_ENTITY;
@@ -180,10 +178,7 @@ pub(crate) fn handler(
     ensure_png_support()?;
 
     let request = ScreenshotRequest::from_params(params)?;
-    if let Some(response) = capture::read(
-        &mut world.resource_mut::<PendingScreenshotCapture>(),
-        &request,
-    ) {
+    if let Some(response) = capture::read(world, &request) {
         return response;
     }
 
@@ -572,6 +567,7 @@ mod native_tests {
     use crate::constants::METHOD_SCREENSHOT;
 
     const CAPTURE_TEST_TIMEOUT: Duration = Duration::from_secs(5);
+    const REQUEST_START_FRAME_LIMIT: usize = 4;
 
     fn brp<T>(result: BrpResult<T>) -> Result<T, IoError> {
         result.map_err(|error| io::Error::other(error.message))
@@ -679,6 +675,27 @@ mod native_tests {
             .map_err(|error| io::Error::other(error.to_string()))
     }
 
+    fn started_screenshot_entity(app: &mut App) -> Result<Entity, IoError> {
+        for _ in 0..REQUEST_START_FRAME_LIMIT {
+            app.update();
+            if let Ok(entity) = screenshot_entity(app.world_mut()) {
+                return Ok(entity);
+            }
+        }
+        Err(io::Error::other(
+            "screenshot request did not start a capture",
+        ))
+    }
+
+    fn trigger_captured(app: &mut App, screenshot_entity: Entity, captured_size: UVec2) {
+        app.world_mut()
+            .entity_mut(screenshot_entity)
+            .trigger(|entity| ScreenshotCaptured {
+                entity,
+                image: render_target_image(captured_size, RenderAssetUsages::MAIN_WORLD),
+            });
+    }
+
     fn assert_terminal_png(
         response: &Value,
         path: &Path,
@@ -730,12 +747,7 @@ mod native_tests {
         assert!(!path.exists());
 
         let screenshot_entity = screenshot_entity(app.world_mut())?;
-        app.world_mut()
-            .entity_mut(screenshot_entity)
-            .trigger(|entity| ScreenshotCaptured {
-                entity,
-                image: render_target_image(captured_size, RenderAssetUsages::MAIN_WORLD),
-            });
+        trigger_captured(app, screenshot_entity, captured_size);
 
         let response = receive_terminal(app, &receiver)?;
         assert_terminal_png(&response, path, expected_size)?;
@@ -977,6 +989,30 @@ mod native_tests {
             target_size,
             &path,
         )?;
+        Ok(())
+    }
+
+    #[test]
+    fn back_to_back_identical_requests_both_complete() -> Result<(), Box<dyn Error>> {
+        let temp_dir = TempDir::new()?;
+        let path = temp_dir.path().join("repeat.png");
+        let mut app = remote_screenshot_app();
+        app.world_mut().spawn((Window::default(), PrimaryWindow));
+        let first_size = UVec2::splat(100);
+        let second_size = UVec2::splat(50);
+
+        let first = send_remote_request(&app, json!({ "path": path }))?;
+        let screenshot_entity = started_screenshot_entity(&mut app)?;
+        trigger_captured(&mut app, screenshot_entity, first_size);
+        let response = receive_terminal(&mut app, &first)?;
+        assert_terminal_png(&response, &path, first_size)?;
+        drop(first);
+
+        let second = send_remote_request(&app, json!({ "path": path }))?;
+        let screenshot_entity = started_screenshot_entity(&mut app)?;
+        trigger_captured(&mut app, screenshot_entity, second_size);
+        let response = receive_terminal(&mut app, &second)?;
+        assert_terminal_png(&response, &path, second_size)?;
         Ok(())
     }
 

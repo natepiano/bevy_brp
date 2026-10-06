@@ -9,9 +9,9 @@ use bevy::prelude::*;
 use bevy_remote::BrpResult;
 use bevy_remote::RemoteLast;
 use bevy_remote::RemoteSystems;
-pub(super) use pending_screenshot_capture::PendingScreenshotCapture;
 use serde_json::Value;
 
+use self::pending_screenshot_capture::PendingScreenshotCapture;
 use self::pending_screenshot_capture::advance_capture_lifecycle;
 use self::pending_screenshot_capture::ingest_capture_completion;
 use self::pending_screenshot_capture::screenshot_capture_active;
@@ -46,10 +46,10 @@ pub(super) struct CaptureInput {
 }
 
 pub(super) fn read(
-    pending: &mut PendingScreenshotCapture,
+    world: &mut World,
     request: &ScreenshotRequest,
 ) -> Option<BrpResult<Option<Value>>> {
-    pending.read(request)
+    pending_screenshot_capture::read(world, request)
 }
 
 pub(super) fn start(
