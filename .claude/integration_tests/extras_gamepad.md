@@ -46,6 +46,7 @@ Validate the brp_extras simulated gamepad methods: connect, button tap, hold and
 - Not a simulated gamepad: `{"gamepad": 1, "button": "South"}` should fail naming entity `1`
 
 ### 7. Set Cancels the Timed Release
+- Make sure at least 6 seconds have passed since the West send in step 4; if not, wait out the rest first. A fast run of steps 5 and 6 can finish in under 5 seconds, and checking before West's release was due proves nothing
 - Verify: `pressed_buttons` still contains `"West"` and `last_released` is still `"North"`: the set in step 4 cancelled West's 5-second release
 - Release West with `mcp__brp__brp_extras_set_gamepad_button` and `{"gamepad": G, "button": "West", "value": 0.0}`
 - Verify: `pressed_buttons` is `[]` and `last_released` is `"West"`
