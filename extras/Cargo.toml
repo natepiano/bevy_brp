@@ -44,8 +44,9 @@ image.workspace    = true
 tempfile.workspace = true
 
 [features]
-default     = ["diagnostics", "ui"]
+default     = ["diagnostics", "gamepad", "ui"]
 diagnostics = []
+gamepad     = ["bevy/gamepad"]
 ui          = ["bevy/bevy_ui"]
 
 [dev-dependencies]

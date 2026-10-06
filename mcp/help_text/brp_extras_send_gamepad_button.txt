@@ -1,0 +1,15 @@
+Sets a button on a simulated gamepad (from brp_extras_connect_gamepad).
+
+Without duration_ms the button stays at its value until set again, which is what "hold to confirm" screens need. With duration_ms it is released after that long on the real clock, so the release still comes while the app pauses its virtual clock (title screens, pause menus). A timed press is always seen down for at least one frame.
+
+Buttons: South, East, North, West, C, Z, LeftTrigger, LeftTrigger2, RightTrigger, RightTrigger2, Select, Start, Mode, LeftThumb, RightThumb, DPadUp, DPadDown, DPadLeft, DPadRight
+
+Examples:
+```json
+{"gamepad": 4294967300, "button": "South", "duration_ms": 100}   // Tap A / Cross
+{"gamepad": 4294967300, "button": "South"}                       // Hold until released
+{"gamepad": 4294967300, "button": "South", "value": 0.0}         // Release
+{"gamepad": 4294967300, "button": "RightTrigger2", "value": 0.5} // Half trigger
+```
+
+Prerequisites: bevy_brp_extras dependency (with its default `gamepad` feature) and BrpExtrasPlugin registered.

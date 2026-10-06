@@ -55,6 +55,10 @@ requires [bevy_brp_extras](https://crates.io/crates/bevy_brp_extras)
 - `brp_extras/pinch_gesture` - Trackpad pinch gesture (macOS)
 - `brp_extras/rotation_gesture` - Trackpad rotation gesture (macOS)
 - `brp_extras/get_diagnostics` - Query FPS and frame time diagnostics
+- `brp_extras/connect_gamepad` - Connect a simulated gamepad
+- `brp_extras/send_gamepad_button` - Press, hold or release a simulated gamepad button
+- `brp_extras/set_gamepad_axis` - Move a simulated gamepad stick or trigger axis
+- `brp_extras/disconnect_gamepad` - Disconnect a simulated gamepad
 
 ## Getting Started
 First, install via cargo:
