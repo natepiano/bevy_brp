@@ -353,7 +353,7 @@ mod tests {
             TEST_PORT,
         )?;
 
-        assert!(result.catalog.tools.is_empty());
+        assert_eq!(result.catalog.tools, Vec::<ListedAgentTool>::new());
         assert_eq!(result.catalog.usage, AGENT_TOOL_CATALOG_USAGE);
         assert_eq!(result.tool_count, 0);
         Ok(())
