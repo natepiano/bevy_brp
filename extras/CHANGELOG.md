@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.22.10] - 2026-10-06
 
 ### Added
 - Simulated gamepads: `connect_gamepad`, `send_gamepad_button`, `set_gamepad_button`, `set_gamepad_axis` and `disconnect_gamepad` drive a pad the app treats as real, behind the default `gamepad` feature. Send taps for 100 ms by default; set holds until changed. Typed button and axis names match Bevy's variants, and timed releases run on the real clock
