@@ -22,8 +22,6 @@ use bevy::asset::RenderAssetUsages;
 use bevy::camera::NormalizedRenderTarget;
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::camera::RenderTarget;
-#[cfg(all(not(feature = "ui"), not(target_arch = "wasm32")))]
-use bevy::camera::primitives::Aabb;
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::camera::primitives::Frustum;
 #[cfg(not(target_arch = "wasm32"))]
@@ -58,13 +56,13 @@ use self::capture::CaptureInput;
 #[cfg(not(target_arch = "wasm32"))]
 use self::capture::CapturePlugin;
 #[cfg(not(target_arch = "wasm32"))]
-use self::capture::PendingScreenshotCapture;
-#[cfg(not(target_arch = "wasm32"))]
 use self::constants::PARAM_CAMERA;
 #[cfg(not(target_arch = "wasm32"))]
 use self::constants::PARAM_ENTITY;
 #[cfg(not(target_arch = "wasm32"))]
 use self::constants::PARAM_PATH;
+#[cfg(not(target_arch = "wasm32"))]
+use self::constants::PARAM_RECT;
 #[cfg(not(target_arch = "wasm32"))]
 use self::request::ScreenshotRequest;
 #[cfg(not(target_arch = "wasm32"))]
@@ -101,6 +99,8 @@ use crate::constants::RESPONSE_X_FIELD;
 use crate::constants::RESPONSE_Y_FIELD;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::constants::SCREENSHOT_BOUNDS_KIND_AABB;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::constants::SCREENSHOT_BOUNDS_KIND_HIERARCHY;
 #[cfg(all(feature = "ui", not(target_arch = "wasm32")))]
 use crate::constants::SCREENSHOT_BOUNDS_KIND_UI;
 #[cfg(not(target_arch = "wasm32"))]
@@ -146,6 +146,7 @@ pub(super) struct EntityResponseMetadata {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum BoundsKind {
     Aabb,
+    Hierarchy,
     #[cfg(feature = "ui")]
     Ui,
 }
@@ -180,10 +181,7 @@ pub(crate) fn handler(
     ensure_png_support()?;
 
     let request = ScreenshotRequest::from_params(params)?;
-    if let Some(response) = capture::read(
-        &mut world.resource_mut::<PendingScreenshotCapture>(),
-        &request,
-    ) {
+    if let Some(response) = capture::read(world, &request) {
         return response;
     }
 
@@ -229,6 +227,7 @@ fn completed_response(path: &Path, metadata: &CaptureResponseMetadata) -> Value 
         response[PARAM_CAMERA] = json!(metadata.camera.to_bits());
         response[RESPONSE_BOUNDS_KIND_FIELD] = json!(match metadata.bounds_kind {
             BoundsKind::Aabb => SCREENSHOT_BOUNDS_KIND_AABB,
+            BoundsKind::Hierarchy => SCREENSHOT_BOUNDS_KIND_HIERARCHY,
             #[cfg(feature = "ui")]
             BoundsKind::Ui => SCREENSHOT_BOUNDS_KIND_UI,
         });
@@ -246,7 +245,7 @@ fn completed_response(path: &Path, metadata: &CaptureResponseMetadata) -> Value 
 #[cfg(not(target_arch = "wasm32"))]
 fn capture_input(world: &mut World, request: &ScreenshotRequest) -> BrpResult<CaptureInput> {
     match request.scope() {
-        ScreenshotScope::Full { camera } => full_capture_input(world, *camera),
+        ScreenshotScope::Full { camera, rect } => full_capture_input(world, *camera, *rect),
         ScreenshotScope::Entity {
             entity,
             camera,
@@ -256,12 +255,22 @@ fn capture_input(world: &mut World, request: &ScreenshotRequest) -> BrpResult<Ca
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn full_capture_input(world: &World, requested_camera: Option<Entity>) -> BrpResult<CaptureInput> {
+fn full_capture_input(
+    world: &World,
+    requested_camera: Option<Entity>,
+    rect: Option<URect>,
+) -> BrpResult<CaptureInput> {
     if let Some(camera) = requested_camera {
         let validated = validated_camera_target(world, camera, primary_window(world))
             .ok_or_else(|| invalid_camera_error(camera))?;
+        let viewport = validated
+            .camera
+            .physical_viewport_rect()
+            .ok_or_else(|| invalid_camera_error(camera))?;
         return Ok(CaptureInput {
-            crop:              validated.camera.physical_viewport_rect(),
+            crop:              Some(
+                rect_inside(rect, viewport, "camera viewport")?.unwrap_or(viewport),
+            ),
             render_target:     validated.render_target,
             response_metadata: CaptureResponseMetadata::Full,
         });
@@ -272,15 +281,41 @@ fn full_capture_input(world: &World, requested_camera: Option<Entity>) -> BrpRes
     let normalized_target = render_target
         .normalize(Some(primary_window))
         .ok_or_else(no_primary_window_error)?;
-    if live_target_size(world, &normalized_target).is_none() {
-        return Err(no_primary_window_error());
-    }
+    let target_size =
+        live_target_size(world, &normalized_target).ok_or_else(no_primary_window_error)?;
 
     Ok(CaptureInput {
-        crop: None,
+        crop: rect_inside(
+            rect,
+            URect::from_corners(UVec2::ZERO, target_size),
+            "primary window",
+        )?,
         render_target,
         response_metadata: CaptureResponseMetadata::Full,
     })
+}
+
+/// Accepts a requested rect only when it lies inside what the scope would capture.
+#[cfg(not(target_arch = "wasm32"))]
+fn rect_inside(rect: Option<URect>, extent: URect, extent_name: &str) -> BrpResult<Option<URect>> {
+    match rect {
+        Some(rect) if rect.intersect(extent) != rect => Err(BrpError {
+            code:    INVALID_PARAMS,
+            message: format!(
+                "'{PARAM_RECT}' {}x{} at ({}, {}) lies outside the {extent_name}, {}x{} at ({}, {})",
+                rect.width(),
+                rect.height(),
+                rect.min.x,
+                rect.min.y,
+                extent.width(),
+                extent.height(),
+                extent.min.x,
+                extent.min.y
+            ),
+            data:    None,
+        }),
+        rect => Ok(rect),
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -307,20 +342,19 @@ fn entity_capture_input(
         ));
     }
 
-    #[cfg(not(feature = "ui"))]
-    if world.get::<Aabb>(entity).is_none() {
+    if !aabb::has_bounds(world, entity) {
         return Err(unsupported_bounds_error(entity));
     }
 
     let selected_camera = select_camera(world, requested_camera)?;
-    let rect = aabb::resolve(world, entity, &selected_camera, padding)?;
+    let resolved = aabb::resolve(world, entity, &selected_camera, padding)?;
     Ok(entity_capture_from_parts(
         world,
         entity,
         selected_camera.entity,
         selected_camera.render_target,
-        rect,
-        BoundsKind::Aabb,
+        resolved.rect,
+        resolved.bounds_kind,
     ))
 }
 
@@ -489,12 +523,16 @@ fn invalid_entity_error(entity: Entity) -> BrpError {
     }
 }
 
-#[cfg(all(not(feature = "ui"), not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 fn unsupported_bounds_error(entity: Entity) -> BrpError {
+    #[cfg(feature = "ui")]
+    let ui_detail = "it is not a UI node";
+    #[cfg(not(feature = "ui"))]
+    let ui_detail = "UI bounds support is disabled";
     BrpError {
         code:    INVALID_PARAMS,
         message: format!(
-            "Screenshot entity {} has no supported bounds; UI bounds support is disabled",
+            "Screenshot entity {} has no supported bounds; neither it nor a descendant has an Aabb, and {ui_detail}",
             entity.to_bits()
         ),
         data:    None,
@@ -572,6 +610,7 @@ mod native_tests {
     use crate::constants::METHOD_SCREENSHOT;
 
     const CAPTURE_TEST_TIMEOUT: Duration = Duration::from_secs(5);
+    const REQUEST_START_FRAME_LIMIT: usize = 4;
 
     fn brp<T>(result: BrpResult<T>) -> Result<T, IoError> {
         result.map_err(|error| io::Error::other(error.message))
@@ -679,6 +718,27 @@ mod native_tests {
             .map_err(|error| io::Error::other(error.to_string()))
     }
 
+    fn started_screenshot_entity(app: &mut App) -> Result<Entity, IoError> {
+        for _ in 0..REQUEST_START_FRAME_LIMIT {
+            app.update();
+            if let Ok(entity) = screenshot_entity(app.world_mut()) {
+                return Ok(entity);
+            }
+        }
+        Err(io::Error::other(
+            "screenshot request did not start a capture",
+        ))
+    }
+
+    fn trigger_captured(app: &mut App, screenshot_entity: Entity, captured_size: UVec2) {
+        app.world_mut()
+            .entity_mut(screenshot_entity)
+            .trigger(|entity| ScreenshotCaptured {
+                entity,
+                image: render_target_image(captured_size, RenderAssetUsages::MAIN_WORLD),
+            });
+    }
+
     fn assert_terminal_png(
         response: &Value,
         path: &Path,
@@ -730,12 +790,7 @@ mod native_tests {
         assert!(!path.exists());
 
         let screenshot_entity = screenshot_entity(app.world_mut())?;
-        app.world_mut()
-            .entity_mut(screenshot_entity)
-            .trigger(|entity| ScreenshotCaptured {
-                entity,
-                image: render_target_image(captured_size, RenderAssetUsages::MAIN_WORLD),
-            });
+        trigger_captured(app, screenshot_entity, captured_size);
 
         let response = receive_terminal(app, &receiver)?;
         assert_terminal_png(&response, path, expected_size)?;
@@ -825,16 +880,22 @@ mod native_tests {
         Ok(())
     }
 
-    #[cfg(not(feature = "ui"))]
     #[test]
-    fn non_aabb_capture_names_disabled_ui_support() -> Result<(), Box<dyn Error>> {
+    fn boundless_capture_names_missing_aabb_and_ui_bounds() -> Result<(), Box<dyn Error>> {
         let mut world = World::new();
         let entity = world.spawn_empty().id();
+        world.spawn(ChildOf(entity));
 
         let error = entity_capture_input(&mut world, entity, None, 0)
             .err()
             .ok_or_else(|| io::Error::other("unsupported bounds did not fail"))?;
 
+        assert!(
+            error
+                .message
+                .contains("neither it nor a descendant has an Aabb")
+        );
+        #[cfg(not(feature = "ui"))]
         assert!(error.message.contains("UI bounds support is disabled"));
         Ok(())
     }
@@ -977,6 +1038,87 @@ mod native_tests {
             target_size,
             &path,
         )?;
+        Ok(())
+    }
+
+    #[test]
+    fn back_to_back_identical_requests_both_complete() -> Result<(), Box<dyn Error>> {
+        let temp_dir = TempDir::new()?;
+        let path = temp_dir.path().join("repeat.png");
+        let mut app = remote_screenshot_app();
+        app.world_mut().spawn((Window::default(), PrimaryWindow));
+        let first_size = UVec2::splat(100);
+        let second_size = UVec2::splat(50);
+
+        let first = send_remote_request(&app, json!({ "path": path }))?;
+        let screenshot_entity = started_screenshot_entity(&mut app)?;
+        trigger_captured(&mut app, screenshot_entity, first_size);
+        let response = receive_terminal(&mut app, &first)?;
+        assert_terminal_png(&response, &path, first_size)?;
+        drop(first);
+
+        let second = send_remote_request(&app, json!({ "path": path }))?;
+        let screenshot_entity = started_screenshot_entity(&mut app)?;
+        trigger_captured(&mut app, screenshot_entity, second_size);
+        let response = receive_terminal(&mut app, &second)?;
+        assert_terminal_png(&response, &path, second_size)?;
+        Ok(())
+    }
+
+    #[test]
+    fn rect_request_completes_with_the_requested_window_crop() -> Result<(), Box<dyn Error>> {
+        let temp_dir = TempDir::new()?;
+        let path = temp_dir.path().join("rect.png");
+        let mut app = remote_screenshot_app();
+        app.world_mut().spawn((Window::default(), PrimaryWindow));
+
+        complete_synchronous_request(
+            &mut app,
+            json!({
+                "path": path,
+                "rect": { "x": 10, "y": 20, "width": 30, "height": 40 },
+            }),
+            UVec2::splat(100),
+            UVec2::new(30, 40),
+            &path,
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn rect_must_lie_inside_the_window_or_camera_viewport() -> Result<(), Box<dyn Error>> {
+        let mut world = World::new();
+        world.spawn((Window::default(), PrimaryWindow));
+        let target_size = UVec2::splat(100);
+        let image_handle = add_render_target_image(&mut world, target_size);
+        let camera = spawn_camera(
+            &mut world,
+            RenderTarget::Image(image_handle.into()),
+            Some(target_size),
+        );
+        world
+            .get_mut::<Camera>(camera)
+            .ok_or_else(|| io::Error::other("missing rect test camera"))?
+            .viewport = Some(Viewport {
+            physical_position: UVec2::new(10, 20),
+            physical_size: UVec2::new(60, 70),
+            ..default()
+        });
+
+        let inside = URect::new(15, 25, 35, 45);
+        assert_eq!(
+            brp(full_capture_input(&world, Some(camera), Some(inside)))?.crop,
+            Some(inside)
+        );
+        assert_eq!(brp(full_capture_input(&world, None, None))?.crop, None);
+        assert!(matches!(
+            full_capture_input(&world, Some(camera), Some(URect::new(0, 0, 10, 10))),
+            Err(error) if error.message.contains("camera viewport, 60x70 at (10, 20)")
+        ));
+        assert!(matches!(
+            full_capture_input(&world, None, Some(URect::new(1200, 0, 1300, 10))),
+            Err(error) if error.message.contains("primary window, 1280x720 at (0, 0)")
+        ));
         Ok(())
     }
 

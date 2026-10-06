@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `rect` to `brp_extras/screenshot`: a `{x, y, width, height}` crop in physical target coordinates for a full-window or camera capture. It must lie inside the primary window or the camera's viewport, and it is rejected with `entity`; extras without it answer "unknown field `rect`"
+- Entity screenshots of an entity without its own `Aabb` crop to the union of its visible descendants' AABBs, reported as `bounds_kind: "hierarchy"`
+
 ### Changed
 - Update to Bevy 0.20.0-rc.2
+- Screenshot crops now happen before the RGB conversion, so only the kept pixels are converted, and PNG encoding uses the `Up` row filter in place of the adaptive one
 
 ### Fixed
+- Fix a second `brp_extras/screenshot` request with the same path, sent right after the first response, hanging until the client's timeout. The capture slot now frees on delivery
+- Fix a panic when a screenshot timed out or was abandoned after Bevy had extracted it: extras no longer despawns a screenshot entity that carries Bevy's `Capturing`
 - Fix `send_keys`, `send_mouse_button`, and `double_click_mouse` leaving keys and buttons pressed while the app paused or slowed its virtual clock. The hold and the double click's second-click delay now run on `Time<Real>`, so an injected key comes back up after its duration whatever the app does with `Time<Virtual>`
 
 ## [0.23.0-rc.1] - 2026-09-26
