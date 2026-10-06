@@ -14,7 +14,7 @@ bevy_brp_extras does two things
 
 | bevy        | bevy_brp_extras |
 |-------------|-----------------|
-| 0.19        | 0.22.8          |
+| 0.19        | 0.22.9          |
 | 0.18        | 0.19.0          |
 | 0.17        | 0.17.2          |
 | 0.16        | 0.2             |
@@ -37,10 +37,11 @@ All methods are prefixed with `brp_extras/` (e.g., `brp_extras/screenshot`). See
 - With no `camera` or `entity`, it captures the primary window.
 - With only `camera`, it captures that camera's viewport.
 - With `entity`, it crops to that entity as seen by the selected camera. `padding` adds physical pixels around the crop and defaults to zero.
+- With `rect` (`{x, y, width, height}` in physical pixels), it crops a window or camera capture to that rectangle. `rect` cannot be combined with `entity`.
 
-UI nodes use their computed UI bounds; other entities use `Aabb` and `GlobalTransform`. The entity must be visible to the selected camera. If no camera is given, exactly one eligible active camera must be available. The default `ui` feature enables UI bounds; AABB capture still works without it.
+UI nodes use their computed UI bounds; other entities use `Aabb` and `GlobalTransform`. An entity with no `Aabb` of its own crops to the union of its visible descendants' AABBs. The entity must be visible to the selected camera. If no camera is given, exactly one eligible active camera must be available. The default `ui` feature enables UI bounds; AABB capture still works without it.
 
-The crop comes from the final composited target, so it may include overlapping UI, geometry, effects, or occluders. It covers only the selected entity's bounds—children are not added automatically. Extras accepts entity IDs, not names; `bevy_brp_mcp` can resolve names before calling it.
+The crop comes from the final composited target, so it may include overlapping UI, geometry, effects, or occluders. Extras accepts entity IDs, not names; `bevy_brp_mcp` can resolve names before calling it.
 
 Your Bevy app must have the `png` feature enabled. Without it, the request fails before capture begins.
 
@@ -60,7 +61,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy_brp_extras = "0.22.8"
+bevy_brp_extras = "0.22.9"
 ```
 
 Add the plugin to your Bevy app
