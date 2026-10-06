@@ -29,9 +29,9 @@ Validate the brp_extras simulated gamepad methods: connect, button tap, hold and
 - `mcp__brp__brp_extras_send_gamepad_button` with `{"gamepad": G, "button": "East"}` (default 100 ms)
 - Within 1 second, verify: `pressed_buttons` is `[]` and `last_released` is `"East"`
 - Send `{"gamepad": G, "button": "North", "duration_ms": 300}` with the same tool; within 1 second, verify `pressed_buttons` is `[]` and `last_released` is `"North"`
-- Send `{"gamepad": G, "button": "West", "duration_ms": 3000}`, then call `mcp__brp__brp_extras_set_gamepad_button` with `{"gamepad": G, "button": "West", "value": 1.0}` in the same batch, so the set arrives inside the 3-second hold
+- Send `{"gamepad": G, "button": "West", "duration_ms": 5000}`. Make the next call, on its own after the send returns, `mcp__brp__brp_extras_set_gamepad_button` with `{"gamepad": G, "button": "West", "value": 1.0}`; never put the two in one batch, because calls in a batch can reach the app in either order
 - Verify: `pressed_buttons` contains `"West"` and `last_released` is still `"North"`
-- Leave West held through steps 5 and 6; together they take longer than 3 seconds, so step 7 runs after the cancelled release would have fired
+- Leave West held through steps 5 and 6, making their calls one at a time; together they take longer than 5 seconds, so step 7 runs after the cancelled release would have fired
 
 ### 5. Axis
 - `mcp__brp__brp_extras_set_gamepad_axis` with `{"gamepad": G, "axis": "LeftStickX", "value": -0.75}`
@@ -46,7 +46,7 @@ Validate the brp_extras simulated gamepad methods: connect, button tap, hold and
 - Not a simulated gamepad: `{"gamepad": 1, "button": "South"}` should fail naming entity `1`
 
 ### 7. Set Cancels the Timed Release
-- Verify: `pressed_buttons` still contains `"West"` and `last_released` is still `"North"`: the set in step 4 cancelled West's 3-second release
+- Verify: `pressed_buttons` still contains `"West"` and `last_released` is still `"North"`: the set in step 4 cancelled West's 5-second release
 - Release West with `mcp__brp__brp_extras_set_gamepad_button` and `{"gamepad": G, "button": "West", "value": 0.0}`
 - Verify: `pressed_buttons` is `[]` and `last_released` is `"West"`
 

@@ -24,21 +24,15 @@ use serde_json::Value;
 
 use crate::brp_request;
 use crate::brp_request::EmptyParamsPolicy;
+use crate::constants::DEFAULT_GAMEPAD_DURATION_MS;
 use crate::constants::EXTRAS_COMMAND_PREFIX;
+use crate::constants::MAX_GAMEPAD_DURATION_MS;
 use crate::constants::METHOD_CONNECT_GAMEPAD;
 use crate::constants::METHOD_DISCONNECT_GAMEPAD;
 use crate::constants::METHOD_SEND_GAMEPAD_BUTTON;
 use crate::constants::METHOD_SET_GAMEPAD_AXIS;
 use crate::constants::METHOD_SET_GAMEPAD_BUTTON;
-
-/// Default hold for a timed button press
-const DEFAULT_GAMEPAD_DURATION_MS: u32 = 100;
-
-/// Maximum hold for a timed button press
-const MAX_GAMEPAD_DURATION_MS: u32 = 60_000;
-
-/// Name given to every simulated gamepad, as the OS name of a real one
-const SIMULATED_GAMEPAD_NAME: &str = "Simulated gamepad (BRP)";
+use crate::constants::SIMULATED_GAMEPAD_NAME;
 
 // ============================================================================
 // Types
@@ -150,6 +144,12 @@ struct TimedGamepadButtonRelease {
     button:  GamepadButton,
     /// Timer tracking remaining duration
     timer:   Timer,
+}
+
+/// Which of a gamepad's `TimedGamepadButtonRelease`s `cancel_pending_button_releases` despawns
+enum ReleaseCancellation {
+    AllButtons,
+    Button(GamepadButton),
 }
 
 // ============================================================================
@@ -393,6 +393,7 @@ fn process_timed_gamepad_button_releases(
 // Helpers
 // ============================================================================
 
+/// Write `event` and its `RawGamepadEvent` form, as `bevy_gilrs` writes every gamepad change
 fn write_raw_gamepad_event<T>(world: &mut World, event: T)
 where
     T: Clone + Message,
@@ -402,22 +403,18 @@ where
     world.write_message(event);
 }
 
-enum ReleaseCancellation {
-    AllButtons,
-    Button(GamepadButton),
-}
-
+/// Despawn the `TimedGamepadButtonRelease`s on `gamepad` that `release_cancellation` selects
 fn cancel_pending_button_releases(
     world: &mut World,
     gamepad: Entity,
-    cancellation: ReleaseCancellation,
+    release_cancellation: ReleaseCancellation,
 ) {
     let pending: Vec<Entity> = world
         .query::<(Entity, &TimedGamepadButtonRelease)>()
         .iter(world)
         .filter(|(_, release)| {
             release.gamepad == gamepad
-                && match cancellation {
+                && match release_cancellation {
                     ReleaseCancellation::AllButtons => true,
                     ReleaseCancellation::Button(button) => release.button == button,
                 }
@@ -471,7 +468,6 @@ mod tests {
     use serde_json::Value;
     use serde_json::json;
 
-    use super::DEFAULT_GAMEPAD_DURATION_MS;
     use super::GamepadPlugin;
     use super::TimedGamepadButtonRelease;
     use super::connect_gamepad_handler;
@@ -479,6 +475,7 @@ mod tests {
     use super::send_gamepad_button_handler;
     use super::set_gamepad_axis_handler;
     use super::set_gamepad_button_handler;
+    use crate::constants::DEFAULT_GAMEPAD_DURATION_MS;
 
     /// An app running Bevy's gamepad systems and `process_timed_gamepad_button_releases`, with
     /// `Time<Virtual>` paused and `Time<Real>` advancing only through [`advance_real_clock`].
@@ -573,7 +570,7 @@ mod tests {
         assert_eq!(response["duration_ms"], DEFAULT_GAMEPAD_DURATION_MS);
         next_frame(&mut app);
         assert!(pressed(&app, gamepad, GamepadButton::South));
-        advance_real_clock(&mut app, 99);
+        advance_real_clock(&mut app, u64::from(DEFAULT_GAMEPAD_DURATION_MS) - 1);
         assert!(pressed(&app, gamepad, GamepadButton::South));
         advance_real_clock(&mut app, 1);
         assert!(!pressed(&app, gamepad, GamepadButton::South));
@@ -595,7 +592,7 @@ mod tests {
             json!({ "gamepad": bits, "button": "South", "value": 1.0 }),
         )
         .expect("hold");
-        advance_real_clock(&mut app, 5_000);
+        advance_real_clock(&mut app, 2 * u64::from(DEFAULT_GAMEPAD_DURATION_MS));
         assert!(pressed(&app, gamepad, GamepadButton::South));
     }
 

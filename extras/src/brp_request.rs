@@ -23,13 +23,15 @@ pub(crate) fn parse_request<T: serde::de::DeserializeOwned>(
     params: Option<Value>,
     empty_params_policy: EmptyParamsPolicy,
 ) -> Result<T, BrpError> {
-    if matches!(empty_params_policy, EmptyParamsPolicy::Allow) && params.is_none() {
-        return serde_json::from_value(Value::Object(Map::default()))
-            .map_err(|e| invalid_params(format!("Failed to parse parameters: {e}")));
-    }
-
-    let params =
-        params.ok_or_else(|| invalid_params(MISSING_REQUEST_PARAMETERS_MESSAGE.to_string()))?;
+    let params = match (params, empty_params_policy) {
+        (Some(params), _) => params,
+        (None, EmptyParamsPolicy::Allow) => Value::Object(Map::default()),
+        (None, EmptyParamsPolicy::Reject) => {
+            return Err(invalid_params(
+                MISSING_REQUEST_PARAMETERS_MESSAGE.to_string(),
+            ));
+        },
+    };
 
     serde_json::from_value(params)
         .map_err(|e| invalid_params(format!("Failed to parse parameters: {e}")))

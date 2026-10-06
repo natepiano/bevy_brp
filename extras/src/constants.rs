@@ -46,6 +46,17 @@ pub(crate) const BRP_EXTRAS_PORT_ENV_VAR: &str = "BRP_EXTRAS_PORT";
 // error messages
 pub(crate) const MISSING_REQUEST_PARAMETERS_MESSAGE: &str = "Missing request parameters";
 
+// gamepad constants
+/// Default hold for a timed button press
+#[cfg(feature = "gamepad")]
+pub(crate) const DEFAULT_GAMEPAD_DURATION_MS: u32 = 100;
+/// Maximum hold for a timed button press
+#[cfg(feature = "gamepad")]
+pub(crate) const MAX_GAMEPAD_DURATION_MS: u32 = 60_000;
+/// Name given to every simulated gamepad, as the OS name of a real one
+#[cfg(feature = "gamepad")]
+pub(crate) const SIMULATED_GAMEPAD_NAME: &str = "Simulated gamepad (BRP)";
+
 // network constants
 /// Default port for remote control connections
 ///
