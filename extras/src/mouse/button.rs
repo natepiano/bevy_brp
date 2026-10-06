@@ -6,9 +6,7 @@ use bevy::input::mouse::MouseButton;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::*;
 use bevy::window::WindowEvent;
-use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
-use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -16,7 +14,8 @@ use serde_json::Value;
 use super::constants::DEFAULT_MOUSE_DURATION_MS;
 use super::constants::MAX_MOUSE_DURATION_MS;
 use super::support;
-use super::support::EmptyParamsPolicy;
+use crate::brp_request;
+use crate::brp_request::EmptyParamsPolicy;
 use crate::constants::METHOD_SEND_MOUSE_BUTTON;
 
 // ============================================================================
@@ -75,24 +74,20 @@ pub(crate) fn send_mouse_button_handler(
     world: &mut World,
 ) -> BrpResult {
     let request: SendMouseButtonRequest =
-        support::parse_request(params, EmptyParamsPolicy::Reject)?;
+        brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     // Validate duration
     let duration_ms = request.duration_ms.unwrap_or(DEFAULT_MOUSE_DURATION_MS);
     if duration_ms > MAX_MOUSE_DURATION_MS {
-        return Err(BrpError {
-            code:    INVALID_PARAMS,
-            message: format!(
-                "Duration exceeds maximum: {duration_ms}ms > {MAX_MOUSE_DURATION_MS}ms"
-            ),
-            data:    None,
-        });
+        return Err(brp_request::invalid_params(format!(
+            "Duration exceeds maximum: {duration_ms}ms > {MAX_MOUSE_DURATION_MS}ms"
+        )));
     }
 
     let window = support::resolve_window(world, request.window)?;
     support::send_timed_button_press(world, request.button, window, duration_ms);
 
-    support::serialize_response(
+    brp_request::serialize_response(
         SendMouseButtonResponse {
             button: request.button,
             duration_ms,

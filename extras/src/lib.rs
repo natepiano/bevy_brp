@@ -242,6 +242,7 @@
 //! rules and the BRP error data returned for a rejected entry.
 
 mod agent_tools;
+mod brp_request;
 mod constants;
 #[cfg(feature = "diagnostics")]
 mod diagnostics;

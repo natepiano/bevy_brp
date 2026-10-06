@@ -84,52 +84,25 @@
 
 **Ruled out:** a `TracingLevel` enum list — `SetTracingLevelParams.level` is a plain `String`, so the schema has no enum to list.
 
-### Phase 2 — Shared request helpers  · status: todo
+### Phase 2 — Shared request helpers  · status: done
 
-#### Work Order
+#### As-built
 
-**Goal:** One crate-level module in `extras` owns request parsing, the `INVALID_PARAMS` error and response serialization. Mouse, keyboard and gamepad call it, and no copy remains.
-
-**Spec:**
-- New `extras/src/brp_request.rs` (crate-level, registered as `mod brp_request;` in `lib.rs`, sorted after `mod agent_tools;`). Its items are `pub(crate)`:
-  - `#[derive(Clone, Copy, Debug, PartialEq, Eq)] pub(crate) enum EmptyParamsPolicy { Allow, Reject }`, moved verbatim with its doc from `mouse/support.rs`.
-  - `pub(crate) fn parse_request<T: serde::de::DeserializeOwned>(params: Option<Value>, empty_params_policy: EmptyParamsPolicy) -> Result<T, BrpError>`. It is moved from `mouse/support.rs` and built on `invalid_params`. Messages: `MISSING_REQUEST_PARAMETERS_MESSAGE` for `None` under `Reject`; `format!("Failed to parse parameters: {e}")` for a serde error.
-  - `pub(crate) const fn invalid_params(message: String) -> BrpError` (`INVALID_PARAMS`, `data: None`), taken from `gamepad.rs`.
-  - `pub(crate) fn serialize_response<T: Serialize>(response: T, handler_name: &str) -> BrpResult`, moved from `mouse/support.rs`. It keeps its `warn!` and `INTERNAL_ERROR`.
-- `mouse/support.rs` keeps only the mouse helpers (`resolve_window_entity`, `send_timed_button_press`, `send_motion_events`, `resolve_window`). `button.rs`, `click.rs`, `cursor.rs`, `drag.rs`, `gestures.rs` and `scroll.rs` call `brp_request::parse_request` / `brp_request::serialize_response` and import `crate::brp_request::EmptyParamsPolicy`. `use crate::brp_request;` imports the module, not the functions.
-- `keyboard/keys.rs` `send_keys_handler` and `keyboard/typing.rs` `type_text_handler` replace their inline `if let Some(params)` blocks with `brp_request::parse_request(params, EmptyParamsPolicy::Reject)?`. They replace `Ok(json!(Response { … }))` with `brp_request::serialize_response(Response { … }, METHOD_SEND_KEYS | METHOD_TYPE_TEXT)`. The serde error text moves from "Invalid request format: {e}" to "Failed to parse parameters: {e}". No test or spec asserts the old text: `rg "Invalid request format"` finds only these two sites. `keyboard/mod.rs` `test_missing_parameters` still passes, because the missing-params message is unchanged.
-- `gamepad.rs` deletes its local `invalid_params`, `parse_request` and `to_value`, and calls `brp_request::invalid_params`, `brp_request::parse_request` and `brp_request::serialize_response(…, METHOD_…)`. `connect_gamepad_handler` uses `EmptyParamsPolicy::Allow` in place of its `params.unwrap_or_else(|| Value::Object(Map::default()))` wrapper, and the rest use `Reject`.
-- Drop each import that goes unused (`Map`, `INVALID_PARAMS`, `INTERNAL_ERROR`, `MISSING_REQUEST_PARAMETERS_MESSAGE`, `json`) from the files it leaves.
-- Scope (author's call): `screenshot/request.rs` (`from_params`, "Invalid screenshot request") and `window_title.rs` (single-field extraction) carry their own messages and are not copies of these helpers, so they stay as they are. No behavior other than the keyboard serde error text changes.
+`extras/src/brp_request.rs` (crate-private) owns request parsing, the `INVALID_PARAMS` error and response serialization for the mouse, keyboard and gamepad handlers. No local copy remains in those modules.
+- `pub(crate) enum EmptyParamsPolicy { Allow, Reject }` — `Allow` parses `None` params as `{}`. `connect_gamepad` and `double_tap_gesture` use `Allow`; every other handler uses `Reject`.
+- `pub(crate) fn parse_request<T: serde::de::DeserializeOwned>(params: Option<Value>, empty_params_policy: EmptyParamsPolicy) -> Result<T, BrpError>` — `MISSING_REQUEST_PARAMETERS_MESSAGE` for `None` under `Reject`, `"Failed to parse parameters: {e}"` for a serde error. Keyboard parse errors use this wording (formerly "Invalid request format: …"); no test asserts either text.
+- `pub(crate) const fn invalid_params(message: String) -> BrpError` — `INVALID_PARAMS`, `data: None`. Every `INVALID_PARAMS` error in `mouse/`, `keyboard/` and `gamepad.rs` is built through it.
+- `pub(crate) fn serialize_response<T: Serialize>(response: T, handler_name: &str) -> BrpResult` — on failure logs `warn!` and returns `INTERNAL_ERROR`.
+- Call sites import the module (`use crate::brp_request;`) and call `brp_request::parse_request` and its siblings; only `EmptyParamsPolicy` is imported by name.
 
 **Files:**
-- `extras/src/brp_request.rs` — new shared module
-- `extras/src/lib.rs` — `mod brp_request;`
-- `extras/src/mouse/support.rs` — remove moved helpers
-- `extras/src/mouse/button.rs` — call sites
-- `extras/src/mouse/click.rs` — call sites
-- `extras/src/mouse/cursor.rs` — call sites
-- `extras/src/mouse/drag.rs` — call sites
-- `extras/src/mouse/gestures.rs` — call sites
-- `extras/src/mouse/scroll.rs` — call sites
-- `extras/src/keyboard/keys.rs` — parse and serialize through the module
-- `extras/src/keyboard/typing.rs` — parse and serialize through the module
-- `extras/src/gamepad.rs` — delete local helpers, call the module
+- `extras/src/brp_request.rs` — the shared request module; registered by `mod brp_request;` in `extras/src/lib.rs`
+- `extras/src/mouse/support.rs` — mouse helpers only (`resolve_window_entity`, `send_timed_button_press`, `send_motion_events`, `resolve_window`)
+- `extras/src/mouse/{button,click,cursor,drag,gestures,scroll}.rs`, `extras/src/keyboard/{keys,typing}.rs`, `extras/src/gamepad.rs` — call sites
 
-**Seats:** 2 writers — split by module group. Both write against the signatures fixed above, and the tree compiles once both land.
-- `impl` — `extras/src/brp_request.rs`, `extras/src/mouse/support.rs`, `extras/src/mouse/button.rs`, `extras/src/mouse/click.rs`, `extras/src/mouse/cursor.rs`, `extras/src/mouse/drag.rs`, `extras/src/mouse/gestures.rs`, `extras/src/mouse/scroll.rs`; hub: `extras/src/lib.rs` (`mod` list)
-- `test` opens as impl — `extras/src/keyboard/keys.rs`, `extras/src/keyboard/typing.rs`, `extras/src/gamepad.rs`. It opens as impl because this is a pure refactor with no new behavior to test, and `extras/tests/` cannot reach private handlers.
+**Binds later work:** every validation message in mouse, keyboard and gamepad is byte-for-byte unchanged apart from the keyboard parse-error wording; the `simulated_gamepad` text ("not a connected simulated gamepad …") and the range and duration messages are asserted by the gamepad unit tests and by `.claude/integration_tests/extras_gamepad.md`.
 
-**Constraints from prior phases:**
-- Phase 1 left `gamepad.rs` with five handlers (connect, disconnect, send button, set button, set axis), the private helpers `write_raw_gamepad_event` and `cancel_pending_button_releases` (with its private `ReleaseCancellation` enum; both stay), and local `invalid_params` / `parse_request` / `to_value` that this phase removes. The handlers and `SimulatedGamepad` are private; `remote_methods` is `pub(crate)`. Method constants `METHOD_CONNECT_GAMEPAD`, `METHOD_DISCONNECT_GAMEPAD`, `METHOD_SEND_GAMEPAD_BUTTON`, `METHOD_SET_GAMEPAD_BUTTON` and `METHOD_SET_GAMEPAD_AXIS` exist in `constants.rs` under `#[cfg(feature = "gamepad")]`.
-- The toolchain's clippy (rust 1.99) denies pedantic `clippy::assert_is_empty`: write an empty check as `assert_eq!(x, Vec::<T>::new())`, never `assert!(x.is_empty())`. Phase 1 already fixed every existing hit.
-- The `simulated_gamepad` error text ("not a connected simulated gamepad …") and the range and duration messages are asserted by Phase 1 tests and by `.claude/integration_tests/extras_gamepad.md`. Keep them byte for byte.
-
-**Acceptance gate:**
-- `bash ~/.claude/scripts/delegate/verify.sh check bevy_brp_extras` green.
-- `bash ~/.claude/scripts/delegate/verify.sh test bevy_brp_extras` green, with the gamepad, mouse and keyboard test modules all passing unchanged.
-- `bash ~/.claude/scripts/delegate/verify.sh lint bevy_brp_extras` green once.
-- `rg -n "fn parse_request|fn invalid_params|fn serialize_response|fn to_value" extras/src` lists only `extras/src/brp_request.rs`.
+**Ruled out:** routing `screenshot/request.rs` (`from_params`, "Invalid screenshot request") and `window_title.rs` (single-field extraction) through `brp_request` — they build their own `INVALID_PARAMS` errors with their own messages and are not copies of these helpers.
 
 ### Phase 3 — End-to-end extras_gamepad run  · status: todo
 
@@ -159,6 +132,8 @@
 **Constraints from prior phases:**
 - Phase 1: the tools are `brp_extras_connect_gamepad`, `brp_extras_send_gamepad_button` (`gamepad`, `button`, optional `duration_ms`, default 100, max 60 000), `brp_extras_set_gamepad_button` (`gamepad`, `button`, required `value` in [0.0, 1.0]), `brp_extras_set_gamepad_axis` (`gamepad`, `axis`, `value` in [-1.0, 1.0]) and `brp_extras_disconnect_gamepad`. `button` and `axis` are enums: an unknown name fails at the MCP layer with serde's "unknown variant … expected one of …". After disconnect every call on the pad fails with "not a connected simulated gamepad". The spec and `.claude/agents/integration-tester.md` already carry `set_gamepad_button`.
 - Phase 2: request errors from all extras input methods read "Failed to parse parameters: …" / "Missing request parameters".
+- Phase 2: `extras/src/brp_request.rs` owns `parse_request`, `invalid_params` and `serialize_response`; mouse, keyboard and gamepad validation errors all build through `brp_request::invalid_params`, with every message text unchanged.
+- Before this phase, `unit/gamepad` merges `origin/main` (PR #14 screenshot fixes and the 0.22.9 release), so the worktree MCP binary and `extras_plugin` build include those changes.
 - `GamepadInputHistory` (`test-app/examples/extras_plugin.rs`) reads processed Bevy gamepad messages. The default dead zone turns an axis value of -0.75 into about -0.737.
 
 **Acceptance gate:**

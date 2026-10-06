@@ -10,17 +10,17 @@ use bevy::window::PrimaryWindow;
 use bevy::window::WindowEvent;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
-use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
-use serde_json::json;
 
 use super::constants::DEFAULT_KEY_DURATION_MS;
 use super::constants::MAX_KEY_DURATION_MS;
 use super::events;
 use super::key_code::KeyCodeWrapper;
-use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
+use crate::brp_request;
+use crate::brp_request::EmptyParamsPolicy;
+use crate::constants::METHOD_SEND_KEYS;
 use crate::window_event;
 
 /// Component that tracks keys that need to be released after a duration
@@ -65,11 +65,9 @@ fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCodeWrapper)>, BrpEr
                 validated_keys.push((key_str.clone(), wrapper));
             },
             Err(_) => {
-                return Err(BrpError {
-                    code:    INVALID_PARAMS,
-                    message: format!("Invalid key code '{key_str}': Unknown key code"),
-                    data:    None,
-                });
+                return Err(brp_request::invalid_params(format!(
+                    "Invalid key code '{key_str}': Unknown key code"
+                )));
             },
         }
     }
@@ -88,20 +86,7 @@ fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCodeWrapper)>, BrpEr
 /// - Request format is invalid
 /// - Any key code is invalid or unknown
 pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    // Parse the request
-    let request: SendKeysRequest = if let Some(params) = params {
-        serde_json::from_value(params).map_err(|e| BrpError {
-            code:    INVALID_PARAMS,
-            message: format!("Invalid request format: {e}"),
-            data:    None,
-        })?
-    } else {
-        return Err(BrpError {
-            code:    INVALID_PARAMS,
-            message: MISSING_REQUEST_PARAMETERS_MESSAGE.to_string(),
-            data:    None,
-        });
-    };
+    let request: SendKeysRequest = brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     // Validate key codes
     let validated_keys = validate_keys(&request.keys)?;
@@ -110,14 +95,10 @@ pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World
 
     // Validate duration doesn't exceed maximum
     if request.duration_ms > MAX_KEY_DURATION_MS {
-        return Err(BrpError {
-            code:    INVALID_PARAMS,
-            message: format!(
-                "Duration {}ms exceeds maximum allowed duration of {}ms (1 minute)",
-                request.duration_ms, MAX_KEY_DURATION_MS
-            ),
-            data:    None,
-        });
+        return Err(brp_request::invalid_params(format!(
+            "Duration {}ms exceeds maximum allowed duration of {}ms (1 minute)",
+            request.duration_ms, MAX_KEY_DURATION_MS
+        )));
     }
 
     // Always send press events first, addressed to the primary window
@@ -138,11 +119,14 @@ pub(crate) fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World
         });
     }
 
-    Ok(json!(SendKeysResponse {
-        success:     true,
-        keys_sent:   valid_key_strings,
-        duration_ms: request.duration_ms,
-    }))
+    brp_request::serialize_response(
+        SendKeysResponse {
+            success:     true,
+            keys_sent:   valid_key_strings,
+            duration_ms: request.duration_ms,
+        },
+        METHOD_SEND_KEYS,
+    )
 }
 
 /// System that processes timed key releases
