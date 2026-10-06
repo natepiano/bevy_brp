@@ -175,10 +175,19 @@ impl ParameterBuilder {
     pub(super) fn new() -> Self { Self::default() }
 
     /// Add a string property to the schema
-    fn add_string_property(mut self, name: &str, description: &str, required: Required) -> Self {
+    fn add_string_property(
+        mut self,
+        name: &str,
+        description: &str,
+        required: Required,
+        enum_values: Option<Vec<Value>>,
+    ) -> Self {
         let mut prop = Map::new();
         prop.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::String);
         prop.insert_field(SchemaField::Description.as_ref(), description);
+        if let Some(values) = enum_values {
+            prop.insert_field("enum", values);
+        }
         self.properties.insert_field(name, prop);
 
         self.mark_required(name, required);
@@ -509,6 +518,34 @@ fn resolve_schema_value<'a>(
         .unwrap_or(field_value)
 }
 
+/// Keep named string variants when flattening a `$ref` into an MCP property.
+fn string_enum_values(value: &Value) -> Option<Vec<Value>> {
+    let object = value.as_object()?;
+    if let Some(variants) = object.get("oneOf").and_then(Value::as_array) {
+        let values: Option<Vec<Value>> = variants
+            .iter()
+            .map(|variant| {
+                let variant = variant.as_object()?;
+                (variant.get("type").and_then(Value::as_str) == Some("string"))
+                    .then(|| {
+                        variant
+                            .get("const")
+                            .filter(|value| value.is_string())
+                            .cloned()
+                    })
+                    .flatten()
+            })
+            .collect();
+        return values.filter(|values| !values.is_empty());
+    }
+
+    (object.get("type").and_then(Value::as_str) == Some("string"))
+        .then(|| object.get("enum").and_then(Value::as_array))
+        .flatten()
+        .filter(|values| !values.is_empty() && values.iter().all(Value::is_string))
+        .cloned()
+}
+
 fn schema_from_value(value: &Value) -> Option<Schema> {
     match value {
         Value::Object(obj) => Some(Schema::from(obj.clone())),
@@ -630,17 +667,26 @@ pub(super) fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         let param_type = map_schema_type_to_parameter_type(&field_schema);
 
         // Extract description from schema if available
-        let description = resolved_value
+        let description = field_value
             .as_object()
             .and_then(|object| object.get_field(SchemaField::Description))
             .and_then(Value::as_str)
+            .or_else(|| {
+                resolved_value
+                    .as_object()
+                    .and_then(|object| object.get_field(SchemaField::Description))
+                    .and_then(Value::as_str)
+            })
             .unwrap_or(field_name.as_str());
 
         // Add to builder based on type
         parameter_builder = match param_type {
-            ParameterType::String => {
-                parameter_builder.add_string_property(field_name, description, required)
-            },
+            ParameterType::String => parameter_builder.add_string_property(
+                field_name,
+                description,
+                required,
+                string_enum_values(resolved_value),
+            ),
             ParameterType::Number => {
                 parameter_builder.add_number_property(field_name, description, required)
             },
@@ -674,15 +720,74 @@ mod tests {
 
     use super::ParameterBuilder;
     use super::Required;
+    use super::build_parameters_from;
     use super::normalize_arguments_for;
     use crate::app_tools::LaunchBevyBinaryParams;
     use crate::brp_tools::MutateComponentsParams;
+    use crate::brp_tools::SendMouseButtonParams;
+    use crate::brp_tools::SetGamepadAxisParams;
+    use crate::brp_tools::SetGamepadButtonParams;
 
     const TEST_COMPONENT_ID: &str = "42";
     const TEST_INSTANCE_COUNT: &str = "3";
     const TEST_PORT: u16 = 15702;
     const TEST_PORT_TEXT: &str = "15702";
     const TEST_TARGET_NAME: &str = "42";
+
+    #[test]
+    fn enum_field_lists_its_variants() {
+        let schema = build_parameters_from::<SendMouseButtonParams>().build();
+        assert_eq!(
+            schema["properties"]["button"]["enum"],
+            serde_json::json!(["Left", "Right", "Middle", "Back", "Forward"])
+        );
+        assert_eq!(
+            schema["properties"]["button"]["description"],
+            "Mouse button to press (Left, Right, Middle, Back, Forward)"
+        );
+    }
+
+    #[test]
+    fn gamepad_tool_schemas_list_buttons_and_axes() {
+        let button_schema = build_parameters_from::<SetGamepadButtonParams>().build();
+        assert_eq!(
+            button_schema["properties"]["button"]["enum"],
+            serde_json::json!([
+                "South",
+                "East",
+                "North",
+                "West",
+                "C",
+                "Z",
+                "LeftTrigger",
+                "LeftTrigger2",
+                "RightTrigger",
+                "RightTrigger2",
+                "Select",
+                "Start",
+                "Mode",
+                "LeftThumb",
+                "RightThumb",
+                "DPadUp",
+                "DPadDown",
+                "DPadLeft",
+                "DPadRight"
+            ])
+        );
+
+        let axis_schema = build_parameters_from::<SetGamepadAxisParams>().build();
+        assert_eq!(
+            axis_schema["properties"]["axis"]["enum"],
+            serde_json::json!([
+                "LeftStickX",
+                "LeftStickY",
+                "LeftZ",
+                "RightStickX",
+                "RightStickY",
+                "RightZ"
+            ])
+        );
+    }
 
     #[test]
     fn normalize_arguments_for_does_not_coerce_numeric_strings() {

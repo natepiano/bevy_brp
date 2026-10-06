@@ -1,0 +1,12 @@
+Sets a button on a connected simulated gamepad (from brp_extras_connect_gamepad). Its value stays until set again: 1.0 presses, 0.0 releases, and values in between set an analog pressure. Setting a button also cancels any pending release from brp_extras_send_gamepad_button for that button.
+
+Buttons: South, East, North, West, C, Z, LeftTrigger, LeftTrigger2, RightTrigger, RightTrigger2, Select, Start, Mode, LeftThumb, RightThumb, DPadUp, DPadDown, DPadLeft, DPadRight
+
+Examples:
+```json
+{"gamepad": 4294967300, "button": "South", "value": 1.0}
+{"gamepad": 4294967300, "button": "South", "value": 0.0}
+{"gamepad": 4294967300, "button": "RightTrigger2", "value": 0.5}
+```
+
+Prerequisites: bevy_brp_extras dependency (with its default `gamepad` feature) and BrpExtrasPlugin registered.

@@ -1,0 +1,14 @@
+Taps a button on a connected simulated gamepad (from brp_extras_connect_gamepad). The button is pressed fully, seen down for at least one frame, then released after duration_ms on the real clock. The default duration is 100 ms; the maximum is 60000 ms. A duration of 0 still gives the app one pressed frame.
+
+Use brp_extras_set_gamepad_button to hold a button or set an analog value.
+
+Buttons: South, East, North, West, C, Z, LeftTrigger, LeftTrigger2, RightTrigger, RightTrigger2, Select, Start, Mode, LeftThumb, RightThumb, DPadUp, DPadDown, DPadLeft, DPadRight
+
+Examples:
+```json
+{"gamepad": 4294967300, "button": "South"}
+{"gamepad": 4294967300, "button": "East", "duration_ms": 500}
+{"gamepad": 4294967300, "button": "North", "duration_ms": 0}
+```
+
+Prerequisites: bevy_brp_extras dependency (with its default `gamepad` feature) and BrpExtrasPlugin registered.

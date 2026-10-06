@@ -26,6 +26,7 @@ bevy_brp_extras does two things
 - **App Lifecycle**: `screenshot`, `shutdown`, `set_window_title`, `get_diagnostics`
 - **Keyboard**: `send_keys`, `type_text`
 - **Mouse**: `click_mouse`, `double_click_mouse`, `send_mouse_button`, `move_mouse`, `drag_mouse`, `scroll_mouse`
+- **Gamepad** (`gamepad` feature, default): `connect_gamepad`, `send_gamepad_button`, `set_gamepad_button`, `set_gamepad_axis`, `disconnect_gamepad`
 - **Trackpad Gestures** (macOS): `double_tap_gesture`, `pinch_gesture`, `rotation_gesture`
 - **Agent Tools**: `agent_tools`
 

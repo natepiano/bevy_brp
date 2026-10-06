@@ -47,6 +47,8 @@ use bevy::gizmos::aabb::ShowAabbGizmo;
 use bevy::gizmos::config::GizmoLineConfig;
 use bevy::gizmos::retained::Gizmo;
 use bevy::input::gamepad::Gamepad;
+use bevy::input::gamepad::GamepadAxisChangedEvent;
+use bevy::input::gamepad::GamepadButtonStateChangedEvent;
 use bevy::input::gamepad::GamepadSettings;
 use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
@@ -486,6 +488,23 @@ impl Plugin for ParameterizedBrpPlugin {
             .result_schema_for::<MultiplyResult>(),
         );
     }
+}
+
+/// Resource to track gamepad input from `brp_extras` simulated gamepads
+///
+/// Fed from Bevy's processed gamepad messages, so it shows what reached the app after
+/// `gamepad_event_processing_system`, not only what the BRP call returned.
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
+struct GamepadInputHistory {
+    /// Buttons currently held, across all gamepads
+    pressed_buttons: Vec<String>,
+    /// Most recently released button
+    last_released:   Option<String>,
+    /// Most recently changed axis
+    last_axis:       Option<String>,
+    /// Value of `last_axis` after its change
+    last_axis_value: f32,
 }
 
 /// Resource to track keyboard input history
@@ -1000,6 +1019,7 @@ fn main() {
         .add_plugins(CursorIconPlugin)
         .add_plugins(screenshot_fixtures::ScreenshotFixturesPlugin)
         .init_resource::<KeyboardInputHistory>()
+        .init_resource::<GamepadInputHistory>()
         .init_resource::<TextInputContent>()
         .init_resource::<GlobalsUniform>()
         .insert_resource(CurrentPort(port))
@@ -1041,6 +1061,7 @@ fn main() {
             Update,
             (
                 track_keyboard_input,
+                track_gamepad_input,
                 update_keyboard_display,
                 handle_text_input,
             ),
@@ -2315,6 +2336,34 @@ fn track_keyboard_input(
 
     // Update modifiers based on currently active keys
     history.modifiers = collect_modifier_labels(&history.active_keys);
+}
+
+/// Track gamepad input events
+fn track_gamepad_input(
+    mut buttons: MessageReader<GamepadButtonStateChangedEvent>,
+    mut axes: MessageReader<GamepadAxisChangedEvent>,
+    mut history: ResMut<GamepadInputHistory>,
+) {
+    for event in buttons.read() {
+        let button = format!("{:?}", event.button);
+        match event.state {
+            bevy::input::ButtonState::Pressed => {
+                info!("Gamepad button pressed: {button}");
+                if !history.pressed_buttons.contains(&button) {
+                    history.pressed_buttons.push(button);
+                }
+            },
+            bevy::input::ButtonState::Released => {
+                info!("Gamepad button released: {button}");
+                history.pressed_buttons.retain(|b| b != &button);
+                history.last_released = Some(button);
+            },
+        }
+    }
+    for event in axes.read() {
+        history.last_axis = Some(format!("{:?}", event.axis));
+        history.last_axis_value = event.value;
+    }
 }
 
 /// Update the keyboard display
