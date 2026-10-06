@@ -32,7 +32,7 @@ enum Projection {
 }
 
 impl Projection {
-    fn union(self, other: Self) -> Self {
+    const fn union(self, other: Self) -> Self {
         match (self, other) {
             (Self::Extent(first), Self::Extent(second)) => Self::Extent(first.union(second)),
             _ => Self::WholeViewport,

@@ -1,21 +1,26 @@
-//! Captured target conversion, cropping, and PNG encoding.
+//! Captured target cropping, RGB conversion, and PNG encoding.
 
-use std::io::Cursor;
-
+use bevy::image::TextureFormatPixelInfo;
 use bevy::prelude::*;
+use bevy::render::render_resource::Extent3d;
+use bevy::render::render_resource::TextureDimension;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
 use bevy_remote::error_codes::INTERNAL_ERROR;
+use image::ExtendedColorType;
+use image::ImageEncoder;
 use image::ImageError;
-use image::ImageFormat;
 use image::RgbImage;
+use image::codecs::png::CompressionType;
+use image::codecs::png::FilterType;
+use image::codecs::png::PngEncoder;
 
 pub(super) struct TargetRgbImage(RgbImage);
 
 impl TargetRgbImage {
-    pub(super) fn encode(&self, crop: Option<URect>) -> BrpResult<EncodedCapture> {
-        let actual_extent =
-            URect::from_corners(UVec2::ZERO, UVec2::new(self.0.width(), self.0.height()));
+    /// Crops the captured rows first, so only the kept pixels go through the RGB conversion.
+    pub(super) fn from_capture(image: Image, crop: Option<URect>) -> BrpResult<Self> {
+        let actual_extent = URect::from_corners(UVec2::ZERO, image.size());
         if actual_extent.is_empty() {
             return Err(capture_error("Captured image has an empty extent"));
         }
@@ -34,42 +39,78 @@ impl TargetRgbImage {
             )));
         }
 
-        let mut cursor = Cursor::new(Vec::new());
-        if capture_extent == actual_extent {
-            self.0
-                .write_to(&mut cursor, ImageFormat::Png)
-                .map_err(png_encoding_error)?;
+        let image = if capture_extent == actual_extent {
+            image
         } else {
-            image::imageops::crop_imm(
-                &self.0,
-                capture_extent.min.x,
-                capture_extent.min.y,
-                capture_extent.width(),
-                capture_extent.height(),
-            )
-            .to_image()
-            .write_to(&mut cursor, ImageFormat::Png)
-            .map_err(png_encoding_error)?;
-        }
-
-        Ok(EncodedCapture {
-            bytes:      cursor.into_inner(),
-            dimensions: capture_extent.size(),
-        })
-    }
-}
-
-impl TryFrom<Image> for TargetRgbImage {
-    type Error = BrpError;
-
-    fn try_from(image: Image) -> Result<Self, Self::Error> {
+            crop_rows(&image, capture_extent)?
+        };
         image
             .try_into_dynamic()
-            .map(|dynamic_image| Self(dynamic_image.to_rgb8()))
+            .map(|dynamic_image| Self(dynamic_image.into_rgb8()))
             .map_err(|error| {
                 capture_error(format!("Failed to convert captured image to RGB: {error}"))
             })
     }
+
+    /// Encodes with png's fastest pairing: the fast deflate and the `Up` row filter.
+    pub(super) fn encode(&self) -> BrpResult<EncodedCapture> {
+        let mut bytes = Vec::new();
+        PngEncoder::new_with_quality(&mut bytes, CompressionType::Fast, FilterType::Up)
+            .write_image(
+                self.0.as_raw(),
+                self.0.width(),
+                self.0.height(),
+                ExtendedColorType::Rgb8,
+            )
+            .map_err(png_encoding_error)?;
+
+        Ok(EncodedCapture {
+            bytes,
+            dimensions: UVec2::new(self.0.width(), self.0.height()),
+        })
+    }
+}
+
+/// Copies the extent's rows out of the captured bytes. Bevy strips the GPU row padding from
+/// screenshot images, so each row is exactly `width * pixel_size` bytes.
+fn crop_rows(image: &Image, extent: URect) -> BrpResult<Image> {
+    let format = image.texture_descriptor.format;
+    let pixel_size = format.pixel_size().map_err(|_| {
+        capture_error(format!(
+            "Captured image format {format:?} has no fixed pixel size"
+        ))
+    })?;
+    let data = image
+        .data
+        .as_ref()
+        .ok_or_else(|| capture_error("Captured image has no pixel data"))?;
+    let row_size = image.width() as usize * pixel_size;
+    let columns = extent.min.x as usize * pixel_size..extent.max.x as usize * pixel_size;
+    let mut cropped = Vec::with_capacity(columns.len() * extent.height() as usize);
+    for row in data
+        .chunks_exact(row_size)
+        .skip(extent.min.y as usize)
+        .take(extent.height() as usize)
+    {
+        cropped.extend_from_slice(row.get(columns.clone()).unwrap_or_default());
+    }
+    if cropped.len() != columns.len() * extent.height() as usize {
+        return Err(capture_error(
+            "Captured image data is shorter than its extent",
+        ));
+    }
+
+    Ok(Image::new(
+        Extent3d {
+            width:                 extent.width(),
+            height:                extent.height(),
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        cropped,
+        format,
+        image.asset_usage,
+    ))
 }
 
 pub(super) struct EncodedCapture {
@@ -96,10 +137,9 @@ mod tests {
     use std::io::Error as IoError;
 
     use bevy::asset::RenderAssetUsages;
-    use bevy::render::render_resource::Extent3d;
-    use bevy::render::render_resource::TextureDimension;
     use bevy::render::render_resource::TextureFormat;
     use image::GenericImageView;
+    use image::ImageFormat;
 
     use super::*;
 
@@ -122,24 +162,32 @@ mod tests {
         )
     }
 
-    fn convert(image: Image) -> Result<TargetRgbImage, IoError> {
-        TargetRgbImage::try_from(image).map_err(|error| io::Error::other(error.message))
+    fn capture(image: Image, crop: Option<URect>) -> Result<EncodedCapture, IoError> {
+        TargetRgbImage::from_capture(image, crop)
+            .and_then(|target_image| target_image.encode())
+            .map_err(|error| io::Error::other(error.message))
     }
 
-    fn encode(
-        target_image: &TargetRgbImage,
-        crop: Option<URect>,
-    ) -> Result<EncodedCapture, IoError> {
-        target_image
-            .encode(crop)
-            .map_err(|error| io::Error::other(error.message))
+    fn bgra_test_image() -> Image {
+        let swizzled = [FIRST_PIXEL, SECOND_PIXEL, THIRD_PIXEL, FOURTH_PIXEL]
+            .map(|[red, green, blue, alpha]| [blue, green, red, alpha]);
+        Image::new(
+            Extent3d {
+                width:                 2,
+                height:                2,
+                depth_or_array_layers: 1,
+            },
+            TextureDimension::D2,
+            swizzled.concat(),
+            TextureFormat::Bgra8UnormSrgb,
+            RenderAssetUsages::MAIN_WORLD,
+        )
     }
 
     #[test]
     fn exact_full_and_crop_pngs_preserve_rgb_pixels() -> Result<(), Box<dyn Error>> {
-        let target_image = convert(test_image())?;
-        let full = encode(&target_image, None)?;
-        let crop = encode(&target_image, Some(URect::new(1, 0, 2, 2)))?;
+        let full = capture(test_image(), None)?;
+        let crop = capture(test_image(), Some(URect::new(1, 0, 2, 2)))?;
 
         let full_image = image::load_from_memory_with_format(&full.bytes, ImageFormat::Png)?;
         let crop_image = image::load_from_memory_with_format(&crop.bytes, ImageFormat::Png)?;
@@ -155,9 +203,19 @@ mod tests {
     }
 
     #[test]
+    fn bgra_crop_swizzles_only_the_kept_pixels_to_rgb() -> Result<(), Box<dyn Error>> {
+        let crop = capture(bgra_test_image(), Some(URect::new(0, 1, 2, 2)))?;
+        let crop_image = image::load_from_memory_with_format(&crop.bytes, ImageFormat::Png)?;
+
+        assert_eq!(crop_image.dimensions(), (2, 1));
+        assert_eq!(crop_image.to_rgb8().get_pixel(0, 0).0, THIRD_PIXEL[..3]);
+        assert_eq!(crop_image.to_rgb8().get_pixel(1, 0).0, FOURTH_PIXEL[..3]);
+        Ok(())
+    }
+
+    #[test]
     fn hdr_brightness_alpha_is_not_encoded_as_png_alpha() -> Result<(), Box<dyn Error>> {
-        let target_image = convert(test_image())?;
-        let encoded = encode(&target_image, None)?;
+        let encoded = capture(test_image(), None)?;
         let decoded = image::load_from_memory_with_format(&encoded.bytes, ImageFormat::Png)?;
 
         assert_eq!(decoded.color(), image::ColorType::Rgb8);
@@ -166,12 +224,9 @@ mod tests {
     }
 
     #[test]
-    fn crop_fails_when_the_captured_extent_is_smaller_than_promised() -> Result<(), IoError> {
-        let target_image = convert(test_image())?;
-
-        let result = target_image.encode(Some(URect::new(1, 1, 3, 3)));
+    fn crop_fails_when_the_captured_extent_is_smaller_than_promised() {
+        let result = TargetRgbImage::from_capture(test_image(), Some(URect::new(1, 1, 3, 3)));
 
         assert!(result.is_err());
-        Ok(())
     }
 }

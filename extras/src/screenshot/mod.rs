@@ -62,6 +62,8 @@ use self::constants::PARAM_ENTITY;
 #[cfg(not(target_arch = "wasm32"))]
 use self::constants::PARAM_PATH;
 #[cfg(not(target_arch = "wasm32"))]
+use self::constants::PARAM_RECT;
+#[cfg(not(target_arch = "wasm32"))]
 use self::request::ScreenshotRequest;
 #[cfg(not(target_arch = "wasm32"))]
 use self::request::ScreenshotScope;
@@ -243,7 +245,7 @@ fn completed_response(path: &Path, metadata: &CaptureResponseMetadata) -> Value 
 #[cfg(not(target_arch = "wasm32"))]
 fn capture_input(world: &mut World, request: &ScreenshotRequest) -> BrpResult<CaptureInput> {
     match request.scope() {
-        ScreenshotScope::Full { camera } => full_capture_input(world, *camera),
+        ScreenshotScope::Full { camera, rect } => full_capture_input(world, *camera, *rect),
         ScreenshotScope::Entity {
             entity,
             camera,
@@ -253,12 +255,22 @@ fn capture_input(world: &mut World, request: &ScreenshotRequest) -> BrpResult<Ca
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn full_capture_input(world: &World, requested_camera: Option<Entity>) -> BrpResult<CaptureInput> {
+fn full_capture_input(
+    world: &World,
+    requested_camera: Option<Entity>,
+    rect: Option<URect>,
+) -> BrpResult<CaptureInput> {
     if let Some(camera) = requested_camera {
         let validated = validated_camera_target(world, camera, primary_window(world))
             .ok_or_else(|| invalid_camera_error(camera))?;
+        let viewport = validated
+            .camera
+            .physical_viewport_rect()
+            .ok_or_else(|| invalid_camera_error(camera))?;
         return Ok(CaptureInput {
-            crop:              validated.camera.physical_viewport_rect(),
+            crop:              Some(
+                rect_inside(rect, viewport, "camera viewport")?.unwrap_or(viewport),
+            ),
             render_target:     validated.render_target,
             response_metadata: CaptureResponseMetadata::Full,
         });
@@ -269,15 +281,41 @@ fn full_capture_input(world: &World, requested_camera: Option<Entity>) -> BrpRes
     let normalized_target = render_target
         .normalize(Some(primary_window))
         .ok_or_else(no_primary_window_error)?;
-    if live_target_size(world, &normalized_target).is_none() {
-        return Err(no_primary_window_error());
-    }
+    let target_size =
+        live_target_size(world, &normalized_target).ok_or_else(no_primary_window_error)?;
 
     Ok(CaptureInput {
-        crop: None,
+        crop: rect_inside(
+            rect,
+            URect::from_corners(UVec2::ZERO, target_size),
+            "primary window",
+        )?,
         render_target,
         response_metadata: CaptureResponseMetadata::Full,
     })
+}
+
+/// Accepts a requested rect only when it lies inside what the scope would capture.
+#[cfg(not(target_arch = "wasm32"))]
+fn rect_inside(rect: Option<URect>, extent: URect, extent_name: &str) -> BrpResult<Option<URect>> {
+    match rect {
+        Some(rect) if rect.intersect(extent) != rect => Err(BrpError {
+            code:    INVALID_PARAMS,
+            message: format!(
+                "'{PARAM_RECT}' {}x{} at ({}, {}) lies outside the {extent_name}, {}x{} at ({}, {})",
+                rect.width(),
+                rect.height(),
+                rect.min.x,
+                rect.min.y,
+                extent.width(),
+                extent.height(),
+                extent.min.x,
+                extent.min.y
+            ),
+            data:    None,
+        }),
+        rect => Ok(rect),
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1024,6 +1062,63 @@ mod native_tests {
         trigger_captured(&mut app, screenshot_entity, second_size);
         let response = receive_terminal(&mut app, &second)?;
         assert_terminal_png(&response, &path, second_size)?;
+        Ok(())
+    }
+
+    #[test]
+    fn rect_request_completes_with_the_requested_window_crop() -> Result<(), Box<dyn Error>> {
+        let temp_dir = TempDir::new()?;
+        let path = temp_dir.path().join("rect.png");
+        let mut app = remote_screenshot_app();
+        app.world_mut().spawn((Window::default(), PrimaryWindow));
+
+        complete_synchronous_request(
+            &mut app,
+            json!({
+                "path": path,
+                "rect": { "x": 10, "y": 20, "width": 30, "height": 40 },
+            }),
+            UVec2::splat(100),
+            UVec2::new(30, 40),
+            &path,
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn rect_must_lie_inside_the_window_or_camera_viewport() -> Result<(), Box<dyn Error>> {
+        let mut world = World::new();
+        world.spawn((Window::default(), PrimaryWindow));
+        let target_size = UVec2::splat(100);
+        let image_handle = add_render_target_image(&mut world, target_size);
+        let camera = spawn_camera(
+            &mut world,
+            RenderTarget::Image(image_handle.into()),
+            Some(target_size),
+        );
+        world
+            .get_mut::<Camera>(camera)
+            .ok_or_else(|| io::Error::other("missing rect test camera"))?
+            .viewport = Some(Viewport {
+            physical_position: UVec2::new(10, 20),
+            physical_size: UVec2::new(60, 70),
+            ..default()
+        });
+
+        let inside = URect::new(15, 25, 35, 45);
+        assert_eq!(
+            brp(full_capture_input(&world, Some(camera), Some(inside)))?.crop,
+            Some(inside)
+        );
+        assert_eq!(brp(full_capture_input(&world, None, None))?.crop, None);
+        assert!(matches!(
+            full_capture_input(&world, Some(camera), Some(URect::new(0, 0, 10, 10))),
+            Err(error) if error.message.contains("camera viewport, 60x70 at (10, 20)")
+        ));
+        assert!(matches!(
+            full_capture_input(&world, None, Some(URect::new(1200, 0, 1300, 10))),
+            Err(error) if error.message.contains("primary window, 1280x720 at (0, 0)")
+        ));
         Ok(())
     }
 
