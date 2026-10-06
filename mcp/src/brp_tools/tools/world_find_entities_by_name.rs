@@ -414,7 +414,7 @@ mod tests {
             TEST_PORT,
         )?;
 
-        assert!(entities.is_empty());
+        assert_eq!(entities, Vec::<NamedEntity>::new());
         Ok(())
     }
 

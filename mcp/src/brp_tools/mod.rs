@@ -1,6 +1,7 @@
 mod brp_client;
 mod brp_type_guide;
 mod constants;
+mod gamepad;
 mod mouse;
 mod port;
 mod tools;
@@ -98,6 +99,8 @@ pub use tools::SendMouseButtonParams;
 pub use tools::SendMouseButtonResult;
 pub use tools::SetGamepadAxisParams;
 pub use tools::SetGamepadAxisResult;
+pub use tools::SetGamepadButtonParams;
+pub use tools::SetGamepadButtonResult;
 pub use tools::SetWindowTitleParams;
 pub use tools::SetWindowTitleResult;
 pub use tools::SpawnEntityParams;
