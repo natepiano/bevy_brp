@@ -178,17 +178,17 @@ mod tests {
         // Test with missing components field
         let params = json!({"entity": 123});
         let types = extract_from_components_object(&params);
-        assert!(types.is_empty());
+        assert_eq!(types, Vec::<String>::new());
 
         // Test with null components field
         let params = json!({"components": null});
         let types = extract_from_components_object(&params);
-        assert!(types.is_empty());
+        assert_eq!(types, Vec::<String>::new());
 
         // Test with empty components object
         let params = json!({"components": {}});
         let types = extract_from_components_object(&params);
-        assert!(types.is_empty());
+        assert_eq!(types, Vec::<String>::new());
     }
 
     #[test]
@@ -208,12 +208,12 @@ mod tests {
         // Test with missing resource field
         let params = json!({"value": {}});
         let types = extract_from_resource_field(&params);
-        assert!(types.is_empty());
+        assert_eq!(types, Vec::<String>::new());
 
         // Test with null resource field
         let params = json!({"resource": null});
         let types = extract_from_resource_field(&params);
-        assert!(types.is_empty());
+        assert_eq!(types, Vec::<String>::new());
     }
 
     #[test]
@@ -238,7 +238,7 @@ mod tests {
         // Test with missing component field
         let params = json!({"entity": 123, "path": "translation.x"});
         let types = extract_single_component_type(&params);
-        assert!(types.is_empty());
+        assert_eq!(types, Vec::<String>::new());
     }
 
     #[test]
@@ -259,7 +259,7 @@ mod tests {
         // Test with missing resource field
         let params = json!({"path": "settings.volume", "value": 0.8});
         let types = extract_single_resource_type(&params);
-        assert!(types.is_empty());
+        assert_eq!(types, Vec::<String>::new());
     }
 
     #[test]

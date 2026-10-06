@@ -83,7 +83,7 @@ pub(super) struct CaptureRead {
 }
 
 #[derive(Resource, Default)]
-pub(in crate::screenshot) struct PendingScreenshotCapture {
+pub(super) struct PendingScreenshotCapture {
     active:             Option<ActiveCapture>,
     completion_channel: Option<CaptureCompletionChannel>,
     current_frame:      FrameStamp,
