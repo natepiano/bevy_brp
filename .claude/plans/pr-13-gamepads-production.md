@@ -19,7 +19,7 @@
 
 | Unit | Plan | Worktree | Branch | Session | Port | Owns |
 | --- | --- | --- | --- | --- | --- | --- |
-| gamepad-unit | `.claude/plans/pr-13-gamepads-gamepad-unit.md` | `/home/natepiano/rust/bevy_brp_gamepad` | `unit/gamepad` | tmux `bevy_brp-pr-evaluation`; Claude and remote-control name `bevy_brp pr evaluation` | 20250 | the whole workspace (only unit) |
+| gamepad-unit | `.claude/plans/pr-13-gamepads-gamepad-unit.md` | `/home/natepiano/rust/bevy_brp_gamepad` | `unit/gamepad` | `bevy_brp pr evaluation` (tmux, Claude and remote-control name) | 20250 | the whole workspace (only unit) |
 
 ## Hub files
 
