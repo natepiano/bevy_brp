@@ -5,6 +5,8 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use bevy::prelude::Entity;
+use bevy::prelude::URect;
+use bevy::prelude::UVec2;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
 use bevy_remote::error_codes::INTERNAL_ERROR;
@@ -15,12 +17,15 @@ use serde_json::Value;
 use super::constants::PARAM_CAMERA;
 use super::constants::PARAM_ENTITY;
 use super::constants::PARAM_PADDING;
+use super::constants::PARAM_RECT;
 use crate::constants::SCREENSHOT_ZERO_PADDING;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ScreenshotScope {
     Full {
         camera: Option<Entity>,
+        /// Physical target coordinates inside the full target or the camera's viewport.
+        rect:   Option<URect>,
     },
     Entity {
         entity:  Entity,
@@ -63,6 +68,35 @@ struct RawScreenshotRequest {
     entity:  Option<u64>,
     padding: Option<u32>,
     path:    Option<String>,
+    rect:    Option<RawRect>,
+}
+
+#[derive(Clone, Copy, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawRect {
+    x:      u32,
+    y:      u32,
+    width:  u32,
+    height: u32,
+}
+
+impl TryFrom<RawRect> for URect {
+    type Error = BrpError;
+
+    fn try_from(raw: RawRect) -> Result<Self, Self::Error> {
+        if raw.width == 0 || raw.height == 0 {
+            return Err(rect_error("width and height must be positive"));
+        }
+        let (Some(max_x), Some(max_y)) =
+            (raw.x.checked_add(raw.width), raw.y.checked_add(raw.height))
+        else {
+            return Err(rect_error("extends past the largest physical coordinate"));
+        };
+        Ok(Self::from_corners(
+            UVec2::new(raw.x, raw.y),
+            UVec2::new(max_x, max_y),
+        ))
+    }
 }
 
 impl TryFrom<&RawScreenshotRequest> for ScreenshotScope {
@@ -70,6 +104,13 @@ impl TryFrom<&RawScreenshotRequest> for ScreenshotScope {
 
     fn try_from(raw: &RawScreenshotRequest) -> Result<Self, Self::Error> {
         match raw.entity {
+            Some(_) if raw.rect.is_some() => Err(BrpError {
+                code:    INVALID_PARAMS,
+                message: format!(
+                    "'{PARAM_RECT}' applies to a full or camera screenshot, not an 'entity' one"
+                ),
+                data:    None,
+            }),
             Some(entity) => Ok(Self::Entity {
                 entity:  decode_entity_id(entity, PARAM_ENTITY)?,
                 camera:  raw
@@ -84,6 +125,7 @@ impl TryFrom<&RawScreenshotRequest> for ScreenshotScope {
                     .camera
                     .map(|camera| decode_entity_id(camera, PARAM_CAMERA))
                     .transpose()?,
+                rect:   raw.rect.map(URect::try_from).transpose()?,
             }),
         }
     }
@@ -126,6 +168,14 @@ fn entity_scope_field_error(field: &str) -> BrpError {
     BrpError {
         code:    INVALID_PARAMS,
         message: format!("'{field}' requires an 'entity' screenshot scope"),
+        data:    None,
+    }
+}
+
+fn rect_error(detail: &str) -> BrpError {
+    BrpError {
+        code:    INVALID_PARAMS,
+        message: format!("Invalid '{PARAM_RECT}': {detail}"),
         data:    None,
     }
 }
@@ -187,6 +237,7 @@ mod tests {
             Ok(request)
                 if request.scope == ScreenshotScope::Full {
                     camera: None,
+                    rect:   None,
                 }
         ));
         assert!(matches!(
@@ -194,6 +245,7 @@ mod tests {
             Ok(request)
                 if request.scope == ScreenshotScope::Full {
                     camera: Some(Entity::from_bits(9)),
+                    rect:   None,
                 }
         ));
         assert!(matches!(
@@ -272,5 +324,49 @@ mod tests {
         })));
 
         assert!(matches!(name, Err(error) if error.message.contains("unknown field `name`")));
+    }
+
+    #[test]
+    fn rect_decodes_into_physical_corners() {
+        let request = ScreenshotRequest::from_params(Some(json!({
+            "camera": 9,
+            "path": "rect.png",
+            "rect": { "x": 10, "y": 20, "width": 30, "height": 40 }
+        })));
+
+        assert!(matches!(
+            request,
+            Ok(request)
+                if request.scope == ScreenshotScope::Full {
+                    camera: Some(Entity::from_bits(9)),
+                    rect:   Some(URect::new(10, 20, 40, 60)),
+                }
+        ));
+    }
+
+    #[test]
+    fn rect_rejects_entity_scope_empty_overflowing_and_unknown_fields() {
+        let entity = ScreenshotRequest::from_params(Some(json!({
+            "entity": 7,
+            "path": "rect.png",
+            "rect": { "x": 0, "y": 0, "width": 1, "height": 1 }
+        })));
+        let empty = ScreenshotRequest::from_params(Some(json!({
+            "path": "rect.png",
+            "rect": { "x": 0, "y": 0, "width": 0, "height": 1 }
+        })));
+        let overflowing = ScreenshotRequest::from_params(Some(json!({
+            "path": "rect.png",
+            "rect": { "x": u32::MAX, "y": 0, "width": 1, "height": 1 }
+        })));
+        let unknown = ScreenshotRequest::from_params(Some(json!({
+            "path": "rect.png",
+            "rect": { "x": 0, "y": 0, "width": 1, "height": 1, "depth": 1 }
+        })));
+
+        assert!(matches!(entity, Err(error) if error.message.contains("not an 'entity' one")));
+        assert!(matches!(empty, Err(error) if error.message.contains("must be positive")));
+        assert!(matches!(overflowing, Err(error) if error.message.contains("largest physical")));
+        assert!(matches!(unknown, Err(error) if error.message.contains("unknown field `depth`")));
     }
 }

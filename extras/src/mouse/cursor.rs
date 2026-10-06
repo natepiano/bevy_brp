@@ -6,15 +6,14 @@ use bevy::ecs::system::In;
 use bevy::math::Vec2;
 use bevy::prelude::*;
 use bevy::window::CursorMoved;
-use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
-use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
 use super::support;
-use super::support::EmptyParamsPolicy;
+use crate::brp_request;
+use crate::brp_request::EmptyParamsPolicy;
 use crate::constants::METHOD_MOVE_MOUSE;
 
 // ============================================================================
@@ -106,23 +105,19 @@ impl SimulatedCursorPosition {
 
 /// Handler for `move_mouse` BRP method
 pub(crate) fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: MoveMouseRequest = support::parse_request(params, EmptyParamsPolicy::Reject)?;
+    let request: MoveMouseRequest = brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     // Validate that exactly one of delta or position is provided
     if request.delta.is_none() && request.position.is_none() {
-        return Err(BrpError {
-            code:    INVALID_PARAMS,
-            message: "Must provide either 'delta' or 'position'".to_string(),
-            data:    None,
-        });
+        return Err(brp_request::invalid_params(
+            "Must provide either 'delta' or 'position'".to_string(),
+        ));
     }
 
     if request.delta.is_some() && request.position.is_some() {
-        return Err(BrpError {
-            code:    INVALID_PARAMS,
-            message: "Cannot provide both 'delta' and 'position'".to_string(),
-            data:    None,
-        });
+        return Err(brp_request::invalid_params(
+            "Cannot provide both 'delta' and 'position'".to_string(),
+        ));
     }
 
     // Resolve window entity
@@ -145,11 +140,9 @@ pub(crate) fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
         (pos, pos - current_pos)
     } else {
         // Validation above already rejects this case
-        return Err(BrpError {
-            code:    INVALID_PARAMS,
-            message: "Must provide either 'delta' or 'position'".to_string(),
-            data:    None,
-        });
+        return Err(brp_request::invalid_params(
+            "Must provide either 'delta' or 'position'".to_string(),
+        ));
     };
 
     // Update resource and send motion events
@@ -157,7 +150,7 @@ pub(crate) fn move_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
     cursor_res.last_window = Some(window);
     support::send_motion_events(world, window, new_position, delta);
 
-    support::serialize_response(
+    brp_request::serialize_response(
         MoveMouseResponse {
             new_position,
             delta,

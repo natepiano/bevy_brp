@@ -8,17 +8,16 @@ use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::window::WindowEvent;
-use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
-use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
-use serde_json::json;
 
 use super::events;
 use super::key_code::KeyCodeWrapper;
-use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
+use crate::brp_request;
+use crate::brp_request::EmptyParamsPolicy;
+use crate::constants::METHOD_TYPE_TEXT;
 
 /// Phase of the text typing state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -131,26 +130,17 @@ fn char_to_keys(c: char) -> Option<Vec<KeyCodeWrapper>> {
 /// Handler for the `type_text` BRP method.
 /// Types text one character per frame, simulating realistic keyboard input.
 pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: TypeTextRequest = if let Some(params) = params {
-        serde_json::from_value(params).map_err(|e| BrpError {
-            code:    INVALID_PARAMS,
-            message: format!("Invalid request format: {e}"),
-            data:    None,
-        })?
-    } else {
-        return Err(BrpError {
-            code:    INVALID_PARAMS,
-            message: MISSING_REQUEST_PARAMETERS_MESSAGE.to_string(),
-            data:    None,
-        });
-    };
+    let request: TypeTextRequest = brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
 
     if request.text.is_empty() {
-        return Ok(json!(TypeTextResponse {
-            success:      true,
-            chars_queued: 0,
-            skipped:      vec![],
-        }));
+        return brp_request::serialize_response(
+            TypeTextResponse {
+                success:      true,
+                chars_queued: 0,
+                skipped:      vec![],
+            },
+            METHOD_TYPE_TEXT,
+        );
     }
 
     // Convert text to character queue, tracking unmappable chars
@@ -177,11 +167,14 @@ pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World
         });
     }
 
-    Ok(json!(TypeTextResponse {
-        success: true,
-        chars_queued,
-        skipped,
-    }))
+    brp_request::serialize_response(
+        TypeTextResponse {
+            success: true,
+            chars_queued,
+            skipped,
+        },
+        METHOD_TYPE_TEXT,
+    )
 }
 
 /// System that processes text typing queues (one character per frame).

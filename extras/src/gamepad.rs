@@ -18,19 +18,18 @@ use bevy::prelude::*;
 use bevy_remote::BrpError;
 use bevy_remote::BrpResult;
 use bevy_remote::RemoteMethodSystemId;
-use bevy_remote::error_codes::INVALID_PARAMS;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Map;
 use serde_json::Value;
 
+use crate::brp_request;
+use crate::brp_request::EmptyParamsPolicy;
 use crate::constants::EXTRAS_COMMAND_PREFIX;
 use crate::constants::METHOD_CONNECT_GAMEPAD;
 use crate::constants::METHOD_DISCONNECT_GAMEPAD;
 use crate::constants::METHOD_SEND_GAMEPAD_BUTTON;
 use crate::constants::METHOD_SET_GAMEPAD_AXIS;
 use crate::constants::METHOD_SET_GAMEPAD_BUTTON;
-use crate::constants::MISSING_REQUEST_PARAMETERS_MESSAGE;
 
 /// Default hold for a timed button press
 const DEFAULT_GAMEPAD_DURATION_MS: u32 = 100;
@@ -203,9 +202,8 @@ pub(crate) fn remote_methods(world: &mut World) -> [(String, RemoteMethodSystemI
 /// Spawns a simulated gamepad and announces it the way `bevy_gilrs` announces a real one.
 /// It is a [`Gamepad`] from the next `PreUpdate` on.
 fn connect_gamepad_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: ConnectGamepadRequest = parse_request(Some(
-        params.unwrap_or_else(|| Value::Object(Map::default())),
-    ))?;
+    let request: ConnectGamepadRequest =
+        brp_request::parse_request(params, EmptyParamsPolicy::Allow)?;
     let name = request
         .name
         .unwrap_or_else(|| SIMULATED_GAMEPAD_NAME.to_string());
@@ -223,20 +221,24 @@ fn connect_gamepad_handler(In(params): In<Option<Value>>, world: &mut World) -> 
     );
     write_raw_gamepad_event(world, event);
 
-    to_value(GamepadResponse {
-        gamepad: gamepad.to_bits(),
-    })
+    brp_request::serialize_response(
+        GamepadResponse {
+            gamepad: gamepad.to_bits(),
+        },
+        METHOD_CONNECT_GAMEPAD,
+    )
 }
 
 /// Handler for `send_gamepad_button` BRP method
 ///
 /// Taps a button for `duration_ms` on the real clock, defaulting to 100 ms.
 fn send_gamepad_button_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: SendGamepadButtonRequest = parse_request(params)?;
+    let request: SendGamepadButtonRequest =
+        brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
     let gamepad = simulated_gamepad(world, request.gamepad)?;
     let duration_ms = request.duration_ms.unwrap_or(DEFAULT_GAMEPAD_DURATION_MS);
     if duration_ms > MAX_GAMEPAD_DURATION_MS {
-        return Err(invalid_params(format!(
+        return Err(brp_request::invalid_params(format!(
             "Duration exceeds maximum: {duration_ms}ms > {MAX_GAMEPAD_DURATION_MS}ms"
         )));
     }
@@ -256,21 +258,25 @@ fn send_gamepad_button_handler(In(params): In<Option<Value>>, world: &mut World)
         RawGamepadButtonChangedEvent::new(gamepad, request.button, 1.0),
     );
 
-    to_value(SendGamepadButtonResponse {
-        gamepad: request.gamepad,
-        button: request.button,
-        duration_ms,
-    })
+    brp_request::serialize_response(
+        SendGamepadButtonResponse {
+            gamepad: request.gamepad,
+            button: request.button,
+            duration_ms,
+        },
+        METHOD_SEND_GAMEPAD_BUTTON,
+    )
 }
 
 /// Handler for `set_gamepad_button` BRP method
 ///
 /// Sets a button's analog value until another call changes it.
 fn set_gamepad_button_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: SetGamepadButtonRequest = parse_request(params)?;
+    let request: SetGamepadButtonRequest =
+        brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
     let gamepad = simulated_gamepad(world, request.gamepad)?;
     if !(0.0..=1.0).contains(&request.value) {
-        return Err(invalid_params(format!(
+        return Err(brp_request::invalid_params(format!(
             "Button value {} is outside [0.0, 1.0]",
             request.value
         )));
@@ -282,21 +288,25 @@ fn set_gamepad_button_handler(In(params): In<Option<Value>>, world: &mut World) 
         RawGamepadButtonChangedEvent::new(gamepad, request.button, request.value),
     );
 
-    to_value(SetGamepadButtonResponse {
-        gamepad: request.gamepad,
-        button:  request.button,
-        value:   request.value,
-    })
+    brp_request::serialize_response(
+        SetGamepadButtonResponse {
+            gamepad: request.gamepad,
+            button:  request.button,
+            value:   request.value,
+        },
+        METHOD_SET_GAMEPAD_BUTTON,
+    )
 }
 
 /// Handler for `set_gamepad_axis` BRP method
 ///
 /// Sets an axis value. Axes stay where they are put.
 fn set_gamepad_axis_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: SetGamepadAxisRequest = parse_request(params)?;
+    let request: SetGamepadAxisRequest =
+        brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
     let gamepad = simulated_gamepad(world, request.gamepad)?;
     if !(-1.0..=1.0).contains(&request.value) {
-        return Err(invalid_params(format!(
+        return Err(brp_request::invalid_params(format!(
             "Axis value {} is outside [-1.0, 1.0]",
             request.value
         )));
@@ -307,18 +317,22 @@ fn set_gamepad_axis_handler(In(params): In<Option<Value>>, world: &mut World) ->
         RawGamepadAxisChangedEvent::new(gamepad, request.axis, request.value),
     );
 
-    to_value(SetGamepadAxisResponse {
-        gamepad: request.gamepad,
-        axis:    request.axis,
-        value:   request.value,
-    })
+    brp_request::serialize_response(
+        SetGamepadAxisResponse {
+            gamepad: request.gamepad,
+            axis:    request.axis,
+            value:   request.value,
+        },
+        METHOD_SET_GAMEPAD_AXIS,
+    )
 }
 
 /// Handler for `disconnect_gamepad` BRP method
 ///
 /// Bevy removes the [`Gamepad`] component and leaves the entity, as it does for a real pad.
 fn disconnect_gamepad_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    let request: DisconnectGamepadRequest = parse_request(params)?;
+    let request: DisconnectGamepadRequest =
+        brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
     let gamepad = simulated_gamepad(world, request.gamepad)?;
 
     cancel_pending_button_releases(world, gamepad, ReleaseCancellation::AllButtons);
@@ -327,9 +341,12 @@ fn disconnect_gamepad_handler(In(params): In<Option<Value>>, world: &mut World) 
     let event = GamepadConnectionEvent::new(gamepad, GamepadConnection::Disconnected);
     write_raw_gamepad_event(world, event);
 
-    to_value(GamepadResponse {
-        gamepad: request.gamepad,
-    })
+    brp_request::serialize_response(
+        GamepadResponse {
+            gamepad: request.gamepad,
+        },
+        METHOD_DISCONNECT_GAMEPAD,
+    )
 }
 
 // ============================================================================
@@ -412,35 +429,12 @@ fn cancel_pending_button_releases(
     }
 }
 
-const fn invalid_params(message: String) -> BrpError {
-    BrpError {
-        code: INVALID_PARAMS,
-        message,
-        data: None,
-    }
-}
-
-fn parse_request<T: serde::de::DeserializeOwned>(params: Option<Value>) -> Result<T, BrpError> {
-    let params =
-        params.ok_or_else(|| invalid_params(MISSING_REQUEST_PARAMETERS_MESSAGE.to_string()))?;
-    serde_json::from_value(params)
-        .map_err(|e| invalid_params(format!("Failed to parse parameters: {e}")))
-}
-
-fn to_value<T: Serialize>(response: T) -> BrpResult {
-    serde_json::to_value(response).map_err(|e| BrpError {
-        code:    bevy_remote::error_codes::INTERNAL_ERROR,
-        message: format!("Failed to serialize response: {e}"),
-        data:    None,
-    })
-}
-
 /// Resolve the `gamepad` parameter to a simulated gamepad entity
 fn simulated_gamepad(world: &World, bits: u64) -> Result<Entity, BrpError> {
     Entity::try_from_bits(bits)
         .filter(|&entity| world.get::<SimulatedGamepad>(entity).is_some())
         .ok_or_else(|| {
-            invalid_params(format!(
+            brp_request::invalid_params(format!(
                 "Entity {bits} is not a connected simulated gamepad (never connected, or \
                  disconnected); connect one with brp_extras/connect_gamepad"
             ))
