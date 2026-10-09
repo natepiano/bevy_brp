@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Entity screenshots of an entity without its own `Aabb` crop to the union of its visible descendants' AABBs, reported as `bounds_kind: "hierarchy"`
 
 ### Changed
-- Update to Bevy 0.20.0-rc.2
+- Update to Bevy 0.20.0
 - Screenshot crops now happen before the RGB conversion, so only the kept pixels are converted, and PNG encoding uses the `Up` row filter in place of the adaptive one
 
 ### Fixed
