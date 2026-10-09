@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.23.0] - 2026-10-09
 
 ### Added
 - `brp_extras_connect_gamepad`, `brp_extras_send_gamepad_button`, `brp_extras_set_gamepad_button`, `brp_extras_set_gamepad_axis` and `brp_extras_disconnect_gamepad` drive a simulated gamepad (requires bevy_brp_extras with its `gamepad` feature). Send taps by default; set holds its value. Button and axis parameters list their named variants. Thanks [johanhelsing](https://github.com/johanhelsing)!
