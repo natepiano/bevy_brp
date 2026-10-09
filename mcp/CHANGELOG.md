@@ -15,6 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Update to Bevy 0.20.0
 
+## [0.22.10] - 2026-10-06
+
+### Added
+- `brp_extras_connect_gamepad`, `brp_extras_send_gamepad_button`, `brp_extras_set_gamepad_button`, `brp_extras_set_gamepad_axis` and `brp_extras_disconnect_gamepad` drive a simulated gamepad (requires bevy_brp_extras with its `gamepad` feature). Send taps by default; set holds its value. Button and axis parameters list their named variants.
+
+### Fixed
+- Tool schemas keep the allowed values of enum parameters (such as mouse and gamepad buttons) instead of showing a bare string
+
+## [0.22.9] - 2026-10-06
+
+### Changed
+- The `brp_extras_screenshot` description now says an entity without its own `Aabb` crops to the union of its visible descendants' AABBs, which `bevy_brp_extras` 0.22.9 adds
+
+## [0.22.8] - 2026-09-27
+
+### Changed
+- Version bump to 0.22.8 to maintain workspace version synchronization
+
 ## [0.23.0-rc.1] - 2026-09-26
 
 ### Changed

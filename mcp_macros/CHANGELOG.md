@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Version bump to 0.23.0 to maintain workspace version synchronization
 
+## [0.22.10] - 2026-10-06
+
+### Changed
+- Version bump to 0.22.10 to maintain workspace version synchronization
+
+## [0.22.9] - 2026-10-06
+
+### Changed
+- Version bump to 0.22.9 to maintain workspace version synchronization
+
+## [0.22.8] - 2026-09-27
+
+### Changed
+- Version bump to 0.22.8 to maintain workspace version synchronization
+
 ## [0.23.0-rc.1] - 2026-09-26
 
 ### Fixed
