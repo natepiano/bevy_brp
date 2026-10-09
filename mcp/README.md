@@ -11,8 +11,8 @@ A Model Context Protocol (MCP) server that enables AI coding assistants to launc
 
 | bevy        | bevy_brp_mcp    |
 |-------------|-----------------|
-| 0.20.0-rc.1 | 0.23.0-rc.1     |
-| 0.19        | 0.22.7          |
+| 0.20        | 0.23.0          |
+| 0.19        | 0.22.10         |
 | 0.18        | 0.19.0          |
 | 0.17        | 0.17.2          |
 | 0.16        | 0.1             |
