@@ -183,7 +183,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.18.1] - 2026-02-10
 
 ### Added
-- **`type_text` method**: New BRP method for sequential character typing. Types text one character per frame, handling shift for uppercase/symbols and mapping unmappable characters as skipped. Thanks [tobert](https://github.com/tobert)!
+- **`type_text` method**: New BRP method for sequential character typing. Types text one character every two frames, handling shift for uppercase/symbols and mapping unmappable characters as skipped. Thanks [tobert](https://github.com/tobert)!
 
 ### Fixed
 - **`send_keys` text field population**: Fixed `send_keys` to populate the `text` field on `KeyboardInput` events, enabling proper text input in Bevy UI text fields. Thanks [tobert](https://github.com/tobert)!

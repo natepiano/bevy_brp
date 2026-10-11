@@ -1,4 +1,4 @@
-Types text sequentially in Bevy apps via bevy_brp_extras. Characters are typed one per frame with proper key press/release cycles, simulating realistic human typing.
+Types text sequentially in Bevy apps via bevy_brp_extras. Each character is pressed on one frame and released on the next, so text goes in at one character every two frames, simulating realistic human typing.
 
 Unlike `send_keys` which sends all keys simultaneously (for chords and shortcuts), `type_text` queues characters and types them sequentially. This is ideal for text input fields that need to process each character individually.
 

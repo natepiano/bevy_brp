@@ -44,7 +44,7 @@ requires [bevy_brp_extras](https://crates.io/crates/bevy_brp_extras)
 - `brp_extras/screenshot` - Capture the full primary window or an entity crop by ID or unique exact name
 - `brp_extras/shutdown` - Gracefully shutdown the application
 - `brp_extras/send_keys` - Send keyboard input to the application
-- `brp_extras/type_text` - Type text sequentially (one character per frame)
+- `brp_extras/type_text` - Type text sequentially (one character every two frames)
 - `brp_extras/set_window_title` - Change the primary window title
 - `brp_extras/click_mouse` - Click mouse button
 - `brp_extras/double_click_mouse` - Double click mouse button

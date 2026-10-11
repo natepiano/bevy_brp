@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix the `brp_extras_type_text` description saying it types one character per frame; each character is pressed on one frame and released on the next, so text goes in at one character every two frames
+
 ## [0.23.0] - 2026-10-09
 
 ### Added

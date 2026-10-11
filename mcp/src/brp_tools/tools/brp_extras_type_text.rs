@@ -1,4 +1,4 @@
-//! `brp_extras/type_text` tool - Type text sequentially (one char per frame)
+//! `brp_extras/type_text` tool - Type text sequentially (one char every two frames)
 
 use bevy_brp_mcp_macros::ParamStruct;
 use bevy_brp_mcp_macros::ResultStruct;

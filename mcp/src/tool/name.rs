@@ -319,7 +319,7 @@ pub enum ToolName {
         result = "SendKeysResult"
     )]
     BrpExtrasSendKeys,
-    /// `brp_extras_type_text` - Type text sequentially (one char per frame)
+    /// `brp_extras_type_text` - Type text sequentially (one char every two frames)
     #[brp_tool(
         brp_method = "brp_extras/type_text",
         params = "TypeTextParams",

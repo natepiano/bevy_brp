@@ -143,7 +143,7 @@
 //! - `duration_ms` (u32, optional, default: 100, max: 60000): hold duration in milliseconds
 //!
 //! ### `brp_extras/type_text`
-//! Types text sequentially, one character per frame, with proper shift handling
+//! Types text sequentially, one character every two frames, with proper shift handling
 //! for uppercase and symbols.
 //! - `text` (string, required): text to type (letters, numbers, symbols, newlines, tabs)
 //!

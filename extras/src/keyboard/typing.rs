@@ -28,7 +28,7 @@ pub(super) enum TypingPhase {
     ReleaseCurrentKeys,
 }
 
-/// Component for sequential text typing (one character per frame).
+/// Component for sequential text typing (one character every two frames).
 /// Used by `type_text` RPC to simulate realistic typing.
 #[derive(Component)]
 pub(super) struct TextTypingQueue {
@@ -128,7 +128,8 @@ fn char_to_keys(c: char) -> Option<Vec<KeyCodeWrapper>> {
 }
 
 /// Handler for the `type_text` BRP method.
-/// Types text one character per frame, simulating realistic keyboard input.
+/// Types text one character every two frames (press, then release), simulating realistic keyboard
+/// input.
 pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     let request: TypeTextRequest = brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
 
@@ -177,7 +178,8 @@ pub(crate) fn type_text_handler(In(params): In<Option<Value>>, world: &mut World
     )
 }
 
-/// System that processes text typing queues (one character per frame).
+/// System that processes text typing queues: it presses a character's keys on one frame and
+/// releases them on the next, so text goes in at one character every two frames.
 pub(super) fn process_text_typing(
     mut commands: Commands,
     mut query: Query<(Entity, &mut TextTypingQueue)>,
