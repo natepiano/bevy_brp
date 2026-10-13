@@ -8,12 +8,13 @@
 targets = []
 
 [advisories]
-# Both are `unmaintained` notices, not vulnerabilities, and both report
-# "No safe upgrade is available!". Ignored by ID, not by class, so a new
-# unmaintained crate still fails.
+# The first two are `unmaintained` notices with "No safe upgrade is available!".
+# The third is a vulnerability we cannot upgrade past: Bevy pins the crate.
+# Ignored by ID, not by class, so any new advisory still fails.
 ignore = [
   { id = "RUSTSEC-2024-0436", reason = "paste 1.0.15, archived upstream. Only via netstat2 -> netlink-packet-* in bevy_brp_mcp." },
   { id = "RUSTSEC-2026-0192", reason = "ttf-parser 0.25.1. Only via bevy -> winit -> sctk-adwaita -> ab_glyph." },
+  { id = "RUSTSEC-2026-0344", reason = "ruzstd 0.8.3, zstd decompression bomb (DoS only); fixed in 0.9.1. Only via bevy_image 0.20.0, which requires ruzstd ^0.8 for zstd KTX2 textures. Remove once Bevy moves to ruzstd 0.9." },
 ]
 
 [licenses]
