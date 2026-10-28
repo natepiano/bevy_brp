@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "brp": {
+      "type": "stdio",
+      "command": "${HOME}/.cargo/bin/bevy_brp_mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}
