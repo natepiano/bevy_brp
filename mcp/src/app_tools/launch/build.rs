@@ -13,6 +13,7 @@ use tracing::info;
 use super::constants::BUILD_OUTPUT_FRESH_FIELD;
 use super::constants::BUILD_OUTPUT_NAME_FIELD;
 use super::constants::BUILD_OUTPUT_TARGET_FIELD;
+use super::constants::CARGO_FEATURES_FLAG;
 use super::constants::CARGO_RELEASE_FLAG;
 use super::logging;
 use crate::app_tools::constants::CARGO_BUILD_SUBCOMMAND;
@@ -140,6 +141,7 @@ fn build_cargo_command(
     manifest_dir: &Path,
     workspace_root: &Path,
     scope: BuildScope,
+    features: &[String],
 ) -> Command {
     let mut command = Command::new(CARGO_COMMAND_NAME);
     command.current_dir(scope.build_dir(manifest_dir, workspace_root));
@@ -152,6 +154,10 @@ fn build_cargo_command(
 
     if profile == PROFILE_RELEASE {
         command.arg(CARGO_RELEASE_FLAG);
+    }
+
+    if !features.is_empty() {
+        command.arg(CARGO_FEATURES_FLAG).arg(features.join(","));
     }
 
     command.arg(CARGO_MESSAGE_FORMAT_JSON_FLAG);
@@ -233,6 +239,7 @@ pub(super) fn run_cargo_build(
     manifest_dir: &Path,
     workspace_root: &Path,
     scope: BuildScope,
+    features: &[String],
 ) -> Result<BuildState> {
     let mut command = build_cargo_command(
         target_name,
@@ -241,6 +248,7 @@ pub(super) fn run_cargo_build(
         manifest_dir,
         workspace_root,
         scope,
+        features,
     );
     let output = execute_build_command(
         &mut command,
@@ -253,4 +261,125 @@ pub(super) fn run_cargo_build(
     log_build_result(build_state, target_name, target_type);
 
     Ok(build_state)
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "tests should panic on unexpected values"
+)]
+mod tests {
+    use std::path::Path;
+
+    use super::BuildScope;
+    use super::build_cargo_command;
+    use crate::app_tools::constants::CARGO_BIN_FLAG;
+    use crate::app_tools::constants::CARGO_BUILD_SUBCOMMAND;
+    use crate::app_tools::constants::CARGO_EXAMPLE_FLAG;
+    use crate::app_tools::constants::CARGO_MANIFEST_FILE;
+    use crate::app_tools::constants::CARGO_MESSAGE_FORMAT_JSON_FLAG;
+    use crate::app_tools::constants::CARGO_WORKSPACE_FLAG;
+    use crate::app_tools::constants::PROFILE_DEBUG;
+    use crate::app_tools::constants::PROFILE_RELEASE;
+    use crate::app_tools::launch::config;
+    use crate::app_tools::launch::constants::CARGO_FEATURES_FLAG;
+    use crate::app_tools::launch::constants::CARGO_RELEASE_FLAG;
+    use crate::app_tools::targets::DevFeatures;
+    use crate::app_tools::targets::TargetType;
+
+    #[test]
+    fn cargo_command_adds_dev_features_after_target_for_both_scopes() {
+        let features = vec!["bevy/dynamic_linking".to_string(), "app/dev".to_string()];
+        for scope in [BuildScope::Workspace, BuildScope::Package] {
+            for (target_type, target_flag) in [
+                (TargetType::App, CARGO_BIN_FLAG),
+                (TargetType::Example, CARGO_EXAMPLE_FLAG),
+            ] {
+                let command = build_cargo_command(
+                    "demo",
+                    target_type,
+                    PROFILE_DEBUG,
+                    Path::new("/workspace/app"),
+                    Path::new("/workspace"),
+                    scope,
+                    &features,
+                );
+                let mut expected = vec![CARGO_BUILD_SUBCOMMAND];
+                if scope == BuildScope::Workspace {
+                    expected.push(CARGO_WORKSPACE_FLAG);
+                }
+                expected.extend([
+                    target_flag,
+                    "demo",
+                    CARGO_FEATURES_FLAG,
+                    "bevy/dynamic_linking,app/dev",
+                    CARGO_MESSAGE_FORMAT_JSON_FLAG,
+                ]);
+                assert_eq!(command.get_args().collect::<Vec<_>>(), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn cargo_command_release_has_no_dev_features() {
+        for dev_features in [
+            DevFeatures::Listed(vec!["bevy/dynamic_linking".to_string()]),
+            DevFeatures::Malformed("a number: 42".to_string()),
+        ] {
+            let features = config::dev_features_for_profile(
+                &dev_features,
+                PROFILE_RELEASE,
+                Path::new("/workspace"),
+            )
+            .expect("release must ignore listed and malformed workspace dev features");
+            for scope in [BuildScope::Workspace, BuildScope::Package] {
+                let command = build_cargo_command(
+                    "demo",
+                    TargetType::App,
+                    PROFILE_RELEASE,
+                    Path::new("/workspace/app"),
+                    Path::new("/workspace"),
+                    scope,
+                    features,
+                );
+                let mut expected = vec![CARGO_BUILD_SUBCOMMAND];
+                if scope == BuildScope::Workspace {
+                    expected.push(CARGO_WORKSPACE_FLAG);
+                }
+                expected.extend([
+                    CARGO_BIN_FLAG,
+                    "demo",
+                    CARGO_RELEASE_FLAG,
+                    CARGO_MESSAGE_FORMAT_JSON_FLAG,
+                ]);
+                assert_eq!(command.get_args().collect::<Vec<_>>(), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn cargo_command_omits_empty_and_unset_dev_features() {
+        for dev_features in [DevFeatures::Unset, DevFeatures::Listed(Vec::new())] {
+            let features = dev_features
+                .for_launch(&Path::new("/workspace").join(CARGO_MANIFEST_FILE))
+                .expect("valid workspace dev features");
+            for scope in [BuildScope::Workspace, BuildScope::Package] {
+                let command = build_cargo_command(
+                    "demo",
+                    TargetType::Example,
+                    PROFILE_DEBUG,
+                    Path::new("/workspace/app"),
+                    Path::new("/workspace"),
+                    scope,
+                    features,
+                );
+                let mut expected = vec![CARGO_BUILD_SUBCOMMAND];
+                if scope == BuildScope::Workspace {
+                    expected.push(CARGO_WORKSPACE_FLAG);
+                }
+                expected.extend([CARGO_EXAMPLE_FLAG, "demo", CARGO_MESSAGE_FORMAT_JSON_FLAG]);
+                assert_eq!(command.get_args().collect::<Vec<_>>(), expected);
+            }
+        }
+    }
 }

@@ -1,4 +1,5 @@
 // cargo arguments
+pub(super) const CARGO_FEATURES_FLAG: &str = "--features";
 pub(super) const CARGO_RELEASE_FLAG: &str = "--release";
 
 // cargo build json fields

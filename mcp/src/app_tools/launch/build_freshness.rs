@@ -282,6 +282,7 @@ mod tests {
     use super::check_target_freshness;
     use super::parse_dep_info_dependencies;
     use crate::app_tools::targets::BevyTarget;
+    use crate::app_tools::targets::DevFeatures;
     use crate::app_tools::targets::TargetType;
 
     const FILE_TIMESTAMP_ADVANCE_MS: u64 = 20;
@@ -295,6 +296,7 @@ mod tests {
             manifest:       manifest_path.to_path_buf(),
             relative:       PathBuf::new(),
             source:         PathBuf::new(),
+            dev_features:   DevFeatures::Unset,
         }
     }
 

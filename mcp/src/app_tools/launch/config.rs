@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
@@ -13,9 +14,12 @@ use super::build::BuildScope;
 use super::build::BuildState;
 use super::build_freshness;
 use super::build_freshness::FreshnessCheckResult;
+use crate::app_tools::constants::CARGO_MANIFEST_FILE;
+use crate::app_tools::constants::PROFILE_RELEASE;
 use crate::app_tools::instance_count::InstanceCount;
 use crate::app_tools::launch_params::SearchOrder;
 use crate::app_tools::targets::BevyTarget;
+use crate::app_tools::targets::DevFeatures;
 use crate::app_tools::targets::TargetType;
 use crate::brp_tools::Port;
 use crate::error::Result;
@@ -151,6 +155,8 @@ pub(super) trait LaunchConfigTrait: Clone {
     fn extra_log_info(&self, target: &BevyTarget) -> Option<String>;
 
     fn ensure_built(&self, target: &BevyTarget, scope: BuildScope) -> Result<BuildState> {
+        let features =
+            dev_features_for_profile(&target.dev_features, self.profile(), &target.workspace_root)?;
         if Self::TARGET_TYPE == TargetType::App {
             let freshness = build_freshness::check_target_freshness(target, self.profile());
             match &freshness {
@@ -179,8 +185,21 @@ pub(super) trait LaunchConfigTrait: Clone {
             manifest_dir,
             &target.workspace_root,
             scope,
+            features,
         )
     }
+}
+
+pub(super) fn dev_features_for_profile<'a>(
+    dev_features: &'a DevFeatures,
+    profile: &str,
+    workspace_root: &Path,
+) -> Result<&'a [String]> {
+    if profile == PROFILE_RELEASE {
+        return Ok(&[]);
+    }
+
+    dev_features.for_launch(&workspace_root.join(CARGO_MANIFEST_FILE))
 }
 
 impl From<&LaunchParams> for LaunchConfig<App> {
@@ -330,5 +349,65 @@ pub(super) fn build_launch_result<T: LaunchConfigTrait>(
         launched_as: Some(T::TARGET_TYPE.to_string()),
         duplicate_paths: None,
         message_template: Some(message),
+    }
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "tests should panic on unexpected values"
+)]
+mod tests {
+    use std::path::Path;
+
+    use super::dev_features_for_profile;
+    use crate::app_tools::constants::CARGO_MANIFEST_FILE;
+    use crate::app_tools::constants::PROFILE_DEBUG;
+    use crate::app_tools::constants::PROFILE_RELEASE;
+    use crate::app_tools::constants::WORKSPACE_DEV_FEATURES_LABEL;
+    use crate::app_tools::targets::DevFeatures;
+
+    #[test]
+    fn non_release_profiles_use_workspace_dev_features() {
+        let dev_features = DevFeatures::Listed(vec![
+            "bevy/dynamic_linking".to_string(),
+            "app/dev".to_string(),
+        ]);
+        for profile in [PROFILE_DEBUG, "custom"] {
+            let features =
+                dev_features_for_profile(&dev_features, profile, Path::new("/workspace"))
+                    .expect("valid workspace dev features");
+            assert_eq!(features, ["bevy/dynamic_linking", "app/dev"]);
+        }
+    }
+
+    #[test]
+    fn release_ignores_listed_and_malformed_dev_features() {
+        for dev_features in [
+            DevFeatures::Listed(vec!["bevy/dynamic_linking".to_string()]),
+            DevFeatures::Malformed("a string: \"bevy/dynamic_linking\"".to_string()),
+        ] {
+            let features =
+                dev_features_for_profile(&dev_features, PROFILE_RELEASE, Path::new("/workspace"))
+                    .expect("release must ignore workspace dev features");
+            assert_eq!(features, Vec::<String>::new());
+        }
+    }
+
+    #[test]
+    fn non_release_malformed_dev_features_report_workspace_manifest() {
+        let dev_features = DevFeatures::Malformed("a number: 42".to_string());
+        let workspace_manifest = Path::new("/workspace").join(CARGO_MANIFEST_FILE);
+        for profile in [PROFILE_DEBUG, "custom"] {
+            let error = dev_features_for_profile(&dev_features, profile, Path::new("/workspace"))
+                .expect_err("malformed workspace dev features must fail non-release launches");
+            let message = error.to_string();
+            assert!(
+                message.contains(&workspace_manifest.display().to_string()),
+                "{message}"
+            );
+            assert!(message.contains(WORKSPACE_DEV_FEATURES_LABEL), "{message}");
+            assert!(message.contains("a number: 42"), "{message}");
+        }
     }
 }

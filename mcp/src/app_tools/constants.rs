@@ -49,3 +49,8 @@ pub(super) const PROFILE_RELEASE: &str = "release";
 pub(super) const STATUS_MAX_RETRIES: u32 = 5;
 /// Delay between BRP status poll retries
 pub(super) const STATUS_POLL_INTERVAL: Duration = std::time::Duration::from_millis(500);
+
+// workspace dev features
+pub(super) const WORKSPACE_DEV_FEATURES_KEY: &str = "features";
+pub(super) const WORKSPACE_DEV_FEATURES_LABEL: &str = "[workspace.metadata.dev] features";
+pub(super) const WORKSPACE_DEV_TABLE: &str = "dev";

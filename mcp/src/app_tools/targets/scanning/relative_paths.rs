@@ -52,6 +52,7 @@ mod tests {
     use super::compute_relative_path;
     use super::filter_targets_by_path_scope;
     use crate::app_tools::targets::BevyTarget;
+    use crate::app_tools::targets::DevFeatures;
     use crate::app_tools::targets::cargo_detector::TargetType;
 
     fn make_target(name: &str, package_name: &str, manifest_path: &str) -> BevyTarget {
@@ -63,6 +64,7 @@ mod tests {
             manifest:       PathBuf::from(manifest_path),
             relative:       PathBuf::new(),
             source:         PathBuf::new(),
+            dev_features:   DevFeatures::Unset,
         }
     }
 

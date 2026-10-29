@@ -15,6 +15,7 @@ use strum::AsRefStr;
 use strum::Display;
 use strum::EnumString;
 
+use super::DevFeatures;
 use super::constants::BEVY_CRATE_NAME;
 use super::constants::BEVY_REMOTE_FEATURE;
 use super::constants::BEVY_REMOTE_GLOB_IMPORT_PREFIX;
@@ -98,6 +99,8 @@ pub struct BevyTarget {
     pub relative:       PathBuf,
     /// Path to the target's source file (from `cargo metadata`)
     pub source:         PathBuf,
+    /// Features the workspace requests for non-release launch builds
+    pub dev_features:   DevFeatures,
 }
 
 impl BevyTarget {
@@ -124,7 +127,8 @@ impl BevyTarget {
 
 /// Detects binary targets in a project or workspace
 pub(super) struct CargoDetector {
-    metadata: Metadata,
+    metadata:     Metadata,
+    dev_features: DevFeatures,
 }
 
 impl CargoDetector {
@@ -163,6 +167,7 @@ impl CargoDetector {
                 manifest:       manifest_path.clone(),
                 relative:       PathBuf::new(), // Will be set by scanning logic
                 source:         target.src_path.clone().into(),
+                dev_features:   self.dev_features.clone(),
             });
         }
 
@@ -176,6 +181,7 @@ impl CargoDetector {
                 manifest:       manifest_path.clone(),
                 relative:       PathBuf::new(), // Will be set by scanning logic
                 source:         target.src_path.clone().into(),
+                dev_features:   self.dev_features.clone(),
             });
         }
 
@@ -343,6 +349,10 @@ impl TryFrom<&Path> for CargoDetector {
             .exec()
             .context("Failed to execute cargo metadata")?;
 
-        Ok(Self { metadata })
+        let dev_features = DevFeatures::from_workspace_metadata(&metadata.workspace_metadata);
+        Ok(Self {
+            metadata,
+            dev_features,
+        })
     }
 }
