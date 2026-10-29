@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `brp_launch` adds the features listed in the workspace root `Cargo.toml` under `[workspace.metadata.dev] features` to every non-release build, so a launch can share the workspace's `bevy/dynamic_linking` dev builds; release builds never get them, and a workspace without the key builds as before
+- `brp_launch` adds the features listed in the workspace root `Cargo.toml` under `[workspace.metadata.dev] features` to every non-release build, so a launch can share the workspace's `bevy/dynamic_linking` dev builds; release builds never get them, and a workspace without the key builds as before; an app binary skips the rebuild only when its last `brp_launch` build used the same feature list, so a binary from a plain `cargo build` is rebuilt with them
 
 ### Fixed
 - Fix the `brp_extras_type_text` description saying it types one character per frame; each character is pressed on one frame and released on the next, so text goes in at one character every two frames

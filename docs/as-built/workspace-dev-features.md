@@ -47,6 +47,24 @@ Data flow:
 4. `run_cargo_build` passes the slice to `build_cargo_command` (`launch/build.rs`), which emits:
    `build [--workspace] --bin|--example <name> [--release] [--features a,b] --message-format=json`.
    `--features` is omitted when the slice is empty.
+5. For an app, the lock-free check `build_freshness::check_target_freshness(target, profile,
+   features)` runs before cargo. After a successful app build, `write_built_dev_features` writes
+   the slice, one feature per line, to a record beside the binary: the binary path with
+   `.brp_dev_features` appended (`DEV_FEATURES_RECORD_SUFFIX`). A write failure logs a warning and
+   the launch continues. Examples skip the check and write no record.
+
+The check reads the record as `BuiltDevFeatures`: `Recorded(features)` when the record exists and
+its mtime is no older than the binary's, otherwise `Unrecorded`. After the binary-exists check and
+before any dep-info read:
+
+| Record | Wanted features | Result |
+| --- | --- | --- |
+| `Recorded`, same list in the same order | any | continue to the mtime checks |
+| `Recorded`, different list | any | `Stale`, naming both lists |
+| `Unrecorded` | empty | continue to the mtime checks |
+| `Unrecorded` | not empty | `Stale`, naming the record path |
+
+A record that exists and is current but cannot be read gives `Unknown`, which also runs cargo.
 
 Constants: `WORKSPACE_DEV_TABLE` (`"dev"`), `WORKSPACE_DEV_FEATURES_KEY` (`"features"`) and
 `WORKSPACE_DEV_FEATURES_LABEL` in `app_tools/constants.rs`; `CARGO_FEATURES_FLAG` in
@@ -62,6 +80,9 @@ Constants: `WORKSPACE_DEV_TABLE` (`"dev"`), `WORKSPACE_DEV_FEATURES_KEY` (`"feat
   in both workspace and package build scopes.
 - A malformed value fails the launch even when the app binary is fresh, because the profile check
   runs before the freshness check.
+- An app binary launches without cargo only when its record lists exactly the wanted features, or
+  when no features are wanted and the binary has no current record. A binary from a plain
+  `cargo build` is newer than any record, so a launch that wants dev features rebuilds it.
 
 ## Gotchas
 
@@ -70,10 +91,12 @@ Constants: `WORKSPACE_DEV_TABLE` (`"dev"`), `WORKSPACE_DEV_FEATURES_KEY` (`"feat
 - In a package-scope build (no `--workspace`, used when a target name occurs in more than one
   member), a `<crate>/<feature>` entry may fail if the selected member does not depend on that
   crate. Unverified.
-- The app freshness check compares mtimes only and does not know which features a binary was built
-  with. A binary from a plain `cargo build` without the dev features that is newer than every input
-  launches as-is. Editing the workspace `Cargo.toml` makes it stale, since that file is a freshness
-  input.
+- The record is written after cargo exits. If a concurrent plain `cargo build` replaces the binary in
+  that gap, the record is newer than a binary it does not describe, and the next launch skips cargo.
+  The gap is milliseconds and needs cargo to re-link an already built artifact of another feature
+  set. Closing it would need cargo's build lock held across the write.
+- A release binary is never checked for features: release wants none, so a release binary built by
+  hand with extra features still counts as fresh.
 
 ## Why
 

@@ -158,7 +158,8 @@ pub(super) trait LaunchConfigTrait: Clone {
         let features =
             dev_features_for_profile(&target.dev_features, self.profile(), &target.workspace_root)?;
         if Self::TARGET_TYPE == TargetType::App {
-            let freshness = build_freshness::check_target_freshness(target, self.profile());
+            let freshness =
+                build_freshness::check_target_freshness(target, self.profile(), features);
             match &freshness {
                 FreshnessCheckResult::Fresh => {},
                 FreshnessCheckResult::Stale(reason) => tracing::debug!(
@@ -178,7 +179,7 @@ pub(super) trait LaunchConfigTrait: Clone {
         }
 
         let manifest_dir = build::validate_manifest_directory(&target.manifest)?;
-        build::run_cargo_build(
+        let build_state = build::run_cargo_build(
             self.target(),
             Self::TARGET_TYPE,
             self.profile(),
@@ -186,7 +187,14 @@ pub(super) trait LaunchConfigTrait: Clone {
             &target.workspace_root,
             scope,
             features,
-        )
+        )?;
+        if Self::TARGET_TYPE == TargetType::App {
+            build_freshness::write_built_dev_features(
+                &target.get_binary_path(self.profile()),
+                features,
+            );
+        }
+        Ok(build_state)
     }
 }
 
