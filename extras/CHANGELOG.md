@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Requires Bevy 0.20.1.
+
 ## [0.23.0] - 2026-10-09
 
 ### Added

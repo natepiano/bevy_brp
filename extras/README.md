@@ -47,7 +47,7 @@ The crop comes from the final composited target, so it may include overlapping U
 Your Bevy app must have the `png` feature enabled. Without it, the request fails before capture begins.
 
 ```toml
-bevy = { version = "0.20.0", features = ["png"] }
+bevy = { version = "0.20.1", features = ["png"] }
 ```
 
 **Diagnostics note**: `get_diagnostics` requires the `diagnostics` cargo feature (enabled by default). Disable with `default-features = false` if you don't want `FrameTimeDiagnosticsPlugin` added to your app.
