@@ -8,6 +8,8 @@ mod typing;
 
 use bevy::prelude::*;
 
+pub(crate) use self::events::create_keyboard_events;
+pub(crate) use self::key_code::KeyCodeWrapper;
 pub(crate) use self::keys::send_keys_handler;
 pub(crate) use self::typing::type_text_handler;
 

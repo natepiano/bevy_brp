@@ -16,6 +16,8 @@ use serde_json::Value;
 use super::button::TimedButtonRelease;
 use super::constants::DEFAULT_DOUBLE_CLICK_DELAY_MS;
 use super::constants::DEFAULT_MOUSE_DURATION_MS;
+use super::modifier;
+use super::modifier::Modifier;
 use super::support;
 use crate::brp_request;
 use crate::brp_request::EmptyParamsPolicy;
@@ -31,17 +33,23 @@ use crate::window_event;
 #[derive(Deserialize)]
 struct ClickMouseRequest {
     /// Mouse button to click
-    button: MouseButton,
+    button:    MouseButton,
     /// Target window entity (None = primary window)
     #[serde(default)]
-    window: Option<u64>,
+    window:    Option<u64>,
+    /// Keyboard modifiers held throughout the click.
+    #[serde(default, deserialize_with = "modifier::deserialize_modifiers")]
+    modifiers: Vec<Modifier>,
 }
 
 /// Response structure for `click_mouse`
 #[derive(Serialize)]
 struct ClickMouseResponse {
     /// Button that was clicked
-    button: MouseButton,
+    button:    MouseButton,
+    /// Keyboard modifiers held throughout the click.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    modifiers: Vec<Modifier>,
 }
 
 /// Request structure for `double_click_mouse`
@@ -97,11 +105,18 @@ pub(crate) fn click_mouse_handler(In(params): In<Option<Value>>, world: &mut Wor
     let request: ClickMouseRequest = brp_request::parse_request(params, EmptyParamsPolicy::Reject)?;
     let window = support::resolve_window(world, request.window)?;
 
-    support::send_timed_button_press(world, request.button, window, DEFAULT_MOUSE_DURATION_MS);
+    support::send_timed_button_press(
+        world,
+        request.button,
+        window,
+        DEFAULT_MOUSE_DURATION_MS,
+        request.modifiers.clone(),
+    );
 
     brp_request::serialize_response(
         ClickMouseResponse {
-            button: request.button,
+            button:    request.button,
+            modifiers: request.modifiers,
         },
         METHOD_CLICK_MOUSE,
     )
@@ -186,9 +201,10 @@ pub(super) fn process_scheduled_clicks(
 
             // Spawn timed release
             commands.spawn(TimedButtonRelease {
-                button: scheduled.button,
-                window: scheduled.window,
-                timer:  Timer::new(
+                button:    scheduled.button,
+                window:    scheduled.window,
+                modifiers: Vec::new(),
+                timer:     Timer::new(
                     Duration::from_millis(scheduled.click_duration.into()),
                     TimerMode::Once,
                 ),

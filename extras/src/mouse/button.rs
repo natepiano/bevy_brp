@@ -13,6 +13,8 @@ use serde_json::Value;
 
 use super::constants::DEFAULT_MOUSE_DURATION_MS;
 use super::constants::MAX_MOUSE_DURATION_MS;
+use super::modifier::Modifier;
+use super::modifier::PendingModifierRelease;
 use super::support;
 use crate::brp_request;
 use crate::brp_request::EmptyParamsPolicy;
@@ -55,11 +57,13 @@ struct SendMouseButtonResponse {
 #[derive(Component)]
 pub(super) struct TimedButtonRelease {
     /// Which button to release
-    pub button: MouseButton,
+    pub button:    MouseButton,
     /// Which window the button was pressed in (None = primary)
-    pub window: Option<Entity>,
+    pub window:    Option<Entity>,
     /// Timer tracking remaining duration
-    pub timer:  Timer,
+    pub timer:     Timer,
+    /// Keyboard modifiers released on the frame after the button release.
+    pub modifiers: Vec<Modifier>,
 }
 
 // ============================================================================
@@ -85,7 +89,7 @@ pub(crate) fn send_mouse_button_handler(
     }
 
     let window = support::resolve_window(world, request.window)?;
-    support::send_timed_button_press(world, request.button, window, duration_ms);
+    support::send_timed_button_press(world, request.button, window, duration_ms, Vec::new());
 
     brp_request::serialize_response(
         SendMouseButtonResponse {
@@ -123,6 +127,13 @@ pub(super) fn process_timed_button_releases(
             };
             window_events.write(WindowEvent::from(event));
             button_events.write(event);
+
+            if !release.modifiers.is_empty() {
+                commands.spawn(PendingModifierRelease {
+                    modifiers: std::mem::take(&mut release.modifiers),
+                    window:    event.window,
+                });
+            }
 
             // Despawn the entity
             commands.entity(entity).despawn();

@@ -12,7 +12,7 @@ use strum_macros::EnumString;
     missing_docs,
     reason = "variants mirror Bevy KeyCode and are self-describing"
 )]
-pub(super) enum KeyCodeWrapper {
+pub(crate) enum KeyCodeWrapper {
     // Letters
     KeyA,
     KeyB,

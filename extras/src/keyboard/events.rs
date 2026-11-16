@@ -28,7 +28,7 @@ pub(super) fn primary_window_entity(world: &mut World) -> Entity {
 ///
 /// Populates `logical_key` and `text` fields for printable characters,
 /// enabling text input simulation that works with Bevy's text input systems.
-pub(super) fn create_keyboard_events(
+pub(crate) fn create_keyboard_events(
     wrappers: &[KeyCodeWrapper],
     button_state: ButtonState,
     window: Entity,

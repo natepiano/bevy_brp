@@ -12,6 +12,8 @@ use bevy_remote::BrpError;
 
 use super::button::TimedButtonRelease;
 use super::cursor::SimulatedCursorPosition;
+use super::modifier;
+use super::modifier::Modifier;
 use crate::brp_request;
 use crate::window_event;
 
@@ -38,12 +40,16 @@ pub(super) fn resolve_window_entity(window: Option<Entity>) -> Entity {
 /// * `button` - Mouse button to press
 /// * `window` - Target window entity
 /// * `duration_ms` - Duration in milliseconds before automatic release
+/// * `modifiers` - Keyboard modifiers held until the frame after the button release
 pub(super) fn send_timed_button_press(
     world: &mut World,
     button: MouseButton,
     window: Entity,
     duration_ms: u32,
+    modifiers: Vec<Modifier>,
 ) {
+    modifier::send_modifier_events(world, &modifiers, ButtonState::Pressed, window);
+
     // Send button press event to both individual and `WindowEvent` channels
     window_event::write_input_event(
         world,
@@ -56,6 +62,7 @@ pub(super) fn send_timed_button_press(
 
     // Spawn timed release component
     world.spawn(TimedButtonRelease {
+        modifiers,
         button,
         window: Some(window),
         timer: Timer::new(

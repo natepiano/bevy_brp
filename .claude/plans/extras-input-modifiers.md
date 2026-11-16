@@ -32,11 +32,12 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
   - `extras/src/mouse/button.rs` — `TimedButtonRelease`, `process_timed_button_releases`.
   - `extras/src/mouse/support.rs` — `send_timed_button_press`, `send_motion_events`, `resolve_window`.
   - `extras/src/mouse/cursor.rs` — `move_mouse_handler`, `SimulatedCursorPosition`.
-  - `extras/src/mouse/mod.rs` — `MousePlugin` systems and the mouse unit tests.
+  - `extras/src/mouse/mod.rs` — `MousePlugin` systems.
+  - `extras/src/mouse/tests.rs` — the mouse unit tests (Phase 1 moves them here from `mod.rs`).
   - `extras/src/keyboard/events.rs` — `create_keyboard_events` (builds a `KeyboardInput` for a `KeyCode`).
   - `extras/src/window_event.rs` — `write_input_event` (writes the message and its `WindowEvent`).
   - `extras/CHANGELOG.md`, `mcp/CHANGELOG.md`, `extras/README.md`.
-- **Test lanes:** `extras` — unit tests in `extras/src/mouse/mod.rs` (`#[cfg(test)]`), and `extras/tests/`; `mcp` — unit tests beside the tool files.
+- **Test lanes:** `extras` — unit tests in `extras/src/mouse/tests.rs` (`#[cfg(test)]`), and `extras/tests/`; `mcp` — unit tests beside the tool files.
 - **Build:** `bash ~/.claude/scripts/direct/verify.sh check bevy_brp_extras` and `… check bevy_brp_mcp`
 - **Test:** `bash ~/.claude/scripts/direct/verify.sh test bevy_brp_extras` and `… test bevy_brp_mcp`
 - **Lint:** `bash ~/.claude/scripts/direct/verify.sh lint bevy_brp_extras` and `… lint bevy_brp_mcp`
@@ -49,7 +50,7 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
 
 ## Phases
 
-### Phase 1 — Click and drag hold keyboard modifiers  · status: todo
+### Phase 1 — Click and drag hold keyboard modifiers  · status: done
 
 #### Work Order
 
@@ -72,7 +73,7 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
   - Click: `TimedButtonRelease` gets `modifiers: Vec<Modifier>`. When its timer ends it releases the button and, if `modifiers` is not empty, spawns a one-frame `PendingModifierRelease { modifiers, window }` that the next `Update` releases and despawns.
   - Drag: add `DragState::ReleaseModifiers` after `Released`. `Released` releases the button and moves to `ReleaseModifiers` when `modifiers` is not empty; `ReleaseModifiers` releases the keys and despawns.
 - `send_mouse_button` and `double_click_mouse` do not change (no consumer).
-- Fail-first tests in `extras/src/mouse/mod.rs`, written before the code and failing on the old code:
+- Fail-first tests in `extras/src/mouse/tests.rs`, written before the code and failing on the old code:
   1. `click_with_shift_holds_shift_across_the_click` — the `KeyboardInput` ShiftLeft Pressed comes no later than the button press, and its Released comes on the frame after the button release.
   2. `drag_with_control_holds_control_for_every_drag_frame` — ControlLeft is pressed in `ButtonInput<KeyCode>` on each frame that the drag sends a `CursorMoved`, and released after the button release.
   3. `click_without_modifiers_sends_no_keyboard_input` — the old wire request gives no `KeyboardInput`.
@@ -82,16 +83,17 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
 
 **Files:**
 - `extras/src/mouse/modifier.rs` — new: `Modifier`, `PendingModifierRelease`, the press and release helpers.
-- `extras/src/mouse/mod.rs` — `mod modifier;`, register the release system, tests.
+- `extras/src/mouse/mod.rs` — `mod modifier;`, register the release system, and replace the inline `#[cfg(test)] mod tests { … }` block with `#[cfg(test)] mod tests;`.
+- `extras/src/mouse/tests.rs` — new: the existing mouse tests, moved from `mod.rs` unchanged, and the six new tests.
 - `extras/src/mouse/click.rs` — request and response field, press order.
 - `extras/src/mouse/drag.rs` — request field, `DragOperation.modifiers`, `ReleaseModifiers` state.
 - `extras/src/mouse/button.rs` — `TimedButtonRelease.modifiers`.
 - `extras/src/mouse/support.rs` — `send_timed_button_press` takes the modifiers.
 - `extras/src/keyboard/events.rs` — `create_keyboard_events` visibility.
 
-**Workers:** 1 writer + 1 tester — the tests live in the module the writer edits, so they split by function, not by file.
-- `impl` — every file above except the `#[cfg(test)] mod tests` block; hub: `extras/src/mouse/mod.rs` (module and system registration).
-- `test` — the six tests in the `tests` block of `extras/src/mouse/mod.rs`, from the Spec alone.
+**Workers:** 1 writer + 1 tester — the tests move to their own file, because berth gives each file one owner.
+- `impl` — every file above except `tests.rs`; hub: `extras/src/mouse/mod.rs` (module and system registration, and the `mod tests;` line).
+- `test` — `extras/src/mouse/tests.rs`: the moved tests and the six new tests, from the Spec alone.
 
 **State:** none
 
@@ -101,39 +103,42 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
 - `bash ~/.claude/scripts/direct/verify.sh test bevy_brp_extras` — the six new tests pass, and they failed before the change.
 - `bash ~/.claude/scripts/direct/verify.sh lint bevy_brp_extras` — clean.
 
-### Phase 2 — Simulated moves do not warp the OS cursor  · status: todo
+### Phase 2 — Simulated moves do not warp the OS cursor, and a drag starts without a jump  · status: todo
 
 #### Work Order
 
-**Goal:** `move_mouse` and `drag_mouse` set `Window`'s cursor position without bevy_winit warping the OS cursor, so Wayland logs no `could not set cursor position` error.
+**Goal:** `move_mouse` and `drag_mouse` set `Window`'s cursor position without bevy_winit warping the OS cursor, so Wayland logs no `could not set cursor position` error. A drag moves the cursor to `start` on a frame before its button press, so the jump from the old cursor point is never motion with the button held.
 
 **Spec:**
 - Add `support::record_cursor_position(window: &mut Mut<Window>, position: Vec2)`. It calls `window.bypass_change_detection().set_cursor_position(Some(position))`.
 - Use it at the three call sites: `support.rs:98` (`send_motion_events`, which takes `world.get_mut::<Window>`), `drag.rs:184` and `drag.rs:217`.
 - Rewrite the doc comment on `send_motion_events`: the position is written for `window.cursor_position()` readers (OrbitCam, UI hit tests), and change detection is bypassed so bevy_winit does not warp the OS cursor.
 - Known limit, for the doc comment and the as-built: bevy_winit's `CachedWindow` keeps the old cursor position. When some other `Window` field changes later, bevy_winit may warp once to the last simulated position. On Wayland that is one error line for that change, not one per move.
-- Fail-first tests in `extras/src/mouse/mod.rs`:
+- Fail-first tests in `extras/src/mouse/tests.rs`:
   1. `move_mouse_does_not_mark_the_window_changed` — after `move_mouse`, `cursor_position()` is the new position, and `Ref<Window>::is_changed()` is false after the tick that ran the handler (clear change ticks first).
   2. `drag_frames_do_not_mark_the_window_changed` — the same for every frame of a 3-frame drag.
   3. `cursor_position_follows_the_drag` — `cursor_position()` equals each interpolated drag point.
+  4. `drag_start_jump_is_not_motion_while_the_button_is_held` — with the cursor at one point and a drag that starts at another, no `MouseMotion` that carries the jump is written on or after the button-press frame; the motion summed while the button is held equals `end - start`.
+- Drag start (showrunner add-on, 2026-11-16): the drag writes its move to `start` (the `CursorMoved` and the `MouseMotion` with the jump delta) on a frame before the `MouseButtonInput` Pressed. Measured in Hana on 2026-11-16: a middle-drag from (900,500) with the cursor at (492,348) turned the orbit by 708 px and 152 px of motion, not by the 300 px drag.
 
 **Files:**
 - `extras/src/mouse/support.rs` — `record_cursor_position`, call site, doc comment.
-- `extras/src/mouse/drag.rs` — two call sites.
-- `extras/src/mouse/mod.rs` — tests.
+- `extras/src/mouse/drag.rs` — the call sites, and a move to `start` before the press (a new first `DragState`).
+- `extras/src/mouse/tests.rs` — tests.
 
 **Workers:** 1 writer + 1 tester — the same split as Phase 1.
 - `impl` — `support.rs`, `drag.rs`; hub: none.
-- `test` — the three tests in the `tests` block of `extras/src/mouse/mod.rs`.
+- `test` — the four tests in `extras/src/mouse/tests.rs`.
 
 **State:** none
 
 **Constraints from prior phases:** Phase 1 adds `DragState::ReleaseModifiers` and `DragOperation.modifiers`. The `drag.rs` call sites stay in the `Pressed` and `Dragging` arms.
 
 **Acceptance gate:**
-- `bash ~/.claude/scripts/direct/verify.sh test bevy_brp_extras` — the three new tests pass, and they failed before the change.
+- `bash ~/.claude/scripts/direct/verify.sh test bevy_brp_extras` — the four new tests pass, and they failed before the change.
 - `bash ~/.claude/scripts/direct/verify.sh lint bevy_brp_extras` — clean.
 - Live check (unit director): launch `test-app` example `extras_plugin` (debug) on natedev Wayland on a free port, send 20 `brp_extras/move_mouse` and one `brp_extras/drag_mouse` by curl, and confirm the log has no `could not set cursor position` line. Before the change the same steps log one line per move.
+- Platform check (unit director, showrunner's ask 2026-11-15): with the OS cursor no longer warped, hover and a jack drag in Hana still work on Wayland, X11 (`env -u WAYLAND_DISPLAY`) and macOS. Use a Hana built against this branch through a local `[patch.crates-io]` in a copies tree. Name any platform that cannot be tested.
 
 ### Phase 3 — MCP tools, docs and change notes  · status: todo
 
