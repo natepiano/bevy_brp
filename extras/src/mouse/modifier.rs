@@ -67,9 +67,9 @@ pub(super) struct PendingModifierRelease {
     pub window:    Entity,
 }
 
-/// The number of clicks and drags that hold each modifier per window.
+/// The number of clicks and drags that hold each modifier across all windows.
 #[derive(Resource, Default)]
-pub(super) struct HeldModifiers(HashMap<(Entity, Modifier), u32>);
+pub(super) struct HeldModifiers(HashMap<Modifier, u32>);
 
 impl HeldModifiers {
     /// Update holder counts and create events for keys that change state.
@@ -83,14 +83,14 @@ impl HeldModifiers {
         for &modifier in modifiers {
             match state {
                 ButtonState::Pressed => {
-                    let holders = self.0.entry((window, modifier)).or_default();
+                    let holders = self.0.entry(modifier).or_default();
                     *holders += 1;
                     if *holders == 1 {
                         keys.push(modifier.key());
                     }
                 },
                 ButtonState::Released => {
-                    if let Entry::Occupied(mut entry) = self.0.entry((window, modifier)) {
+                    if let Entry::Occupied(mut entry) = self.0.entry(modifier) {
                         let holders = entry.get_mut();
                         *holders -= 1;
                         if *holders == 0 {

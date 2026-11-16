@@ -74,7 +74,7 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
 
 **Ruled out:** Converting `ClickMouseResult.result` / `DragMouseResult.result` `Option<Value>` into a semantic acknowledgement — the `ResultStruct` macro shapes every tool's result.
 
-### Phase 2 — Simulated moves do not warp the OS cursor, and a drag starts without a jump  · status: todo
+### Phase 2 — Simulated moves do not warp the OS cursor, and a drag starts without a jump  · status: done
 
 #### Work Order
 

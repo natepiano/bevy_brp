@@ -72,16 +72,22 @@ pub(super) fn send_timed_button_press(
     });
 }
 
-/// Send coordinated mouse motion events
+/// Record the simulated cursor position without changing the window's change flags.
+pub(super) fn record_cursor_position(mut window: Mut<'_, Window>, position: Vec2) {
+    window
+        .bypass_change_detection()
+        .set_cursor_position(Some(position));
+}
+
+/// Send motion events and record the simulated cursor position.
 ///
-/// Sends both device-level `MouseMotion` (delta) and window-level `CursorMoved` (position)
-/// events together, and updates the `Window` component's internal cursor position.
+/// Record the position for `window.cursor_position()` readers, including `OrbitCam` and UI hit
+/// tests. Bypass change detection so `bevy_winit` does not warp the OS cursor for each simulated
+/// move.
 ///
-/// The `Window` component update is critical because `window.cursor_position()` reads from
-/// `Window.physical_cursor_position`, which is normally only set by winit's OS-level cursor
-/// handler. Without this update, systems that check `window.cursor_position()` (e.g.,
-/// `OrbitCam`, UI hit-testing) would see `None` when the app is unfocused and ignore
-/// all BRP-injected input.
+/// `bevy_winit`'s `CachedWindow` retains the previous cursor position.
+/// A later change to another `Window` field can cause one warp to the last simulated position.
+/// On Wayland, that change can produce one cursor position error line.
 ///
 /// # Arguments
 /// * `world` - Mutable world reference
@@ -99,10 +105,8 @@ pub(super) fn send_motion_events(world: &mut World, window: Entity, position: Ve
         },
     );
 
-    // Update the `Window` component's cursor position so that
-    // `window.cursor_position()` returns the correct value even when unfocused
-    if let Some(mut window_component) = world.get_mut::<Window>(window) {
-        window_component.set_cursor_position(Some(position));
+    if let Some(window_component) = world.get_mut::<Window>(window) {
+        record_cursor_position(window_component, position);
     }
 }
 

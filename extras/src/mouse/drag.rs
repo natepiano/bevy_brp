@@ -32,7 +32,9 @@ use crate::constants::METHOD_DRAG_MOUSE;
 /// Drag operation state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum DragState {
-    /// Button pressed, cursor moved to start position
+    /// Move to the start position before pressing modifiers or the button.
+    PositionStart,
+    /// Press the modifiers and the button.
     Pressed,
     /// Actively dragging, interpolating between start and end
     Dragging,
@@ -89,8 +91,8 @@ struct DragMouseResponse {
 pub(super) struct DragOperation {
     /// Which button is pressed during drag
     pub button:        MouseButton,
-    /// Which window to target (None = primary)
-    pub window:        Option<Entity>,
+    /// The resolved window that receives the drag input.
+    pub window:        Entity,
     /// Starting position
     pub start:         Vec2,
     /// Ending position
@@ -124,14 +126,14 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
 
     // Spawn drag operation component
     world.spawn(DragOperation {
-        button:        request.button,
-        window:        Some(window),
-        start:         request.start,
-        end:           request.end,
-        total_frames:  request.frames,
+        button: request.button,
+        window,
+        start: request.start,
+        end: request.end,
+        total_frames: request.frames,
         current_frame: 0,
-        drag_state:    DragState::Pressed,
-        modifiers:     request.modifiers.clone(),
+        drag_state: DragState::PositionStart,
+        modifiers: request.modifiers.clone(),
     });
 
     brp_request::serialize_response(
@@ -186,8 +188,8 @@ impl DragInput<'_, '_> {
             .window_events
             .write(WindowEvent::from(cursor.clone()));
         self.cursor_events.write(cursor);
-        if let Ok(mut window_component) = self.windows.get_mut(window) {
-            window_component.set_cursor_position(Some(position));
+        if let Ok(window_component) = self.windows.get_mut(window) {
+            support::record_cursor_position(window_component, position);
         }
     }
 }
@@ -202,14 +204,17 @@ pub(super) fn process_drag_operations(
     mut input: DragInput,
 ) {
     for (entity, mut drag) in &mut query {
-        let window = support::resolve_window_entity(drag.window);
+        let window = drag.window;
 
         match drag.drag_state {
+            DragState::PositionStart => {
+                let delta = cursor_res.update_position(window, drag.start);
+                input.motion(window, drag.start, delta);
+                drag.drag_state = DragState::Pressed;
+            },
             DragState::Pressed => {
                 input.modifiers.press(&drag.modifiers, window);
                 input.button(drag.button, ButtonState::Pressed, window);
-                let delta = cursor_res.update_position(window, drag.start);
-                input.motion(window, drag.start, delta);
                 drag.drag_state = DragState::Dragging;
             },
             DragState::Dragging => {

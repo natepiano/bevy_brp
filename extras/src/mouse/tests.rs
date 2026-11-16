@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::app::App;
+use bevy::app::PostUpdate;
 use bevy::app::PreUpdate;
 use bevy::app::Update;
 use bevy::ecs::message::MessageCursor;
@@ -15,16 +16,21 @@ use bevy::input::mouse::MouseButton;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::input::mouse::MouseMotion;
 use bevy::math::Vec2;
+use bevy::prelude::DetectChanges;
+use bevy::prelude::Entity;
 use bevy::prelude::In;
 use bevy::prelude::IntoScheduleConfigs;
 use bevy::prelude::MessageReader;
 use bevy::prelude::Messages;
 use bevy::prelude::MinimalPlugins;
+use bevy::prelude::Query;
+use bevy::prelude::Ref;
 use bevy::prelude::Res;
 use bevy::prelude::ResMut;
 use bevy::prelude::Resource;
 use bevy::prelude::Time;
 use bevy::prelude::Virtual;
+use bevy::prelude::With;
 use bevy::time::TimeUpdateStrategy;
 use bevy::window::CursorMoved;
 use bevy::window::PrimaryWindow;
@@ -41,10 +47,13 @@ use super::cursor;
 use super::double_click_mouse_handler;
 use super::drag;
 use super::drag_mouse_handler;
+use super::move_mouse_handler;
 use super::send_mouse_button_handler;
 
-/// Frames for the press, the initial position, both releases, and input delivery.
-const DRAG_COMPLETION_OVERHEAD_FRAMES: u32 = 5;
+/// Frames for startup positioning, the press, interpolation startup, both releases, and input
+/// delivery.
+const DRAG_COMPLETION_OVERHEAD_FRAMES: u32 = 6;
+const DRAG_FRAME_COUNT: u32 = 3;
 
 /// An app with one primary window and the input and mouse plugins.
 /// The virtual clock stays paused. [`advance_real_clock`] advances the real clock.
@@ -176,14 +185,8 @@ fn observe_input(app: &mut App) {
 }
 
 fn click_release_frame(frames: &[InputFrame]) -> Result<usize, String> {
-    frames
-        .iter()
-        .position(|frame| {
-            frame.buttons.iter().any(|event| {
-                event.button == MouseButton::Left && event.state == ButtonState::Released
-            })
-        })
-        .ok_or_else(|| String::from("the app must receive the mouse button release"))
+    mouse_button_frame(frames, MouseButton::Left, ButtonState::Released)
+        .map_err(|_| String::from("the app must receive the mouse button release"))
 }
 
 #[test]
@@ -249,14 +252,8 @@ fn assert_overlapping_click_shares_control(
     frames: &[InputFrame],
     release_frame: usize,
 ) -> Result<(), String> {
-    let click_release = frames
-        .iter()
-        .position(|frame| {
-            frame.buttons.iter().any(|event| {
-                event.button == MouseButton::Right && event.state == ButtonState::Released
-            })
-        })
-        .ok_or_else(|| String::from("the overlapping click must release its button"))?;
+    let click_release = mouse_button_frame(frames, MouseButton::Right, ButtonState::Released)
+        .map_err(|_| String::from("the overlapping click must release its button"))?;
     assert!(click_release < release_frame);
     for state in [ButtonState::Pressed, ButtonState::Released] {
         let changes = frames
@@ -272,9 +269,50 @@ fn assert_overlapping_click_shares_control(
     Ok(())
 }
 
+fn mouse_button_frame(
+    frames: &[InputFrame],
+    button: MouseButton,
+    state: ButtonState,
+) -> Result<usize, String> {
+    frames
+        .iter()
+        .position(|frame| {
+            frame
+                .buttons
+                .iter()
+                .any(|event| event.button == button && event.state == state)
+        })
+        .ok_or_else(|| format!("the app must receive {button:?} {state:?}"))
+}
+
+fn assert_control_drag_timing(frames: &[InputFrame]) -> Result<(), String> {
+    let motion_frames: Vec<_> = frames
+        .iter()
+        .filter(|frame| !frame.cursors.is_empty())
+        .collect();
+    assert!(!motion_frames.is_empty(), "the drag must move the cursor");
+    for frame in motion_frames {
+        assert!(frame.keyboard.iter().all(|event| {
+            event.key_code != KeyCode::ControlLeft || event.state != ButtonState::Released
+        }));
+    }
+    let press_frame = mouse_button_frame(frames, MouseButton::Left, ButtonState::Pressed)?;
+    let release_frame = click_release_frame(frames)?;
+    for frame in &frames[press_frame..=release_frame] {
+        assert!(frame.keys.pressed(KeyCode::ControlLeft));
+    }
+    let positioning_frame = frames[..press_frame]
+        .iter()
+        .find(|frame| !frame.cursors.is_empty())
+        .ok_or_else(|| String::from("the drag must position the cursor before the button press"))?;
+    assert!(!positioning_frame.keys.pressed(KeyCode::ControlLeft));
+    assert_eq!(positioning_frame.keyboard, Vec::<KeyboardInput>::new());
+    assert_eq!(positioning_frame.buttons, Vec::<MouseButtonInput>::new());
+    Ok(())
+}
+
 #[test]
 fn drag_with_control_holds_control_for_every_drag_frame() -> Result<(), String> {
-    const DRAG_FRAME_COUNT: u32 = 3;
     const OBSERVATION_FRAME_COUNT: u32 = DRAG_FRAME_COUNT + DRAG_COMPLETION_OVERHEAD_FRAMES;
 
     for overlapping_click in [false, true] {
@@ -290,6 +328,7 @@ fn drag_with_control_holds_control_for_every_drag_frame() -> Result<(), String> 
         .map_err(|error| format!("the drag must succeed: {error:?}"))?;
 
         advance_real_clock(&mut app, 0);
+        advance_real_clock(&mut app, 0);
         if overlapping_click {
             click_mouse_handler(
                 In(Some(json!({ "button": "Right", "modifiers": ["Control"] }))),
@@ -297,8 +336,8 @@ fn drag_with_control_holds_control_for_every_drag_frame() -> Result<(), String> 
             )
             .map_err(|error| format!("the overlapping click must succeed: {error:?}"))?;
         }
-        for frame in 1..OBSERVATION_FRAME_COUNT {
-            let elapsed_ms = if frame == 1 {
+        for frame in 2..OBSERVATION_FRAME_COUNT {
+            let elapsed_ms = if frame == 2 {
                 DEFAULT_MOUSE_DURATION_MS
             } else {
                 0
@@ -307,17 +346,7 @@ fn drag_with_control_holds_control_for_every_drag_frame() -> Result<(), String> 
         }
 
         let frames = &app.world().resource::<InputFrames>().0;
-        let motion_frames: Vec<_> = frames
-            .iter()
-            .filter(|frame| !frame.cursors.is_empty())
-            .collect();
-        assert!(!motion_frames.is_empty(), "the drag must move the cursor");
-        for frame in motion_frames {
-            assert!(frame.keys.pressed(KeyCode::ControlLeft));
-            assert!(frame.keyboard.iter().all(|event| {
-                event.key_code != KeyCode::ControlLeft || event.state != ButtonState::Released
-            }));
-        }
+        assert_control_drag_timing(frames)?;
         let release_frame = click_release_frame(frames)?;
         assert!(frames[release_frame].keys.pressed(KeyCode::ControlLeft));
         assert!(frames[release_frame + 1].keyboard.iter().any(|event| {
@@ -512,7 +541,6 @@ fn modifier_holds_while_the_virtual_clock_is_paused() -> Result<(), String> {
 
 #[test]
 fn drag_motion_deltas_match_cursor_positions_in_both_system_orders() -> Result<(), String> {
-    const DRAG_FRAME_COUNT: u32 = 3;
     const OBSERVATION_FRAME_COUNT: u32 = DRAG_FRAME_COUNT + DRAG_COMPLETION_OVERHEAD_FRAMES;
 
     for sync_after_drag in [false, true] {
@@ -575,5 +603,280 @@ fn drag_motion_deltas_match_cursor_positions_in_both_system_orders() -> Result<(
             "motion must equal the requested displacement; sync_after_drag={sync_after_drag}"
         );
     }
+    Ok(())
+}
+
+fn primary_window(app: &mut App) -> Result<Entity, String> {
+    let mut windows = app
+        .world_mut()
+        .query_filtered::<Entity, With<PrimaryWindow>>();
+    windows
+        .single(app.world())
+        .map_err(|error| format!("the test needs one primary window: {error}"))
+}
+
+fn window_component(app: &App, window: Entity) -> Result<Ref<'_, Window>, String> {
+    app.world()
+        .get_entity(window)
+        .map_err(|error| format!("the target window must exist: {error}"))?
+        .get_ref::<Window>()
+        .ok_or_else(|| String::from("the target entity must contain a Window"))
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WindowChangeState {
+    Changed,
+    Unchanged,
+}
+
+/// Window change states observed after the drag systems and before App clears the trackers.
+#[derive(Default, Resource)]
+struct WindowChangeHistory(Vec<WindowChangeState>);
+
+fn record_window_change(
+    windows: Query<Ref<Window>, With<PrimaryWindow>>,
+    mut history: ResMut<WindowChangeHistory>,
+) {
+    for window in &windows {
+        let state = if window.is_changed() {
+            WindowChangeState::Changed
+        } else {
+            WindowChangeState::Unchanged
+        };
+        history.0.push(state);
+    }
+}
+
+#[test]
+fn move_mouse_does_not_mark_the_window_changed() -> Result<(), String> {
+    for already_changed in [false, true] {
+        let mut app = app_with_paused_virtual_clock();
+        let window = primary_window(&mut app)?;
+        app.world_mut().clear_trackers();
+        if already_changed {
+            app.world_mut()
+                .get_mut::<Window>(window)
+                .ok_or_else(|| String::from("the target window must exist"))?
+                .title = String::from("A changed window");
+        }
+
+        move_mouse_handler(
+            In(Some(
+                json!({ "position": [120.0, 80.0], "window": window.to_bits() }),
+            )),
+            app.world_mut(),
+        )
+        .map_err(|error| format!("the move must succeed: {error:?}"))?;
+
+        let window = window_component(&app, window)?;
+        assert_eq!(window.cursor_position(), Some(Vec2::new(120.0, 80.0)));
+        assert_eq!(
+            window.is_changed(),
+            already_changed,
+            "a simulated move must preserve the existing Window change flag"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn drag_frames_do_not_mark_the_window_changed() -> Result<(), String> {
+    let mut app = app_with_paused_virtual_clock();
+    let window = primary_window(&mut app)?;
+    app.init_resource::<WindowChangeHistory>()
+        .add_systems(PostUpdate, record_window_change);
+    advance_real_clock(&mut app, 0);
+    app.world_mut()
+        .resource_mut::<WindowChangeHistory>()
+        .0
+        .clear();
+    drag_mouse_handler(
+        In(Some(json!({
+            "button": "Left", "start": [10.0, 20.0], "end": [40.0, 50.0],
+            "frames": DRAG_FRAME_COUNT, "window": window.to_bits()
+        }))),
+        app.world_mut(),
+    )
+    .map_err(|error| format!("the drag must succeed: {error:?}"))?;
+
+    for frame in 0..(DRAG_FRAME_COUNT + DRAG_COMPLETION_OVERHEAD_FRAMES) {
+        app.world_mut().clear_trackers();
+        advance_real_clock(&mut app, 0);
+        let state = app
+            .world()
+            .resource::<WindowChangeHistory>()
+            .0
+            .last()
+            .copied()
+            .ok_or_else(|| String::from("the app must observe the Window change flag"))?;
+        assert_eq!(
+            state,
+            WindowChangeState::Unchanged,
+            "drag frame {frame} must not mark Window changed"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn cursor_position_follows_the_drag() -> Result<(), String> {
+    let mut app = app_with_paused_virtual_clock();
+    let window = primary_window(&mut app)?;
+    let mut cursor_events = MessageCursor::<CursorMoved>::default();
+    drag_mouse_handler(
+        In(Some(json!({
+            "button": "Left", "start": [10.0, 20.0], "end": [40.0, 50.0],
+            "frames": DRAG_FRAME_COUNT, "window": window.to_bits()
+        }))),
+        app.world_mut(),
+    )
+    .map_err(|error| format!("the drag must succeed: {error:?}"))?;
+
+    let mut positions = Vec::new();
+    for _ in 0..(DRAG_FRAME_COUNT + DRAG_COMPLETION_OVERHEAD_FRAMES) {
+        app.world_mut().clear_trackers();
+        advance_real_clock(&mut app, 0);
+        for event in cursor_events.read(app.world().resource::<Messages<CursorMoved>>()) {
+            assert_eq!(event.window, window);
+            assert_eq!(
+                window_component(&app, window)?.cursor_position(),
+                Some(event.position)
+            );
+            positions.push(event.position);
+        }
+    }
+    assert_eq!(
+        positions,
+        [
+            Vec2::new(10.0, 20.0),
+            Vec2::new(10.0, 20.0),
+            Vec2::new(20.0, 30.0),
+            Vec2::new(30.0, 40.0),
+            Vec2::new(40.0, 50.0),
+        ],
+        "the Window cursor must follow every requested drag point"
+    );
+    Ok(())
+}
+
+#[test]
+fn drag_start_jump_is_not_motion_while_the_button_is_held() -> Result<(), String> {
+    let mut app = app_with_paused_virtual_clock();
+    observe_input(&mut app);
+    move_mouse_handler(
+        In(Some(json!({ "position": [100.0, 50.0] }))),
+        app.world_mut(),
+    )
+    .map_err(|error| format!("the initial move must succeed: {error:?}"))?;
+    advance_real_clock(&mut app, 0);
+    app.world_mut().resource_mut::<InputFrames>().0.clear();
+    drag_mouse_handler(
+        In(Some(json!({
+            "button": "Middle", "start": [400.0, 150.0], "end": [430.0, 180.0],
+            "frames": DRAG_FRAME_COUNT, "modifiers": ["Control"]
+        }))),
+        app.world_mut(),
+    )
+    .map_err(|error| format!("the drag must succeed: {error:?}"))?;
+    for _ in 0..(DRAG_FRAME_COUNT + DRAG_COMPLETION_OVERHEAD_FRAMES) {
+        advance_real_clock(&mut app, 0);
+    }
+
+    let frames = &app.world().resource::<InputFrames>().0;
+    let press_frame = mouse_button_frame(frames, MouseButton::Middle, ButtonState::Pressed)?;
+    let release_frame = mouse_button_frame(frames, MouseButton::Middle, ButtonState::Released)?;
+    let jump = Vec2::new(300.0, 100.0);
+    let jump_frame = frames
+        .iter()
+        .position(|frame| {
+            frame
+                .cursors
+                .iter()
+                .any(|event| event.position == Vec2::new(400.0, 150.0) && event.delta == Some(jump))
+        })
+        .ok_or_else(|| String::from("the drag must send the initial jump"))?;
+    assert!(
+        jump_frame < press_frame,
+        "the initial jump must precede the button press"
+    );
+    assert!(!frames[jump_frame].keys.pressed(KeyCode::ControlLeft));
+    assert_eq!(frames[jump_frame].keyboard, Vec::<KeyboardInput>::new());
+    assert_eq!(frames[jump_frame].buttons, Vec::<MouseButtonInput>::new());
+    assert!(
+        frames[press_frame..]
+            .iter()
+            .flat_map(|frame| &frame.motion)
+            .all(|event| event.delta != jump)
+    );
+    let held_motion: Vec2 = frames[press_frame..=release_frame]
+        .iter()
+        .flat_map(|frame| &frame.motion)
+        .map(|event| event.delta)
+        .sum();
+    assert_eq!(
+        held_motion,
+        Vec2::new(30.0, 30.0),
+        "motion with the button held must equal end minus start"
+    );
+    Ok(())
+}
+
+#[test]
+fn modifier_stays_held_until_the_last_window_releases_it() -> Result<(), String> {
+    let mut app = app_with_paused_virtual_clock();
+    let drag_window = primary_window(&mut app)?;
+    let click_window = app.world_mut().spawn(Window::default()).id();
+    observe_input(&mut app);
+    click_mouse_handler(
+        In(Some(json!({ "button": "Right", "modifiers": ["Control"],
+            "window": click_window.to_bits() }))),
+        app.world_mut(),
+    )
+    .map_err(|error| format!("the click must succeed: {error:?}"))?;
+    drag_mouse_handler(
+        In(Some(json!({
+            "button": "Left", "start": [10.0, 20.0], "end": [40.0, 50.0],
+            "frames": DRAG_FRAME_COUNT, "modifiers": ["Control"],
+            "window": drag_window.to_bits()
+        }))),
+        app.world_mut(),
+    )
+    .map_err(|error| format!("the drag must succeed: {error:?}"))?;
+    for frame in 0..(DRAG_FRAME_COUNT + DRAG_COMPLETION_OVERHEAD_FRAMES) {
+        let elapsed_ms = if frame == 3 {
+            DEFAULT_MOUSE_DURATION_MS
+        } else {
+            0
+        };
+        advance_real_clock(&mut app, elapsed_ms);
+    }
+
+    let frames = &app.world().resource::<InputFrames>().0;
+    let first_press = mouse_button_frame(frames, MouseButton::Right, ButtonState::Pressed)?;
+    let click_release = mouse_button_frame(frames, MouseButton::Right, ButtonState::Released)?;
+    let drag_release = click_release_frame(frames)?;
+    assert!(click_release < drag_release);
+    for frame in &frames[first_press..=drag_release] {
+        assert!(
+            frame.keys.pressed(KeyCode::ControlLeft),
+            "Control must remain held until both windows release it"
+        );
+    }
+    assert!(!frames[drag_release + 1].keys.pressed(KeyCode::ControlLeft));
+    for (state, window) in [
+        (ButtonState::Pressed, click_window),
+        (ButtonState::Released, drag_window),
+    ] {
+        let events: Vec<_> = frames
+            .iter()
+            .flat_map(|frame| &frame.keyboard)
+            .filter(|event| event.key_code == KeyCode::ControlLeft && event.state == state)
+            .collect();
+        assert_eq!(events.len(), 1, "both windows must share one Control hold");
+        assert_eq!(events[0].window, window);
+    }
+    assert!(frames[drag_release + 1].keyboard.iter().any(|event| {
+        event.key_code == KeyCode::ControlLeft && event.state == ButtonState::Released
+    }));
     Ok(())
 }
