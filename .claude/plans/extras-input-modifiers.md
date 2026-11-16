@@ -76,53 +76,29 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
 
 ### Phase 2 — Simulated moves do not warp the OS cursor, and a drag starts without a jump  · status: done
 
-#### Work Order
+#### As-built
 
-**Goal:** simulated cursor writes in `move_mouse` and `drag_mouse` do not mark `Window` changed, so bevy_winit does not warp the OS cursor on each move and Wayland logs no `could not set cursor position` error per move. Another `Window` change can still cause the one documented warp (Known limit below). A drag moves the cursor to `start` on a frame before its button press, so the jump from the old cursor point is never motion with the button held. A modifier that two overlapping requests hold in different windows stays held until the last request releases it.
-
-**Spec:**
-- Add `support::record_cursor_position(mut window: Mut<'_, Window>, position: Vec2)`. It calls `window.bypass_change_detection().set_cursor_position(Some(position))`. Both callers have a `Mut<Window>`: `Query<&mut Window>::get_mut` and `World::get_mut::<Window>`.
-- Use it at the two call sites: `support.rs:105` (`send_motion_events`) and `drag.rs:190` (`DragInput::motion`).
-- Keep the writes in `DragInput::motion` together: `MouseMotion`, `CursorMoved` and the `Window` position, in one system, with no deferred flush between them.
-- Rewrite the doc comment on `send_motion_events`: the position is written for `window.cursor_position()` readers (OrbitCam, UI hit tests), and change detection is bypassed so bevy_winit does not warp the OS cursor.
-- Known limit, for the doc comment and the as-built: bevy_winit's `CachedWindow` keeps the old cursor position. When some other `Window` field changes later, bevy_winit may warp once to the last simulated position. On Wayland that is one error line for that change, not one per move.
-- Drag start (showrunner add-on, 2026-11-16): add `DragState::PositionStart` before `Pressed`. In `PositionStart`, `DragInput::motion` moves the cursor to `start` (the `CursorMoved` and the `MouseMotion` with the jump delta from the current cursor). No modifier and no button is held during this move. In the next Update, `Pressed` sends the modifier presses, then the button press. Measured in Hana on 2026-11-16: a middle-drag from (900,500) with the cursor at (492,348) turned the orbit by 708 px and 152 px of motion, not by the 300 px drag.
-- Modifier holders across windows: `ButtonInput<KeyCode>` has no window, so a per-window count lets one window's release clear a modifier that another window still holds. Change `HeldModifiers` (`modifier.rs:72`) to count holders per `Modifier`, not per `(Entity, Modifier)`. Send a press when a count goes from 0 to 1 and a release when it goes from 1 to 0, in the window of the request that changes the count.
-- `DragOperation.window` (`drag.rs:93`): store the resolved `Entity`, not `Option<Entity>`. `drag_mouse_handler` already resolves it (`drag.rs:123`). Remove the `resolve_window_entity` fallback in `process_drag_operations` (`drag.rs:205`). The optional window id stays only on the wire (`DragMouseRequest.window`).
-- Tests in `extras/src/mouse/tests.rs`. Clear the setup change ticks before each measurement:
-  1. `move_mouse_does_not_mark_the_window_changed` — after `move_mouse`, `cursor_position()` is the new position, and `Ref<Window>::is_changed()` is false after the tick that ran the handler. The cursor write keeps existing change flags and adds no new one.
-  2. `drag_frames_do_not_mark_the_window_changed` — the same for every frame of a 3-frame drag.
-  3. `cursor_position_follows_the_drag` — `cursor_position()` equals each interpolated drag point. This is regression cover: it can pass before the change.
-  4. `drag_start_jump_is_not_motion_while_the_button_is_held` — with the cursor at one point and a drag that starts at another, no `MouseMotion` that carries the jump is written on or after the button-press frame; the motion summed while the button is held equals `end - start`.
-  5. `modifier_stays_held_until_the_last_window_releases_it` — an overlapping Control click in one window and Control drag in another. Read `ButtonInput<KeyCode>` in `PreUpdate` after `InputSystems`. Control stays pressed until the last holder releases it.
-- Update the existing tests for the new state:
-  - `drag_with_control_holds_control_for_every_drag_frame`: Control is held from the button-press frame through the button-release frame. Test the `PositionStart` move separately: no modifier is held on it.
-  - Raise `DRAG_COMPLETION_OVERHEAD_FRAMES` (`tests.rs:47`) by one for `PositionStart`. Keep the overlapping-click assertions and the final modifier release check.
+- `support::record_cursor_position(Mut<Window>, Vec2)` writes the cursor position through `bypass_change_detection`. `send_motion_events` and `DragInput::motion` use it, so extras' own cursor writes do not mark `Window` changed and bevy_winit does not warp the OS cursor for them. `window.cursor_position()` readers still see each simulated position.
+- `DragState::PositionStart` comes before `Pressed`: the drag moves the cursor to `start` on its own frame, then presses its modifiers and button on the next frame. The jump from the old cursor point is never motion with the button held.
+- `HeldModifiers(HashMap<Modifier, u32>)` keeps one holder count per modifier across all windows. A press goes out on 0 → 1 and a release on 1 → 0, in the window of the request that changes the count. A modifier stays held until the last holder releases it.
+- `DragOperation.window` is the resolved `Entity`; the optional window id exists only on the wire (`DragMouseRequest.window`).
+- `DRAG_COMPLETION_OVERHEAD_FRAMES` is 6.
 
 **Files:**
-- `extras/src/mouse/support.rs` — `record_cursor_position`, call site, doc comment.
-- `extras/src/mouse/drag.rs` — the call site, `DragState::PositionStart`, `DragOperation.window: Entity`.
-- `extras/src/mouse/modifier.rs` — `HeldModifiers` counts per `Modifier`.
-- `extras/src/mouse/tests.rs` — tests.
+- `extras/src/mouse/support.rs` — `record_cursor_position`, motion events.
+- `extras/src/mouse/drag.rs` — drag state machine with `PositionStart`; `DragOperation.window: Entity`.
+- `extras/src/mouse/modifier.rs` — `HeldModifiers` holder counts per `Modifier`.
+- `extras/src/mouse/tests.rs` — `move_mouse_does_not_mark_the_window_changed`, `drag_frames_do_not_mark_the_window_changed`, `cursor_position_follows_the_drag`, `drag_start_jump_is_not_motion_while_the_button_is_held`, `modifier_stays_held_until_the_last_window_releases_it`.
 
-**Workers:** 1 writer + 1 tester — the same split as Phase 1.
-- `impl` — `support.rs`, `drag.rs`, `modifier.rs`; hub: none.
-- `test` — `tests.rs`: the five tests and the updates to the existing drag, schedule-order and modifier tests.
+**Binds later work:** help text and changelogs state that extras does not mark the Window changed, and that another per-frame Window writer can still warp. The modifier is released one frame after the button of the last holder. A drag positions itself "before this drag presses its modifiers and button".
 
-**State:** none
+**Gotchas:**
+- bevy_winit's `CachedWindow` is `pub(crate)` and keeps the old cursor position. Any later `Window` change can warp once to the last simulated position.
+- Bevy 0.20.1 `TextInputPlugin` (bevy_ui_widgets `text_input.rs:649`, in `DefaultPlugins` through `UiWidgetsPlugins`) writes `ime_enabled` every PreUpdate with no compare. In an app with it, the Window is changed every frame, so the warp and the Wayland `could not set cursor position` error happen on every simulated move (upstream row B5). Measured on natedev Wayland: the `extras_plugin` example logged 41 errors for 20 moves and one 20-frame drag.
+- Drag motion, `CursorMoved` and the Window position are written in one system with no deferred flush; `drag_motion_deltas_match_cursor_positions_in_both_system_orders` guards this.
+- X11 and macOS are untested for this phase.
 
-**Constraints from prior phases:**
-- `DragInput` (`drag.rs:155`) is a `SystemParam`. `DragInput::motion` (`drag.rs:174-190`) writes `MouseMotion`, `CursorMoved` and the `Window` position directly, in one system. `DragInput::button` writes the button event.
-- `drag_motion_deltas_match_cursor_positions_in_both_system_orders` must keep passing in both schedule orders. Add no deferred flush.
-- `DragState` is `Pressed`, `Dragging`, `Released`, `ReleaseModifiers`. `DragOperation` has `modifiers`.
-- `modifier.rs`: `HeldModifiers` with `HeldModifiers::update`; `ModifierEvents` (press, release, send) writes keyboard events directly; `PendingModifierRelease` runs in `process_pending_modifier_releases`, ordered before `button::process_timed_button_releases`.
-- The tests use a paused-clock helper that registers `MousePlugin` and `InputPlugin`. Observers read input in `PreUpdate` after `InputSystems`.
-
-**Acceptance gate:**
-- `bash ~/.claude/scripts/direct/verify.sh test bevy_brp_extras` — record each baseline result. Tests 1, 2, 4 and 5 fail before the change; test 3 is regression cover. After the change all five pass, and every Phase 1 modifier, overlap, paused-clock and motion test passes.
-- `bash ~/.claude/scripts/direct/verify.sh lint bevy_brp_extras` — clean.
-- Live check (unit director): launch `test-app` example `extras_plugin` (debug) on natedev Wayland on a free port, send 20 `brp_extras/move_mouse` and one `brp_extras/drag_mouse` by curl, and confirm the log has no `could not set cursor position` line. Before the change the same steps log one line per move.
-- Platform check (unit director, showrunner's ask 2026-11-15): with the OS cursor no longer warped, hover and a jack drag in Hana still work on Wayland, X11 (`env -u WAYLAND_DISPLAY`) and macOS. Use a Hana built against this branch through a local `[patch.crates-io]` in a copies tree. Name any platform that cannot be tested.
+**Ruled out:** a drag that releases buttons or modifiers another request holds before its start move — the hold belongs to the other request.
 
 ### Phase 3 — MCP tools, docs and change notes  · status: todo
 
@@ -131,7 +107,7 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
 **Goal:** the `brp_extras_click_mouse` and `brp_extras_drag_mouse` MCP tools expose `modifiers`, and the docs and change notes describe both changes.
 
 **Spec:**
-- `mcp/src/brp_tools/mouse.rs`: add `Modifier { Shift, Control, Alt, Super }` (the same name as the extras type) with `Serialize, Deserialize, JsonSchema`, doc comment per variant. It wraps no Bevy type, so it takes no `Wrapper` suffix.
+- `mcp/src/brp_tools/mouse.rs`: add `Modifier { Shift, Control, Alt, Super }` (the same name as the extras type) with `Clone, Serialize, Deserialize, JsonSchema` (both params types derive `Clone`), doc comment per variant. It wraps no Bevy type, so it takes no `Wrapper` suffix.
 - `ClickMouseParams` and `DragMouseParams`: add
   ```rust
   /// Keyboard modifiers held for the whole click or drag (Shift, Control, Alt, Super)
@@ -139,26 +115,29 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
   pub modifiers: Vec<Modifier>,
   ```
   An empty list means no modifiers. Do not use `Option<Vec<_>>`. The JsonSchema lists the four names.
-- Help text: add a modifier example to `brp_extras_click_mouse.txt` (`{"button": "Left", "modifiers": ["Shift"]}` — Shift+click to add to a selection) and to `brp_extras_drag_mouse.txt`. Say that the modifier keys are pressed with the button and released one frame after it. In `brp_extras_drag_mouse.txt`, also say that a drag first moves to `start` on its own frame, with no button or modifier held. In `brp_extras_move_mouse.txt`, say that a move does not move the OS cursor.
+- MCP schema (`mcp/src/tool/parameters.rs`): today `handle_array_type` (:334) reads only the item `type`, and `add_string_array_property` (:198) writes items as plain `string`, so the registered tool schema drops the four names. Carry the item `enum` (from an inline enum or a resolved item `$ref`) through to the registered schema. Done when the registered `brp_extras_click_mouse` and `brp_extras_drag_mouse` schemas have an optional `modifiers` array whose items list `Shift`, `Control`, `Alt`, `Super`.
+- Help text: add a modifier example to `brp_extras_click_mouse.txt` (`{"button": "Left", "modifiers": ["Shift"]}` — Shift+click to add to a selection) and to `brp_extras_drag_mouse.txt`. Say that the modifier keys are pressed with the button. Say that a modifier is released one frame after the button of the last request that holds it, so overlapping requests in any window share the hold. In `brp_extras_click_mouse.txt`, replace "press and immediate release" (line 1): the button is held for the click duration (default 100 ms), then released. In `brp_extras_drag_mouse.txt`, also say that a drag first moves to `start` on its own frame, before this drag presses its modifiers and button. In `brp_extras_move_mouse.txt`, say that extras writes the cursor position without marking the `Window` changed, so a move by itself does not warp the OS cursor; another per-frame `Window` writer can still cause a warp and, on Wayland, one `could not set cursor position` error per move. Name Bevy 0.20.1's `TextInputPlugin` (bevy_ui_widgets, in `DefaultPlugins`) as such a writer.
 - Tests beside the tool files:
   - Params with `modifiers` serialize to the extras wire form. Params without it leave the field out.
-  - Both MCP results keep the modifier echo from the extras response. Duplicate modifiers keep the extras first-occurrence order.
+  - Both MCP results keep the modifier echo from the extras response. MCP serialization forwards a duplicate list as given; it adds no duplicate filter of its own.
   - The MCP params reject an unknown name (`Hyper`) with an error that names the four valid values.
-- Create `.claude/integration_tests/input_modifiers.md` for the `extras_plugin` example (`mouse.md` needs the `mouse_test` example, so it is not the place). Steps: Shift+click, Control+drag, the keyboard messages the example logs, the response echoes, and a direct BRP call with `Hyper` that returns INVALID_PARAMS naming `modifiers` and `Hyper`.
-- `.claude/scripts/integration_tests/mouse_test.sh` (showrunner add-on, 2026-11-16): the script reads flat response fields, but the `mouse_test` example nests them, so 58 checks fail on the Phase 1 tree. Make the script read the nested fields. Done when `mouse_test.sh <port>` passes against the `mouse_test` example.
-- `extras/CHANGELOG.md` and `mcp/CHANGELOG.md` under `[Unreleased]`: `### Added` modifiers on click and drag; `### Fixed` the Wayland cursor error on simulated moves.
+  - The registered schema test for the `modifiers` enum items (see MCP schema above).
+- Create `.claude/integration_tests/input_modifiers.md` for the `extras_plugin` example (`mouse.md` needs the `mouse_test` example, so it is not the place). Steps: Shift+click, Control+drag, the keyboard messages the example logs, the response echoes, a request with `["Control","Shift","Control"]` whose response echoes `["Control","Shift"]`, and a direct BRP call with `Hyper` that returns INVALID_PARAMS naming `modifiers` and `Hyper`.
+- `.claude/scripts/integration_tests/mouse_test.sh` (showrunner add-on, 2026-11-16): the script reads flat response fields, but the `mouse_test` example nests them, so 58 checks fail on the Phase 1 tree. Make the script read the nested fields. The example also reports named states, not booleans: `ButtonPress::{Pressed, Released}` (`mouse_test.rs:93`) and `GizmoState::{Active, Inactive}` (`mouse_test.rs:114`); the script compares booleans at `mouse_test.sh:363` and `:545`. Compare the named states. Keep every existing check. Done when `mouse_test.sh <port>` passes against the `mouse_test` example.
+- `extras/CHANGELOG.md` and `mcp/CHANGELOG.md` under `[Unreleased]`: `### Added` modifiers on click and drag; `### Fixed` simulated moves no longer mark the `Window` changed, so extras no longer causes an OS cursor warp (and a Wayland `could not set cursor position` error) per move. State the condition: an app with another per-frame `Window` writer, such as Bevy 0.20.1's `TextInputPlugin`, still warps. The as-built document states the same condition.
 - `extras/README.md` mouse section: one line for `modifiers`.
 - `docs/as-built/input-modifiers.md`: written by the as-built step at the end of the run.
 
 **Files:**
 - `mcp/src/brp_tools/mouse.rs`, `mcp/src/brp_tools/tools/brp_extras_click_mouse.rs`, `mcp/src/brp_tools/tools/brp_extras_drag_mouse.rs`
-- `mcp/help_text/brp_extras_click_mouse.txt`, `brp_extras_drag_mouse.txt`, `brp_extras_move_mouse.txt`
+- `mcp/src/tool/parameters.rs` — array item enums in the registered schema, and its tests
+- `mcp/help_text/brp_extras_click_mouse.txt`, `mcp/help_text/brp_extras_drag_mouse.txt`, `mcp/help_text/brp_extras_move_mouse.txt`
 - `.claude/integration_tests/input_modifiers.md`
 - `.claude/scripts/integration_tests/mouse_test.sh`
 - `extras/CHANGELOG.md`, `mcp/CHANGELOG.md`, `extras/README.md`
 
 **Workers:** 2 writers — code and docs split by file.
-- `impl` — the three `mcp/src` files, the `Modifier` type and the tool tests; hub: `mcp/src/brp_tools/mouse.rs`.
+- `impl` — the four `mcp/src` files, the `Modifier` type, the schema change and the tool and schema tests; hub: `mcp/src/brp_tools/mouse.rs`, `mcp/src/tool/parameters.rs`.
 - `test` — opens as impl: the help text, `input_modifiers.md`, `mouse_test.sh`, change notes and README.
 
 **State:** none
@@ -166,11 +145,12 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
 **Constraints from prior phases:**
 - The extras wire field is `modifiers: [String]` with values `Shift`, `Control`, `Alt`, `Super`. Unknown values are an INVALID_PARAMS error that names `modifiers`. The extras drop duplicates and keep first-occurrence order. Responses echo `modifiers` only when it is not empty.
 - The MCP result types carry the raw extras response, so the echo needs a test, not a new field.
-- Simulated moves bypass `Window` change detection (Phase 2).
-- A drag moves to `start` on its own frame first, with no button or modifier held. Modifiers are pressed with the button and released one frame after it (Phase 2). A modifier held in two windows stays held until the last holder releases it.
+- Simulated moves bypass `Window` change detection (Phase 2, `support::record_cursor_position`).
+- Measured 2026-11-16 (Phase 2 live check, Wayland): the `extras_plugin` example and Hana both still log one `could not set cursor position` per cursor write. Cause: Bevy 0.20.1 `TextInputPlugin` (`bevy_ui_widgets` `text_input.rs:649`) writes `window.ime_enabled` every frame, so the `Window` is changed every frame and bevy_winit warps to each simulated position. extras cannot reach bevy_winit's `CachedWindow` (`pub(crate)`). Upstream issue B5 in hanadocs `bevy-issues.md`; Hana removes the plugin from its own plugin set.
+- A drag moves to `start` on its own frame first, before this drag presses its modifiers and button (`DragState::PositionStart`). It does not release a key or button that another request holds. Modifiers are pressed with the button. `HeldModifiers` counts holders per `Modifier` (`modifier.rs:95`): the release goes out one frame after the button of the last holder, in any window.
 
 **Acceptance gate:**
-- `bash ~/.claude/scripts/direct/verify.sh test bevy_brp_mcp` — the new tests pass.
+- `bash ~/.claude/scripts/direct/verify.sh test bevy_brp_mcp` — the new tests pass, including the registered schema test for the `modifiers` enum items.
 - `bash ~/.claude/scripts/direct/verify.sh lint bevy_brp_mcp` — clean.
 - Unit director: `mouse_test.sh <port>` passes against the `mouse_test` example on a free port.
 - After the user reloads the MCP server: run `input_modifiers.md`, and record the app, port, requests, responses and keyboard log lines.
@@ -178,6 +158,7 @@ The user approved changes to bevy_brp_extras with the full SDLC (2026-11-15). Pu
 ## After the phases
 
 1. Run the project style review, then lint and tests for both crates.
-2. Push the branch with /validate_and_push. Never push to `main`.
-3. Report to the showrunner. The release and the crate publish are the user's.
-4. After the release: a Hana change moves `bevy_brp_extras` from 0.23.0 to the new version, and the C105 how-to drops the two-call Shift+click.
+2. Mac follow-up (showrunner ruling 2026-11-16): when the builds showrunner says the bevy_brp Mac setting is on main, the unit director runs `bash ~/.claude/scripts/direct/verify.sh test bevy_brp_extras --mac "<reason>"`. A failure becomes a repair checkpoint. The Mac hover and drag stay with the user through the Phase 2 Change-Review line. X11 stays untested (a warp moves the user's real pointer); the report says so.
+3. Push the branch with /validate_and_push. Never push to `main`.
+4. Report to the showrunner. The release and the crate publish are the user's.
+5. After the release: a Hana change moves `bevy_brp_extras` from 0.23.0 to the new version, and the C105 how-to drops the two-call Shift+click.
