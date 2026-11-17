@@ -214,7 +214,8 @@
 //! - `window` (u64, optional)
 //!
 //! ### `brp_extras/drag_mouse`
-//! Performs a smooth drag with linear interpolation over a number of frames.
+//! Performs a smooth drag with linear interpolation over a number of frames. The cursor moves
+//! to `start` one frame before the press, so the press frame carries no motion.
 //! - `button` (string, required)
 //! - `start` ([f32; 2], required): starting position
 //! - `end` ([f32; 2], required): ending position

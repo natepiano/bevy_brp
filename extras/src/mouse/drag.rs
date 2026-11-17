@@ -28,11 +28,13 @@ use crate::constants::METHOD_DRAG_MOUSE;
 /// Drag operation state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum DragState {
-    /// Button pressed, cursor moved to start position
+    /// Move the cursor to start before pressing the button.
+    PositionStart,
+    /// Press the button at the start position.
     Pressed,
-    /// Actively dragging, interpolating between start and end
+    /// Interpolate the cursor position between start and end.
     Dragging,
-    /// Button released, operation complete
+    /// Release the button and complete the operation.
     Released,
 }
 
@@ -69,10 +71,9 @@ struct DragMouseResponse {
 // Components
 // ============================================================================
 
-/// Component for drag operations
+/// Track a drag operation across frames.
 ///
-/// Manages multi-frame drag operations with linear interpolation between
-/// start and end positions. Runs a state machine: Pressed -> Dragging -> Released.
+/// The states are `PositionStart`, `Pressed`, `Dragging`, and `Released`, in that order.
 #[derive(Component)]
 pub(super) struct DragOperation {
     /// Which button is pressed during drag
@@ -116,7 +117,7 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
         end:           request.end,
         total_frames:  request.frames,
         current_frame: 0,
-        drag_state:    DragState::Pressed,
+        drag_state:    DragState::PositionStart,
     });
 
     brp_request::serialize_response(
@@ -134,12 +135,12 @@ pub(crate) fn drag_mouse_handler(In(params): In<Option<Value>>, world: &mut Worl
 // Systems
 // ============================================================================
 
-/// System to process drag operations
+/// Process each drag operation through its current state.
 ///
-/// Runs a state machine for each `DragOperation`:
-/// - Pressed: Send button press, move to start, transition to Dragging
-/// - Dragging: Interpolate position, send motion events, advance frame
-/// - Released: Send button release, despawn entity
+/// 1. `PositionStart`: Move to start without pressing the button.
+/// 2. `Pressed`: Press the button at start without cursor motion.
+/// 3. `Dragging`: Interpolate the position and send motion events.
+/// 4. `Released`: Release the button and remove the operation.
 pub(super) fn process_drag_operations(
     mut commands: Commands,
     mut query: Query<(Entity, &mut DragOperation)>,
@@ -154,17 +155,8 @@ pub(super) fn process_drag_operations(
         let window = support::resolve_window_entity(drag.window);
 
         match drag.drag_state {
-            DragState::Pressed => {
-                // Send button press
-                let btn_event = MouseButtonInput {
-                    button: drag.button,
-                    state: ButtonState::Pressed,
-                    window,
-                };
-                window_events.write(WindowEvent::from(btn_event));
-                button_events.write(btn_event);
-
-                // Move cursor to start position
+            DragState::PositionStart => {
+                // Move the cursor before the frame that presses the button.
                 let delta = cursor_res.update_position(window, drag.start);
 
                 // Send motion events
@@ -184,7 +176,17 @@ pub(super) fn process_drag_operations(
                     win.set_cursor_position(Some(drag.start));
                 }
 
-                // Transition to dragging
+                drag.drag_state = DragState::Pressed;
+            },
+            DragState::Pressed => {
+                let btn_event = MouseButtonInput {
+                    button: drag.button,
+                    state: ButtonState::Pressed,
+                    window,
+                };
+                window_events.write(WindowEvent::from(btn_event));
+                button_events.write(btn_event);
+
                 drag.drag_state = DragState::Dragging;
             },
             DragState::Dragging => {

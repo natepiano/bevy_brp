@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Requires Bevy 0.20.1.
 
+### Fixed
+- `brp_extras/drag_mouse` moves the cursor to `start` one frame before the press, so the press frame carries no motion delta.
+
 ## [0.23.0] - 2026-10-09
 
 ### Added
